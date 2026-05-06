@@ -1,0 +1,67 @@
+@extends('layouts.app')
+
+@section('content')
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-950">Gider Ödemesi Ekle</h1>
+            <p class="mt-1 text-sm text-slate-500">{{ $expense->category }} giderini seçilen kasadan ödeyin.</p>
+        </div>
+        <a href="{{ route('expenses.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Giderlere Dön</a>
+    </div>
+
+    <form method="POST" action="{{ route('expenses.payment.store', $expense) }}" class="max-w-2xl rounded-2xl bg-white p-6 shadow-sm">
+        @csrf
+
+        <div class="space-y-5">
+            <div class="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
+                <div class="font-semibold text-slate-950">{{ $expense->category }}</div>
+                <div class="mt-1">Tutar: {{ number_format($expense->amount, 2, ',', '.') }} TL</div>
+                <div class="mt-1">Tedarikçi: {{ $expense->account?->name ?? '-' }}</div>
+            </div>
+
+            <div>
+                <label for="cash_box_id" class="mb-2 block text-sm font-semibold text-slate-700">Ödeme Kasası</label>
+                <select id="cash_box_id" name="cash_box_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <option value="">Kasa seçin</option>
+                    @foreach ($cashBoxes as $cashBox)
+                        <option value="{{ $cashBox->id }}" @selected((string) old('cash_box_id') === (string) $cashBox->id)>{{ $cashBox->name }}</option>
+                    @endforeach
+                </select>
+                @error('cash_box_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
+            <div>
+                <label for="category_id" class="mb-2 block text-sm font-semibold text-slate-700">Kategori</label>
+                <select id="category_id" name="category_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <option value="">Kategori seçin</option>
+                    @foreach ($categories as $category)
+                        <option value="{{ $category->id }}" @selected((string) old('category_id', $expense->category_id) === (string) $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+                @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="grid gap-5 md:grid-cols-2">
+                <div>
+                    <label for="amount" class="mb-2 block text-sm font-semibold text-slate-700">Ödeme Tutarı</label>
+                    <input id="amount" name="amount" type="number" min="0.01" step="0.01" value="{{ old('amount', $expense->amount) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                    <label for="payment_date" class="mb-2 block text-sm font-semibold text-slate-700">Ödeme Tarihi</label>
+                    <input id="payment_date" name="payment_date" type="date" value="{{ old('payment_date', now()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('payment_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
+            <div>
+                <label for="description" class="mb-2 block text-sm font-semibold text-slate-700">Açıklama</label>
+                <input id="description" name="description" value="{{ old('description', $expense->category . ' gider ödemesi') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
+            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Ödemeyi Kasaya İşle</button>
+        </div>
+    </form>
+@endsection
