@@ -156,16 +156,14 @@ class AccountController extends Controller
         $account = Account::query()
             ->with([
                 'unit',
-                'transactions',
+                'transactions' => fn ($query) => $query->orderByDesc('transaction_date')->orderByDesc('id'),
                 'dues' => fn ($query) => $query->where('status', 'unpaid')->orderBy('due_date'),
+                'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0),
             ])
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->findOrFail($id);
 
-        $debit = (float) $account->transactions->where('type', 'debit')->sum('amount');
-        $credit = (float) $account->transactions->where('type', 'credit')->sum('amount');
-
-        return view('accounts.show', compact('account', 'debit', 'credit'));
+        return view('accounts.show', compact('account'));
     }
 
     /**

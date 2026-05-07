@@ -24,7 +24,7 @@
 
             <div>
                 <label for="amount" class="mb-2 block text-sm font-semibold text-slate-700">Ödenecek Tutar</label>
-                <input id="amount" name="amount" type="number" min="0.01" step="0.01" value="{{ old('amount', $due->amount) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <input id="amount" name="amount" type="number" min="0.01" step="0.01" value="{{ old('amount', $due->remaining_amount ?: $due->amount) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 @error('amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 

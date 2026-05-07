@@ -39,7 +39,6 @@
                         <td class="px-5 py-4 text-right">
                             <div class="flex justify-end gap-3">
                                 <a href="{{ route('accounts.show', $account) }}" class="font-semibold text-slate-700 hover:text-slate-950">Detay</a>
-                                <a href="{{ route('accounts.show', $account) }}" class="font-semibold text-slate-700 hover:text-slate-950">Aidat Öde</a>
                                 <a href="{{ route('accounts.edit', $account) }}" class="font-semibold text-slate-700 hover:text-slate-950">Düzenle</a>
                                 <form method="POST" action="{{ route('accounts.destroy', $account) }}">
                                     @csrf

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+
 class Expense extends Model
 {
     use SoftDeletes;
@@ -42,5 +44,10 @@ class Expense extends Model
     public function categoryRelation(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    public function transactions(): MorphMany
+    {
+        return $this->morphMany(AccountTransaction::class, 'transactionable');
     }
 }

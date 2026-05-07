@@ -251,40 +251,57 @@ class DueController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
-        Payment::create([
-            'apartment_id' => $due->apartment_id,
-            'account_id' => $due->account_id,
-            'due_id' => $due->id,
-            'amount' => $validated['amount'],
-            'payment_date' => $validated['payment_date'],
-            'method' => null,
-            'description' => $validated['description'] ?? 'Aidat ödemesi',
-        ]);
+        DB::transaction(function () use ($due, $validated) {
+            $payment = Payment::create([
+                'apartment_id' => $due->apartment_id,
+                'account_id' => $due->account_id,
+                'amount' => $validated['amount'],
+                'unallocated_amount' => $validated['amount'],
+                'payment_date' => $validated['payment_date'],
+                'method' => null,
+                'description' => $validated['description'] ?? 'Aidat ödemesi',
+            ]);
 
-        CashTransaction::create([
-            'apartment_id' => $due->apartment_id,
-            'cash_box_id' => $validated['cash_box_id'],
-            'account_id' => $due->account_id,
-            'category_id' => $due->category_id,
-            'type' => 'expense',
-            'description' => $validated['description'] ?? 'Aidat ödemesi',
-            'amount' => $validated['amount'],
-            'transaction_date' => $validated['payment_date'],
-            'is_active' => true,
-        ]);
+            CashTransaction::create([
+                'apartment_id' => $due->apartment_id,
+                'cash_box_id' => $validated['cash_box_id'],
+                'account_id' => $due->account_id,
+                'category_id' => $due->category_id,
+                'type' => 'expense',
+                'description' => $validated['description'] ?? 'Aidat ödemesi',
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['payment_date'],
+                'is_active' => true,
+            ]);
 
-        AccountTransaction::create([
-            'apartment_id' => $due->apartment_id,
-            'account_id' => $due->account_id,
-            'type' => 'credit',
-            'description' => $validated['description'] ?? 'Aidat ödemesi',
-            'amount' => $validated['amount'],
-            'transaction_date' => $validated['payment_date'],
-        ]);
+            AccountTransaction::create([
+                'apartment_id' => $due->apartment_id,
+                'account_id' => $due->account_id,
+                'transactionable_type' => Payment::class,
+                'transactionable_id' => $payment->id,
+                'type' => 'credit',
+                'description' => $validated['description'] ?? 'Aidat ödemesi',
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['payment_date'],
+            ]);
 
-        if ($validated['amount'] >= $due->amount) {
-            $due->update(['status' => 'paid']);
-        }
+            $due->remaining_amount = $due->remaining_amount ?: $due->amount;
+            $allocationAmount = min($payment->unallocated_amount, $due->remaining_amount);
+
+            if ($allocationAmount > 0) {
+                $payment->allocations()->create([
+                    'due_id' => $due->id,
+                    'amount' => $allocationAmount,
+                ]);
+
+                $due->remaining_amount = max(0, $due->remaining_amount - $allocationAmount);
+                $due->status = $due->remaining_amount === 0 ? 'paid' : 'partial';
+                $due->save();
+
+                $payment->unallocated_amount = $payment->amount - $allocationAmount;
+                $payment->save();
+            }
+        });
 
         return redirect()->route('dues.index')->with('status', 'Aidat ödemesi kaydedildi.');
     }
@@ -336,7 +353,7 @@ class DueController extends Controller
 
     private function createDue(DueBatch $batch, ?Unit $unit, Account $account, float $amount, array $validated): void
     {
-        Due::create([
+        $due = Due::create([
             'apartment_id' => $batch->apartment_id,
             'due_batch_id' => $batch->id,
             'unit_id' => $unit?->id ?? $account->unit_id,
@@ -344,6 +361,7 @@ class DueController extends Controller
             'category_id' => $batch->category_id,
             'period' => $validated['period'],
             'amount' => $amount,
+            'remaining_amount' => $amount,
             'due_date' => $validated['due_date'],
             'status' => 'unpaid',
             'description' => $validated['description'] ?? null,
@@ -352,6 +370,8 @@ class DueController extends Controller
         AccountTransaction::create([
             'apartment_id' => $batch->apartment_id,
             'account_id' => $account->id,
+            'transactionable_type' => Due::class,
+            'transactionable_id' => $due->id,
             'type' => 'debit',
             'description' => $validated['description'] ?? $batch->category?->name.' borçlandırması',
             'amount' => $amount,

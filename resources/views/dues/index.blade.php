@@ -19,6 +19,7 @@
                 <th class="px-5 py-3">Dönem</th>
                 <th class="px-5 py-3">Açıklama</th>
                 <th class="px-5 py-3 text-right"><a href="{{ route('dues.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 cursor-pointer hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
+                <th class="px-5 py-3 text-right">Kalan</th>
                 <th class="px-5 py-3"><a href="{{ route('dues.index', ['sort_by' => 'status', 'sort_direction' => $sortBy === 'status' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Durum @if ($sortBy === 'status')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
                 <th class="px-5 py-3 text-right">İşlemler</th>
             </tr></thead>
@@ -32,6 +33,7 @@
                         <td class="px-5 py-4">{{ $due->period }}</td>
                         <td class="px-5 py-4">{{ $due->description ?: '-' }}</td>
                         <td class="px-5 py-4 text-right">{{ number_format($due->amount, 2, ',', '.') }} TL</td>
+                        <td class="px-5 py-4 text-right">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4">{{ $due->status }}</td>
                         <td class="px-5 py-4 text-right">
                             <div class="flex flex-wrap justify-end gap-2">
@@ -44,7 +46,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="px-5 py-8 text-center text-slate-500">Henüz aidat kaydı yok.</td></tr>
+                    <tr><td colspan="9" class="px-5 py-8 text-center text-slate-500">Henüz aidat kaydı yok.</td></tr>
                 @endforelse
             </tbody>
         </table>

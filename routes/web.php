@@ -11,6 +11,9 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DueController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\LedgerController;
+use App\Http\Controllers\PaymentAllocationController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -28,8 +31,15 @@ Route::middleware('auth')->group(function () {
     Route::resource('apartments', ApartmentController::class);
     Route::resource('accounts', AccountController::class);
     Route::resource('categories', CategoryController::class)->except(['show']);
+    Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
+    Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
+    Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('ledger', [LedgerController::class, 'index'])->name('ledger.index');
     Route::get('dues/{due}/payment', [DueController::class, 'createPayment'])->name('dues.payment.create');
     Route::post('dues/{due}/payment', [DueController::class, 'storePayment'])->name('dues.payment.store');
+    Route::get('payments/{payment}/allocations/create', [PaymentAllocationController::class, 'create'])->name('payments.allocations.create');
+    Route::post('payments/{payment}/allocations', [PaymentAllocationController::class, 'store'])->name('payments.allocations.store');
+    Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
     Route::resource('dues', DueController::class);
     Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
     Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');

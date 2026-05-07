@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\AccountTransaction;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
 use App\Models\Category;
 use App\Models\Expense;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ExpenseController extends Controller
@@ -110,17 +112,33 @@ class ExpenseController extends Controller
 
         $category = Category::findOrFail($validated['category_id']);
 
-        Expense::create([
-            'apartment_id' => $apartment->id,
-            'account_id' => $validated['account_id'] ?? null,
-            'category_id' => $category->id,
-            'category' => $category->name,
-            'description' => $validated['description'] ?? null,
-            'amount' => $validated['amount'],
-            'expense_date' => $validated['expense_date'],
-            'period_month' => $validated['period_month'].'-01',
-            'is_paid' => $request->boolean('is_paid'),
-        ]);
+        DB::transaction(function () use ($apartment, $validated, $category, $request) {
+            $expense = Expense::create([
+                'apartment_id' => $apartment->id,
+                'account_id' => $validated['account_id'] ?? null,
+                'category_id' => $category->id,
+                'category' => $category->name,
+                'description' => $validated['description'] ?? null,
+                'amount' => $validated['amount'],
+                'expense_date' => $validated['expense_date'],
+                'period_month' => $validated['period_month'].'-01',
+                'is_paid' => $request->boolean('is_paid'),
+            ]);
+
+            // Gider tedarikçi hesapla bağlıysa, muhasebe hareketi oluştur (debit)
+            if ($validated['account_id']) {
+                AccountTransaction::create([
+                    'apartment_id' => $apartment->id,
+                    'account_id' => $validated['account_id'],
+                    'transactionable_type' => Expense::class,
+                    'transactionable_id' => $expense->id,
+                    'type' => 'debit',
+                    'description' => $validated['description'] ?? 'Gider kaydı',
+                    'amount' => $validated['amount'],
+                    'transaction_date' => $validated['expense_date'],
+                ]);
+            }
+        });
 
         return redirect()->route('expenses.index')->with('status', 'Gider kaydı oluşturuldu.');
     }
@@ -215,19 +233,35 @@ class ExpenseController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
-        CashTransaction::create([
-            'apartment_id' => $expense->apartment_id,
-            'cash_box_id' => $validated['cash_box_id'],
-            'account_id' => $expense->account_id,
-            'category_id' => $validated['category_id'],
-            'type' => 'expense',
-            'description' => $validated['description'] ?? $expense->category.' gider ödemesi',
-            'amount' => $validated['amount'],
-            'transaction_date' => $validated['payment_date'],
-            'is_active' => true,
-        ]);
+        DB::transaction(function () use ($expense, $validated) {
+            CashTransaction::create([
+                'apartment_id' => $expense->apartment_id,
+                'cash_box_id' => $validated['cash_box_id'],
+                'account_id' => $expense->account_id,
+                'category_id' => $validated['category_id'],
+                'type' => 'expense',
+                'description' => $validated['description'] ?? $expense->category.' gider ödemesi',
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['payment_date'],
+                'is_active' => true,
+            ]);
 
-        $expense->update(['is_paid' => true]);
+            // Gider tedarikçi hesapla bağlıysa, ödeme muhasebe hareketi oluştur (credit)
+            if ($expense->account_id) {
+                AccountTransaction::create([
+                    'apartment_id' => $expense->apartment_id,
+                    'account_id' => $expense->account_id,
+                    'transactionable_type' => Expense::class,
+                    'transactionable_id' => $expense->id,
+                    'type' => 'credit',
+                    'description' => 'Gider ödemesi',
+                    'amount' => $validated['amount'],
+                    'transaction_date' => $validated['payment_date'],
+                ]);
+            }
+
+            $expense->update(['is_paid' => true]);
+        });
 
         return redirect()->route('expenses.index')->with('status', 'Gider ödemesi kasaya işlendi.');
     }

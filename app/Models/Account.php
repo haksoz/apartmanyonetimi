@@ -51,6 +51,11 @@ class Account extends Model
         return $this->hasMany(AccountTransaction::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     public function dues(): HasMany
     {
         return $this->hasMany(Due::class);
@@ -68,6 +73,21 @@ class Account extends Model
             ->latest('move_in_date')
             ->latest()
             ->first();
+    }
+
+    public function getLedgerDebitAttribute(): float
+    {
+        return (float) $this->transactions()->where('type', 'debit')->sum('amount');
+    }
+
+    public function getLedgerCreditAttribute(): float
+    {
+        return (float) $this->transactions()->where('type', 'credit')->sum('amount');
+    }
+
+    public function getLedgerBalanceAttribute(): float
+    {
+        return $this->ledger_credit - $this->ledger_debit;
     }
 
     public function getTypeLabelAttribute(): string

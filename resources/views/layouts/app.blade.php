@@ -42,6 +42,8 @@
                 <nav class="space-y-2 text-sm font-medium">
                     <a href="{{ route('dashboard') }}" class="block rounded-xl px-4 py-3 hover:bg-slate-100">Dashboard</a>
                     <a href="{{ route('accounts.index') }}" class="block rounded-xl px-4 py-3 hover:bg-slate-100">Hesaplar</a>
+                    <a href="{{ route('payments.index') }}" class="block rounded-xl px-4 py-3 hover:bg-slate-100">Ödemeler</a>
+                    <a href="{{ route('ledger.index') }}" class="block rounded-xl px-4 py-3 hover:bg-slate-100">Muhasebe Hareketleri</a>
                     <a href="{{ route('categories.index') }}" class="block rounded-xl px-4 py-3 hover:bg-slate-100">Kategoriler</a>
                     <a href="{{ route('dues.index') }}" class="block rounded-xl px-4 py-3 hover:bg-slate-100">Aidatlar</a>
                     <a href="{{ route('expenses.index') }}" class="block rounded-xl px-4 py-3 hover:bg-slate-100">Giderler</a>

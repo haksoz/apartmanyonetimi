@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Due extends Model
 {
@@ -15,6 +18,7 @@ class Due extends Model
         'category_id',
         'period',
         'amount',
+        'remaining_amount',
         'due_date',
         'status',
         'description',
@@ -22,6 +26,7 @@ class Due extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'remaining_amount' => 'decimal:2',
         'due_date' => 'date',
     ];
 
@@ -48,5 +53,27 @@ class Due extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function allocations(): HasMany
+    {
+        return $this->hasMany(PaymentAllocation::class);
+    }
+
+    public function payments(): BelongsToMany
+    {
+        return $this->belongsToMany(Payment::class, 'payment_allocations')
+            ->withPivot('amount')
+            ->withTimestamps();
+    }
+
+    public function transactions(): MorphMany
+    {
+        return $this->morphMany(AccountTransaction::class, 'transactionable');
+    }
+
+    public function getAllocatedAmountAttribute(): float
+    {
+        return (float) $this->allocations()->sum('amount');
     }
 }
