@@ -156,14 +156,28 @@ class AccountController extends Controller
         $account = Account::query()
             ->with([
                 'unit',
-                'transactions' => fn ($query) => $query->orderByDesc('transaction_date')->orderByDesc('id'),
+                'transactions' => fn ($query) => $query->orderBy('transaction_date')->orderBy('id'),
                 'dues' => fn ($query) => $query->where('status', 'unpaid')->orderBy('due_date'),
                 'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0),
             ])
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->findOrFail($id);
 
-        return view('accounts.show', compact('account'));
+        // Hazır ordered transactions ile satır satır çalışan bakiye hesapla
+        $transactions = $account->transactions->values();
+        $running = 0;
+        foreach ($transactions as $t) {
+            $debit = $t->type === 'debit' ? $t->amount : 0;
+            $credit = $t->type === 'credit' ? $t->amount : 0;
+            $running += $debit - $credit;
+            // runtime attribute for view
+            $t->running_balance = $running;
+        }
+
+        // Görüntüleme: yeniden eskiye (yeniden eskiye sıralama için ters çevir)
+        $transactions = $transactions->reverse()->values();
+
+        return view('accounts.show', compact('account', 'transactions'));
     }
 
     /**

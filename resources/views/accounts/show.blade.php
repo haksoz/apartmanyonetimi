@@ -90,18 +90,43 @@
 
     <div class="rounded-2xl bg-white p-6 shadow-sm">
         <h2 class="mb-4 text-lg font-semibold text-slate-950">Hareketler</h2>
-        <div class="divide-y divide-slate-100">
-            @forelse ($account->transactions as $transaction)
-                <div class="flex items-center justify-between py-3 text-sm">
-                    <div>
-                        <div class="font-medium text-slate-950">{{ $transaction->description ?: ucfirst($transaction->type) }}</div>
-                        <div class="text-slate-500">{{ $transaction->transaction_date->format('d.m.Y') }}</div>
-                    </div>
-                    <div class="font-semibold {{ $transaction->type === 'debit' ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format($transaction->amount, 2, ',', '.') }} TL</div>
-                </div>
-            @empty
-                <div class="py-6 text-sm text-slate-500">Henüz hareket yok.</div>
-            @endforelse
-        </div>
+        @if ($transactions->isEmpty())
+            <div class="py-6 text-sm text-slate-500">Henüz hareket yok.</div>
+        @else
+            <div class="overflow-hidden rounded-2xl border border-slate-200">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50 text-left text-slate-500">
+                        <tr>
+                            <th class="px-5 py-3">Tarih</th>
+                            <th class="px-5 py-3">Belge</th>
+                            <th class="px-5 py-3">Açıklama</th>
+                            <th class="px-5 py-3 text-right">Borç</th>
+                            <th class="px-5 py-3 text-right">Alacak</th>
+                            <th class="px-5 py-3 text-right">Bakiye</th>
+                            <th class="px-5 py-3 text-right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach ($transactions as $t)
+                            @php
+                                $debit = $t->type === 'debit' ? $t->amount : 0;
+                                $credit = $t->type === 'credit' ? $t->amount : 0;
+                            @endphp
+                            <tr>
+                                <td class="px-5 py-4 text-slate-700">{{ $t->transaction_date->format('d.m.Y') }}</td>
+                                <td class="px-5 py-4 text-slate-700">{{ $t->transactionable?->id ?? '-' }}</td>
+                                <td class="px-5 py-4 text-slate-700">{{ $t->description ?: ucfirst($t->type) }}</td>
+                                <td class="px-5 py-4 text-right text-red-600 font-semibold">{{ $debit ? number_format($debit, 2, ',', '.') . ' TL' : '-' }}</td>
+                                <td class="px-5 py-4 text-right text-emerald-600 font-semibold">{{ $credit ? number_format($credit, 2, ',', '.') . ' TL' : '-' }}</td>
+                                <td class="px-5 py-4 text-right font-semibold">{{ number_format($t->running_balance, 2, ',', '.') }} TL</td>
+                                <td class="px-5 py-4 text-right">
+                                    <a href="#" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Detay</a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 @endsection
