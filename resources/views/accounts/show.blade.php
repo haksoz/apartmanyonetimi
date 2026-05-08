@@ -51,6 +51,24 @@
             </div>
         @endif
     </div>
+    <script>
+        (function(){
+            function toggleAlloc(e){
+                const target = e.currentTarget.getAttribute('data-toggle-alloc');
+                if(!target) return;
+                const rows = document.querySelectorAll('[data-parent="'+target+'"]');
+                rows.forEach(r => r.classList.toggle('hidden'));
+                // toggle button text
+                const open = Array.from(rows).some(r => !r.classList.contains('hidden'));
+                e.currentTarget.textContent = open ? 'Tahsisleri Gizle' : 'Tahsisleri Göster';
+            }
+
+            document.addEventListener('click', function(e){
+                const btn = e.target.closest('[data-toggle-alloc]');
+                if(btn) toggleAlloc({currentTarget: btn});
+            });
+        })();
+    </script>
 
     @if ($account->payments->isNotEmpty())
         <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
@@ -120,9 +138,30 @@
                                 <td class="px-5 py-4 text-right text-emerald-600 font-semibold">{{ $credit ? number_format($credit, 2, ',', '.') . ' TL' : '-' }}</td>
                                 <td class="px-5 py-4 text-right font-semibold">{{ number_format($t->running_balance, 2, ',', '.') }} TL</td>
                                 <td class="px-5 py-4 text-right">
-                                    <a href="#" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Detay</a>
+                                    @if($t->allocations->isNotEmpty() && (($t->transactionable_type ?? '') === \App\Models\Payment::class))
+                                        <button type="button" data-toggle-alloc="alloc-{{ $t->id }}" class="toggle-alloc rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Tahsisleri Göster</button>
+                                    @else
+                                        <a href="#" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Detay</a>
+                                    @endif
                                 </td>
                             </tr>
+
+                            @if($t->allocations->isNotEmpty())
+                                @foreach($t->allocations as $a)
+                                    <tr class="bg-slate-50 text-sm alloc-row alloc-{{ $t->id }} hidden" data-parent="alloc-{{ $t->id }}">
+                                        <td class="px-5 py-2"></td>
+                                        <td class="px-5 py-2">Tahsis</td>
+                                        <td class="px-5 py-2">Aidat <a href="{{ route('dues.show', $a->due) }}">#{{ $a->due->id }}</a> — {{ $a->due->due_date->format('d.m.Y') }}
+                                            @php $desc = $a->due->description ?: 'Aidat'; @endphp
+                                            <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
+                                        </td>
+                                        <td class="px-5 py-2 text-right text-emerald-600 font-medium">{{ number_format($a->amount,2,',','.') }} TL</td>
+                                        <td class="px-5 py-2"></td>
+                                        <td class="px-5 py-2"></td>
+                                        <td class="px-5 py-2 text-right"></td>
+                                    </tr>
+                                @endforeach
+                            @endif
                         @endforeach
                     </tbody>
                 </table>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
+use App\Models\Payment;
 use App\Support\CurrentApartment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -176,6 +177,29 @@ class AccountController extends Controller
 
         // Görüntüleme: yeniden eskiye (yeniden eskiye sıralama için ters çevir)
         $transactions = $transactions->reverse()->values();
+
+        // Ödemelere ait tahsisleri yükle ve transactionlara ekle
+        $paymentIds = $transactions
+            ->filter(fn($t) => ($t->transactionable_type ?? '') === Payment::class)
+            ->pluck('transactionable_id')
+            ->unique()
+            ->values();
+
+        if ($paymentIds->isNotEmpty()) {
+            $payments = Payment::with('allocations.due')->whereIn('id', $paymentIds)->get()->keyBy('id');
+
+            foreach ($transactions as $t) {
+                if (($t->transactionable_type ?? '') === Payment::class && isset($payments[$t->transactionable_id])) {
+                    $t->allocations = $payments[$t->transactionable_id]->allocations;
+                } else {
+                    $t->allocations = collect();
+                }
+            }
+        } else {
+            foreach ($transactions as $t) {
+                $t->allocations = collect();
+            }
+        }
 
         return view('accounts.show', compact('account', 'transactions'));
     }
