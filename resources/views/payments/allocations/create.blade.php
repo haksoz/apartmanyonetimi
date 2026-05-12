@@ -55,15 +55,20 @@
                             <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</td>
                             <td class="px-5 py-4 text-right">
                                 <input type="hidden" name="allocations[{{ $index }}][due_id]" value="{{ $due->id }}">
-                                <input
-                                    type="number"
-                                    name="allocations[{{ $index }}][amount]"
-                                    min="0"
-                                    step="0.01"
-                                    max="{{ $due->remaining_amount }}"
-                                    value="{{ old('allocations.'.$index.'.amount') }}"
-                                    class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none"
-                                >
+                                <div class="flex items-center justify-end space-x-2">
+                                    <input
+                                        id="alloc-{{ $index }}"
+                                        data-remaining="{{ $due->remaining_amount }}"
+                                        type="number"
+                                        name="allocations[{{ $index }}][amount]"
+                                        min="0"
+                                        step="0.01"
+                                        max="{{ $due->remaining_amount }}"
+                                        value="{{ old('allocations.'.$index.'.amount') }}"
+                                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none"
+                                    >
+                                    <button type="button" data-fill-selector="#alloc-{{ $index }}" class="fill-remaining text-sm text-slate-700 hover:underline">Tamamını Doldur</button>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -74,7 +79,28 @@
                 </tbody>
             </table>
         </div>
+        <div class="mt-4">
+            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Tahsis Et</button>
+        </div>
 
-        <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Tahsis Et</button>
+        <script>
+            (function(){
+                function toFloat(v){
+                    const n = parseFloat(String(v).replace(',', '.'));
+                    return Number.isFinite(n) ? n : 0;
+                }
+
+                document.addEventListener('click', function(e){
+                    const btn = e.target.closest('[data-fill-selector]');
+                    if(btn){
+                        const sel = btn.getAttribute('data-fill-selector');
+                        const input = document.querySelector(sel);
+                        if(!input) return;
+                        const remaining = toFloat(input.getAttribute('data-remaining'));
+                        input.value = remaining ? remaining.toFixed(2) : '';
+                    }
+                });
+            })();
+        </script>
     </form>
 @endsection
