@@ -80,8 +80,9 @@ class AccountController extends Controller
         }
 
         $validated = $request->validate([
-            'type' => ['required', Rule::in([Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_RESIDENT, Account::TYPE_SUPPLIER])],
+            'type' => ['required', Rule::in([Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_SUPPLIER])],
             'unit_id' => [
+                'required_if:type,'.Account::TYPE_OWNER.','.Account::TYPE_TENANT,
                 'nullable',
                 'integer',
                 Rule::exists('units', 'id')->where('apartment_id', $apartment->id),
@@ -243,8 +244,9 @@ class AccountController extends Controller
             ->findOrFail($id);
 
         $validated = $request->validate([
-            'type' => ['required', Rule::in([Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_RESIDENT, Account::TYPE_SUPPLIER])],
+            'type' => ['required', Rule::in([Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_SUPPLIER])],
             'unit_id' => [
+                'required_if:type,'.Account::TYPE_OWNER.','.Account::TYPE_TENANT,
                 'nullable',
                 'integer',
                 Rule::exists('units', 'id')->where('apartment_id', $account->apartment_id),

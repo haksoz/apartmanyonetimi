@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasReferenceNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Expense extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasReferenceNumber;
 
     protected $fillable = [
         'apartment_id',
@@ -22,6 +23,7 @@ class Expense extends Model
         'expense_date',
         'period_month',
         'is_paid',
+        'reference_number',
     ];
 
     protected $casts = [
@@ -49,5 +51,10 @@ class Expense extends Model
     public function transactions(): MorphMany
     {
         return $this->morphMany(AccountTransaction::class, 'transactionable');
+    }
+
+    protected function getReferencePrefix(): string
+    {
+        return 'GD';
     }
 }

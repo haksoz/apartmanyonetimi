@@ -83,6 +83,55 @@ class DueController extends Controller
         return view('dues.create', compact('apartment', 'categories', 'expenseCategories', 'accounts'));
     }
 
+    public function createBatch(CurrentApartment $currentApartment)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+
+        $categories = Category::query()
+            ->where('apartment_id', $apartment->id)
+            ->where(fn ($query) => $query->where('type', Category::TYPE_INCOME)->orWhere('type', Category::TYPE_ALL))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $expenseCategories = Category::query()
+            ->where('apartment_id', $apartment->id)
+            ->where(fn ($query) => $query->where('type', Category::TYPE_EXPENSE)->orWhere('type', Category::TYPE_ALL))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $units = Unit::query()
+            ->where('apartment_id', $apartment->id)
+            ->count();
+
+        // Get all expenses grouped by period for JavaScript calculation (SQLite compatible)
+        $expensesByPeriod = Expense::query()
+            ->where('apartment_id', $apartment->id)
+            ->selectRaw("strftime('%Y-%m', expense_date) as period, SUM(amount) as total")
+            ->groupBy('period')
+            ->pluck('total', 'period')
+            ->toArray();
+
+        // Get category-wise expenses for filtered calculation
+        $expensesByCategory = [];
+        foreach ($expenseCategories as $category) {
+            $categoryExpenses = Expense::query()
+                ->where('apartment_id', $apartment->id)
+                ->where('category_id', $category->id)
+                ->selectRaw("strftime('%Y-%m', expense_date) as period, SUM(amount) as total")
+                ->groupBy('period')
+                ->pluck('total', 'period')
+                ->toArray();
+            $expensesByCategory[$category->id] = $categoryExpenses;
+        }
+
+        return view('dues.batch-create', compact('apartment', 'categories', 'expenseCategories', 'units', 'expensesByPeriod', 'expensesByCategory'));
+    }
+
     public function store(Request $request, CurrentApartment $currentApartment)
     {
         $apartment = $this->resolveApartment($currentApartment);

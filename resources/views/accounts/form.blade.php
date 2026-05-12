@@ -10,7 +10,6 @@
             <select id="type" name="type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 <option value="owner" @selected(old('type', $account?->type) === 'owner')>Kat Maliki</option>
                 <option value="tenant" @selected(old('type', $account?->type) === 'tenant')>Kiracı</option>
-                <option value="resident" @selected(old('type', $account?->type) === 'resident')>Daire Sakini</option>
                 <option value="supplier" @selected(old('type', $account?->type) === 'supplier')>Tedarikçi</option>
             </select>
             @error('type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -19,7 +18,7 @@
         <div data-unit-field>
             <label for="unit_id" class="mb-2 block text-sm font-semibold text-slate-700">Daire Bağlantısı</label>
             <select id="unit_id" name="unit_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                <option value="">Daire bağlantısı yok</option>
+                <option value="" disabled {{ old('unit_id', $account?->unit_id) ? '' : 'selected' }}>Daire seçiniz...</option>
                 @foreach ($units as $unit)
                     <option value="{{ $unit->id }}" @selected((string) old('unit_id', $account?->unit_id) === (string) $unit->id)>{{ $unit->unit_no }} no.lu daire</option>
                 @endforeach
@@ -116,7 +115,14 @@
         const refresh = () => {
             const selectedType = type.value;
 
-            toggleField(unitField, unitInput, selectedType !== 'supplier', ['owner', 'tenant'].includes(selectedType), selectedType === 'supplier');
+            const requiresUnit = ['owner', 'tenant'].includes(selectedType);
+            toggleField(unitField, unitInput, selectedType !== 'supplier', requiresUnit, selectedType === 'supplier');
+            // Set empty value for supplier, first unit for others if not already selected
+            if (selectedType === 'supplier') {
+                unitInput.value = '';
+            } else if (!unitInput.value && unitInput.options.length > 0) {
+                unitInput.value = unitInput.options[0].value;
+            }
             toggleField(tenantMoveInField, tenantMoveInInput, selectedType === 'tenant', selectedType === 'tenant', selectedType !== 'tenant');
             toggleField(tenantMoveOutField, tenantMoveOutInput, selectedType === 'tenant', false, selectedType !== 'tenant');
             toggleField(accountOpeningDateField, accountOpeningDateInput, selectedType === 'supplier', selectedType === 'supplier', selectedType !== 'supplier');

@@ -40,6 +40,7 @@ Route::middleware('auth')->group(function () {
     Route::get('payments/{payment}/allocations/create', [PaymentAllocationController::class, 'create'])->name('payments.allocations.create');
     Route::post('payments/{payment}/allocations', [PaymentAllocationController::class, 'store'])->name('payments.allocations.store');
     Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
+    Route::get('dues/batch/create', [DueController::class, 'createBatch'])->name('dues.batch.create');
     Route::resource('dues', DueController::class);
     Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
     Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');

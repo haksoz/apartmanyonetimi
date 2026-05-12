@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasReferenceNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,12 +11,14 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Due extends Model
 {
+    use HasReferenceNumber;
     protected $fillable = [
         'apartment_id',
         'due_batch_id',
         'unit_id',
         'account_id',
         'category_id',
+        'reference_number',
         'period',
         'amount',
         'remaining_amount',
@@ -75,5 +78,10 @@ class Due extends Model
     public function getAllocatedAmountAttribute(): float
     {
         return (float) $this->allocations()->sum('amount');
+    }
+
+    protected function getReferencePrefix(): string
+    {
+        return 'BO';
     }
 }

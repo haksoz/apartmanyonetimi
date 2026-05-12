@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasReferenceNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,9 +11,11 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Payment extends Model
 {
+    use HasReferenceNumber;
     protected $fillable = [
         'apartment_id',
         'account_id',
+        'reference_number',
         'amount',
         'unallocated_amount',
         'payment_date',
@@ -79,5 +82,10 @@ class Payment extends Model
         $due->save();
 
         return $allocation;
+    }
+
+    protected function getReferencePrefix(): string
+    {
+        return 'ÖD';
     }
 }

@@ -38,7 +38,7 @@
                         <td class="px-5 py-4 text-slate-700">{{ $transaction->transaction_date?->format('d.m.Y') ?? '-' }}</td>
                         <td class="px-5 py-4 text-slate-700">{{ $transaction->account?->name ?? '-' }}</td>
                         <td class="px-5 py-4 text-slate-700">{{ $transaction->description ?: ucfirst($transaction->type) }}</td>
-                        <td class="px-5 py-4 text-slate-700">{{ ucfirst($transaction->type) }}</td>
+                        <td class="px-5 py-4 text-slate-700">{{ $transaction->type === 'debit' ? 'Borç' : 'Alacak' }}</td>
                         <td class="px-5 py-4 text-right font-semibold {{ $transaction->type === 'debit' ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format($transaction->amount, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-slate-700">
                             @if ($relatedUrl)

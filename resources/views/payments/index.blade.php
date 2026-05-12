@@ -13,7 +13,7 @@
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left text-slate-500">
                 <tr>
-                    <th class="px-5 py-3">#</th>
+                    <th class="px-5 py-3">Ref No</th>
                     <th class="px-5 py-3">Hesap</th>
                     <th class="px-5 py-3">Açıklama</th>
                     <th class="px-5 py-3">Tarih</th>
@@ -25,7 +25,7 @@
             <tbody class="divide-y divide-slate-100">
                 @forelse ($payments as $payment)
                     <tr>
-                        <td class="px-5 py-4 text-slate-700">#{{ $payment->id }}</td>
+                        <td class="px-5 py-4 text-slate-700">{{ $payment->reference_number ?? '-' }}</td>
                         <td class="px-5 py-4 text-slate-700">{{ $payment->account?->name ?? '-' }}</td>
                         <td class="px-5 py-4 text-slate-700">{{ $payment->description ?: 'Ödeme' }}</td>
                         <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>

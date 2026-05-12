@@ -12,6 +12,7 @@
     <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left text-slate-500"><tr>
+                <th class="px-5 py-3">Ref No</th>
                 <th class="px-5 py-3"><a href="{{ route('expenses.index', ['sort_by' => 'expense_date', 'sort_direction' => $sortBy === 'expense_date' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Tarih @if ($sortBy === 'expense_date')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
                 <th class="px-5 py-3"><a href="{{ route('expenses.index', ['sort_by' => 'period_month', 'sort_direction' => $sortBy === 'period_month' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Dönem @if ($sortBy === 'period_month')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
                 <th class="px-5 py-3"><a href="{{ route('expenses.index', ['sort_by' => 'category', 'sort_direction' => $sortBy === 'category' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Kategori @if ($sortBy === 'category')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
@@ -23,8 +24,19 @@
             <tbody class="divide-y divide-slate-100">
                 @forelse ($expenses as $expense)
                     <tr>
+                        <td class="px-5 py-4 font-medium text-slate-900">{{ $expense->reference_number ?? '-' }}</td>
                         <td class="px-5 py-4">{{ $expense->expense_date->format('d.m.Y') }}</td>
-                        <td class="px-5 py-4">{{ $expense->period_month?->translatedFormat('F Y') ?? '-' }}</td>
+                        @php
+                        $months = ['January' => 'Ocak', 'February' => 'Şubat', 'March' => 'Mart', 'April' => 'Nisan', 'May' => 'Mayıs', 'June' => 'Haziran',
+                                   'July' => 'Temmuz', 'August' => 'Ağustos', 'September' => 'Eylül', 'October' => 'Ekim', 'November' => 'Kasım', 'December' => 'Aralık'];
+                        $periodText = $expense->period_month ? $expense->period_month->format('F Y') : null;
+                        if ($periodText) {
+                            foreach ($months as $en => $tr) {
+                                $periodText = str_replace($en, $tr, $periodText);
+                            }
+                        }
+                        @endphp
+                        <td class="px-5 py-4">{{ $periodText ?? '-' }}</td>
                         <td class="px-5 py-4">{{ $expense->category }}</td>
                         <td class="px-5 py-4">{{ $expense->account?->name ?? '-' }}</td>
                         <td class="px-5 py-4 text-right">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
@@ -44,7 +56,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-5 py-8 text-center text-slate-500">Henüz gider kaydı yok.</td></tr>
+                    <tr><td colspan="8" class="px-5 py-8 text-center text-slate-500">Henüz gider kaydı yok.</td></tr>
                 @endforelse
             </tbody>
         </table>

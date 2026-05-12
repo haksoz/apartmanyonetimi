@@ -6,13 +6,16 @@
             <h1 class="text-2xl font-bold text-slate-950">Aidatlar</h1>
             <p class="mt-1 text-sm text-slate-500">Tekil veya toplu aidat tahakkukları burada yönetilecek.</p>
         </div>
-        <a href="{{ route('dues.create') }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Aidat Ekle</a>
+        <div class="flex gap-2">
+            <a href="{{ route('dues.create') }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Borçlandır</a>
+            <a href="{{ route('dues.batch.create') }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Toplu Borçlandır</a>
+        </div>
     </div>
 
     <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left text-slate-500"><tr>
-                <th class="px-5 py-3"><a href="{{ route('dues.index', ['sort_by' => 'created_at', 'sort_direction' => $sortBy === 'created_at' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Tarih @if ($sortBy === 'created_at')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
+                <th class="px-5 py-3"><a href="{{ route('dues.index', ['sort_by' => 'created_at', 'sort_direction' => $sortBy === 'created_at' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Ref No @if ($sortBy === 'created_at')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
                 <th class="px-5 py-3"><a href="{{ route('dues.index', ['sort_by' => 'unit_id', 'sort_direction' => $sortBy === 'unit_id' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Daire @if ($sortBy === 'unit_id')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
                 <th class="px-5 py-3">Hesap</th>
                 <th class="px-5 py-3">Kategori</th>
@@ -26,7 +29,7 @@
             <tbody class="divide-y divide-slate-100">
                 @forelse ($dues as $due)
                     <tr>
-                        <td class="px-5 py-4">{{ $due->created_at->format('d.m.Y') }}</td>
+                        <td class="px-5 py-4">{{ $due->reference_number ?? '-' }}</td>
                         <td class="px-5 py-4">{{ $due->unit ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</td>
                         <td class="px-5 py-4">{{ $due->account?->name }}</td>
                         <td class="px-5 py-4">{{ $due->category?->name ?? '-' }}</td>
