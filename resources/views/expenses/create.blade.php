@@ -25,7 +25,10 @@
             </div>
 
             <div>
-                <label for="account_id" class="mb-2 block text-sm font-semibold text-slate-700">Hesap / Tedarikçi</label>
+                <div class="mb-2 flex items-center justify-between">
+                    <label for="account_id" class="block text-sm font-semibold text-slate-700">Hesap / Tedarikçi</label>
+                    <button type="button" id="open-supplier-modal" class="text-xs font-semibold text-emerald-600 hover:text-emerald-700">+ Yeni Tedarikçi Ekle</button>
+                </div>
                 <select id="account_id" name="account_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                     <option value="">Hesap seçmeden kaydet</option>
                     @foreach ($accounts as $account)
@@ -69,4 +72,153 @@
             <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Gideri Kaydet</button>
         </div>
     </form>
+
+    <script>
+        (() => {
+            const categorySelect = document.getElementById('category_id');
+            const periodInput = document.getElementById('period_month');
+            const descriptionInput = document.getElementById('description');
+
+            const months = {
+                '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+                '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+                '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+            };
+
+            const updateDescription = () => {
+                const period = periodInput.value;
+                const categoryOption = categorySelect.options[categorySelect.selectedIndex];
+                const categoryName = categoryOption ? categoryOption.text : '';
+
+                if (period && categoryName) {
+                    const [year, month] = period.split('-');
+                    const monthName = months[month] || month;
+                    descriptionInput.value = `${monthName} ${year} - ${categoryName}`;
+                }
+            };
+
+            categorySelect?.addEventListener('change', updateDescription);
+            periodInput?.addEventListener('change', updateDescription);
+        })();
+    </script>
+
+    {{-- Supplier Modal --}}
+    <div id="supplier-modal" class="fixed inset-0 z-50 hidden">
+        <div class="fixed inset-0 bg-black/50" id="modal-overlay"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <div class="mb-4 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-slate-950">Yeni Tedarikçi Ekle</h3>
+                    <button type="button" id="close-supplier-modal" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <form id="supplier-form" class="space-y-4">
+                    <input type="hidden" name="type" value="supplier">
+                    <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
+                    @csrf
+
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-slate-700">Tedarikçi Adı</label>
+                        <input type="text" name="name" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none" placeholder="Örn. A Enerji, Su ve Kanalizasyon">
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Telefon</label>
+                            <input type="text" name="phone" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">E-posta</label>
+                            <input type="email" name="email" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Açılış Tarihi</label>
+                            <input type="date" name="account_opening_date" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Açılış Bakiyesi</label>
+                            <input type="number" name="balance" step="0.01" value="0" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="button" id="cancel-supplier" class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</button>
+                        <button type="submit" class="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700">Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const modal = document.getElementById('supplier-modal');
+            const overlay = document.getElementById('modal-overlay');
+            const openBtn = document.getElementById('open-supplier-modal');
+            const closeBtn = document.getElementById('close-supplier-modal');
+            const cancelBtn = document.getElementById('cancel-supplier');
+            const supplierForm = document.getElementById('supplier-form');
+            const accountSelect = document.getElementById('account_id');
+
+            const openModal = () => {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            };
+
+            const closeModal = () => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+                supplierForm.reset();
+            };
+
+            openBtn?.addEventListener('click', openModal);
+            closeBtn?.addEventListener('click', closeModal);
+            cancelBtn?.addEventListener('click', closeModal);
+            overlay?.addEventListener('click', closeModal);
+
+            supplierForm?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(supplierForm);
+                const submitBtn = supplierForm.querySelector('button[type="submit"]');
+
+                try {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Kaydediliyor...';
+
+                    const response = await fetch('{{ route('accounts.store') }}', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.account) {
+                        const option = document.createElement('option');
+                        option.value = data.account.id;
+                        option.textContent = `${data.account.name} (${data.account.type})`;
+                        option.selected = true;
+                        accountSelect.appendChild(option);
+                        closeModal();
+                    } else {
+                        alert('Hata: ' + (data.message || 'Tedarikçi oluşturulamadı'));
+                    }
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Kaydet';
+                }
+            });
+        })();
+    </script>
 @endsection

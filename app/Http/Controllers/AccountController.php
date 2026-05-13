@@ -79,7 +79,7 @@ class AccountController extends Controller
             return redirect()->route('apartments.create');
         }
 
-        $validated = $request->validate([
+        $validator = \Validator::make($request->all(), [
             'type' => ['required', Rule::in([Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_SUPPLIER])],
             'unit_id' => [
                 'required_if:type,'.Account::TYPE_OWNER.','.Account::TYPE_TENANT,
@@ -96,23 +96,60 @@ class AccountController extends Controller
             'account_opening_date' => ['required_if:type,'.Account::TYPE_SUPPLIER, 'nullable', 'date'],
         ]);
 
+        if ($validator->fails()) {
+            if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasyon hatası',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            return back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
+
         if ($validated['type'] === Account::TYPE_TENANT && empty($validated['unit_id'])) {
+            if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kiracı hesabı için daire bağlantısı zorunludur.'
+                ], 422);
+            }
             return back()->withErrors(['unit_id' => 'Kiracı hesabı için daire bağlantısı zorunludur.'])->withInput();
         }
 
         if ($validated['type'] === Account::TYPE_TENANT && TenantAssignment::where('unit_id', $validated['unit_id'])->whereNull('move_out_date')->exists()) {
+            if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bu dairede aktif kiracı var. Önce mevcut kiracıya çıkış tarihi girin.'
+                ], 422);
+            }
             return back()->withErrors(['unit_id' => 'Bu dairede aktif kiracı var. Önce mevcut kiracıya çıkış tarihi girin.'])->withInput();
         }
 
         if ($validated['type'] === Account::TYPE_OWNER && empty($validated['unit_id'])) {
+            if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kat maliki hesabı için daire bağlantısı zorunludur.'
+                ], 422);
+            }
             return back()->withErrors(['unit_id' => 'Kat maliki hesabı için daire bağlantısı zorunludur.'])->withInput();
         }
 
         if ($validated['type'] === Account::TYPE_OWNER && Account::where('unit_id', $validated['unit_id'])->where('type', Account::TYPE_OWNER)->exists()) {
+            if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bu daireye bağlı kat maliki hesabı zaten var. Mevcut kat maliki hesabını düzenleyin.'
+                ], 422);
+            }
             return back()->withErrors(['unit_id' => 'Bu daireye bağlı kat maliki hesabı zaten var. Mevcut kat maliki hesabını düzenleyin.'])->withInput();
         }
 
-        DB::transaction(function () use ($apartment, $request, $validated) {
+        $account = DB::transaction(function () use ($apartment, $request, $validated) {
             $account = Account::create([
                 'apartment_id' => $apartment->id,
                 'unit_id' => in_array($validated['type'], [Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_RESIDENT], true) ? ($validated['unit_id'] ?? null) : null,
@@ -121,7 +158,7 @@ class AccountController extends Controller
                 'phone' => $validated['phone'] ?? null,
                 'email' => $validated['email'] ?? null,
                 'balance' => $validated['balance'] ?? 0,
-                'account_opening_date' => $validated['type'] === Account::TYPE_SUPPLIER ? $validated['account_opening_date'] : null,
+                'account_opening_date' => $validated['type'] === Account::TYPE_SUPPLIER ? now() : null,
                 'is_active' => $request->boolean('is_active', true),
             ]);
 
@@ -139,7 +176,17 @@ class AccountController extends Controller
             if ($account->type === Account::TYPE_OWNER && $account->unit_id) {
                 Unit::whereKey($account->unit_id)->update(['owner_account_id' => $account->id]);
             }
+
+            return $account;
         });
+
+        if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success' => true,
+                'account' => $account,
+                'message' => 'Tedarikçi oluşturuldu.'
+            ]);
+        }
 
         return redirect()->route('accounts.index')->with('status', 'Hesap oluşturuldu.');
     }
