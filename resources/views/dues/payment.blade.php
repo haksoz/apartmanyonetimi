@@ -3,7 +3,7 @@
 @section('content')
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-950">Aidat Ödemesi Ekle</h1>
+            <h1 class="text-2xl font-bold text-slate-950">Ödeme Al / Tahsilat Ekle</h1>
             <p class="mt-1 text-sm text-slate-500">Borçlu aidat için ödeme kaydı oluşturun.</p>
         </div>
         <a href="{{ route('dues.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Aidatlara Dön</a>
