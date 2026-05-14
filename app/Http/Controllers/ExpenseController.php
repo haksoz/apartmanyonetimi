@@ -148,7 +148,9 @@ class ExpenseController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $expense = $this->findExpense($id);
+
+        return view('expenses.show', compact('expense'));
     }
 
     /**

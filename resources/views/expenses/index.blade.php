@@ -46,6 +46,7 @@
                                 @unless ($expense->is_paid)
                                     <a href="{{ route('expenses.payment.create', $expense) }}" class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Ödeme Ekle</a>
                                 @endunless
+                                <a href="{{ route('expenses.show', $expense) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">İncele</a>
                                 <a href="{{ route('expenses.edit', $expense) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
                                 <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Gider kaydı silinsin mi?')">
                                     @csrf
