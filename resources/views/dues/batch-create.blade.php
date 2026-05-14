@@ -122,6 +122,12 @@
                     @error('period')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
+                <div>
+                    <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
+                    <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                    @error('created_at_manual')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
                 <div class="md:col-span-2">
                     <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
                     <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
@@ -249,6 +255,32 @@
 
             // Initialize
             toggleFields();
+
+            // Auto-populate description based on period and category
+            const categorySelect = document.getElementById('category_id');
+            const periodInput = document.getElementById('period');
+            const descriptionInput = document.getElementById('description');
+
+            const months = {
+                '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+                '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+                '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+            };
+
+            const updateDescription = () => {
+                const period = periodInput.value;
+                const categoryOption = categorySelect.options[categorySelect.selectedIndex];
+                const categoryName = categoryOption ? categoryOption.text : '';
+
+                if (period && categoryName) {
+                    const [year, month] = period.split('-');
+                    const monthName = months[month] || month;
+                    descriptionInput.value = `${monthName} ${year} - ${categoryName} - `;
+                }
+            };
+
+            categorySelect?.addEventListener('change', updateDescription);
+            periodInput?.addEventListener('change', updateDescription);
         })();
     </script>
 @endsection

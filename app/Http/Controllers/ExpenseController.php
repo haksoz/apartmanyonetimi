@@ -125,14 +125,14 @@ class ExpenseController extends Controller
                 'is_paid' => $request->boolean('is_paid'),
             ]);
 
-            // Gider tedarikçi hesapla bağlıysa, muhasebe hareketi oluştur (debit)
+            // Gider tedarikçi hesapla bağlıysa, muhasebe hareketi oluştur (credit - tedarikçiye borçlanıyoruz)
             if ($validated['account_id']) {
                 AccountTransaction::create([
                     'apartment_id' => $apartment->id,
                     'account_id' => $validated['account_id'],
                     'transactionable_type' => Expense::class,
                     'transactionable_id' => $expense->id,
-                    'type' => 'debit',
+                    'type' => 'credit',
                     'description' => $validated['description'] ?? 'Gider kaydı',
                     'amount' => $validated['amount'],
                     'transaction_date' => $validated['expense_date'],
@@ -191,7 +191,13 @@ class ExpenseController extends Controller
     public function destroy(string $id)
     {
         $expense = $this->findExpense($id);
-        $expense->delete();
+
+        DB::transaction(function () use ($expense) {
+            // Muhasebe kayıtlarını sil
+            $expense->transactions()->delete();
+            // Gideri soft delete ile sil
+            $expense->delete();
+        });
 
         return redirect()->route('expenses.index')->with('status', 'Gider kaydı silindi.');
     }

@@ -49,7 +49,13 @@
                 @error('period')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
-            <div class="lg:col-span-2">
+            <div>
+                <label for="created_at_manual" class="mb-2 block text-sm font-semibold text-slate-700">Oluşturulma Tarihi</label>
+                <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                @error('created_at_manual')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
+            <div>
                 <label for="due_date" class="mb-2 block text-sm font-semibold text-slate-700">Son Ödeme Tarihi</label>
                 <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 @error('due_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror

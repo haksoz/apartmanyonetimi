@@ -25,6 +25,7 @@ class Due extends Model
         'due_date',
         'status',
         'description',
+        'created_at_manual',
     ];
 
     protected $casts = [

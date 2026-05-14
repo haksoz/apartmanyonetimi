@@ -151,6 +151,7 @@ class DueController extends Controller
                 Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true),
             ],
             'description' => ['nullable', 'string', 'max:255'],
+            'created_at_manual' => ['nullable', 'date'],
             'source_period' => ['required_if:source_type,'.DueBatch::SOURCE_EXPENSES, 'nullable', 'date_format:Y-m'],
             'category_filter_ids' => ['nullable', 'array'],
             'category_filter_ids.*' => [
@@ -414,6 +415,7 @@ class DueController extends Controller
             'due_date' => $validated['due_date'],
             'status' => 'unpaid',
             'description' => $validated['description'] ?? null,
+            'created_at_manual' => $validated['created_at_manual'] ?? null,
         ]);
 
         AccountTransaction::create([

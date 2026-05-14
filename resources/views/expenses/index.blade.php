@@ -16,7 +16,7 @@
                 <th class="px-5 py-3"><a href="{{ route('expenses.index', ['sort_by' => 'expense_date', 'sort_direction' => $sortBy === 'expense_date' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Tarih @if ($sortBy === 'expense_date')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
                 <th class="px-5 py-3"><a href="{{ route('expenses.index', ['sort_by' => 'period_month', 'sort_direction' => $sortBy === 'period_month' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Dönem @if ($sortBy === 'period_month')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
                 <th class="px-5 py-3"><a href="{{ route('expenses.index', ['sort_by' => 'category', 'sort_direction' => $sortBy === 'category' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Kategori @if ($sortBy === 'category')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
-                <th class="px-5 py-3"><a href="{{ route('expenses.index', ['sort_by' => 'account_id', 'sort_direction' => $sortBy === 'account_id' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Hesap @if ($sortBy === 'account_id')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
+                <th class="px-5 py-3">Açıklama</th>
                 <th class="px-5 py-3 text-right"><a href="{{ route('expenses.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 cursor-pointer hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
                 <th class="px-5 py-3"><a href="{{ route('expenses.index', ['sort_by' => 'is_paid', 'sort_direction' => $sortBy === 'is_paid' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Durum @if ($sortBy === 'is_paid')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
                 <th class="px-5 py-3 text-right">İşlemler</th>
@@ -38,7 +38,7 @@
                         @endphp
                         <td class="px-5 py-4">{{ $periodText ?? '-' }}</td>
                         <td class="px-5 py-4">{{ $expense->category }}</td>
-                        <td class="px-5 py-4">{{ $expense->account?->name ?? '-' }}</td>
+                        <td class="px-5 py-4">{{ $expense->description ?? '-' }}</td>
                         <td class="px-5 py-4 text-right">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4">{{ $expense->is_paid ? 'Ödendi' : 'Bekliyor' }}</td>
                         <td class="px-5 py-4">
