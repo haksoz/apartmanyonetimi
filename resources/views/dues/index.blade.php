@@ -66,12 +66,12 @@
                                 </span>
                             @endif
                         </td>
-                        <td class="px-5 py-4 text-right">
-                            <div class="flex flex-wrap justify-end gap-2">
+                        <td class="px-5 py-4 text-right whitespace-nowrap">
+                            <div class="flex items-center justify-end gap-1.5">
                                 @if ($due->status !== 'paid')
-                                    <a href="{{ route('dues.payment.create', $due) }}" class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Tahsil Et</a>
+                                    <a href="{{ route('dues.payment.create', $due) }}" class="rounded bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">Tahsil Et</a>
                                 @endif
-                                <a href="{{ route('dues.show', $due) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+                                <a href="{{ route('dues.show', $due) }}" class="rounded border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                             </div>
                         </td>
                     </tr>

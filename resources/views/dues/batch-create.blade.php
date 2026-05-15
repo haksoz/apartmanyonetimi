@@ -54,44 +54,48 @@
         <div id="expenses-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'manual') === 'manual') hidden @endif">
             <h3 class="text-sm font-semibold text-slate-700 mb-4">Gider Dönemi Seçimi</h3>
 
-            {{-- Period Selection - Desktop Friendly --}}
+            {{-- Period Selection --}}
             <div class="mb-4">
                 <label class="mb-2 block text-sm font-medium text-slate-600">Gider Dönemi</label>
-                <div class="flex gap-3">
-                    <input id="source_period" name="source_period" type="month" value="{{ old('source_period', now()->format('Y-m')) }}" class="flex-1 rounded-xl border border-slate-300 px-5 py-4 text-base focus:border-emerald-500 focus:outline-none md:text-lg">
-                    <button type="button" id="calc-btn" class="rounded-xl bg-emerald-600 px-6 py-4 text-base font-semibold text-white hover:bg-emerald-700 whitespace-nowrap shadow-md">
-                        Hesapla
+                <div class="flex items-center gap-3">
+                    <input id="source_period" name="source_period" type="month" value="{{ old('source_period', now()->format('Y-m')) }}" class="w-40 md:w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none">
+                    <button type="button" id="calc-btn" class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 whitespace-nowrap">
+                        Giderleri Getir
                     </button>
+                    <div id="expense-total-display" class="hidden flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2">
+                        <span class="text-xs text-emerald-600">Toplam:</span>
+                        <span id="expense-total-amount" class="text-sm font-bold text-emerald-700">0,00 TL</span>
+                    </div>
                 </div>
                 @error('source_period')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
-            {{-- Calculation Result --}}
-            <div id="expense-total-display" class="rounded-xl bg-emerald-50 p-4 text-center hidden mb-4">
-                <div class="text-sm text-emerald-700 mb-1">Seçili dönem toplam gideri</div>
-                <div id="expense-total-amount" class="text-2xl font-bold text-emerald-800">0,00 TL</div>
+            {{-- Expense List for Selected Period --}}
+            <div>
+                <label class="mb-3 block text-sm font-medium text-slate-600">Dönem Giderleri (Seçilenler Borçlandırılacak)</label>
+                <div id="expense-list-container" class="border border-slate-200 rounded-xl overflow-hidden">
+                    <div id="expense-list-empty" class="p-4 text-sm text-slate-500 text-center">
+                        Dönem seçip "Giderleri Getir" butonuna tıklayın
+                    </div>
+                    <div id="expense-list" class="hidden divide-y divide-slate-200">
+                        {{-- Expenses will be loaded here dynamically --}}
+                    </div>
+                    <div id="expense-list-summary" class="hidden bg-slate-50 p-3 border-t border-slate-200">
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-slate-600">Seçilen Giderler:</span>
+                            <span id="selected-expense-count" class="font-medium text-slate-900">0</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-slate-500">Listeden borçlandırılacak giderleri seçin. Seçtikçe toplam otomatik hesaplanır.</p>
             </div>
 
-            {{-- Tag Style Category Filters --}}
-            <div>
-                <label class="mb-3 block text-sm font-medium text-slate-600">Kategori Filtresi (İsteğe Bağlı)</label>
-                <div class="flex flex-wrap gap-2" id="category-filters">
-                    @foreach ($expenseCategories as $category)
-                        <label class="cursor-pointer category-filter" data-category-id="{{ $category->id }}">
-                            <input type="checkbox" name="category_filter_ids[]" value="{{ $category->id }}" class="peer sr-only category-checkbox">
-                            <span class="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-600 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-500 peer-checked:text-white hover:bg-slate-50">
-                                {{ $category->name }}
-                            </span>
-                        </label>
-                    @endforeach
-                </div>
-                <p class="mt-3 text-xs text-slate-500">Seçili kategorilerin toplamı hesaplanır. Boş bırakırsanız tüm giderler.</p>
-            </div>
+            <input type="hidden" name="selected_expense_ids" id="selected_expense_ids" value="">
         </div>
 
         <div id="manual-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'manual') !== 'manual') hidden @endif">
             <h3 class="text-sm font-semibold text-slate-700 mb-4">Tutar Girişi</h3>
-            <div>
+            <div class="md:w-1/2">
                 <label for="source_amount" class="mb-2 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Tutar</label>
                 <input id="source_amount" name="source_amount" type="number" min="0.01" step="0.01" value="{{ old('source_amount') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold">
                 @error('source_amount')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -104,6 +108,29 @@
                 <h3 class="text-sm font-semibold text-slate-700">Borç Bilgileri</h3>
                 <div id="calc-summary" class="text-sm font-medium text-red-600 hidden"></div>
             </div>
+
+            {{-- Target Audience Selection --}}
+            <div class="mb-4">
+                <label class="mb-2 block text-sm font-medium text-slate-600">Borçlanacak Kişiler</label>
+                <div class="flex gap-3">
+                    <label class="cursor-pointer flex-1">
+                        <input type="radio" name="target_audience" value="tenant_priority" class="peer sr-only" @checked(old('target_audience', 'tenant_priority') === 'tenant_priority')>
+                        <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Kiracı Öncelikli</div>
+                            <div class="text-xs text-slate-500 mt-1">Kiracı varsa kiracıya, yoksa sahibine</div>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer flex-1">
+                        <input type="radio" name="target_audience" value="owner_only" class="peer sr-only" @checked(old('target_audience') === 'owner_only')>
+                        <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Sadece Sahipler</div>
+                            <div class="text-xs text-slate-500 mt-1">Tüm borçlar kat maliklerine</div>
+                        </div>
+                    </label>
+                </div>
+                @error('target_audience')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Borç Kategorisi</label>
@@ -128,7 +155,7 @@
                     @error('created_at_manual')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
-                <div class="md:col-span-2">
+                <div>
                     <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
                     <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
                     @error('due_date')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -148,8 +175,6 @@
     <script>
         (() => {
             const units = {{ $units }};
-            const expensesByPeriod = @json($expensesByPeriod);
-            const expensesByCategory = @json($expensesByCategory);
 
             const sourceRadios = document.querySelectorAll('input[name="source_type"]');
             const expensesFields = document.getElementById('expenses-fields');
@@ -158,38 +183,29 @@
             const sourceAmount = document.getElementById('source_amount');
             const expenseTotalDisplay = document.getElementById('expense-total-display');
             const expenseTotalAmount = document.getElementById('expense-total-amount');
-            const categoryCheckboxes = document.querySelectorAll('.category-checkbox');
 
             const calcSummary = document.getElementById('calc-summary');
             const calcBtn = document.getElementById('calc-btn');
+            const expenseList = document.getElementById('expense-list');
+            const expenseListEmpty = document.getElementById('expense-list-empty');
+            const expenseListSummary = document.getElementById('expense-list-summary');
+            const selectedExpenseCount = document.getElementById('selected-expense-count');
+            const selectedExpenseIdsInput = document.getElementById('selected_expense_ids');
+
+            let currentExpenses = [];
+            let selectedExpenseIds = new Set();
 
             const formatMoney = (amount) => {
                 return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' TL';
             };
 
-            const getSelectedCategories = () => {
-                return Array.from(categoryCheckboxes)
-                    .filter(cb => cb.checked)
-                    .map(cb => cb.value);
-            };
-
-            const calculateExpenseTotal = () => {
-                const period = sourcePeriod.value;
-                const selectedCategories = getSelectedCategories();
-
+            const calculateSelectedTotal = () => {
                 let total = 0;
-
-                if (selectedCategories.length === 0) {
-                    // No categories selected, use all expenses for the period
-                    total = expensesByPeriod[period] || 0;
-                } else {
-                    // Sum up expenses for selected categories only
-                    selectedCategories.forEach(catId => {
-                        const catExpenses = expensesByCategory[catId] || {};
-                        total += catExpenses[period] || 0;
-                    });
-                }
-
+                currentExpenses.forEach(expense => {
+                    if (selectedExpenseIds.has(expense.id.toString())) {
+                        total += parseFloat(expense.amount);
+                    }
+                });
                 return total;
             };
 
@@ -198,7 +214,7 @@
                 let total = 0;
 
                 if (selectedSource === 'expenses') {
-                    total = calculateExpenseTotal();
+                    total = calculateSelectedTotal();
 
                     if (total > 0) {
                         expenseTotalDisplay.classList.remove('hidden');
@@ -222,19 +238,95 @@
                 }
             };
 
-            // Calculate button click handler
-            calcBtn.addEventListener('click', () => {
-                updateCalculation();
-            });
+            const renderExpenseList = () => {
+                if (currentExpenses.length === 0) {
+                    expenseList.innerHTML = '';
+                    expenseList.classList.add('hidden');
+                    expenseListEmpty.classList.remove('hidden');
+                    expenseListSummary.classList.add('hidden');
+                    return;
+                }
 
-            // Category checkbox change handler
-            categoryCheckboxes.forEach(cb => {
-                cb.addEventListener('change', () => {
-                    // When category changes, recalculate if already calculated
-                    if (!expenseTotalDisplay.classList.contains('hidden')) {
+                expenseListEmpty.classList.add('hidden');
+                expenseList.classList.remove('hidden');
+                expenseListSummary.classList.remove('hidden');
+
+                expenseList.innerHTML = currentExpenses.map(expense => {
+                    const isSelected = selectedExpenseIds.has(expense.id.toString());
+                    return `
+                        <label class="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer transition-colors">
+                            <input type="checkbox" class="expense-checkbox w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                value="${expense.id}" ${isSelected ? 'checked' : ''}
+                                data-amount="${expense.amount}">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start gap-2">
+                                    <div class="text-sm font-medium text-slate-900 truncate">${expense.description || 'Gider #' + expense.reference_number}</div>
+                                    <div class="text-sm font-semibold text-slate-900 whitespace-nowrap">${formatMoney(expense.amount)}</div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2 mt-1">
+                                    <div class="text-xs text-slate-500">${expense.category_name} • ${expense.expense_date}</div>
+                                    <div class="text-xs text-slate-400">${expense.reference_number}</div>
+                                </div>
+                            </div>
+                        </label>
+                    `;
+                }).join('');
+
+                // Attach event listeners to checkboxes
+                document.querySelectorAll('.expense-checkbox').forEach(cb => {
+                    cb.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            selectedExpenseIds.add(e.target.value);
+                        } else {
+                            selectedExpenseIds.delete(e.target.value);
+                        }
+                        selectedExpenseCount.textContent = selectedExpenseIds.size;
+                        selectedExpenseIdsInput.value = Array.from(selectedExpenseIds).join(',');
                         updateCalculation();
-                    }
+                    });
                 });
+
+                selectedExpenseCount.textContent = selectedExpenseIds.size;
+            };
+
+            // Load expenses button click handler
+            calcBtn.addEventListener('click', async () => {
+                const period = sourcePeriod.value;
+                if (!period) {
+                    alert('Lütfen bir dönem seçin.');
+                    return;
+                }
+
+                calcBtn.disabled = true;
+                calcBtn.textContent = 'Yükleniyor...';
+
+                try {
+                    const response = await fetch(`{{ route('dues.expenses.by-period') }}?period=${period}`);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Server error:', response.status, errorText);
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    
+                    currentExpenses = await response.json();
+                    
+                    if (currentExpenses.error) {
+                        throw new Error(currentExpenses.error);
+                    }
+                    
+                    selectedExpenseIds.clear();
+                    selectedExpenseIdsInput.value = '';
+                    
+                    renderExpenseList();
+                    updateCalculation();
+                } catch (error) {
+                    console.error('Error fetching expenses:', error);
+                    alert('Giderler yüklenirken bir hata oluştu: ' + error.message);
+                } finally {
+                    calcBtn.disabled = false;
+                    calcBtn.textContent = 'Giderleri Getir';
+                }
             });
 
             const toggleFields = () => {
@@ -242,11 +334,10 @@
                 if (selected === 'expenses') {
                     expensesFields.classList.remove('hidden');
                     manualFields.classList.add('hidden');
-                    // Don't auto-calculate for expenses mode, wait for button click
                 } else {
                     expensesFields.classList.add('hidden');
                     manualFields.classList.remove('hidden');
-                    updateCalculation(); // Auto-calculate for manual mode
+                    updateCalculation();
                 }
             };
 

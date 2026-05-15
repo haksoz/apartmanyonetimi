@@ -11,6 +11,7 @@ use App\Models\Due;
 use App\Models\DueBatch;
 use App\Models\Expense;
 use App\Models\Payment;
+use App\Models\TenantAssignment;
 use App\Models\Unit;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
@@ -134,6 +135,41 @@ class DueController extends Controller
         return view('dues.batch-create', compact('apartment', 'categories', 'expenseCategories', 'units', 'expensesByPeriod', 'expensesByCategory'));
     }
 
+    public function getExpensesForPeriod(Request $request, CurrentApartment $currentApartment)
+    {
+        try {
+            $apartment = $currentApartment->getFor(auth()->user());
+
+            if (! $apartment) {
+                return response()->json(['error' => 'Apartman seçili değil'], 403);
+            }
+
+            $period = $request->validate(['period' => 'required|date_format:Y-m'])['period'];
+            $periodStart = \Carbon\Carbon::parse($period . '-01')->startOfMonth();
+            $periodEnd = $periodStart->copy()->endOfMonth();
+
+            $expenses = Expense::query()
+                ->where('apartment_id', $apartment->id)
+                ->whereDate('expense_date', '>=', $periodStart)
+                ->whereDate('expense_date', '<=', $periodEnd)
+                ->with('categoryRelation')
+                ->orderBy('expense_date')
+                ->get()
+                ->map(fn ($expense) => [
+                    'id' => $expense->id,
+                    'reference_number' => $expense->reference_number,
+                    'description' => $expense->description,
+                    'amount' => $expense->amount,
+                    'expense_date' => $expense->expense_date?->format('d.m.Y'),
+                    'category_name' => $expense->categoryRelation?->name ?? '-',
+                ]);
+
+            return response()->json($expenses);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function store(Request $request, CurrentApartment $currentApartment)
     {
         $apartment = $this->resolveApartment($currentApartment);
@@ -145,6 +181,7 @@ class DueController extends Controller
         $validated = $request->validate([
             'source_type' => ['required', Rule::in([DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_INDIVIDUAL])],
             'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL])],
+            'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'period' => ['required', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'category_id' => [
@@ -155,11 +192,7 @@ class DueController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
             'created_at_manual' => ['nullable', 'date'],
             'source_period' => ['required_if:source_type,'.DueBatch::SOURCE_EXPENSES, 'nullable', 'date_format:Y-m'],
-            'category_filter_ids' => ['nullable', 'array'],
-            'category_filter_ids.*' => [
-                'integer',
-                Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true),
-            ],
+            'selected_expense_ids' => ['nullable', 'string'],
             'source_amount' => ['required_if:source_type,'.DueBatch::SOURCE_MANUAL, 'nullable', 'numeric', 'min:0.01'],
             'account_id' => [
                 'required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL,
@@ -178,26 +211,27 @@ class DueController extends Controller
             return back()->withErrors(['distribution_type' => 'Bu aşamada toplu borçlandırma için eşit böl dağıtımı destekleniyor.'])->withInput();
         }
 
-        $categoryFilterIds = collect($request->input('category_filter_ids', []))
+        $selectedExpenseIds = collect(explode(',', $request->input('selected_expense_ids', '')))
             ->filter()
             ->map(fn ($id) => (int) $id)
             ->values()
             ->all();
-        $sourceAmount = $this->sourceAmount($apartment->id, $validated, $categoryFilterIds);
+        $sourceAmount = $this->sourceAmount($apartment->id, $validated, $selectedExpenseIds);
 
         if ($sourceAmount <= 0) {
             return back()->withErrors(['source_amount' => 'Borçlandırılacak toplam tutar sıfırdan büyük olmalıdır.'])->withInput();
         }
 
-        DB::transaction(function () use ($apartment, $validated, $categoryFilterIds, $sourceAmount) {
+        DB::transaction(function () use ($apartment, $validated, $selectedExpenseIds, $sourceAmount) {
             $batch = DueBatch::create([
                 'apartment_id' => $apartment->id,
                 'category_id' => $validated['category_id'],
                 'source_type' => $validated['source_type'],
                 'distribution_type' => $validated['distribution_type'],
+                'target_audience' => $validated['target_audience'],
                 'period' => $validated['period'],
                 'source_period' => isset($validated['source_period']) ? $validated['source_period'].'-01' : null,
-                'category_filter_ids' => $categoryFilterIds,
+                'category_filter_ids' => $selectedExpenseIds,
                 'source_amount' => $sourceAmount,
                 'description' => $validated['description'] ?? null,
                 'created_by' => auth()->id(),
@@ -210,25 +244,35 @@ class DueController extends Controller
                 return;
             }
 
+            $periodStart = \Carbon\Carbon::parse($validated['period'].'-01')->startOfMonth();
+            $periodEnd = $periodStart->copy()->endOfMonth();
+
             $units = Unit::query()
-                ->with(['ownerAccount', 'occupantAccount', 'accounts'])
+                ->with(['ownerAccount', 'accounts'])
                 ->where('apartment_id', $apartment->id)
                 ->orderBy('unit_no')
-                ->get()
-                ->filter(fn (Unit $unit) => $unit->dueAccount());
+                ->get();
 
-            if ($units->isEmpty()) {
+            $unitAccounts = [];
+            foreach ($units as $unit) {
+                $account = $this->getAccountForPeriod($unit, $periodStart, $periodEnd, $validated['target_audience']);
+                if ($account) {
+                    $unitAccounts[] = ['unit' => $unit, 'account' => $account];
+                }
+            }
+
+            if (empty($unitAccounts)) {
                 return;
             }
 
-            $amountPerUnit = round($sourceAmount / $units->count(), 2);
+            $amountPerUnit = round($sourceAmount / count($unitAccounts), 2);
             $allocated = 0;
-            $lastIndex = $units->count() - 1;
+            $lastIndex = count($unitAccounts) - 1;
 
-            foreach ($units->values() as $index => $unit) {
+            foreach ($unitAccounts as $index => $item) {
                 $amount = $index === $lastIndex ? round($sourceAmount - $allocated, 2) : $amountPerUnit;
                 $allocated += $amount;
-                $this->createDue($batch, $unit, $unit->dueAccount(), $amount, $validated);
+                $this->createDue($batch, $item['unit'], $item['account'], $amount, $validated);
             }
         });
 
@@ -386,7 +430,7 @@ class DueController extends Controller
         return $apartment;
     }
 
-    private function sourceAmount(int $apartmentId, array $validated, array $categoryFilterIds): float
+    private function sourceAmount(int $apartmentId, array $validated, array $selectedExpenseIds): float
     {
         if ($validated['source_type'] === DueBatch::SOURCE_MANUAL) {
             return (float) $validated['source_amount'];
@@ -396,10 +440,18 @@ class DueController extends Controller
             return (float) $validated['individual_amount'];
         }
 
+        // If specific expenses are selected, sum only those
+        if (!empty($selectedExpenseIds)) {
+            return (float) Expense::query()
+                ->where('apartment_id', $apartmentId)
+                ->whereIn('id', $selectedExpenseIds)
+                ->sum('amount');
+        }
+
+        // Otherwise sum all expenses for the period
         return (float) Expense::query()
             ->where('apartment_id', $apartmentId)
             ->whereDate('period_month', $validated['source_period'].'-01')
-            ->when($categoryFilterIds, fn ($query) => $query->whereIn('category_id', $categoryFilterIds))
             ->sum('amount');
     }
 
@@ -430,5 +482,28 @@ class DueController extends Controller
             'amount' => $amount,
             'transaction_date' => $validated['due_date'],
         ]);
+    }
+
+    private function getAccountForPeriod(Unit $unit, \Carbon\Carbon $periodStart, \Carbon\Carbon $periodEnd, string $targetAudience = 'tenant_priority'): ?Account
+    {
+        // Sadece sahiplere dağıt seçeneğinde direkt sahibi döndür
+        if ($targetAudience === 'owner_only') {
+            return $unit->ownerAccount;
+        }
+
+        // Kiracı öncelikli: önce o dönemde aktif kiracıyı ara
+        $tenantAssignment = TenantAssignment::query()
+            ->where('unit_id', $unit->id)
+            ->where('move_in_date', '<=', $periodEnd)
+            ->where(fn ($q) => $q->whereNull('move_out_date')->orWhere('move_out_date', '>=', $periodStart))
+            ->with('account')
+            ->first();
+
+        if ($tenantAssignment && $tenantAssignment->account) {
+            return $tenantAssignment->account;
+        }
+
+        // Kiracı yoksa veya dönemde aktif değilse sahibi döndür
+        return $unit->ownerAccount;
     }
 }
