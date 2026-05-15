@@ -1,12 +1,15 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
+    {{-- Header Section --}}
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-950">Apartman</h1>
             <p class="mt-1 text-sm text-slate-500">Yönetilen apartman ve daire hesapları.</p>
         </div>
-        <a href="{{ route('apartments.create') }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Yeni Apartman</a>
+        <div class="flex gap-2">
+            <a href="{{ route('apartments.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Yeni Apartman</a>
+        </div>
     </div>
 
     <div class="overflow-hidden rounded-2xl bg-white shadow-sm">

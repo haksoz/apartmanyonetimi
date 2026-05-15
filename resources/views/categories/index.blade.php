@@ -1,12 +1,15 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
+    {{-- Header Section --}}
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-950">Kategoriler</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }} için gelir, gider ve paylaştırma kategorilerini yönetin.</p>
         </div>
-        <a href="{{ route('categories.create') }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Kategori Ekle</a>
+        <div class="flex gap-2">
+            <a href="{{ route('categories.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Kategori Ekle</a>
+        </div>
     </div>
 
     <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
