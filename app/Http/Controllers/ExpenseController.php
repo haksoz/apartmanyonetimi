@@ -262,7 +262,7 @@ class ExpenseController extends Controller
                     'transactionable_type' => Expense::class,
                     'transactionable_id' => $expense->id,
                     'type' => 'credit',
-                    'description' => 'Gider ödemesi',
+                    'description' => ($expense->description ? $expense->description.' ödemesi' : 'Gider ödemesi'),
                     'amount' => $validated['amount'],
                     'transaction_date' => $validated['payment_date'],
                 ]);

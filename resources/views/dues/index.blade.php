@@ -37,7 +37,17 @@
                         <td class="px-5 py-4">{{ $due->description ?: '-' }}</td>
                         <td class="px-5 py-4 text-right">{{ number_format($due->amount, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-right">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</td>
-                        <td class="px-5 py-4">{{ $due->status }}</td>
+                        <td class="px-5 py-4">
+                            @php
+                                $statusLabels = [
+                                    'paid'     => 'Ödendi',
+                                    'partial'  => 'Kısmi Ödeme',
+                                    'unpaid'   => 'Ödenmedi',
+                                    'overdue'  => 'Gecikmiş',
+                                ];
+                            @endphp
+                            {{ $statusLabels[$due->status] ?? $due->status }}
+                        </td>
                         <td class="px-5 py-4 text-right">
                             <div class="flex flex-wrap justify-end gap-2">
                                 @if ($due->status !== 'paid')

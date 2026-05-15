@@ -15,12 +15,17 @@
         <div class="grid gap-5 lg:grid-cols-2">
             <div>
                 <label for="account_id" class="mb-2 block text-sm font-semibold text-slate-700">Cari/Hesap</label>
-                <select id="account_id" name="account_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <select id="account_id" name="{{ $selectedAccountId ? null : 'account_id' }}" required
+                    {{ $selectedAccountId ? 'disabled' : '' }}
+                    class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none {{ $selectedAccountId ? 'bg-slate-100 cursor-not-allowed' : '' }}">
                     <option value="">Cari seçin</option>
                     @foreach ($accounts as $account)
-                        <option value="{{ $account->id }}" @selected(old('account_id') == $account->id)>{{ $account->name }}</option>
+                        <option value="{{ $account->id }}" @selected(old('account_id', $selectedAccountId) == $account->id)>{{ $account->name }}</option>
                     @endforeach
                 </select>
+                @if ($selectedAccountId)
+                    <input type="hidden" name="account_id" value="{{ $selectedAccountId }}">
+                @endif
                 @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 

@@ -309,7 +309,7 @@ class DueController extends Controller
                 'unallocated_amount' => $validated['amount'],
                 'payment_date' => $validated['payment_date'],
                 'method' => null,
-                'description' => $validated['description'] ?? 'Aidat ödemesi',
+                'description' => $validated['description'] ?? 'Aidat Tahsilatı',
             ]);
 
             CashTransaction::create([
@@ -317,8 +317,8 @@ class DueController extends Controller
                 'cash_box_id' => $validated['cash_box_id'],
                 'account_id' => $due->account_id,
                 'category_id' => $due->category_id,
-                'type' => 'expense',
-                'description' => $validated['description'] ?? 'Aidat ödemesi',
+                'type' => 'income',
+                'description' => $validated['description'] ?? 'Aidat Tahsilatı',
                 'amount' => $validated['amount'],
                 'transaction_date' => $validated['payment_date'],
                 'is_active' => true,
@@ -330,7 +330,7 @@ class DueController extends Controller
                 'transactionable_type' => Payment::class,
                 'transactionable_id' => $payment->id,
                 'type' => 'credit',
-                'description' => $validated['description'] ?? 'Aidat ödemesi',
+                'description' => $validated['description'] ?? 'Aidat Tahsilatı',
                 'amount' => $validated['amount'],
                 'transaction_date' => $validated['payment_date'],
             ]);
@@ -345,7 +345,7 @@ class DueController extends Controller
                 ]);
 
                 $due->remaining_amount = max(0, $due->remaining_amount - $allocationAmount);
-                $due->status = $due->remaining_amount === 0 ? 'paid' : 'partial';
+                $due->status = $due->remaining_amount <= 0 ? 'paid' : 'partial';
                 $due->save();
 
                 $payment->unallocated_amount = $payment->amount - $allocationAmount;

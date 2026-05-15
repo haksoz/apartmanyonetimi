@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
-    public function create(CurrentApartment $currentApartment)
+    public function create(Request $request, CurrentApartment $currentApartment)
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
@@ -39,7 +39,9 @@ class PaymentController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('payments.create', compact('accounts', 'cashBoxes'));
+        $selectedAccountId = $request->query('account_id');
+
+        return view('payments.create', compact('accounts', 'cashBoxes', 'selectedAccountId'));
     }
 
     public function store(Request $request, CurrentApartment $currentApartment)

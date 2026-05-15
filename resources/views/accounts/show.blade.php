@@ -6,7 +6,7 @@
             <h1 class="text-2xl font-bold text-slate-950">{{ $account->name }}</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $account->unit ? $account->unit->unit_no.' no.lu daire' : 'Daire bağlantısı yok' }}</p>
         </div>
-        <a href="{{ route('payments.create') }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Tahsilat Ekle</a>
+        <a href="{{ route('payments.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Tahsilat Ekle</a>
     </div>
 
     <div class="mb-6 grid gap-4 md:grid-cols-3">
@@ -39,8 +39,15 @@
                             <tr>
                                 <td class="px-5 py-4 text-slate-700">{{ $due->due_date->format('d.m.Y') }}</td>
                                 <td class="px-5 py-4 text-slate-700">{{ $due->description ?: 'Aidat' }}</td>
-                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($due->amount, 2, ',', '.') }} TL</td>
-                                <td class="px-5 py-4 text-right text-amber-600">{{ ucfirst($due->status) }}</td>
+                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">
+                                    {{ number_format($due->amount, 2, ',', '.') }} TL
+                                    @if ($due->status === 'partial')
+                                        <div class="text-xs text-amber-600 font-normal">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-4 text-right {{ $due->status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">
+                                    {{ $due->status === 'partial' ? 'Kısmi Ödendi' : ucfirst($due->status) }}
+                                </td>
                                 <td class="px-5 py-4 text-right">
                                     <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Tahsil Et</a>
                                 </td>
