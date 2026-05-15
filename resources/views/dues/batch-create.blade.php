@@ -41,7 +41,7 @@
                             </svg>
                         </div>
                         <div>
-                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700">Giderlerden Hesapla</div>
+                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700">Giderden Hesapla</div>
                             <div class="text-xs text-slate-500">Dönem giderleri dağıt</div>
                         </div>
                     </div>
@@ -117,7 +117,7 @@
                         <input type="radio" name="target_audience" value="tenant_priority" class="peer sr-only" @checked(old('target_audience', 'tenant_priority') === 'tenant_priority')>
                         <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
                             <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Kiracı Öncelikli</div>
-                            <div class="text-xs text-slate-500 mt-1">Kiracı varsa kiracıya, yoksa sahibine</div>
+                            <div class="text-xs text-slate-500 mt-1">Varsa Kiracıya, yoksa sahibine</div>
                         </div>
                     </label>
                     <label class="cursor-pointer flex-1">

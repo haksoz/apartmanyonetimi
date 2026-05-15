@@ -46,7 +46,7 @@
     <div class="min-h-screen">
         @auth
             {{-- Mobile Overlay --}}
-            <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden" onclick="closeMobileSidebar()"></div>
+            <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-20 hidden lg:hidden" onclick="closeMobileSidebar()"></div>
 
             {{-- Header Bar --}}
             <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-20 flex items-center justify-between px-4 lg:px-6">
@@ -103,10 +103,10 @@
         @endauth
 
         {{-- Sidebar --}}
-        <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 pt-20 pb-6 px-4 sidebar-transition z-10 -translate-x-full lg:translate-x-0">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 pt-20 pb-6 px-4 sidebar-transition z-40 -translate-x-full lg:translate-x-0">
             @auth
                 {{-- Navigation --}}
-                <nav class="space-y-1">
+                <nav class="space-y-1 relative z-50">
                     <a href="{{ route('dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
