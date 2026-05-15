@@ -49,7 +49,7 @@ class ExpenseController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create(CurrentApartment $currentApartment)
+    public function create(CurrentApartment $currentApartment, Request $request)
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
@@ -70,7 +70,15 @@ class ExpenseController extends Controller
 
         $categories = $this->categories($apartment->id, Category::TYPE_EXPENSE);
 
-        return view('expenses.create', compact('apartment', 'accounts', 'categories'));
+        $cashBoxes = CashBox::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $selectedAccountId = $request->query('account_id');
+
+        return view('expenses.create', compact('apartment', 'accounts', 'categories', 'cashBoxes', 'selectedAccountId'));
     }
 
     /**
@@ -88,7 +96,9 @@ class ExpenseController extends Controller
             return redirect()->route('apartments.create');
         }
 
-        $validated = $request->validate([
+        $isPaid = $request->boolean('is_paid');
+
+        $rules = [
             'account_id' => [
                 'nullable',
                 'integer',
@@ -108,11 +118,25 @@ class ExpenseController extends Controller
             'expense_date' => ['required', 'date'],
             'period_month' => ['required', 'date_format:Y-m'],
             'is_paid' => ['nullable', 'boolean'],
-        ]);
+        ];
+
+        // If paid, require payment fields
+        if ($isPaid) {
+            $rules['payment_date'] = ['required', 'date'];
+            $rules['cash_box_id'] = [
+                'required',
+                'integer',
+                Rule::exists('cash_boxes', 'id')
+                    ->where('apartment_id', $apartment->id)
+                    ->where('is_active', true),
+            ];
+        }
+
+        $validated = $request->validate($rules);
 
         $category = Category::findOrFail($validated['category_id']);
 
-        DB::transaction(function () use ($apartment, $validated, $category, $request) {
+        DB::transaction(function () use ($apartment, $validated, $category, $request, $isPaid) {
             $expense = Expense::create([
                 'apartment_id' => $apartment->id,
                 'account_id' => $validated['account_id'] ?? null,
@@ -122,11 +146,11 @@ class ExpenseController extends Controller
                 'amount' => $validated['amount'],
                 'expense_date' => $validated['expense_date'],
                 'period_month' => $validated['period_month'].'-01',
-                'is_paid' => $request->boolean('is_paid'),
+                'is_paid' => $isPaid,
             ]);
 
-            // Gider tedarikçi hesapla bağlıysa, muhasebe hareketi oluştur (credit - tedarikçiye borçlanıyoruz)
             if ($validated['account_id']) {
+                // Önce gider kaydını oluştur (credit - borçlanma)
                 AccountTransaction::create([
                     'apartment_id' => $apartment->id,
                     'account_id' => $validated['account_id'],
@@ -137,6 +161,37 @@ class ExpenseController extends Controller
                     'amount' => $validated['amount'],
                     'transaction_date' => $validated['expense_date'],
                 ]);
+            }
+
+            if ($isPaid) {
+                $paymentDescription = ($validated['description'] ?? 'Gider').' Ödemesi';
+
+                // Gider ödendiyse: Kasadan çıkış kaydet
+                CashTransaction::create([
+                    'apartment_id' => $apartment->id,
+                    'cash_box_id' => $validated['cash_box_id'],
+                    'account_id' => $validated['account_id'] ?? null,
+                    'category_id' => $category->id,
+                    'type' => 'expense',
+                    'description' => $paymentDescription,
+                    'amount' => $validated['amount'],
+                    'transaction_date' => $validated['payment_date'],
+                    'is_active' => true,
+                ]);
+
+                // Tedarikçi varsa ödeme kaydı oluştur (debit - borç ödeniyor)
+                if ($validated['account_id']) {
+                    AccountTransaction::create([
+                        'apartment_id' => $apartment->id,
+                        'account_id' => $validated['account_id'],
+                        'transactionable_type' => Expense::class,
+                        'transactionable_id' => $expense->id,
+                        'type' => 'debit',
+                        'description' => $paymentDescription,
+                        'amount' => $validated['amount'],
+                        'transaction_date' => $validated['payment_date'],
+                    ]);
+                }
             }
         });
 
@@ -254,14 +309,14 @@ class ExpenseController extends Controller
                 'is_active' => true,
             ]);
 
-            // Gider tedarikçi hesapla bağlıysa, ödeme muhasebe hareketi oluştur (credit)
+            // Gider tedarikçi hesapla bağlıysa, ödeme muhasebe hareketi oluştur (debit - borç ödeniyor)
             if ($expense->account_id) {
                 AccountTransaction::create([
                     'apartment_id' => $expense->apartment_id,
                     'account_id' => $expense->account_id,
                     'transactionable_type' => Expense::class,
                     'transactionable_id' => $expense->id,
-                    'type' => 'credit',
+                    'type' => 'debit',
                     'description' => ($expense->description ? $expense->description.' ödemesi' : 'Gider ödemesi'),
                     'amount' => $validated['amount'],
                     'transaction_date' => $validated['payment_date'],

@@ -17,6 +17,13 @@ class Unit extends Model
         'block',
         'resident_name',
         'phone',
+        'square_meters',
+        'share_coefficient',
+    ];
+
+    protected $casts = [
+        'square_meters' => 'decimal:2',
+        'share_coefficient' => 'decimal:4',
     ];
 
     public function apartment(): BelongsTo
@@ -44,5 +51,15 @@ class Unit extends Model
         return $this->occupantAccount
             ?? $this->ownerAccount
             ?? $this->accounts()->whereIn('type', [Account::TYPE_TENANT, Account::TYPE_OWNER, Account::TYPE_RESIDENT])->first();
+    }
+
+    public function ownerHistories(): HasMany
+    {
+        return $this->hasMany(UnitOwnerHistory::class)->orderByDesc('start_date');
+    }
+
+    public function tenantAssignments(): HasMany
+    {
+        return $this->hasMany(TenantAssignment::class)->orderByDesc('move_in_date');
     }
 }

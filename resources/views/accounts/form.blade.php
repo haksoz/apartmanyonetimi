@@ -20,7 +20,7 @@
             <select id="unit_id" name="unit_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 <option value="" disabled {{ old('unit_id', $account?->unit_id) ? '' : 'selected' }}>Daire seçiniz...</option>
                 @foreach ($units as $unit)
-                    <option value="{{ $unit->id }}" @selected((string) old('unit_id', $account?->unit_id) === (string) $unit->id)>{{ $unit->unit_no }} no.lu daire</option>
+                    <option value="{{ $unit->id }}" @selected((string) old('unit_id', $account?->unit_id) === (string) $unit->id)>{{ str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT) }} no.lu daire</option>
                 @endforeach
             </select>
             @error('unit_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror

@@ -18,6 +18,10 @@ class DueBatch extends Model
 
     public const DISTRIBUTION_INDIVIDUAL = 'individual';
 
+    public const DISTRIBUTION_SQUARE_METERS = 'square_meters';
+
+    public const DISTRIBUTION_SHARE_COEFFICIENT = 'share_coefficient';
+
     protected $fillable = [
         'apartment_id',
         'category_id',
@@ -72,6 +76,8 @@ class DueBatch extends Model
         return match ($this->distribution_type) {
             self::DISTRIBUTION_EQUAL => 'Eşit böl',
             self::DISTRIBUTION_INDIVIDUAL => 'Birebir',
+            self::DISTRIBUTION_SQUARE_METERS => 'Metrekareye göre',
+            self::DISTRIBUTION_SHARE_COEFFICIENT => 'Pay çarpanına göre',
             default => ucfirst((string) $this->distribution_type),
         };
     }

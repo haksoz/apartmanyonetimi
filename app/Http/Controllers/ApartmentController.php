@@ -63,16 +63,18 @@ class ApartmentController extends Controller
             Category::createDefaultsFor($apartment->id);
 
             for ($i = 1; $i <= $validated['unit_count']; $i++) {
+                $unitNo = str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+
                 $unit = Unit::create([
                     'apartment_id' => $apartment->id,
-                    'unit_no' => (string) $i,
+                    'unit_no' => $unitNo,
                 ]);
 
                 $ownerAccount = Account::create([
                     'apartment_id' => $apartment->id,
                     'unit_id' => $unit->id,
                     'type' => Account::TYPE_OWNER,
-                    'name' => $i.'. Daire Kat Maliki',
+                    'name' => $unitNo.'. Daire Kat Maliki',
                 ]);
 
                 $unit->update([

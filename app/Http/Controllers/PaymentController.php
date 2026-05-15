@@ -163,4 +163,98 @@ class PaymentController extends Controller
 
         return view('payments.show', compact('payment'));
     }
+
+    public function createSupplierRefund(Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
+            return redirect()->route('current-apartment.select');
+        }
+
+        if (! $apartment) {
+            return redirect()->route('apartments.create');
+        }
+
+        $accounts = Account::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('type', Account::TYPE_SUPPLIER)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $cashBoxes = CashBox::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $selectedAccountId = $request->query('account_id');
+
+        return view('supplier-refunds.create', compact('accounts', 'cashBoxes', 'selectedAccountId', 'apartment'));
+    }
+
+    public function storeSupplierRefund(Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor($request->user());
+
+        if (! $apartment && $currentApartment->hasAvailableFor($request->user())) {
+            return redirect()->route('current-apartment.select');
+        }
+
+        if (! $apartment) {
+            return redirect()->route('apartments.create');
+        }
+
+        $validated = $request->validate([
+            'account_id' => [
+                'required',
+                'integer',
+                Rule::exists('accounts', 'id')
+                    ->where('apartment_id', $apartment->id)
+                    ->where('type', Account::TYPE_SUPPLIER),
+            ],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'transaction_date' => ['required', 'date'],
+            'cash_box_id' => [
+                'required',
+                'integer',
+                Rule::exists('cash_boxes', 'id')
+                    ->where('apartment_id', $apartment->id)
+                    ->where('is_active', true),
+            ],
+            'description' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $account = Account::findOrFail($validated['account_id']);
+
+        DB::transaction(function () use ($validated, $apartment) {
+            // Kasa işlemi - gelir olarak kaydet
+            CashTransaction::create([
+                'apartment_id' => $apartment->id,
+                'cash_box_id' => $validated['cash_box_id'],
+                'account_id' => $validated['account_id'],
+                'category_id' => null,
+                'type' => 'income',
+                'description' => $validated['description'] ?? 'Tedarikçi iadesi',
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['transaction_date'],
+                'is_active' => true,
+            ]);
+
+            // Cari işlem - alacak (tedarikçiye olan alacağımız azalır)
+            AccountTransaction::create([
+                'apartment_id' => $apartment->id,
+                'account_id' => $validated['account_id'],
+                'transactionable_type' => null,
+                'transactionable_id' => null,
+                'type' => 'credit',
+                'description' => $validated['description'] ?? 'Tedarikçi iadesi',
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['transaction_date'],
+            ]);
+        });
+
+        return redirect()->route('accounts.show', $account)->with('status', 'Tedarikçi iadesi kaydedildi.');
+    }
 }

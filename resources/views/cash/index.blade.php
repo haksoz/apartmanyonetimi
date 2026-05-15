@@ -68,6 +68,9 @@
                             <a href="{{ route('cash.show', $transaction) }}" class="font-medium text-slate-950 hover:underline">{{ $transaction->description ?: ucfirst($transaction->type) }}</a>
                             <span class="rounded-full px-2 py-1 text-xs font-semibold {{ $transaction->type === 'income' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}">{{ $transaction->type === 'income' ? 'Gelir' : 'Gider' }}</span>
                             <span class="rounded-full px-2 py-1 text-xs font-semibold {{ $transaction->is_active ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-700' }}">{{ $transaction->is_active ? 'Aktif' : 'Pasif' }}</span>
+                            @if ($transaction->reference_number)
+                                <span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">{{ $transaction->reference_number }}</span>
+                            @endif
                         </div>
                         <div class="mt-1 text-slate-500">{{ $transaction->transaction_date->format('d.m.Y') }} @if ($transaction->category) · {{ $transaction->category->name }} @endif @if ($transaction->account) · {{ $transaction->account->name }} @endif</div>
                     </div>

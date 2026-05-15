@@ -27,15 +27,17 @@
                     @php
                         $debit = (float) ($account->debit_total ?? 0);
                         $credit = (float) ($account->credit_total ?? 0);
-                        $balance = $debit - $credit;
+                        $balance = $credit - $debit; // Match Account model ledger_balance logic
                     @endphp
                     <tr>
                         <td class="px-5 py-4">{{ $account->unit ? str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</td>
-                        <td class="px-5 py-4 font-medium text-slate-950">{{ $account->name }}</td>
+                        <td class="px-5 py-4 font-medium text-slate-950">
+                            <a href="{{ route('accounts.show', $account) }}" class="hover:text-slate-700 hover:underline">{{ $account->name }}</a>
+                        </td>
                         <td class="px-5 py-4">{{ $account->type_label }}</td>
                         <td class="px-5 py-4 text-right">{{ number_format($credit, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-right">{{ number_format($debit, 2, ',', '.') }} TL</td>
-                        <td class="px-5 py-4 text-right font-semibold {{ $balance > 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format(abs($balance), 2, ',', '.') }} TL</td>
+                        <td class="px-5 py-4 text-right font-semibold {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format(abs($balance), 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-right">
                             <div class="flex justify-end gap-3">
                                 <a href="{{ route('accounts.show', $account) }}" class="font-semibold text-slate-700 hover:text-slate-950">Detay</a>

@@ -6,7 +6,18 @@
             <h1 class="text-2xl font-bold text-slate-950">{{ $account->name }}</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $account->unit ? $account->unit->unit_no.' no.lu daire' : 'Daire bağlantısı yok' }}</p>
         </div>
-        <a href="{{ route('payments.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Tahsilat Ekle</a>
+        <div class="flex gap-2">
+            @if (in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]))
+                <a href="{{ route('dues.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">+ Borçlandır</a>
+            @endif
+            @if ($account->type === App\Models\Account::TYPE_SUPPLIER)
+                <a href="{{ route('supplier-refunds.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">+ Tahsilat Al</a>
+                <a href="{{ route('expenses.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Ödeme Ekle</a>
+            @else
+                <a href="{{ route('payments.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Tahsilat Ekle</a>
+            @endif
+            <a href="{{ route('accounts.edit', $account) }}" class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">Düzenle</a>
+        </div>
     </div>
 
     <div class="mb-6 grid gap-4 md:grid-cols-3">
@@ -15,14 +26,58 @@
         <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Bakiye</div><div class="mt-2 text-2xl font-bold">{{ number_format($account->ledger_balance, 2, ',', '.') }} TL</div></div>
     </div>
 
-    <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
-        <div class="flex items-center justify-between">
-            <h2 class="mb-4 text-lg font-semibold text-slate-950">Açık Aidatlar</h2>
-            <a href="{{ route('dues.index') }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Aidatlar</a>
+    @if (!in_array($account->type, [App\Models\Account::TYPE_SUPPLIER]))
+        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+            <div class="flex items-center justify-between">
+                <h2 class="mb-4 text-lg font-semibold text-slate-950">Açık Aidatlar</h2>
+                <a href="{{ route('dues.index') }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Aidatlar</a>
+            </div>
+            @if ($account->dues->isEmpty())
+                <div class="py-6 text-sm text-slate-500">Bu hesap için ödenmemiş aidat yok.</div>
+            @else
+                <div class="overflow-hidden rounded-2xl border border-slate-200">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="bg-slate-50 text-left text-slate-500">
+                            <tr>
+                                <th class="px-5 py-3">Tarih</th>
+                                <th class="px-5 py-3">Açıklama</th>
+                                <th class="px-5 py-3 text-right">Tutar</th>
+                                <th class="px-5 py-3 text-right">Durum</th>
+                                <th class="px-5 py-3 text-right">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach ($account->dues as $due)
+                                <tr>
+                                    <td class="px-5 py-4 text-slate-700">{{ $due->due_date->format('d.m.Y') }}</td>
+                                    <td class="px-5 py-4 text-slate-700">{{ $due->description ?: 'Aidat' }}</td>
+                                    <td class="px-5 py-4 text-right text-slate-900 font-semibold">
+                                        {{ number_format($due->amount, 2, ',', '.') }} TL
+                                        @if ($due->status === 'partial')
+                                            <div class="text-xs text-amber-600 font-normal">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-4 text-right {{ $due->status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">
+                                        {{ $due->status === 'partial' ? 'Kısmi Ödendi' : ucfirst($due->status) }}
+                                    </td>
+                                    <td class="px-5 py-4 text-right">
+                                        <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Tahsil Et</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
-        @if ($account->dues->isEmpty())
-            <div class="py-6 text-sm text-slate-500">Bu hesap için ödenmemiş aidat yok.</div>
-        @else
+    @endif
+
+    @if ($account->type === App\Models\Account::TYPE_SUPPLIER && $account->expenses->isNotEmpty())
+        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+            <div class="flex items-center justify-between">
+                <h2 class="mb-4 text-lg font-semibold text-slate-950">Açık Giderler</h2>
+                <a href="{{ route('expenses.index') }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Giderler</a>
+            </div>
             <div class="overflow-hidden rounded-2xl border border-slate-200">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-left text-slate-500">
@@ -35,29 +90,23 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @foreach ($account->dues as $due)
+                        @foreach ($account->expenses as $expense)
                             <tr>
-                                <td class="px-5 py-4 text-slate-700">{{ $due->due_date->format('d.m.Y') }}</td>
-                                <td class="px-5 py-4 text-slate-700">{{ $due->description ?: 'Aidat' }}</td>
-                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">
-                                    {{ number_format($due->amount, 2, ',', '.') }} TL
-                                    @if ($due->status === 'partial')
-                                        <div class="text-xs text-amber-600 font-normal">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
-                                    @endif
-                                </td>
-                                <td class="px-5 py-4 text-right {{ $due->status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">
-                                    {{ $due->status === 'partial' ? 'Kısmi Ödendi' : ucfirst($due->status) }}
-                                </td>
+                                <td class="px-5 py-4 text-slate-700">{{ $expense->expense_date->format('d.m.Y') }}</td>
+                                <td class="px-5 py-4 text-slate-700">{{ $expense->description ?: $expense->category }}</td>
+                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
+                                <td class="px-5 py-4 text-right text-amber-600">Bekliyor</td>
                                 <td class="px-5 py-4 text-right">
-                                    <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Tahsil Et</a>
+                                    <a href="{{ route('expenses.payment.create', $expense) }}" class="rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ödeme Yap</a>
                                 </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
-        @endif
-    </div>
+        </div>
+    @endif
+
     <script>
         (function(){
             function toggleAlloc(e){

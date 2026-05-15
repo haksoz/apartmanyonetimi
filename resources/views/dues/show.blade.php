@@ -11,6 +11,7 @@
             @if ($due->status !== 'paid')
                 <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Ödeme Ekle</a>
             @endif
+            <a href="{{ route('dues.edit', $due) }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Düzenle</a>
             <a href="{{ route('dues.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Aidatlara Dön</a>
         </div>
     </div>

@@ -14,6 +14,12 @@
 
     <div class="max-w-2xl rounded-2xl bg-white p-6 shadow-sm">
         <dl class="grid gap-4 text-sm md:grid-cols-2">
+            @if ($transaction->reference_number)
+                <div>
+                    <dt class="text-slate-500">Referans No</dt>
+                    <dd class="mt-1 font-semibold text-blue-700">{{ $transaction->reference_number }}</dd>
+                </div>
+            @endif
             <div>
                 <dt class="text-slate-500">Tür</dt>
                 <dd class="mt-1 font-semibold text-slate-950">{{ $transaction->type === 'income' ? 'Gelir' : 'Gider' }}</dd>

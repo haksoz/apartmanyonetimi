@@ -61,6 +61,11 @@ class Account extends Model
         return $this->hasMany(Due::class);
     }
 
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
+
     public function tenantAssignments(): HasMany
     {
         return $this->hasMany(TenantAssignment::class);

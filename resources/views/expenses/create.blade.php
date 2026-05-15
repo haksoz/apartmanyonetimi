@@ -32,7 +32,7 @@
                 <select id="account_id" name="account_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                     <option value="">Hesap seçmeden kaydet</option>
                     @foreach ($accounts as $account)
-                        <option value="{{ $account->id }}" @selected((string) old('account_id') === (string) $account->id)>{{ $account->name }} ({{ $account->type }})</option>
+                        <option value="{{ $account->id }}" @selected((string) old('account_id', $selectedAccountId ?? '') === (string) $account->id)>{{ $account->name }} ({{ $account->type }})</option>
                     @endforeach
                 </select>
                 @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -64,10 +64,31 @@
                 @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
-            <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
-                <input type="checkbox" name="is_paid" value="1" @checked(old('is_paid')) class="rounded border-slate-300">
+            <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700 cursor-pointer" id="is-paid-label">
+                <input type="checkbox" name="is_paid" id="is_paid" value="1" @checked(old('is_paid')) class="rounded border-slate-300">
                 Bu gider ödendi
             </label>
+
+            <div id="payment-fields" class="hidden space-y-5 rounded-xl border border-slate-200 p-4">
+                <div class="grid gap-5 md:grid-cols-2">
+                    <div>
+                        <label for="payment_date" class="mb-2 block text-sm font-semibold text-slate-700">Ödeme Tarihi</label>
+                        <input id="payment_date" name="payment_date" type="date" value="{{ old('payment_date', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        @error('payment_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div>
+                        <label for="cash_box_id" class="mb-2 block text-sm font-semibold text-slate-700">Ödeme Yapılan Kasa</label>
+                        <select id="cash_box_id" name="cash_box_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                            <option value="">Kasa seçin</option>
+                            @foreach ($cashBoxes as $cashBox)
+                                <option value="{{ $cashBox->id }}" @selected((string) old('cash_box_id') === (string) $cashBox->id)>{{ $cashBox->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('cash_box_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
 
             <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Gideri Kaydet</button>
         </div>
@@ -78,6 +99,21 @@
             const categorySelect = document.getElementById('category_id');
             const periodInput = document.getElementById('period_month');
             const descriptionInput = document.getElementById('description');
+            const isPaidCheckbox = document.getElementById('is_paid');
+            const paymentFields = document.getElementById('payment-fields');
+
+            // Toggle payment fields visibility
+            const togglePaymentFields = () => {
+                if (isPaidCheckbox.checked) {
+                    paymentFields.classList.remove('hidden');
+                } else {
+                    paymentFields.classList.add('hidden');
+                }
+            };
+
+            isPaidCheckbox?.addEventListener('change', togglePaymentFields);
+            // Initial check
+            togglePaymentFields();
 
             const months = {
                 '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',

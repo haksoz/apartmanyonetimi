@@ -16,23 +16,7 @@
         {{-- Source Selection - Side by Side with Icons --}}
         <div class="flex gap-3">
             <label class="cursor-pointer flex-1">
-                <input type="radio" name="source_type" value="expenses" class="peer sr-only" @checked(old('source_type', 'expenses') === 'expenses')>
-                <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center peer-checked:bg-emerald-100">
-                            <svg class="w-5 h-5 text-slate-600 peer-checked:text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700">Giderlerden</div>
-                            <div class="text-xs text-slate-500">Dönem giderleri dağıt</div>
-                        </div>
-                    </div>
-                </div>
-            </label>
-            <label class="cursor-pointer flex-1">
-                <input type="radio" name="source_type" value="manual" class="peer sr-only" @checked(old('source_type') === 'manual')>
+                <input type="radio" name="source_type" value="manual" class="peer sr-only" @checked(old('source_type', 'manual') === 'manual')>
                 <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center peer-checked:bg-emerald-100">
@@ -41,8 +25,24 @@
                             </svg>
                         </div>
                         <div>
-                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700">Manuel</div>
-                            <div class="text-xs text-slate-500">Kendi tutarını gir</div>
+                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700">Tutardan Hesapla</div>
+                            <div class="text-xs text-slate-500">Belirli tutarı dağıt</div>
+                        </div>
+                    </div>
+                </div>
+            </label>
+            <label class="cursor-pointer flex-1">
+                <input type="radio" name="source_type" value="expenses" class="peer sr-only" @checked(old('source_type') === 'expenses')>
+                <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center peer-checked:bg-emerald-100">
+                            <svg class="w-5 h-5 text-slate-600 peer-checked:text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700">Giderlerden Hesapla</div>
+                            <div class="text-xs text-slate-500">Dönem giderleri dağıt</div>
                         </div>
                     </div>
                 </div>
@@ -51,7 +51,7 @@
         @error('source_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
 
         {{-- Dynamic Source Fields --}}
-        <div id="expenses-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type') === 'manual') hidden @endif">
+        <div id="expenses-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'manual') === 'manual') hidden @endif">
             <h3 class="text-sm font-semibold text-slate-700 mb-4">Gider Dönemi Seçimi</h3>
 
             {{-- Period Selection - Desktop Friendly --}}
@@ -89,8 +89,8 @@
             </div>
         </div>
 
-        <div id="manual-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'expenses') !== 'manual') hidden @endif">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Manuel Tutar Girişi</h3>
+        <div id="manual-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'manual') !== 'manual') hidden @endif">
+            <h3 class="text-sm font-semibold text-slate-700 mb-4">Tutar Girişi</h3>
             <div>
                 <label for="source_amount" class="mb-2 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Tutar</label>
                 <input id="source_amount" name="source_amount" type="number" min="0.01" step="0.01" value="{{ old('source_amount') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold">

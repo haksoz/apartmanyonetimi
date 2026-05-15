@@ -14,6 +14,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\PaymentAllocationController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -29,6 +30,7 @@ Route::middleware('auth')->group(function () {
     Route::post('current-apartment', ApartmentSwitchController::class)->name('current-apartment.update');
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::resource('apartments', ApartmentController::class);
+    Route::resource('units', UnitController::class);
     Route::resource('accounts', AccountController::class);
     Route::resource('categories', CategoryController::class)->except(['show']);
     Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
@@ -45,6 +47,8 @@ Route::middleware('auth')->group(function () {
     Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
     Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');
     Route::resource('expenses', ExpenseController::class);
+    Route::get('supplier-refunds/create', [PaymentController::class, 'createSupplierRefund'])->name('supplier-refunds.create');
+    Route::post('supplier-refunds', [PaymentController::class, 'storeSupplierRefund'])->name('supplier-refunds.store');
     Route::resource('cash-boxes', CashBoxController::class)->except(['index', 'show']);
     Route::resource('cash', CashController::class);
 });

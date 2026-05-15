@@ -208,6 +208,7 @@ class AccountController extends Controller
                 'transactions' => fn ($query) => $query->orderBy('transaction_date')->orderBy('id'),
                 'dues' => fn ($query) => $query->whereIn('status', ['unpaid', 'partial'])->orderBy('due_date'),
                 'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0),
+                'expenses' => fn ($query) => $query->where('is_paid', false)->orderBy('expense_date'),
             ])
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->findOrFail($id);

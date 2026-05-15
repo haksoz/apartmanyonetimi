@@ -3,8 +3,8 @@
 @section('content')
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-950">Ödemeler</h1>
-            <p class="mt-1 text-sm text-slate-500">Apartmandaki ödemeler ve tahsis durumları.</p>
+            <h1 class="text-2xl font-bold text-slate-950">Tahsilatlar</h1>
+            <p class="mt-1 text-sm text-slate-500">Hesaplardan alınan tahsilatlar ve tahsis durumları.</p>
         </div>
         <a href="{{ route('accounts.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Hesaplara Dön</a>
     </div>
@@ -40,7 +40,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-5 py-6 text-sm text-slate-500">Henüz kayıtlı ödeme bulunamadı.</td>
+                        <td colspan="7" class="px-5 py-6 text-sm text-slate-500">Henüz kayıtlı tahsilat bulunamadı.</td>
                     </tr>
                 @endforelse
             </tbody>

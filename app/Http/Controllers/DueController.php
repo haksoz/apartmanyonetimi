@@ -53,7 +53,7 @@ class DueController extends Controller
         return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection'));
     }
 
-    public function create(CurrentApartment $currentApartment)
+    public function create(CurrentApartment $currentApartment, Request $request)
     {
         $apartment = $this->resolveApartment($currentApartment);
 
@@ -80,7 +80,9 @@ class DueController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('dues.create', compact('apartment', 'categories', 'expenseCategories', 'accounts'));
+        $selectedAccountId = $request->query('account_id');
+
+        return view('dues.create', compact('apartment', 'categories', 'expenseCategories', 'accounts', 'selectedAccountId'));
     }
 
     public function createBatch(CurrentApartment $currentApartment)
@@ -111,7 +113,7 @@ class DueController extends Controller
         // Get all expenses grouped by period for JavaScript calculation (SQLite compatible)
         $expensesByPeriod = Expense::query()
             ->where('apartment_id', $apartment->id)
-            ->selectRaw("strftime('%Y-%m', expense_date) as period, SUM(amount) as total")
+            ->selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as period, SUM(amount) as total")
             ->groupBy('period')
             ->pluck('total', 'period')
             ->toArray();
@@ -122,7 +124,7 @@ class DueController extends Controller
             $categoryExpenses = Expense::query()
                 ->where('apartment_id', $apartment->id)
                 ->where('category_id', $category->id)
-                ->selectRaw("strftime('%Y-%m', expense_date) as period, SUM(amount) as total")
+                ->selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as period, SUM(amount) as total")
                 ->groupBy('period')
                 ->pluck('total', 'period')
                 ->toArray();

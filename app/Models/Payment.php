@@ -34,6 +34,11 @@ class Payment extends Model
         return $this->belongsTo(Account::class);
     }
 
+    public function apartment(): BelongsTo
+    {
+        return $this->belongsTo(Apartment::class);
+    }
+
     public function allocations(): HasMany
     {
         return $this->hasMany(PaymentAllocation::class);
