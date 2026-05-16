@@ -1,12 +1,15 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
+    {{-- Header --}}
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-950">Toplu Borçlandır</h1>
             <p class="mt-1 text-sm text-slate-500">Dönem giderlerinden veya manuel toplam tutar ile tüm dairelere borçlandırma oluşturun.</p>
         </div>
-        <a href="{{ route('dues.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Aidatlara Dön</a>
+        <div class="flex gap-2">
+            <a href="{{ route('dues.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Aidatlara Dön</a>
+        </div>
     </div>
 
     <form method="POST" action="{{ route('dues.store') }}" class="space-y-4">
@@ -169,7 +172,9 @@
             </div>
         </div>
 
-        <button type="submit" class="w-full rounded-xl bg-emerald-600 px-5 py-4 text-base font-semibold text-white hover:bg-emerald-700 shadow-lg">Toplu Borçlandırmayı Oluştur</button>
+        <div class="flex justify-end">
+            <button type="submit" class="w-full md:w-auto rounded-xl bg-emerald-600 px-8 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-sm">Toplu Borçlandırmayı Oluştur</button>
+        </div>
     </form>
 
     <script>

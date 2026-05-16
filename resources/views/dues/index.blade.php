@@ -16,69 +16,72 @@
     {{-- Desktop Table View --}}
     <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-left text-slate-500"><tr>
-                <th class="px-5 py-3">Daire / Hesap</th>
-                <th class="px-5 py-3">Kategori</th>
-                <th class="px-5 py-3">Dönem</th>
-                <th class="px-5 py-3">Açıklama</th>
-                <th class="px-5 py-3 text-right"><a href="{{ route('dues.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 cursor-pointer hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
-                <th class="px-5 py-3"><a href="{{ route('dues.index', ['sort_by' => 'status', 'sort_direction' => $sortBy === 'status' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 cursor-pointer hover:text-slate-700">Durum @if ($sortBy === 'status')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a></th>
-                <th class="px-5 py-3 text-right">İşlemler</th>
-            </tr></thead>
-            <tbody class="divide-y divide-slate-200">
-                @forelse ($dues as $index => $due)
+            <thead class="bg-slate-50 text-left">
+                <tr>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Daire / Hesap</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Kategori</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Dönem</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
+                        <a href="{{ route('dues.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <a href="{{ route('dues.index', ['sort_by' => 'status', 'sort_direction' => $sortBy === 'status' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 hover:text-slate-700">Durum @if ($sortBy === 'status')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @forelse ($dues as $due)
                     @php
                         $isOverdue = $due->status !== 'paid' && $due->due_date && $due->due_date->isPast();
                     @endphp
-                    <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-slate-50' }} hover:bg-slate-100 transition-colors">
-                        <td class="px-5 py-4 font-medium text-slate-900">
-                            {{ $due->unit ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }} {{ $due->account?->name }}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-5 py-4">
+                            <div class="font-semibold text-slate-900">{{ $due->unit ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }} No.lu Daire</div>
+                            <div class="text-xs text-slate-500 mt-0.5">{{ $due->account?->name }}</div>
                         </td>
-                        <td class="px-5 py-4 text-slate-600">{{ $due->category?->name ?? '-' }}</td>
-                        <td class="px-5 py-4 text-slate-600">{{ $due->period }}</td>
-                        <td class="px-5 py-4 text-slate-600">{{ $due->description ?: '-' }}</td>
+                        <td class="px-5 py-4 text-slate-700">{{ $due->category?->name ?? '-' }}</td>
+                        <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $due->period }}</td>
+                        <td class="px-5 py-4 text-slate-600 max-w-48 truncate">{{ $due->description ?: '-' }}</td>
                         <td class="px-5 py-4 text-right">
-                            <div class="font-medium text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
-                            @if($due->remaining_amount > 0)
-                                <div class="text-xs text-amber-600">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
-                            @else
-                                <div class="text-xs text-emerald-600">Ödendi</div>
+                            <div class="font-semibold text-slate-900 tabular-nums">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
+                            @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
+                                <div class="text-xs text-amber-600 mt-0.5">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                            @elseif($due->remaining_amount == 0)
+                                <div class="text-xs text-emerald-600 mt-0.5">Ödendi</div>
                             @endif
                         </td>
                         <td class="px-5 py-4">
                             @if ($isOverdue)
-                                <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-600/20">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
-                                    Gecikmiş
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>Gecikmiş
                                 </span>
                             @elseif ($due->status === 'paid')
-                                <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
-                                    Ödendi
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Ödendi
                                 </span>
                             @elseif ($due->status === 'partial')
-                                <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
-                                    Kısmi
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Kısmi
                                 </span>
                             @else
-                                <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-500/20">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
-                                    Bekliyor
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Bekliyor
                                 </span>
                             @endif
                         </td>
                         <td class="px-5 py-4 text-right whitespace-nowrap">
-                            <div class="flex items-center justify-end gap-1.5">
+                            <div class="flex items-center justify-end gap-2">
                                 @if ($due->status !== 'paid')
-                                    <a href="{{ route('dues.payment.create', $due) }}" class="rounded bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">Tahsil Et</a>
+                                    <a href="{{ route('dues.payment.create', $due) }}" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">Tahsil Et</a>
                                 @endif
-                                <a href="{{ route('dues.show', $due) }}" class="rounded border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+                                <a href="{{ route('dues.show', $due) }}" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Detay</a>
                             </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-5 py-8 text-center text-slate-500">Henüz aidat kaydı yok.</td></tr>
+                    <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400">Henüz aidat kaydı yok.</td></tr>
                 @endforelse
             </tbody>
         </table>
