@@ -9,7 +9,6 @@
         </div>
         <div class="flex gap-2">
             <a href="{{ route('cash-boxes.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Kasa Ekle</a>
-            <a href="{{ route('cash.create') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Kasa Hareketi Ekle</a>
         </div>
     </div>
 
@@ -41,13 +40,17 @@
                         <div class="mt-2 text-xs text-slate-500">{{ $cashBox->bank_name }} {{ $cashBox->account_number }} {{ $cashBox->iban }}</div>
                     @endif
                     <div class="mt-4 flex flex-wrap gap-2">
-                        <a href="{{ route('cash.index', ['cash_box_id' => $cashBox->id]) }}" class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">Hareketleri Gör</a>
+                        <a href="{{ route('cash-boxes.show', $cashBox) }}" class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">Detay</a>
                         <a href="{{ route('cash-boxes.edit', $cashBox) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
-                        <form method="POST" action="{{ route('cash-boxes.destroy', $cashBox) }}" onsubmit="return confirm('Kasa silinsin mi?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
-                        </form>
+                        @if ($cashBox->transactions->isNotEmpty())
+                            <button type="button" onclick="alert('Bu kasada işlem kaydı olduğu için silinemez.')" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                        @else
+                            <form method="POST" action="{{ route('cash-boxes.destroy', $cashBox) }}" onsubmit="return confirm('Kasa silinsin mi?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             @empty
@@ -56,40 +59,4 @@
         </div>
     </div>
 
-    <div class="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 class="mb-4 text-lg font-semibold text-slate-950">Kasa Hareketleri</h2>
-        @if ($selectedCashBox)
-            <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                Seçili Kasa: <span class="font-semibold text-slate-950">{{ $selectedCashBox->name }}</span>
-            </div>
-            @forelse ($transactions as $transaction)
-                <div class="flex flex-col gap-3 border-b border-slate-100 py-4 text-sm last:border-0 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <a href="{{ route('cash.show', $transaction) }}" class="font-medium text-slate-950 hover:underline">{{ $transaction->description ?: ucfirst($transaction->type) }}</a>
-                            <span class="rounded-full px-2 py-1 text-xs font-semibold {{ $transaction->type === 'income' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}">{{ $transaction->type === 'income' ? 'Gelir' : 'Gider' }}</span>
-                            <span class="rounded-full px-2 py-1 text-xs font-semibold {{ $transaction->is_active ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-700' }}">{{ $transaction->is_active ? 'Aktif' : 'Pasif' }}</span>
-                            @if ($transaction->reference_number)
-                                <span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">{{ $transaction->reference_number }}</span>
-                            @endif
-                        </div>
-                        <div class="mt-1 text-slate-500">{{ $transaction->transaction_date->format('d.m.Y') }} @if ($transaction->category) · {{ $transaction->category->name }} @endif @if ($transaction->account) · {{ $transaction->account->name }} @endif</div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <div class="font-semibold">{{ number_format($transaction->amount, 2, ',', '.') }} TL</div>
-                        <a href="{{ route('cash.edit', $transaction) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
-                        <form method="POST" action="{{ route('cash.destroy', $transaction) }}" onsubmit="return confirm('Kasa hareketi silinsin mi?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
-                        </form>
-                    </div>
-                </div>
-            @empty
-                <div class="py-6 text-sm text-slate-500">Seçili kasaya ait hareket bulunamadı.</div>
-            @endforelse
-        @else
-            <div class="py-6 text-sm text-slate-500">Kasa hareketlerini görmek için bir kasa seçin.</div>
-        @endif
-    </div>
 @endsection

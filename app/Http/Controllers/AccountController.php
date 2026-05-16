@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
 use App\Models\Payment;
@@ -94,6 +95,7 @@ class AccountController extends Controller
             'is_active' => ['nullable', 'boolean'],
             'move_in_date' => ['required_if:type,'.Account::TYPE_TENANT, 'nullable', 'date'],
             'account_opening_date' => ['required_if:type,'.Account::TYPE_SUPPLIER, 'nullable', 'date'],
+            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)],
         ]);
 
         if ($validator->fails()) {
@@ -160,6 +162,7 @@ class AccountController extends Controller
                 'balance' => $validated['balance'] ?? 0,
                 'account_opening_date' => $validated['type'] === Account::TYPE_SUPPLIER ? now() : null,
                 'is_active' => $request->boolean('is_active', true),
+                'default_category_id' => $validated['default_category_id'] ?? null,
             ]);
 
             if ($account->type === Account::TYPE_TENANT && $account->unit_id) {
@@ -273,7 +276,14 @@ class AccountController extends Controller
             ->orderBy('unit_no')
             ->get();
 
-        return view('accounts.edit', compact('account', 'apartment', 'units'));
+        $categories = Category::query()
+            ->where('apartment_id', $account->apartment_id)
+            ->where(fn ($q) => $q->where('is_active', true)->orWhere('id', $account->default_category_id))
+            ->where(fn ($q) => $q->where('type', Category::TYPE_ALL)->orWhere('type', Category::TYPE_EXPENSE))
+            ->orderBy('name')
+            ->get();
+
+        return view('accounts.edit', compact('account', 'apartment', 'units', 'categories'));
     }
 
     /**
@@ -307,6 +317,7 @@ class AccountController extends Controller
             'move_in_date' => ['required_if:type,'.Account::TYPE_TENANT, 'nullable', 'date'],
             'move_out_date' => ['nullable', 'date', 'after_or_equal:move_in_date'],
             'account_opening_date' => ['required_if:type,'.Account::TYPE_SUPPLIER, 'nullable', 'date'],
+            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
         ]);
 
         if ($validated['type'] === Account::TYPE_TENANT && empty($validated['unit_id'])) {
@@ -349,6 +360,7 @@ class AccountController extends Controller
                 'balance' => $validated['balance'] ?? 0,
                 'account_opening_date' => $validated['type'] === Account::TYPE_SUPPLIER ? $validated['account_opening_date'] : null,
                 'is_active' => $request->boolean('is_active'),
+                'default_category_id' => $validated['default_category_id'] ?? null,
             ]);
 
             if ($account->type === Account::TYPE_TENANT && $account->unit_id) {

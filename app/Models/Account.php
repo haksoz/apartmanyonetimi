@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Category;
 use App\Models\Due;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,7 @@ class Account extends Model
         'balance',
         'account_opening_date',
         'is_active',
+        'default_category_id',
     ];
 
     protected $casts = [
@@ -39,6 +41,11 @@ class Account extends Model
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
+    }
+
+    public function defaultCategory(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'default_category_id');
     }
 
     public function unit(): BelongsTo

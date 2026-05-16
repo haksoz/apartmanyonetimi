@@ -2,12 +2,72 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountTransaction;
 use App\Models\CashBox;
+use App\Models\CashTransaction;
+use App\Models\Expense;
+use App\Models\Payment;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 
 class CashBoxController extends Controller
 {
+    public function show(string $id, CurrentApartment $currentApartment)
+    {
+        $cashBox = $this->findCashBox($id, $currentApartment);
+
+        if ($cashBox instanceof \Illuminate\Http\RedirectResponse) {
+            return $cashBox;
+        }
+
+        $transactions = CashTransaction::query()
+            ->with(['account', 'category'])
+            ->where('cash_box_id', $cashBox->id)
+            ->orderBy('transaction_date')
+            ->orderBy('id')
+            ->get();
+
+        $income  = $transactions->where('type', 'income')->sum('amount');
+        $expense = $transactions->where('type', 'expense')->sum('amount');
+        $balance = $income - $expense;
+
+        $running = 0;
+        foreach ($transactions as $t) {
+            $running += $t->type === 'income' ? $t->amount : -$t->amount;
+            $t->running_balance = $running;
+        }
+
+        // Her kasa hareketini AccountTransaction üzerinden ilgili kaydla eşleştir
+        $accountTxs = AccountTransaction::query()
+            ->where('apartment_id', $cashBox->apartment_id)
+            ->whereIn('account_id', $transactions->pluck('account_id')->filter()->unique()->values())
+            ->get()
+            ->groupBy('account_id');
+
+        foreach ($transactions as $t) {
+            $t->detail_url = null;
+            if (! $t->account_id) continue;
+
+            $match = ($accountTxs[$t->account_id] ?? collect())
+                ->first(fn ($at) =>
+                    (string) $at->amount === (string) $t->amount &&
+                    $at->transaction_date->toDateString() === $t->transaction_date->toDateString()
+                );
+
+            if (! $match) continue;
+
+            if ($match->transactionable_type === Payment::class) {
+                $t->detail_url = route('payments.show', $match->transactionable_id);
+            } elseif ($match->transactionable_type === Expense::class) {
+                $t->detail_url = route('expenses.show', $match->transactionable_id);
+            }
+        }
+
+        $transactions = $transactions->reverse()->values();
+
+        return view('cash.boxes.show', compact('cashBox', 'transactions', 'income', 'expense', 'balance'));
+    }
+
     public function create(CurrentApartment $currentApartment)
     {
         $apartment = $this->resolveApartment($currentApartment);
@@ -81,6 +141,10 @@ class CashBoxController extends Controller
 
         if ($cashBox instanceof \Illuminate\Http\RedirectResponse) {
             return $cashBox;
+        }
+
+        if ($cashBox->transactions()->count() > 0) {
+            return redirect()->route('cash.index')->with('error', 'Bu kasada işlem kaydı olduğu için silinemez.');
         }
 
         $cashBox->delete();

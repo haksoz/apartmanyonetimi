@@ -21,6 +21,7 @@ class Expense extends Model
         'description',
         'amount',
         'expense_date',
+        'due_date',
         'period_month',
         'is_paid',
         'reference_number',
@@ -29,6 +30,7 @@ class Expense extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'expense_date' => 'date',
+        'due_date' => 'date',
         'period_month' => 'date',
         'is_paid' => 'boolean',
     ];

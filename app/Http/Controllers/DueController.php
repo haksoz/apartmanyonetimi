@@ -285,6 +285,8 @@ class DueController extends Controller
             return $response;
         }
 
+        $due->load(['allocations.payment', 'transactions']);
+
         return view('dues.show', compact('due'));
     }
 
@@ -294,7 +296,12 @@ class DueController extends Controller
             return $response;
         }
 
-        return view('dues.edit', compact('due'));
+        $due->load('allocations');
+        $units = Unit::where('apartment_id', $due->apartment_id)->orderBy('unit_no')->get();
+        $categories = Category::where('apartment_id', $due->apartment_id)->where('is_active', true)->orderBy('name')->get();
+        $accounts = Account::where('apartment_id', $due->apartment_id)->where('is_active', true)->orderBy('name')->get();
+
+        return view('dues.edit', compact('due', 'units', 'categories', 'accounts'));
     }
 
     public function update(Request $request, CurrentApartment $currentApartment, Due $due)
@@ -304,15 +311,35 @@ class DueController extends Controller
         }
 
         $validated = $request->validate([
+            'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('apartment_id', $due->apartment_id)],
+            'unit_id'    => ['nullable', 'integer', Rule::exists('units', 'id')->where('apartment_id', $due->apartment_id)],
+            'category_id'=> ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $due->apartment_id)],
+            'period' => ['required', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
+            'created_at_manual' => ['nullable', 'date'],
             'description' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', Rule::in(['unpaid', 'paid'])],
         ]);
 
         $due->update($validated);
 
         return redirect()->route('dues.index')->with('status', 'Aidat kaydı güncellendi.');
+    }
+
+    public function destroy(CurrentApartment $currentApartment, Due $due)
+    {
+        if ($response = $this->authorizeDue($currentApartment, $due)) {
+            return $response;
+        }
+
+        if (in_array($due->status, ['paid', 'partial'])) {
+            return redirect()->route('dues.show', $due)->with('error', 'Ödenmiş veya kısmen ödenmiş aidat silinemez. Önce ilgili ödemeleri iptal edin.');
+        }
+
+        $due->transactions()->delete();
+        $due->delete();
+
+        return redirect()->route('dues.index')->with('status', 'Aidat kaydı silindi.');
     }
 
     public function createPayment(CurrentApartment $currentApartment, Due $due)

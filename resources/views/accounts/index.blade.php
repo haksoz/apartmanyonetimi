@@ -15,15 +15,15 @@
     {{-- Desktop Table View --}}
     <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-left text-slate-500">
+            <thead class="bg-slate-50 text-left">
                 <tr>
-                    <th class="px-5 py-3">Daire No</th>
-                    <th class="px-5 py-3">Adı Soyadı / Ünvan</th>
-                    <th class="px-5 py-3">Tip</th>
-                    <th class="px-5 py-3 text-right">Alacağı</th>
-                    <th class="px-5 py-3 text-right">Borcu</th>
-                    <th class="px-5 py-3 text-right">Bakiye</th>
-                    <th class="px-5 py-3"></th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Daire No</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Adı Soyadı / Ünvan</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Tip</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Alacağı</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Borcu</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Bakiye</th>
+                    <th class="px-5 py-3.5"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -33,29 +33,22 @@
                         $credit = (float) ($account->credit_total ?? 0);
                         $balance = $credit - $debit;
                     @endphp
-                    <tr>
-                        <td class="px-5 py-4">{{ $account->unit ? str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</td>
-                        <td class="px-5 py-4 font-medium text-slate-950">
-                            <a href="{{ route('accounts.show', $account) }}" class="hover:text-slate-700 hover:underline">{{ $account->name }}</a>
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $account->unit ? str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT).' No.lu Daire' : '-' }}</td>
+                        <td class="px-5 py-4">
+                            <div class="font-semibold text-slate-900">{{ $account->name }}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">{{ $account->type_label }}</div>
                         </td>
-                        <td class="px-5 py-4">{{ $account->type_label }}</td>
-                        <td class="px-5 py-4 text-right">{{ number_format($credit, 2, ',', '.') }} TL</td>
-                        <td class="px-5 py-4 text-right">{{ number_format($debit, 2, ',', '.') }} TL</td>
-                        <td class="px-5 py-4 text-right font-semibold {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format(abs($balance), 2, ',', '.') }} TL</td>
+                        <td class="px-5 py-4 text-slate-600">{{ $account->type_label }}</td>
+                        <td class="px-5 py-4 text-right font-medium text-emerald-600 tabular-nums">{{ number_format($credit, 2, ',', '.') }} TL</td>
+                        <td class="px-5 py-4 text-right font-medium text-red-600 tabular-nums">{{ number_format($debit, 2, ',', '.') }} TL</td>
+                        <td class="px-5 py-4 text-right font-semibold tabular-nums {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format(abs($balance), 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-right">
-                            <div class="flex justify-end gap-3">
-                                <a href="{{ route('accounts.show', $account) }}" class="font-semibold text-slate-700 hover:text-slate-950">Detay</a>
-                                <a href="{{ route('accounts.edit', $account) }}" class="font-semibold text-slate-700 hover:text-slate-950">Düzenle</a>
-                                <form method="POST" action="{{ route('accounts.destroy', $account) }}">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="font-semibold text-red-600 hover:text-red-700">Sil</button>
-                                </form>
-                            </div>
+                            <a href="{{ route('accounts.show', $account) }}" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Detay</a>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-5 py-8 text-center text-slate-500">Henüz hesap yok.</td></tr>
+                    <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400">Henüz hesap yok.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -102,12 +95,6 @@
                 {{-- Actions --}}
                 <div class="flex gap-2">
                     <a href="{{ route('accounts.show', $account) }}" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Detay</a>
-                    <a href="{{ route('accounts.edit', $account) }}" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Düzenle</a>
-                    <form method="POST" action="{{ route('accounts.destroy', $account) }}" class="flex-1" onsubmit="return confirm('Hesap silinsin mi?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="w-full rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
-                    </form>
                 </div>
             </div>
         @empty

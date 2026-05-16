@@ -78,7 +78,11 @@ class ExpenseController extends Controller
 
         $selectedAccountId = $request->query('account_id');
 
-        return view('expenses.create', compact('apartment', 'accounts', 'categories', 'cashBoxes', 'selectedAccountId'));
+        $accountCategoryMap = $accounts->mapWithKeys(fn ($a) => [
+            $a->id => $a->default_category_id,
+        ])->filter()->toJson();
+
+        return view('expenses.create', compact('apartment', 'accounts', 'categories', 'cashBoxes', 'selectedAccountId', 'accountCategoryMap'));
     }
 
     /**
@@ -145,6 +149,7 @@ class ExpenseController extends Controller
                 'description' => $validated['description'] ?? null,
                 'amount' => $validated['amount'],
                 'expense_date' => $validated['expense_date'],
+                'due_date' => $validated['due_date'] ?? null,
                 'period_month' => $validated['period_month'].'-01',
                 'is_paid' => $isPaid,
             ]);
@@ -235,6 +240,7 @@ class ExpenseController extends Controller
             'description' => $validated['description'] ?? null,
             'amount' => $validated['amount'],
             'expense_date' => $validated['expense_date'],
+            'due_date' => $validated['due_date'] ?? null,
             'period_month' => $validated['period_month'].'-01',
             'is_paid' => $request->boolean('is_paid'),
         ]);
@@ -248,6 +254,10 @@ class ExpenseController extends Controller
     public function destroy(string $id)
     {
         $expense = $this->findExpense($id);
+
+        if ($expense->is_paid) {
+            return redirect()->route('expenses.show', $expense)->with('error', 'Ödenmiş gider silinemez. Önce ödemeyi iptal edin.');
+        }
 
         DB::transaction(function () use ($expense) {
             // Muhasebe kayıtlarını sil
@@ -291,7 +301,7 @@ class ExpenseController extends Controller
                     ->where('apartment_id', $expense->apartment_id)
                     ->where('is_active', true),
             ],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:'.$expense->amount],
             'payment_date' => ['required', 'date'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
@@ -329,6 +339,33 @@ class ExpenseController extends Controller
         return redirect()->route('expenses.index')->with('status', 'Gider ödemesi kasaya işlendi.');
     }
 
+    public function destroyPayment(string $id)
+    {
+        $expense = $this->findExpense($id);
+
+        if (! $expense->is_paid) {
+            return redirect()->route('expenses.show', $expense)->with('error', 'Bu gider zaten ödenmemiş durumda.');
+        }
+
+        DB::transaction(function () use ($expense) {
+            $expense->transactions()
+                ->where('type', 'debit')
+                ->delete();
+
+            CashTransaction::where('apartment_id', $expense->apartment_id)
+                ->where('type', 'expense')
+                ->where('amount', $expense->amount)
+                ->when($expense->account_id, fn ($q) => $q->where('account_id', $expense->account_id))
+                ->latest()
+                ->limit(1)
+                ->delete();
+
+            $expense->update(['is_paid' => false]);
+        });
+
+        return redirect()->route('expenses.show', $expense)->with('status', 'Ödeme iptal edildi, gider tekrar açık durumuna alındı.');
+    }
+
     private function findExpense(string $id): Expense
     {
         $apartment = app(CurrentApartment::class)->getFor(auth()->user());
@@ -338,7 +375,7 @@ class ExpenseController extends Controller
         }
 
         return Expense::query()
-            ->with(['account', 'categoryRelation'])
+            ->with(['account', 'categoryRelation', 'transactions'])
             ->where('apartment_id', $apartment->id)
             ->findOrFail($id);
     }
@@ -373,6 +410,7 @@ class ExpenseController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'expense_date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date'],
             'period_month' => ['required', 'date_format:Y-m'],
             'is_paid' => ['nullable', 'boolean'],
         ]);

@@ -43,9 +43,9 @@
 
             <div class="grid gap-5 md:grid-cols-2">
                 <div>
-                    <label for="amount" class="mb-2 block text-sm font-semibold text-slate-700">Ödeme Tutarı</label>
-                    <input id="amount" name="amount" type="number" min="0.01" step="0.01" value="{{ old('amount', $expense->amount) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Ödeme Tutarı</label>
+                    <input type="hidden" name="amount" value="{{ $expense->amount }}">
+                    <div class="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 cursor-not-allowed">{{ number_format($expense->amount, 2, ',', '.') }} TL <span class="text-xs text-slate-400 ml-1">(gider tutarıyla sabit)</span></div>
                 </div>
 
                 <div>

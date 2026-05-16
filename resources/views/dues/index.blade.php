@@ -19,8 +19,8 @@
             <thead class="bg-slate-50 text-left">
                 <tr>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Daire / Hesap</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Oluşturulma</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Kategori</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Dönem</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
                         <a href="{{ route('dues.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
@@ -41,8 +41,10 @@
                             <div class="font-semibold text-slate-900">{{ $due->unit ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }} No.lu Daire</div>
                             <div class="text-xs text-slate-500 mt-0.5">{{ $due->account?->name }}</div>
                         </td>
+                        <td class="px-5 py-4 text-slate-700 tabular-nums">
+                            {{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}
+                        </td>
                         <td class="px-5 py-4 text-slate-700">{{ $due->category?->name ?? '-' }}</td>
-                        <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $due->period }}</td>
                         <td class="px-5 py-4 text-slate-600 max-w-48 truncate">{{ $due->description ?: '-' }}</td>
                         <td class="px-5 py-4 text-right">
                             <div class="font-semibold text-slate-900 tabular-nums">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
@@ -130,8 +132,8 @@
                 {{-- Info Grid --}}
                 <div class="grid grid-cols-2 gap-3 mb-3 text-sm">
                     <div>
-                        <div class="text-xs text-slate-500 mb-1">Dönem</div>
-                        <div class="font-medium text-slate-900">{{ $due->period }}</div>
+                        <div class="text-xs text-slate-500 mb-1">Oluşturulma</div>
+                        <div class="font-medium text-slate-900 tabular-nums">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</div>
                     </div>
                     <div>
                         <div class="text-xs text-slate-500 mb-1">Kategori</div>

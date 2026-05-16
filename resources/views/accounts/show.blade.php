@@ -11,8 +11,8 @@
                 <a href="{{ route('dues.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">+ Borçlandır</a>
             @endif
             @if ($account->type === App\Models\Account::TYPE_SUPPLIER)
-                <a href="{{ route('supplier-refunds.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">+ Tahsilat Al</a>
-                <a href="{{ route('expenses.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Ödeme Ekle</a>
+                <span title="Toplu gider ödeme özelliği henüz geliştirme aşamasındadır" class="cursor-not-allowed rounded-xl bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-500 select-none">+ Tahsilat Al</span>
+                <span title="Giderler menüsünden ekleyin" class="cursor-not-allowed rounded-xl bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-500 select-none">+ Gider Ekle</span>
             @else
                 <a href="{{ route('payments.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Tahsilat Ekle</a>
             @endif
@@ -58,7 +58,15 @@
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-right {{ $due->status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">
-                                        {{ $due->status === 'partial' ? 'Kısmi Ödendi' : ucfirst($due->status) }}
+                                        @php
+                                            $statusLabel = match($due->status) {
+                                                'paid'    => 'Ödendi',
+                                                'partial' => 'Kısmi Ödendi',
+                                                'overdue' => 'Gecikmiş',
+                                                default   => 'Bekliyor',
+                                            };
+                                        @endphp
+                                        {{ $statusLabel }}
                                     </td>
                                     <td class="px-5 py-4 text-right">
                                         <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Tahsil Et</a>
@@ -172,7 +180,6 @@
                     <thead class="bg-slate-50 text-left text-slate-500">
                         <tr>
                             <th class="px-5 py-3">Tarih</th>
-                            <th class="px-5 py-3">Belge</th>
                             <th class="px-5 py-3">Açıklama</th>
                             <th class="px-5 py-3 text-right">Borç</th>
                             <th class="px-5 py-3 text-right">Alacak</th>
@@ -188,16 +195,20 @@
                             @endphp
                             <tr>
                                 <td class="px-5 py-4 text-slate-700">{{ $t->transaction_date->format('d.m.Y') }}</td>
-                                <td class="px-5 py-4 text-slate-700">{{ $t->transactionable?->id ?? '-' }}</td>
                                 <td class="px-5 py-4 text-slate-700">{{ $t->description ?: ucfirst($t->type) }}</td>
                                 <td class="px-5 py-4 text-right text-red-600 font-semibold">{{ $debit ? number_format($debit, 2, ',', '.') . ' TL' : '-' }}</td>
                                 <td class="px-5 py-4 text-right text-emerald-600 font-semibold">{{ $credit ? number_format($credit, 2, ',', '.') . ' TL' : '-' }}</td>
                                 <td class="px-5 py-4 text-right font-semibold">{{ number_format($t->running_balance, 2, ',', '.') }} TL</td>
-                                <td class="px-5 py-4 text-right">
-                                    @if($t->allocations->isNotEmpty() && (($t->transactionable_type ?? '') === \App\Models\Payment::class))
-                                        <button type="button" data-toggle-alloc="alloc-{{ $t->id }}" class="toggle-alloc rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Tahsisleri Göster</button>
-                                    @else
-                                        <a href="#" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Detay</a>
+                                <td class="px-5 py-4 text-right space-x-2">
+                                    @if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->transactionable_id)
+                                        @if($t->allocations->isNotEmpty())
+                                            <button type="button" data-toggle-alloc="alloc-{{ $t->id }}" class="toggle-alloc rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Tahsisleri Göster</button>
+                                        @endif
+                                        <a href="{{ route('payments.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+                                    @elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
+                                        <a href="{{ route('expenses.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+                                    @elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)
+                                        <a href="{{ route('dues.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                                     @endif
                                 </td>
                             </tr>
@@ -206,15 +217,16 @@
                                 @foreach($t->allocations as $a)
                                     <tr class="bg-slate-50 text-sm alloc-row alloc-{{ $t->id }} hidden" data-parent="alloc-{{ $t->id }}">
                                         <td class="px-5 py-2"></td>
-                                        <td class="px-5 py-2">Tahsis</td>
-                                        <td class="px-5 py-2">Aidat <a href="{{ route('dues.show', $a->due) }}">#{{ $a->due->id }}</a> — {{ $a->due->due_date->format('d.m.Y') }}
+                                        <td class="px-5 py-2">Tahsis — Aidat <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-900 hover:text-emerald-600">#{{ $a->due->id }}</a> — {{ $a->due->due_date->format('d.m.Y') }}
                                             @php $desc = $a->due->description ?: 'Aidat'; @endphp
                                             <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
                                         </td>
-                                        <td class="px-5 py-2 text-right text-emerald-600 font-medium">{{ number_format($a->amount,2,',','.') }} TL</td>
+                                        <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount,2,',','.') }} TL</td>
                                         <td class="px-5 py-2"></td>
                                         <td class="px-5 py-2"></td>
-                                        <td class="px-5 py-2 text-right"></td>
+                                        <td class="px-5 py-2 text-right">
+                                            <a href="{{ route('dues.show', $a->due) }}" class="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Aidat Detay</a>
+                                        </td>
                                     </tr>
                                 @endforeach
                             @endif

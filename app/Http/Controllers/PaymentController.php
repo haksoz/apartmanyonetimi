@@ -164,6 +164,42 @@ class PaymentController extends Controller
         return view('payments.show', compact('payment'));
     }
 
+    public function destroy(CurrentApartment $currentApartment, Payment $payment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        if (! $apartment || $payment->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+
+        $accountId = $payment->account_id;
+
+        DB::transaction(function () use ($payment) {
+            $payment->load('allocations.due');
+
+            foreach ($payment->allocations as $allocation) {
+                $due = $allocation->due;
+                $due->remaining_amount = min($due->amount, $due->remaining_amount + $allocation->amount);
+                $due->status = $due->remaining_amount >= $due->amount ? 'unpaid' : 'partial';
+                $due->save();
+                $allocation->delete();
+            }
+
+            $payment->transactions()->delete();
+
+            CashTransaction::where('apartment_id', $payment->apartment_id)
+                ->where('account_id', $payment->account_id)
+                ->where('amount', $payment->amount)
+                ->where('transaction_date', $payment->payment_date)
+                ->where('type', 'income')
+                ->delete();
+
+            $payment->delete();
+        });
+
+        return redirect()->route('accounts.show', $accountId)->with('status', 'Ödeme kaydı ve tüm tahsisler silindi.');
+    }
+
     public function createSupplierRefund(Request $request, CurrentApartment $currentApartment)
     {
         $apartment = $currentApartment->getFor(auth()->user());

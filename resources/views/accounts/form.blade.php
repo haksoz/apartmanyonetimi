@@ -76,6 +76,17 @@
             @error('balance')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
 
+        <div data-default-category-field>
+            <label for="default_category_id" class="mb-2 block text-sm font-semibold text-slate-700">Varsayılan Kategori <span class="font-normal text-slate-400">(opsiyonel)</span></label>
+            <select id="default_category_id" name="default_category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <option value="">Kategori seçin</option>
+                @foreach ($categories ?? [] as $category)
+                    <option value="{{ $category->id }}" @selected((string) old('default_category_id', $account?->default_category_id) === (string) $category->id)>{{ $category->name }}</option>
+                @endforeach
+            </select>
+            @error('default_category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+        </div>
+
         <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
             <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $account?->is_active ?? true)) class="rounded border-slate-300">
             Aktif hesap
@@ -101,6 +112,8 @@
         const tenantMoveOutInput = form.querySelector('#move_out_date');
         const accountOpeningDateField = form.querySelector('[data-account-opening-date-field]');
         const accountOpeningDateInput = form.querySelector('#account_opening_date');
+        const defaultCategoryField = form.querySelector('[data-default-category-field]');
+        const defaultCategoryInput = form.querySelector('#default_category_id');
 
         const toggleField = (field, input, show, required = false, clearWhenHidden = false) => {
             field.classList.toggle('hidden', ! show);
@@ -126,6 +139,9 @@
             toggleField(tenantMoveInField, tenantMoveInInput, selectedType === 'tenant', selectedType === 'tenant', selectedType !== 'tenant');
             toggleField(tenantMoveOutField, tenantMoveOutInput, selectedType === 'tenant', false, selectedType !== 'tenant');
             toggleField(accountOpeningDateField, accountOpeningDateInput, selectedType === 'supplier', selectedType === 'supplier', selectedType !== 'supplier');
+            if (defaultCategoryField && defaultCategoryInput) {
+                toggleField(defaultCategoryField, defaultCategoryInput, selectedType === 'supplier', false, selectedType !== 'supplier');
+            }
         };
 
         type.addEventListener('change', refresh);
