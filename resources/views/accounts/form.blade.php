@@ -26,12 +26,21 @@
 
         <div data-unit-field>
             <label for="unit_id" class="mb-2 block text-sm font-semibold text-slate-700">Daire Bağlantısı</label>
-            <select id="unit_id" name="unit_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                <option value="" disabled {{ old('unit_id', $account?->unit_id) ? '' : 'selected' }}>Daire seçiniz...</option>
-                @foreach ($units as $unit)
-                    <option value="{{ $unit->id }}" @selected((string) old('unit_id', $account?->unit_id) === (string) $unit->id)>{{ str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT) }} no.lu daire</option>
-                @endforeach
-            </select>
+            @if ($account && in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]))
+                {{-- Edit modunda owner/tenant için daire değiştirilemez --}}
+                <input type="hidden" name="unit_id" value="{{ $account->unit_id }}">
+                <div class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    {{ $account->unit ? str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT).' no.lu daire' : 'Daire yok' }}
+                    <span class="text-xs text-slate-400 ml-2">(Değiştirilemez)</span>
+                </div>
+            @else
+                <select id="unit_id" name="unit_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <option value="" disabled {{ old('unit_id', $account?->unit_id) ? '' : 'selected' }}>Daire seçiniz...</option>
+                    @foreach ($units as $unit)
+                        <option value="{{ $unit->id }}" @selected((string) old('unit_id', $account?->unit_id) === (string) $unit->id)>{{ str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT) }} no.lu daire</option>
+                    @endforeach
+                </select>
+            @endif
             @error('unit_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
 

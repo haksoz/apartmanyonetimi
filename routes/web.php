@@ -42,6 +42,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::resource('apartments', ApartmentController::class);
     Route::resource('units', UnitController::class);
     Route::resource('accounts', AccountController::class);
+    Route::patch('accounts/{account}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
+    Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
     Route::get('users', [AccountUserController::class, 'index'])->name('users.index');
     Route::post('users/invite', [AccountUserController::class, 'invite'])->name('users.invite');
     Route::patch('users/{user}/password', [AccountUserController::class, 'updatePassword'])->name('users.password');

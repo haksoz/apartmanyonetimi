@@ -27,6 +27,7 @@ class AccountController extends Controller
 
         $filterSearch = $request->query('search');
         $filterType   = $request->query('type');
+        $filterStatus = $request->query('status', 'active'); // Default: sadece aktifler
 
         $accounts = Account::query()
             ->with('unit')
@@ -39,12 +40,15 @@ class AccountController extends Controller
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
             ->when($filterSearch, fn ($q) => $q->where('name', 'like', '%' . $filterSearch . '%'))
             ->when($filterType,   fn ($q) => $q->where('type', $filterType))
+            ->when($filterStatus === 'active', fn ($q) => $q->where('is_active', true))
+            ->when($filterStatus === 'inactive', fn ($q) => $q->where('is_active', false))
+            // 'all' seçeneğinde filtre uygulanmaz
             ->orderByRaw('unit_id IS NULL, unit_id')
             ->orderBy('type')
             ->orderBy('name')
             ->paginate(25)->withQueryString();
 
-        $filters = compact('filterSearch', 'filterType');
+        $filters = compact('filterSearch', 'filterType', 'filterStatus');
 
         return view('accounts.index', compact('accounts', 'apartment', 'filters'));
     }
@@ -314,6 +318,13 @@ class AccountController extends Controller
             return back()->withErrors(['type' => 'Hesap türü değiştirilemez.'])->withInput();
         }
 
+        // Owner ve tenant için unit_id değiştirilemez
+        if (in_array($account->type, [Account::TYPE_OWNER, Account::TYPE_TENANT])) {
+            if ($request->has('unit_id') && (int) $request->input('unit_id') !== (int) $account->unit_id) {
+                return back()->withErrors(['unit_id' => 'Kat maliki ve kiracı hesaplarında daire bağlantısı değiştirilemez.'])->withInput();
+            }
+        }
+
         $validated = $request->validate([
             'unit_id' => [
                 'required_if:type,'.Account::TYPE_OWNER.','.Account::TYPE_TENANT,
@@ -404,6 +415,109 @@ class AccountController extends Controller
         });
 
         return redirect()->route('accounts.show', $account)->with('status', 'Hesap güncellendi.');
+    }
+
+    /**
+     * Kiracı kiralamasını sonlandır.
+     */
+    public function terminateTenancy(Request $request, Account $account, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor($request->user());
+        abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
+        abort_unless($account->type === Account::TYPE_TENANT, 400);
+
+        $validated = $request->validate([
+            'termination_date' => ['required', 'date'],
+        ]);
+
+        DB::transaction(function () use ($account, $validated, $apartment) {
+            // Tenant assignment'ı güncelle
+            $assignment = $account->activeTenantAssignment;
+            if ($assignment) {
+                $assignment->update(['move_out_date' => $validated['termination_date']]);
+            }
+
+            // Unit occupant'ı eski malike geri döndür (veya null yap)
+            $unit = $account->unit;
+            if ($unit) {
+                $unit->update(['occupant_account_id' => $unit->owner_account_id]);
+            }
+
+            // Hesabı pasifleştir ve user bağını kopar
+            $account->update([
+                'is_active' => false,
+                'user_id' => null,
+            ]);
+
+            // User'ı apartmandan çıkar
+            if ($account->user) {
+                $apartment->members()->detach($account->user_id);
+            }
+        });
+
+        return redirect()->route('accounts.show', $account)->with('status', 'Kiralama sonlandırıldı.');
+    }
+
+    /**
+     * Kat maliki malikliğini sonlandır ve yeni malik ata.
+     */
+    public function terminateOwnership(Request $request, Account $account, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor($request->user());
+        abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
+        abort_unless($account->type === Account::TYPE_OWNER, 400);
+
+        $validated = $request->validate([
+            'termination_date' => ['required', 'date'],
+            'new_owner_account_id' => ['nullable', 'exists:accounts,id'],
+        ]);
+
+        DB::transaction(function () use ($account, $validated, $apartment) {
+            $unit = $account->unit;
+            
+            // Eski maliki pasifleştir
+            $account->update([
+                'is_active' => false,
+                'user_id' => null,
+            ]);
+
+            // User bağını kopar
+            if ($account->user) {
+                $apartment->members()->detach($account->user_id);
+            }
+
+            if ($validated['new_owner_account_id']) {
+                // Mevcut hesabı yeni malik yap
+                $newOwner = Account::findOrFail($validated['new_owner_account_id']);
+                $newOwner->update([
+                    'type' => Account::TYPE_OWNER,
+                    'unit_id' => $unit?->id,
+                    'is_active' => true,
+                ]);
+                if ($unit) {
+                    $unit->update(['owner_account_id' => $newOwner->id]);
+                }
+            } else {
+                // Yeni boş malik hesabı aç
+                $newOwner = Account::create([
+                    'apartment_id' => $apartment->id,
+                    'unit_id' => $unit?->id,
+                    'type' => Account::TYPE_OWNER,
+                    'name' => $unit ? str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT).'. Daire Kat Maliki' : 'Kat Maliki',
+                    'is_active' => true,
+                ]);
+                if ($unit) {
+                    $unit->update(['owner_account_id' => $newOwner->id]);
+                }
+            }
+
+            // Dairenin occupant'ını da güncelle (eğer eski malik occupant ise)
+            if ($unit && $unit->occupant_account_id === $account->id) {
+                $unit->update(['occupant_account_id' => $unit->fresh()->owner_account_id]);
+            }
+        });
+
+        return redirect()->route('accounts.show', $account)->with('status', 'Maliklik sonlandırıldı ve yeni malik atandı.');
     }
 
     /**
