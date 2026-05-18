@@ -91,6 +91,6 @@ class Payment extends Model
 
     protected function getReferencePrefix(): string
     {
-        return 'ÖD';
+        return 'ODE';
     }
 }

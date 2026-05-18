@@ -12,6 +12,21 @@
         </div>
     </div>
 
+    {{-- Filtre Barı --}}
+    <form method="GET" action="{{ route('accounts.index') }}" class="mb-5 flex flex-wrap gap-3 items-end">
+        <input type="text" name="search" value="{{ $filters['filterSearch'] }}" placeholder="Ad ile ara..." class="rounded-xl border border-slate-300 px-4 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-300">
+        <select name="type" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="">— Tüm Tipler —</option>
+            <option value="owner"    @selected($filters['filterType'] === 'owner')>Kat Maliki</option>
+            <option value="tenant"   @selected($filters['filterType'] === 'tenant')>Kiracı</option>
+            <option value="supplier" @selected($filters['filterType'] === 'supplier')>Tedarikçi</option>
+        </select>
+        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
+        @if ($filters['filterSearch'] || $filters['filterType'])
+            <a href="{{ route('accounts.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Temizle</a>
+        @endif
+    </form>
+
     {{-- Desktop Table View --}}
     <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -103,4 +118,11 @@
             </div>
         @endforelse
     </div>
+
+    {{-- Sayfalama --}}
+    @if ($accounts->hasPages())
+        <div class="mt-6">
+            {{ $accounts->links() }}
+        </div>
+    @endif
 @endsection

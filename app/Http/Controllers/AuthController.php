@@ -33,7 +33,7 @@ class AuthController extends Controller
             return redirect()->route('current-apartment.select');
         }
 
-        return redirect()->route('apartments.create');
+        return redirect()->route('onboarding.show');
     }
 
     public function showRegister()
@@ -60,7 +60,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->route('apartments.create');
+        return redirect()->route('onboarding.show');
     }
 
     public function logout(Request $request)

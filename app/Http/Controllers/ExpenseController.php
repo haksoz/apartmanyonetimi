@@ -37,13 +37,30 @@ class ExpenseController extends Controller
             $sortDirection = 'desc';
         }
 
+        $filterPeriod   = $request->query('period');
+        $filterStatus   = $request->query('status');
+        $filterCategory = $request->query('category');
+
         $expenses = Expense::query()
             ->with(['account', 'categoryRelation'])
-            ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->when($filterPeriod,   fn ($q) => $q->whereYear('period_month', substr($filterPeriod, 0, 4))->whereMonth('period_month', substr($filterPeriod, 5, 2)))
+            ->when($filterStatus === 'paid',    fn ($q) => $q->where('is_paid', true))
+            ->when($filterStatus === 'unpaid',  fn ($q) => $q->where('is_paid', false))
+            ->when($filterCategory, fn ($q) => $q->where('category', $filterCategory))
             ->orderBy($sortBy, $sortDirection)
-            ->get();
+            ->paginate(25)->withQueryString();
 
-        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection'));
+        $categories = Expense::query()
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->whereNotNull('category')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category');
+
+        $filters = compact('filterPeriod', 'filterStatus', 'filterCategory');
+
+        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories'));
     }
 
     /**

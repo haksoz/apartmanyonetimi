@@ -113,7 +113,24 @@ class ApartmentController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $apartment = Apartment::query()
+            ->with(['units.accounts'])
+            ->when(! auth()->user()->isAdmin(), function ($query) {
+                $query->whereHas('members', function ($query) {
+                    $query->whereKey(auth()->id());
+                });
+            })
+            ->findOrFail($id);
+
+        $accounts = Account::query()
+            ->with('unit')
+            ->where('apartment_id', $apartment->id)
+            ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+            ->orderByRaw('unit_id IS NULL, unit_id')
+            ->orderBy('name')
+            ->get();
+
+        return view('apartments.edit', compact('apartment', 'accounts'));
     }
 
     /**
@@ -121,7 +138,34 @@ class ApartmentController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $apartment = Apartment::query()
+            ->when(! auth()->user()->isAdmin(), function ($query) {
+                $query->whereHas('members', function ($query) {
+                    $query->whereKey(auth()->id());
+                });
+            })
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'name'               => ['required', 'string', 'max:255'],
+            'address'            => ['nullable', 'string'],
+            'manager_account_id' => ['nullable', 'integer', 'exists:accounts,id'],
+        ]);
+
+        $managerUnitId = null;
+        if (! empty($validated['manager_account_id'])) {
+            $managerAccount = Account::where('apartment_id', $apartment->id)
+                ->findOrFail($validated['manager_account_id']);
+            $managerUnitId = $managerAccount->unit_id;
+        }
+
+        $apartment->update([
+            'name'             => $validated['name'],
+            'address'          => $validated['address'] ?? null,
+            'manager_unit_id'  => $managerUnitId,
+        ]);
+
+        return redirect()->route('apartments.show', $apartment)->with('status', 'Apartman bilgileri güncellendi.');
     }
 
     /**

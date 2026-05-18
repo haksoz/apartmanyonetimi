@@ -84,6 +84,6 @@ class Due extends Model
 
     protected function getReferencePrefix(): string
     {
-        return 'BO';
+        return 'BRC';
     }
 }

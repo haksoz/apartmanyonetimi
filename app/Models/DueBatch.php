@@ -24,6 +24,7 @@ class DueBatch extends Model
 
     protected $fillable = [
         'apartment_id',
+        'due_plan_id',
         'category_id',
         'source_type',
         'distribution_type',
@@ -60,6 +61,11 @@ class DueBatch extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(DuePlan::class, 'due_plan_id');
     }
 
     public function getSourceTypeLabelAttribute(): string

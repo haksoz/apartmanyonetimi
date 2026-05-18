@@ -113,6 +113,25 @@
                 <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</div>
                 <div class="mt-2 text-sm text-slate-900">{{ $due->description ?: '-' }}</div>
             </div>
+            <div class="md:col-span-3">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kaynak</div>
+                <div class="mt-2 text-sm text-slate-900">
+                    @if ($due->batch?->plan)
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            Aidat Planı: {{ $due->batch->plan->name }}
+                        </span>
+                    @elseif ($due->batch)
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                            Toplu Borçlandırma
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                            Manuel
+                        </span>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 

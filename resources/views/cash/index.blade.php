@@ -40,7 +40,7 @@
                         <div class="mt-2 text-xs text-slate-500">{{ $cashBox->bank_name }} {{ $cashBox->account_number }} {{ $cashBox->iban }}</div>
                     @endif
                     <div class="mt-4 flex flex-wrap gap-2">
-                        <a href="{{ route('cash-boxes.show', $cashBox) }}" class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">Detay</a>
+                        <a href="{{ route('cash-boxes.show', $cashBox) }}" class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">Hesap Hareketleri</a>
                         <a href="{{ route('cash-boxes.edit', $cashBox) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
                         @if ($cashBox->transactions->isNotEmpty())
                             <button type="button" onclick="alert('Bu kasada işlem kaydı olduğu için silinemez.')" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>

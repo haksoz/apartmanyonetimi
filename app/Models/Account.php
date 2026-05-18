@@ -23,6 +23,7 @@ class Account extends Model
 
     protected $fillable = [
         'apartment_id',
+        'user_id',
         'unit_id',
         'type',
         'name',
@@ -41,6 +42,11 @@ class Account extends Model
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function defaultCategory(): BelongsTo

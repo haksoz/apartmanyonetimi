@@ -39,9 +39,20 @@ class DueController extends Controller
             $sortDirection = 'desc';
         }
 
+        $filterPeriod = $request->query('period');
+        $filterStatus = $request->query('status');
+        $filterSource = $request->query('source');
+        $filterBatchId = $request->query('batch_id');
+
         $dues = Due::query()
-            ->with(['account', 'unit', 'category', 'batch'])
-            ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id));
+            ->with(['account', 'unit', 'category', 'batch.plan'])
+            ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
+            ->when($filterPeriod,  fn ($q) => $q->where('period', $filterPeriod))
+            ->when($filterStatus,  fn ($q) => $q->where('status', $filterStatus))
+            ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))
+            ->when($filterSource === 'plan',   fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('due_plan_id')))
+            ->when($filterSource === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNull('due_plan_id')))
+            ->when($filterSource === 'manual', fn ($q) => $q->whereNull('due_batch_id'));
 
         if ($sortBy === 'unit_id') {
             $dues->orderByRaw('unit_id IS NULL, unit_id ' . $sortDirection);
@@ -49,9 +60,21 @@ class DueController extends Controller
             $dues->orderBy($sortBy, $sortDirection);
         }
 
-        $dues = $dues->get();
+        $dues = $dues->paginate(25)->withQueryString();
 
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection'));
+        $activePlans = $apartment
+            ? \App\Models\DuePlan::query()
+                ->with('category:id,name')
+                ->where('apartment_id', $apartment->id)
+                ->where('is_active', true)
+                ->orderBy('year')
+                ->orderBy('name')
+                ->get(['id', 'name', 'year', 'category_id'])
+            : collect();
+
+        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId');
+
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)
@@ -285,7 +308,7 @@ class DueController extends Controller
             return $response;
         }
 
-        $due->load(['allocations.payment', 'transactions']);
+        $due->load(['allocations.payment', 'transactions', 'batch.plan']);
 
         return view('dues.show', compact('due'));
     }
@@ -340,6 +363,38 @@ class DueController extends Controller
         $due->delete();
 
         return redirect()->route('dues.index')->with('status', 'Aidat kaydı silindi.');
+    }
+
+    public function bulkDestroy(CurrentApartment $currentApartment, Request $request)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
+
+        $ids = array_filter(explode(',', $request->input('ids', '')));
+
+        if (empty($ids)) {
+            return redirect()->route('dues.index')->with('error', 'Silinecek kayıt seçilmedi.');
+        }
+
+        $dues = Due::query()
+            ->whereIn('id', $ids)
+            ->where('apartment_id', $apartment->id)
+            ->whereNotIn('status', ['paid', 'partial'])
+            ->get();
+
+        $skipped = count($ids) - $dues->count();
+
+        foreach ($dues as $due) {
+            $due->transactions()->delete();
+            $due->delete();
+        }
+
+        $msg = "{$dues->count()} aidat kaydı silindi.";
+        if ($skipped > 0) {
+            $msg .= " {$skipped} ödenmiş/kısmen ödenmiş kayıt atlandı.";
+        }
+
+        return redirect()->back()->with('status', $msg);
     }
 
     public function createPayment(CurrentApartment $currentApartment, Due $due)

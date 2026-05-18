@@ -16,7 +16,28 @@ class Apartment extends Model
         'unit_count',
         'manager_unit_id',
         'is_active',
+        'code',
     ];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function ($apartment) {
+            if (empty($apartment->code)) {
+                $apartment->code = static::generateCode();
+            }
+        });
+    }
+
+    public static function generateCode(): string
+    {
+        do {
+            $code = strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 4));
+        } while (static::where('code', $code)->exists());
+
+        return $code;
+    }
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -30,6 +51,11 @@ class Apartment extends Model
     public function units(): HasMany
     {
         return $this->hasMany(Unit::class);
+    }
+
+    public function managerUnit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class, 'manager_unit_id');
     }
 
     public function accounts(): HasMany

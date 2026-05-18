@@ -12,6 +12,26 @@
         </div>
     </div>
 
+    {{-- Filtre Barı --}}
+    <form method="GET" action="{{ route('expenses.index') }}" class="mb-5 flex flex-wrap gap-3 items-end">
+        <input type="month" name="period" value="{{ $filters['filterPeriod'] }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+        <select name="status" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="">— Tüm Durumlar —</option>
+            <option value="paid"   @selected($filters['filterStatus'] === 'paid')>Ödendi</option>
+            <option value="unpaid" @selected($filters['filterStatus'] === 'unpaid')>Bekliyor</option>
+        </select>
+        <select name="category" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <option value="">— Tüm Kategoriler —</option>
+            @foreach ($categories as $cat)
+                <option value="{{ $cat }}" @selected($filters['filterCategory'] === $cat)>{{ $cat }}</option>
+            @endforeach
+        </select>
+        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
+        @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterCategory'])
+            <a href="{{ route('expenses.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Temizle</a>
+        @endif
+    </form>
+
     {{-- Desktop Table View --}}
     <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -160,4 +180,11 @@
             </div>
         @endforelse
     </div>
+
+    {{-- Sayfalama --}}
+    @if ($expenses->hasPages())
+        <div class="mt-6">
+            {{ $expenses->links() }}
+        </div>
+    @endif
 @endsection

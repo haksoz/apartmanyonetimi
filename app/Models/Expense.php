@@ -57,6 +57,6 @@ class Expense extends Model
 
     protected function getReferencePrefix(): string
     {
-        return 'GD';
+        return 'GDR';
     }
 }

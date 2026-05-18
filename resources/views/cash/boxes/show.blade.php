@@ -114,4 +114,11 @@
             </div>
         @endif
     </div>
+
+    {{-- Sayfalama --}}
+    @if ($transactions->hasPages())
+        <div class="mt-6">
+            {{ $transactions->links() }}
+        </div>
+    @endif
 @endsection

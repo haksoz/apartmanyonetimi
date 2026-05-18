@@ -7,11 +7,20 @@
     <div class="space-y-5">
         <div>
             <label for="type" class="mb-2 block text-sm font-semibold text-slate-700">Hesap Türü</label>
-            <select id="type" name="type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                <option value="owner" @selected(old('type', $account?->type) === 'owner')>Kat Maliki</option>
-                <option value="tenant" @selected(old('type', $account?->type) === 'tenant')>Kiracı</option>
-                <option value="supplier" @selected(old('type', $account?->type) === 'supplier')>Tedarikçi</option>
-            </select>
+            @if ($account)
+                {{-- Edit modunda type değiştirilemez --}}
+                <input type="hidden" name="type" value="{{ $account->type }}">
+                <div class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    {{ $account->type_label }}
+                    <span class="text-xs text-slate-400 ml-2">(Değiştirilemez)</span>
+                </div>
+            @else
+                <select id="type" name="type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <option value="owner" @selected(old('type', $account?->type) === 'owner')>Kat Maliki</option>
+                    <option value="tenant" @selected(old('type', $account?->type) === 'tenant')>Kiracı</option>
+                    <option value="supplier" @selected(old('type', $account?->type) === 'supplier')>Tedarikçi</option>
+                </select>
+            @endif
             @error('type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
 

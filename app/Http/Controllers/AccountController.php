@@ -17,13 +17,16 @@ class AccountController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(CurrentApartment $currentApartment)
+    public function index(CurrentApartment $currentApartment, Request $request)
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
             return redirect()->route('current-apartment.select');
         }
+
+        $filterSearch = $request->query('search');
+        $filterType   = $request->query('type');
 
         $accounts = Account::query()
             ->with('unit')
@@ -33,13 +36,17 @@ class AccountController extends Controller
             ->withSum(['transactions as credit_total' => function ($query) {
                 $query->where('type', 'credit');
             }], 'amount')
-            ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->when($filterSearch, fn ($q) => $q->where('name', 'like', '%' . $filterSearch . '%'))
+            ->when($filterType,   fn ($q) => $q->where('type', $filterType))
             ->orderByRaw('unit_id IS NULL, unit_id')
             ->orderBy('type')
             ->orderBy('name')
-            ->get();
+            ->paginate(25)->withQueryString();
 
-        return view('accounts.index', compact('accounts', 'apartment'));
+        $filters = compact('filterSearch', 'filterType');
+
+        return view('accounts.index', compact('accounts', 'apartment', 'filters'));
     }
 
     /**
@@ -208,6 +215,7 @@ class AccountController extends Controller
         $account = Account::query()
             ->with([
                 'unit',
+                'user',
                 'transactions' => fn ($query) => $query->orderBy('transaction_date')->orderBy('id'),
                 'dues' => fn ($query) => $query->whereIn('status', ['unpaid', 'partial'])->orderBy('due_date'),
                 'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0),
@@ -301,8 +309,12 @@ class AccountController extends Controller
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->findOrFail($id);
 
+        // Type değiştirilemez - mevcut type'ı koru
+        if ($request->has('type') && $request->input('type') !== $account->type) {
+            return back()->withErrors(['type' => 'Hesap türü değiştirilemez.'])->withInput();
+        }
+
         $validated = $request->validate([
-            'type' => ['required', Rule::in([Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_SUPPLIER])],
             'unit_id' => [
                 'required_if:type,'.Account::TYPE_OWNER.','.Account::TYPE_TENANT,
                 'nullable',
@@ -319,6 +331,9 @@ class AccountController extends Controller
             'account_opening_date' => ['required_if:type,'.Account::TYPE_SUPPLIER, 'nullable', 'date'],
             'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
         ]);
+
+        // Mevcut type'ı validated'a ekle
+        $validated['type'] = $account->type;
 
         if ($validated['type'] === Account::TYPE_TENANT && empty($validated['unit_id'])) {
             return back()->withErrors(['unit_id' => 'Kiracı hesabı için daire bağlantısı zorunludur.'])->withInput();

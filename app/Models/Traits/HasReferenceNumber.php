@@ -19,13 +19,11 @@ trait HasReferenceNumber
     public function generateReferenceNumber(): string
     {
         $apartmentCode = $this->getApartmentCode();
-        $prefix = $this->getReferencePrefix();
-        $now = Carbon::now();
-        $yearMonth = $now->format('Y-m');
+        $prefix        = $this->getReferencePrefix();
+        $year          = Carbon::now()->format('y'); // 2-digit year: 25
 
-        $pattern = $apartmentCode . '-' . $prefix . '-' . $yearMonth . '%';
+        $pattern = $prefix . '-' . $apartmentCode . '-' . $year . '-%';
 
-        // Get the last number for this apartment, prefix and year-month
         $lastRef = static::query()
             ->where('apartment_id', $this->apartment_id)
             ->where('reference_number', 'like', $pattern)
@@ -33,38 +31,20 @@ trait HasReferenceNumber
             ->value('reference_number');
 
         if ($lastRef) {
-            $lastNum = (int) substr($lastRef, -6);
+            $lastNum = (int) substr($lastRef, strrpos($lastRef, '-') + 1);
             $nextNum = $lastNum + 1;
         } else {
             $nextNum = 1;
         }
 
-        return sprintf('%s-%s-%s%06d', $apartmentCode, $prefix, $yearMonth, $nextNum);
+        return sprintf('%s-%s-%s-%05d', $prefix, $apartmentCode, $year, $nextNum);
     }
 
     protected function getApartmentCode(): string
     {
         $apartment = $this->apartment;
 
-        if (! $apartment) {
-            return 'XX';
-        }
-
-        // Get first letter of each word in apartment name
-        $words = explode(' ', $apartment->name);
-        $code = '';
-
-        foreach ($words as $word) {
-            if (! empty($word)) {
-                $code .= strtoupper(substr($word, 0, 1));
-                if (strlen($code) >= 2) {
-                    break;
-                }
-            }
-        }
-
-        // Pad with X if less than 2 characters
-        return str_pad($code, 2, 'X');
+        return $apartment?->code ?? 'XXXX';
     }
 
     abstract protected function getReferencePrefix(): string;

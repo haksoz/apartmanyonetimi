@@ -18,6 +18,10 @@ class DashboardController extends Controller
             return redirect()->route('current-apartment.select');
         }
 
+        if (! $apartment) {
+            return redirect()->route('onboarding.show');
+        }
+
         $apartmentIds = $apartment ? collect([$apartment->id]) : collect();
 
         $stats = [

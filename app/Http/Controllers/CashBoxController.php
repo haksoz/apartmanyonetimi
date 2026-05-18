@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 
 class CashBoxController extends Controller
 {
-    public function show(string $id, CurrentApartment $currentApartment)
+    public function show(string $id, CurrentApartment $currentApartment, Request $request)
     {
         $cashBox = $this->findCashBox($id, $currentApartment);
 
@@ -20,32 +20,34 @@ class CashBoxController extends Controller
             return $cashBox;
         }
 
-        $transactions = CashTransaction::query()
-            ->with(['account', 'category'])
+        $allTransactions = CashTransaction::query()
             ->where('cash_box_id', $cashBox->id)
             ->orderBy('transaction_date')
             ->orderBy('id')
             ->get();
 
-        $income  = $transactions->where('type', 'income')->sum('amount');
-        $expense = $transactions->where('type', 'expense')->sum('amount');
+        $income  = $allTransactions->where('type', 'income')->sum('amount');
+        $expense = $allTransactions->where('type', 'expense')->sum('amount');
         $balance = $income - $expense;
 
+        // Running balance tüm kayıtlar üzerinden hesaplanır
         $running = 0;
-        foreach ($transactions as $t) {
+        $runningMap = [];
+        foreach ($allTransactions as $t) {
             $running += $t->type === 'income' ? $t->amount : -$t->amount;
-            $t->running_balance = $running;
+            $runningMap[$t->id] = $running;
         }
 
-        // Her kasa hareketini AccountTransaction üzerinden ilgili kaydla eşleştir
+        // AccountTransaction eşleştirmesi
         $accountTxs = AccountTransaction::query()
             ->where('apartment_id', $cashBox->apartment_id)
-            ->whereIn('account_id', $transactions->pluck('account_id')->filter()->unique()->values())
+            ->whereIn('account_id', $allTransactions->pluck('account_id')->filter()->unique()->values())
             ->get()
             ->groupBy('account_id');
 
-        foreach ($transactions as $t) {
-            $t->detail_url = null;
+        $detailUrlMap = [];
+        foreach ($allTransactions as $t) {
+            $detailUrlMap[$t->id] = null;
             if (! $t->account_id) continue;
 
             $match = ($accountTxs[$t->account_id] ?? collect())
@@ -57,13 +59,25 @@ class CashBoxController extends Controller
             if (! $match) continue;
 
             if ($match->transactionable_type === Payment::class) {
-                $t->detail_url = route('payments.show', $match->transactionable_id);
+                $detailUrlMap[$t->id] = route('payments.show', $match->transactionable_id);
             } elseif ($match->transactionable_type === Expense::class) {
-                $t->detail_url = route('expenses.show', $match->transactionable_id);
+                $detailUrlMap[$t->id] = route('expenses.show', $match->transactionable_id);
             }
         }
 
-        $transactions = $transactions->reverse()->values();
+        // Sayfalama için ters sırada paginate
+        $transactions = CashTransaction::query()
+            ->with(['account', 'category'])
+            ->where('cash_box_id', $cashBox->id)
+            ->orderByDesc('transaction_date')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        foreach ($transactions as $t) {
+            $t->running_balance = $runningMap[$t->id] ?? 0;
+            $t->detail_url      = $detailUrlMap[$t->id] ?? null;
+        }
 
         return view('cash.boxes.show', compact('cashBox', 'transactions', 'income', 'expense', 'balance'));
     }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AccountUserController;
 use App\Http\Controllers\ApartmentController;
 use App\Http\Controllers\ApartmentSelectionController;
 use App\Http\Controllers\ApartmentSwitchController;
@@ -10,10 +11,12 @@ use App\Http\Controllers\CashController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DueController;
+use App\Http\Controllers\DuePlanController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\PaymentAllocationController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,12 +29,26 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Onboarding routes - no apartment required
+    Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
+    Route::post('onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
+});
+
+Route::middleware(['auth', 'apartment'])->group(function () {
     Route::get('current-apartment/select', ApartmentSelectionController::class)->name('current-apartment.select');
     Route::post('current-apartment', ApartmentSwitchController::class)->name('current-apartment.update');
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::resource('apartments', ApartmentController::class);
     Route::resource('units', UnitController::class);
     Route::resource('accounts', AccountController::class);
+    Route::get('users', [AccountUserController::class, 'index'])->name('users.index');
+    Route::post('users/invite', [AccountUserController::class, 'invite'])->name('users.invite');
+    Route::patch('users/{user}/password', [AccountUserController::class, 'updatePassword'])->name('users.password');
+    Route::post('accounts/{account}/user', [AccountUserController::class, 'store'])->name('accounts.user.store');
+    Route::patch('accounts/{account}/user/role', [AccountUserController::class, 'updateRole'])->name('accounts.user.role');
+    Route::patch('users/{user}/role', [AccountUserController::class, 'updateUserRole'])->name('users.role');
+    Route::delete('accounts/{account}/user', [AccountUserController::class, 'destroy'])->name('accounts.user.destroy');
     Route::resource('categories', CategoryController::class)->except(['show']);
     Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
     Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
@@ -43,8 +60,11 @@ Route::middleware('auth')->group(function () {
     Route::post('payments/{payment}/allocations', [PaymentAllocationController::class, 'store'])->name('payments.allocations.store');
     Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
     Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+    Route::post('due-plans/{duePlan}/generate-month', [DuePlanController::class, 'generateMonth'])->name('due-plans.generate-month');
+    Route::resource('due-plans', DuePlanController::class);
     Route::get('dues/batch/create', [DueController::class, 'createBatch'])->name('dues.batch.create');
     Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->name('dues.expenses.by-period');
+    Route::delete('dues/bulk-destroy', [DueController::class, 'bulkDestroy'])->name('dues.bulk-destroy');
     Route::resource('dues', DueController::class);
     Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
     Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');
