@@ -47,26 +47,129 @@ class AccountUserController extends Controller
             })
             ->sortByDesc(fn ($u) => $u->pivot->role === 'owner');
 
-        // Hesapları ayrı çek (hızlı lookup için)
+        // Hesapları ayrı çek - bir kullanıcının birden fazla hesabı olabilir
         $linkedAccounts = Account::query()
             ->with('unit')
             ->where('apartment_id', $apartment->id)
             ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
             ->whereNotNull('user_id')
             ->get()
-            ->keyBy('user_id');
+            ->groupBy('user_id');
 
-        // Kullanıcıya dönüştürülebilir hesaplar (user_id = null, bilgileri dolu)
-        $availableAccounts = Account::query()
-            ->with('unit')
-            ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+        // Sadece user'a bağlı olmayan boşta hesapları getir (sadece aktif ve tedarikçi olmayan)
+        $availableAccounts = Account::where('apartment_id', $apartment->id)
             ->whereNull('user_id')
-            ->whereNotNull('name')
-            ->orderBy('unit_id')
+            ->where('is_active', true)
+            ->where('type', '!=', Account::TYPE_SUPPLIER)
+            ->with('unit')
             ->get();
 
         return view('users.index', compact('apartment', 'users', 'linkedAccounts', 'availableAccounts'));
+    }
+
+    /**
+     * Yeni kullanıcı oluşturma formu.
+     */
+    public function create(CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        // Boşta hesapları getir (sadece aktif ve tedarikçi olmayan)
+        $availableAccounts = Account::where('apartment_id', $apartment->id)
+            ->whereNull('user_id')
+            ->where('is_active', true)
+            ->where('type', '!=', Account::TYPE_SUPPLIER)
+            ->with('unit')
+            ->get();
+
+        // Tüm hesap isimleri (Ad Soyad için öneri)
+        $accountNames = Account::where('apartment_id', $apartment->id)
+            ->whereNotNull('name')
+            ->pluck('name')
+            ->unique()
+            ->values();
+
+        return view('users.create', compact('apartment', 'availableAccounts', 'accountNames'));
+    }
+
+    /**
+     * Kullanıcı detay sayfası.
+     */
+    public function show(CurrentApartment $currentApartment, User $user)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        $linkedAccounts = Account::where('apartment_id', $apartment->id)
+            ->where('user_id', $user->id)
+            ->with('unit')
+            ->get();
+
+        $availableAccounts = Account::where('apartment_id', $apartment->id)
+            ->whereNull('user_id')
+            ->where('is_active', true)
+            ->where('type', '!=', Account::TYPE_SUPPLIER)
+            ->with('unit')
+            ->get();
+
+        return view('users.show', compact('apartment', 'user', 'linkedAccounts', 'availableAccounts'));
+    }
+
+    /**
+     * Kullanıcı düzenleme formu.
+     */
+    public function edit(CurrentApartment $currentApartment, User $user)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        // Kullanıcının bağlı olduğu hesaplar
+        $linkedAccounts = Account::where('apartment_id', $apartment->id)
+            ->where('user_id', $user->id)
+            ->with('unit')
+            ->get();
+
+        // Bağlanabilecek boşta hesaplar (sadece aktif ve tedarikçi olmayan)
+        $availableAccounts = Account::where('apartment_id', $apartment->id)
+            ->whereNull('user_id')
+            ->where('is_active', true)
+            ->where('type', '!=', Account::TYPE_SUPPLIER)
+            ->with('unit')
+            ->get();
+
+        return view('users.edit', compact('apartment', 'user', 'linkedAccounts', 'availableAccounts'));
+    }
+
+    /**
+     * Kullanıcı bilgilerini güncelle.
+     */
+    public function update(Request $request, CurrentApartment $currentApartment, User $user)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        $validated = $request->validate([
+            'name'             => ['required', 'string', 'max:255'],
+            'email'            => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'phone'            => ['nullable', 'string', 'max:255'],
+            'sync_account_info'=> ['nullable', 'boolean'],
+        ]);
+
+        $user->update([
+            'name'  => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+        ]);
+
+        // Bağlı hesapları sadece kullanıcı onaylarsa güncelle
+        if (! empty($validated['sync_account_info'])) {
+            Account::where('apartment_id', $apartment->id)
+                ->where('user_id', $user->id)
+                ->update([
+                    'name'  => $user->name,
+                    'phone' => $user->phone,
+                    'email' => $user->email,
+                ]);
+        }
+
+        return redirect()->route('users.show', $user)->with('status', $user->name.' kullanıcısı güncellendi.');
     }
 
     /**
@@ -81,6 +184,7 @@ class AccountUserController extends Controller
         $validated = $request->validate([
             'name'  => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255'],
         ]);
 
         DB::transaction(function () use ($validated, $account, $apartment) {
@@ -88,12 +192,16 @@ class AccountUserController extends Controller
                 ['email' => $validated['email']],
                 [
                     'name'     => $validated['name'],
+                    'phone'    => $validated['phone'] ?? null,
                     'password' => bcrypt(Str::random(16)),
                     'role'     => 'user',
                 ]
             );
 
-            $account->update(['user_id' => $user->id]);
+            // Sadece user_id bağla, hesap bilgilerini ezme
+            $account->update([
+                'user_id' => $user->id,
+            ]);
 
             if (! $apartment->members()->whereKey($user->id)->exists()) {
                 $apartment->members()->attach($user->id, ['role' => 'resident']);
@@ -142,65 +250,6 @@ class AccountUserController extends Controller
     }
 
     /**
-     * Hesaplardan kullanıcı oluştur (bir veya çoklu).
-     */
-    public function invite(Request $request, CurrentApartment $currentApartment)
-    {
-        $apartment = $currentApartment->getFor(auth()->user());
-
-        abort_unless($apartment, 403);
-
-        $validated = $request->validate([
-            'accounts'   => ['required', 'array', 'min:1'],
-            'accounts.*' => ['required', 'exists:accounts,id'],
-        ]);
-
-        $created = 0;
-
-        DB::transaction(function () use ($validated, $apartment, &$created) {
-            $accounts = Account::whereIn('id', $validated['accounts'])
-                ->where('apartment_id', $apartment->id)
-                ->whereNull('user_id')
-                ->get();
-
-            foreach ($accounts as $account) {
-                // Email olmayanları atla
-                if (! $account->email) {
-                    continue;
-                }
-
-                // User oluştur veya bul
-                $user = User::firstOrCreate(
-                    ['email' => $account->email],
-                    [
-                        'name'     => $account->name,
-                        'phone'    => $account->phone,
-                        'password' => bcrypt(Str::random(16)),
-                        'role'     => 'user',
-                    ]
-                );
-
-                // Hesaba bağla
-                $account->update(['user_id' => $user->id]);
-
-                // Apartman'a ekle (resident olarak)
-                if (! $apartment->members()->whereKey($user->id)->exists()) {
-                    $apartment->members()->attach($user->id, ['role' => 'resident']);
-                }
-
-                // Tenant ise unit occupant'ını güncelle
-                if ($account->type === Account::TYPE_TENANT && $account->unit) {
-                    $account->unit->update(['occupant_account_id' => $account->id]);
-                }
-
-                $created++;
-            }
-        });
-
-        return back()->with('status', $created.' kullanıcı oluşturuldu. Giriş bilgilerini paylaşabilirsiniz.');
-    }
-
-    /**
      * Kullanıcı şifresini güncelle (yönetici tarafından).
      */
     public function updatePassword(Request $request, CurrentApartment $currentApartment, User $user)
@@ -218,6 +267,63 @@ class AccountUserController extends Controller
         $user->update(['password' => bcrypt($validated['password'])]);
 
         return back()->with('status', $user->name.' için şifre güncellendi. Kullanıcıya yeni şifreyi bildirin.');
+    }
+
+    /**
+     * Yeni kullanıcı oluştur ve seçilen hesaplara bağla.
+     */
+    public function storeUser(Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        $validated = $request->validate([
+            'name'            => ['required', 'string', 'max:255'],
+            'email'           => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone'           => ['nullable', 'string', 'max:255'],
+            'account_ids'     => ['nullable', 'array'],
+            'account_ids.*'   => ['integer', 'exists:accounts,id'],
+            'sync_account_info' => ['nullable', 'boolean'],
+        ]);
+
+        $user = User::create([
+            'name'     => $validated['name'],
+            'email'    => $validated['email'],
+            'phone'    => $validated['phone'] ?? null,
+            'password' => bcrypt(Str::random(16)),
+            'role'     => 'user',
+        ]);
+
+        // Apartmana ekle
+        $apartment->members()->attach($user->id, ['role' => 'resident']);
+
+        // Seçilen hesaplara bağla
+        if (! empty($validated['account_ids'])) {
+            $accounts = Account::where('apartment_id', $apartment->id)
+                ->whereNull('user_id')
+                ->whereIn('id', $validated['account_ids'])
+                ->get();
+
+            $syncInfo = ! empty($validated['sync_account_info']);
+
+            foreach ($accounts as $account) {
+                $updateData = ['user_id' => $user->id];
+
+                if ($syncInfo) {
+                    $updateData['name']  = $user->name;
+                    $updateData['phone'] = $user->phone;
+                    $updateData['email'] = $user->email;
+                }
+
+                $account->update($updateData);
+
+                // Tenant ise unit occupant'ını güncelle
+                if ($account->type === Account::TYPE_TENANT && $account->unit) {
+                    $account->unit->update(['occupant_account_id' => $account->id]);
+                }
+            }
+        }
+
+        return back()->with('status', $user->name.' kullanıcısı oluşturuldu ve hesaplara bağlandı.');
     }
 
     /**

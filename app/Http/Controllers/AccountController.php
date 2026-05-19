@@ -73,7 +73,12 @@ class AccountController extends Controller
             ->orderBy('unit_no')
             ->get();
 
-        return view('accounts.create', compact('apartment', 'units'));
+        $categories = Category::query()
+            ->where('apartment_id', $apartment->id)
+            ->orderBy('name')
+            ->get();
+
+        return view('accounts.create', compact('apartment', 'units', 'categories'));
     }
 
     /**
@@ -152,14 +157,14 @@ class AccountController extends Controller
             return back()->withErrors(['unit_id' => 'Kat maliki hesabı için daire bağlantısı zorunludur.'])->withInput();
         }
 
-        if ($validated['type'] === Account::TYPE_OWNER && Account::where('unit_id', $validated['unit_id'])->where('type', Account::TYPE_OWNER)->exists()) {
+        if ($validated['type'] === Account::TYPE_OWNER && Account::where('unit_id', $validated['unit_id'])->where('type', Account::TYPE_OWNER)->where('is_active', true)->exists()) {
             if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Bu daireye bağlı kat maliki hesabı zaten var. Mevcut kat maliki hesabını düzenleyin.'
+                    'message' => 'Bu dairede aktif kat maliki var. Önce mevcut kat malikini pasife alın.'
                 ], 422);
             }
-            return back()->withErrors(['unit_id' => 'Bu daireye bağlı kat maliki hesabı zaten var. Mevcut kat maliki hesabını düzenleyin.'])->withInput();
+            return back()->withErrors(['unit_id' => 'Bu dairede aktif kat maliki var. Önce mevcut kat malikini pasife alın.'])->withInput();
         }
 
         $account = DB::transaction(function () use ($apartment, $request, $validated) {
@@ -338,7 +343,6 @@ class AccountController extends Controller
             'balance' => ['nullable', 'numeric'],
             'is_active' => ['nullable', 'boolean'],
             'move_in_date' => ['required_if:type,'.Account::TYPE_TENANT, 'nullable', 'date'],
-            'move_out_date' => ['nullable', 'date', 'after_or_equal:move_in_date'],
             'account_opening_date' => ['required_if:type,'.Account::TYPE_SUPPLIER, 'nullable', 'date'],
             'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
         ]);
@@ -368,28 +372,33 @@ class AccountController extends Controller
         if ($validated['type'] === Account::TYPE_OWNER && ! empty($validated['unit_id'])) {
             $hasOtherOwner = Account::where('unit_id', $validated['unit_id'])
                 ->where('type', Account::TYPE_OWNER)
+                ->where('is_active', true)
                 ->whereKeyNot($account->id)
                 ->exists();
 
             if ($hasOtherOwner) {
-                return back()->withErrors(['unit_id' => 'Bu daireye bağlı kat maliki hesabı zaten var. Mevcut kat maliki hesabını düzenleyin.'])->withInput();
+                return back()->withErrors(['unit_id' => 'Bu dairede aktif kat maliki var. Önce mevcut kat malikini pasife alın veya düzenleyin.'])->withInput();
             }
         }
 
         DB::transaction(function () use ($account, $request, $validated) {
-            $account->update([
+            $updateData = [
                 'unit_id' => in_array($validated['type'], [Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_RESIDENT], true) ? ($validated['unit_id'] ?? null) : null,
                 'type' => $validated['type'],
-                'name' => $validated['name'],
-                'phone' => $validated['phone'] ?? null,
-                'email' => $validated['email'] ?? null,
                 'balance' => $validated['balance'] ?? 0,
                 'account_opening_date' => $validated['type'] === Account::TYPE_SUPPLIER ? $validated['account_opening_date'] : null,
                 'is_active' => $request->boolean('is_active'),
                 'default_category_id' => $validated['default_category_id'] ?? null,
-            ]);
+            ];
+
+            $updateData['name']  = $validated['name'];
+            $updateData['phone'] = $validated['phone'] ?? null;
+            $updateData['email'] = $validated['email'] ?? null;
+
+            $account->update($updateData);
 
             if ($account->type === Account::TYPE_TENANT && $account->unit_id) {
+                // Sadece aktif kiralamada giriş tarihi güncellenebilir (çıkış sonlandır butonu ile yapılır)
                 $assignment = TenantAssignment::firstOrNew([
                     'account_id' => $account->id,
                     'move_out_date' => null,
@@ -399,11 +408,10 @@ class AccountController extends Controller
                     'apartment_id' => $account->apartment_id,
                     'unit_id' => $account->unit_id,
                     'move_in_date' => $validated['move_in_date'],
-                    'move_out_date' => $validated['move_out_date'] ?? null,
                 ])->save();
 
                 Unit::whereKey($account->unit_id)->update([
-                    'occupant_account_id' => empty($validated['move_out_date'])
+                    'occupant_account_id' => $account->id
                         ? $account->id
                         : Unit::find($account->unit_id)?->owner_account_id,
                 ]);
@@ -534,6 +542,17 @@ class AccountController extends Controller
         $account = Account::query()
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->findOrFail($id);
+
+        // Hesapta hareket var mı kontrol et
+        $hasTransactions = $account->dues()->exists() ||
+                          $account->transactions()->exists() ||
+                          $account->expenses()->exists() ||
+                          $account->payments()->exists() ||
+                          $account->tenantAssignments()->exists();
+
+        if ($hasTransactions) {
+            return redirect()->back()->with('error', 'Bu hesapta hareket bulunduğu için silinemez. Önce ilişkili kayıtları silin.');
+        }
 
         $account->delete();
 

@@ -7,6 +7,13 @@
             <p class="mt-1 text-sm text-slate-500">{{ $account->name }} hesabını güncelleyin.</p>
         </div>
         <div class="flex gap-2">
+            <form method="POST" action="{{ route('accounts.destroy', $account) }}" class="inline" onsubmit="return confirm('Bu hesabı silmek istediğinize emin misiniz? Hesapta hareket varsa silinemez.')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
+                    Hesabı Sil
+                </button>
+            </form>
             <a href="{{ route('accounts.show', $account) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detaya Dön</a>
             @if ($account->type === App\Models\Account::TYPE_OWNER)
                 <button type="button" onclick="openTerminateModal('owner', {{ $account->id }}, '{{ $account->name }}')" 

@@ -116,8 +116,11 @@
     </form>
 
     <script>
+        // Global scope for access from modal script
+        const accountCategoryMap = {!! $accountCategoryMap !!};
+
         (() => {
-            const accountCategoryMap = {!! $accountCategoryMap !!};
+            // Use global accountCategoryMap
 
             const accountSelect = document.getElementById('account_id');
             const categorySelect = document.getElementById('category_id');

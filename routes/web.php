@@ -45,7 +45,11 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::patch('accounts/{account}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
     Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
     Route::get('users', [AccountUserController::class, 'index'])->name('users.index');
-    Route::post('users/invite', [AccountUserController::class, 'invite'])->name('users.invite');
+    Route::get('users/create', [AccountUserController::class, 'create'])->name('users.create');
+    Route::post('users', [AccountUserController::class, 'storeUser'])->name('users.store');
+    Route::get('users/{user}', [AccountUserController::class, 'show'])->name('users.show');
+    Route::get('users/{user}/edit', [AccountUserController::class, 'edit'])->name('users.edit');
+    Route::patch('users/{user}', [AccountUserController::class, 'update'])->name('users.update');
     Route::patch('users/{user}/password', [AccountUserController::class, 'updatePassword'])->name('users.password');
     Route::post('accounts/{account}/user', [AccountUserController::class, 'store'])->name('accounts.user.store');
     Route::patch('accounts/{account}/user/role', [AccountUserController::class, 'updateRole'])->name('accounts.user.role');

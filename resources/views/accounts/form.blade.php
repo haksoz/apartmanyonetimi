@@ -9,7 +9,7 @@
             <label for="type" class="mb-2 block text-sm font-semibold text-slate-700">Hesap Türü</label>
             @if ($account)
                 {{-- Edit modunda type değiştirilemez --}}
-                <input type="hidden" name="type" value="{{ $account->type }}">
+                <input type="hidden" id="type" name="type" value="{{ $account->type }}">
                 <div class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                     {{ $account->type_label }}
                     <span class="text-xs text-slate-400 ml-2">(Değiştirilemez)</span>
@@ -55,18 +55,14 @@
         </div>
 
         <div class="grid gap-5 md:grid-cols-2">
+            {{-- Tenant: Hesap Açılış Tarihi (Kiracı Giriş) --}}
             <div data-tenant-move-in-field>
-                <label for="move_in_date" class="mb-2 block text-sm font-semibold text-slate-700">Kiracı Giriş Tarihi</label>
+                <label for="move_in_date" class="mb-2 block text-sm font-semibold text-slate-700">Hesap Açılış Tarihi</label>
                 <input id="move_in_date" name="move_in_date" type="date" value="{{ old('move_in_date', $activeTenantAssignment?->move_in_date?->format('Y-m-d')) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 @error('move_in_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
-            <div data-tenant-move-out-field>
-                <label for="move_out_date" class="mb-2 block text-sm font-semibold text-slate-700">Kiracı Çıkış Tarihi</label>
-                <input id="move_out_date" name="move_out_date" type="date" value="{{ old('move_out_date', $activeTenantAssignment?->move_out_date?->format('Y-m-d')) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                @error('move_out_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-            </div>
-
+            {{-- Owner/Supplier: Hesap Açılış Tarihi --}}
             <div data-account-opening-date-field>
                 <label for="account_opening_date" class="mb-2 block text-sm font-semibold text-slate-700">Hesap Açılış Tarihi</label>
                 <input id="account_opening_date" name="account_opening_date" type="date" value="{{ old('account_opening_date', $account?->account_opening_date?->format('Y-m-d')) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
@@ -77,7 +73,7 @@
         <div class="grid gap-5 md:grid-cols-2">
             <div>
                 <label for="phone" class="mb-2 block text-sm font-semibold text-slate-700">Telefon</label>
-                <input id="phone" name="phone" value="{{ old('phone', $account?->phone) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <input id="phone" name="phone" type="text" value="{{ old('phone', $account?->phone) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 @error('phone')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
@@ -110,7 +106,9 @@
             Aktif hesap
         </label>
 
-        <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">{{ $buttonText }}</button>
+        <div class="flex items-center gap-3">
+            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">{{ $buttonText }}</button>
+        </div>
     </div>
 </form>
 
@@ -126,14 +124,13 @@
         const unitInput = form.querySelector('#unit_id');
         const tenantMoveInField = form.querySelector('[data-tenant-move-in-field]');
         const tenantMoveInInput = form.querySelector('#move_in_date');
-        const tenantMoveOutField = form.querySelector('[data-tenant-move-out-field]');
-        const tenantMoveOutInput = form.querySelector('#move_out_date');
         const accountOpeningDateField = form.querySelector('[data-account-opening-date-field]');
         const accountOpeningDateInput = form.querySelector('#account_opening_date');
         const defaultCategoryField = form.querySelector('[data-default-category-field]');
         const defaultCategoryInput = form.querySelector('#default_category_id');
 
         const toggleField = (field, input, show, required = false, clearWhenHidden = false) => {
+            if (! field || ! input) return;
             field.classList.toggle('hidden', ! show);
             input.disabled = ! show;
             input.required = show && required;
@@ -144,19 +141,20 @@
         };
 
         const refresh = () => {
-            const selectedType = type.value;
+            const selectedType = type ? type.value : '';
 
             const requiresUnit = ['owner', 'tenant'].includes(selectedType);
             toggleField(unitField, unitInput, selectedType !== 'supplier', requiresUnit, selectedType === 'supplier');
             // Set empty value for supplier, first unit for others if not already selected
-            if (selectedType === 'supplier') {
+            if (selectedType === 'supplier' && unitInput) {
                 unitInput.value = '';
-            } else if (!unitInput.value && unitInput.options.length > 0) {
+            } else if (unitInput && !unitInput.value && unitInput.options.length > 0) {
                 unitInput.value = unitInput.options[0].value;
             }
+            // Kiracı giriş tarihi: sadece tenant için göster (çıkış sonlandır butonu ile yapılır)
             toggleField(tenantMoveInField, tenantMoveInInput, selectedType === 'tenant', selectedType === 'tenant', selectedType !== 'tenant');
-            toggleField(tenantMoveOutField, tenantMoveOutInput, selectedType === 'tenant', false, selectedType !== 'tenant');
-            toggleField(accountOpeningDateField, accountOpeningDateInput, selectedType === 'supplier', selectedType === 'supplier', selectedType !== 'supplier');
+            // Hesap açılış tarihi: Owner ve Supplier için göster
+            toggleField(accountOpeningDateField, accountOpeningDateInput, ['owner', 'supplier'].includes(selectedType), selectedType === 'supplier', ! ['owner', 'supplier'].includes(selectedType));
             if (defaultCategoryField && defaultCategoryInput) {
                 toggleField(defaultCategoryField, defaultCategoryInput, selectedType === 'supplier', false, selectedType !== 'supplier');
             }
