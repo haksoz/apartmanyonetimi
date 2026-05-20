@@ -12,26 +12,55 @@
         </div>
     </div>
 
-    {{-- Filtre Barı --}}
-    <form method="GET" action="{{ route('expenses.index') }}" class="mb-5 flex flex-wrap gap-3 items-end">
-        <input type="text" name="search" value="{{ $filters['filterSearch'] ?? '' }}" placeholder="Hesap adı veya tutar..." class="rounded-xl border border-slate-300 px-4 py-2 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-slate-300">
-        <input type="month" name="period" value="{{ $filters['filterPeriod'] }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-        <select name="status" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-            <option value="">— Tüm Durumlar —</option>
-            <option value="paid"   @selected($filters['filterStatus'] === 'paid')>Ödendi</option>
-            <option value="unpaid" @selected($filters['filterStatus'] === 'unpaid')>Bekliyor</option>
-        </select>
-        <select name="category" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-            <option value="">— Tüm Kategoriler —</option>
-            @foreach ($categories as $cat)
-                <option value="{{ $cat }}" @selected($filters['filterCategory'] === $cat)>{{ $cat }}</option>
-            @endforeach
-        </select>
-        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-        @if (($filters['filterSearch'] ?? '') || $filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterCategory'])
-            <a href="{{ route('expenses.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Temizle</a>
-        @endif
-    </form>
+    {{-- Arama + Filtre --}}
+    <div class="mb-5 flex flex-col md:flex-row gap-2">
+
+        {{-- Arama --}}
+        <form method="GET" action="{{ route('expenses.index') }}" class="flex gap-2 flex-1">
+            @if ($filters['filterPeriod'])
+                <input type="hidden" name="period" value="{{ $filters['filterPeriod'] }}">
+            @endif
+            @if ($filters['filterStatus'])
+                <input type="hidden" name="status" value="{{ $filters['filterStatus'] }}">
+            @endif
+            @if ($filters['filterCategory'])
+                <input type="hidden" name="category" value="{{ $filters['filterCategory'] }}">
+            @endif
+            <input type="text" name="search" value="{{ $filters['filterSearch'] ?? '' }}"
+                placeholder="Hesap adı veya tutar..."
+                class="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ara</button>
+            @if ($filters['filterSearch'] ?? '')
+                <a href="{{ route('expenses.index', array_filter(['period' => $filters['filterPeriod'], 'status' => $filters['filterStatus'], 'category' => $filters['filterCategory']])) }}"
+                   class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50">✕</a>
+            @endif
+        </form>
+
+        {{-- Filtreler --}}
+        <form method="GET" action="{{ route('expenses.index') }}" class="flex gap-2 items-center flex-wrap md:flex-nowrap">
+            @if ($filters['filterSearch'] ?? '')
+                <input type="hidden" name="search" value="{{ $filters['filterSearch'] }}">
+            @endif
+            <input type="month" name="period" value="{{ $filters['filterPeriod'] }}"
+                class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <select name="status" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="">— Tüm Durumlar —</option>
+                <option value="paid"   @selected($filters['filterStatus'] === 'paid')>Ödendi</option>
+                <option value="unpaid" @selected($filters['filterStatus'] === 'unpaid')>Bekliyor</option>
+            </select>
+            <select name="category" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="">— Tüm Kategoriler —</option>
+                @foreach ($categories as $cat)
+                    <option value="{{ $cat }}" @selected($filters['filterCategory'] === $cat)>{{ $cat }}</option>
+                @endforeach
+            </select>
+            <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
+            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterCategory'])
+                <a href="{{ route('expenses.index', array_filter(['search' => $filters['filterSearch']])) }}"
+                   class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">Temizle</a>
+            @endif
+        </form>
+    </div>
 
     {{-- Desktop Table View --}}
     <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">

@@ -131,51 +131,70 @@
         </script>
     @endif
 
-    {{-- Filtre Barı --}}
-    <form method="GET" action="{{ route('dues.index') }}" class="mb-4 flex flex-wrap gap-3 items-end">
-        <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Ara</label>
-            <input type="text" name="search" value="{{ $filters['filterSearch'] ?? '' }}" placeholder="Ad, daire no veya açıklama..."
-                   class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none w-52">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Dönem</label>
+    {{-- Arama + Filtre --}}
+    <div class="mb-4 flex flex-col md:flex-row gap-2">
+
+        {{-- Arama --}}
+        <form method="GET" action="{{ route('dues.index') }}" class="flex gap-2 flex-1">
+            @if ($filters['filterPeriod'])
+                <input type="hidden" name="period" value="{{ $filters['filterPeriod'] }}">
+            @endif
+            @if ($filters['filterStatus'])
+                <input type="hidden" name="status" value="{{ $filters['filterStatus'] }}">
+            @endif
+            @if ($filters['filterSource'])
+                <input type="hidden" name="source" value="{{ $filters['filterSource'] }}">
+            @endif
+            @if ($filters['filterBatchId'])
+                <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
+            @endif
+            <input type="text" name="search" value="{{ $filters['filterSearch'] ?? '' }}"
+                placeholder="Ad, daire no veya açıklama..."
+                class="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ara</button>
+            @if ($filters['filterSearch'] ?? '')
+                <a href="{{ route('dues.index', array_filter(['period' => $filters['filterPeriod'], 'status' => $filters['filterStatus'], 'source' => $filters['filterSource'], 'batch_id' => $filters['filterBatchId']])) }}"
+                   class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50">✕</a>
+            @endif
+        </form>
+
+        {{-- Filtreler --}}
+        <form method="GET" action="{{ route('dues.index') }}" class="flex gap-2 items-center flex-wrap md:flex-nowrap">
+            @if ($filters['filterSearch'] ?? '')
+                <input type="hidden" name="search" value="{{ $filters['filterSearch'] }}">
+            @endif
+            @if ($filters['filterBatchId'])
+                <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
+            @endif
             <input type="month" name="period" value="{{ $filters['filterPeriod'] }}"
-                   class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Durum</label>
-            <select name="status" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none">
+                class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <select name="status" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
                 <option value="">Tüm Durumlar</option>
                 <option value="unpaid"  {{ $filters['filterStatus'] === 'unpaid'  ? 'selected' : '' }}>Bekliyor</option>
                 <option value="partial" {{ $filters['filterStatus'] === 'partial' ? 'selected' : '' }}>Kısmen Ödendi</option>
                 <option value="paid"    {{ $filters['filterStatus'] === 'paid'    ? 'selected' : '' }}>Ödendi</option>
                 <option value="overdue" {{ $filters['filterStatus'] === 'overdue' ? 'selected' : '' }}>Gecikmiş</option>
             </select>
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Kaynak</label>
-            <select name="source" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none">
+            <select name="source" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
                 <option value="">Tüm Kaynaklar</option>
                 <option value="plan"   {{ $filters['filterSource'] === 'plan'   ? 'selected' : '' }}>Aidat Planı</option>
                 <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
                 <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
             </select>
-        </div>
-        <div class="flex gap-2">
             <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-            @if (($filters['filterSearch'] ?? '') || $filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'])
-                <a href="{{ route('dues.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Temizle</a>
+            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'])
+                <a href="{{ route('dues.index', array_filter(['search' => $filters['filterSearch']])) }}"
+                   class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">Temizle</a>
             @endif
+        </form>
+    </div>
+
+    @if ($filters['filterBatchId'])
+        <div class="mb-3 flex items-center gap-1.5 rounded-full bg-violet-50 border border-violet-200 px-3 py-1.5 text-xs font-semibold text-violet-700 w-fit">
+            Toplu kayıt filtresi aktif
+            <a href="{{ route('dues.index') }}" class="ml-1 text-violet-500 hover:text-violet-800">&times;</a>
         </div>
-        @if ($filters['filterBatchId'])
-            <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
-            <div class="flex items-center gap-1.5 rounded-full bg-violet-50 border border-violet-200 px-3 py-1.5 text-xs font-semibold text-violet-700">
-                Toplu kayıt filtresi aktif
-                <a href="{{ route('dues.index') }}" class="ml-1 text-violet-500 hover:text-violet-800">&times;</a>
-            </div>
-        @endif
-    </form>
+    @endif
 
     {{-- Toplu Aksiyon Barı --}}
     <form id="form-bulk-destroy" method="POST" action="{{ route('dues.bulk-destroy') }}" onsubmit="return confirmBulkDelete()">
