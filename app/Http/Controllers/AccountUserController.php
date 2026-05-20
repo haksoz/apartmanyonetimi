@@ -22,8 +22,8 @@ class AccountUserController extends Controller
             return redirect()->route('current-apartment.select');
         }
 
-        // Pivot'tan gelen üyeler (dışarıdan yönetenler dahil)
-        $pivotUsers = $apartment->members()->get()->keyBy('id');
+        // Pivot'tan gelen üyeler (dışarıdan yönetenler dahil) — aktif ve pasif
+        $pivotUsers = $apartment->members()->withPivot('role', 'is_active')->get()->keyBy('id');
 
         // Accounts tablosundan user_id'si olanları da al (kat maliki/kiracı hesapları)
         $accountUserIds = Account::where('apartment_id', $apartment->id)
@@ -324,6 +324,27 @@ class AccountUserController extends Controller
         }
 
         return back()->with('status', $user->name.' kullanıcısı oluşturuldu ve hesaplara bağlandı.');
+    }
+
+    /**
+     * Kullanıcının apartman üyeliğini pasife al / aktife al.
+     */
+    public function toggleActive(Request $request, CurrentApartment $currentApartment, User $user)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        abort_unless($apartment, 403);
+        abort_unless($apartment->members()->whereKey($user->id)->exists(), 403);
+        abort_if($user->id === auth()->id(), 403, 'Kendi üyeliğinizi pasife alamazsınız.');
+
+        $pivot = $apartment->members()->withPivot('is_active')->whereKey($user->id)->first()->pivot;
+        $newState = ! (bool) $pivot->is_active;
+
+        $apartment->members()->updateExistingPivot($user->id, ['is_active' => $newState]);
+
+        $message = $newState ? 'Kullanıcı aktive edildi.' : 'Kullanıcı pasife alındı.';
+
+        return back()->with('status', $message);
     }
 
     /**

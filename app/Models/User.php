@@ -35,7 +35,7 @@ class User extends Authenticatable
     public function apartments(): BelongsToMany
     {
         return $this->belongsToMany(Apartment::class)
-            ->withPivot('role')
+            ->withPivot('role', 'is_active')
             ->withTimestamps();
     }
 

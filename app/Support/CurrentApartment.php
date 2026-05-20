@@ -52,12 +52,25 @@ class CurrentApartment
         return $apartment;
     }
 
+    public function isSuspendedFor(User $user): bool
+    {
+        if ($user->isAdmin()) {
+            return false;
+        }
+
+        return Apartment::query()
+            ->whereHas('members', function ($query) use ($user) {
+                $query->whereKey($user->id)->where('apartment_user.is_active', false);
+            })
+            ->exists();
+    }
+
     public function queryFor(User $user): Builder
     {
         return Apartment::query()
             ->when(! $user->isAdmin(), function ($query) use ($user) {
                 $query->whereHas('members', function ($query) use ($user) {
-                    $query->whereKey($user->id);
+                    $query->whereKey($user->id)->where('apartment_user.is_active', true);
                 });
             });
     }

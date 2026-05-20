@@ -17,6 +17,10 @@ class OnboardingController extends Controller
             return redirect()->route('dashboard');
         }
 
+        if ($currentApartment->isSuspendedFor(auth()->user())) {
+            return view('suspended');
+        }
+
         return view('onboarding.setup');
     }
 

@@ -54,6 +54,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::post('accounts/{account}/user', [AccountUserController::class, 'store'])->name('accounts.user.store');
     Route::patch('accounts/{account}/user/role', [AccountUserController::class, 'updateRole'])->name('accounts.user.role');
     Route::patch('users/{user}/role', [AccountUserController::class, 'updateUserRole'])->name('users.role');
+    Route::patch('users/{user}/toggle-active', [AccountUserController::class, 'toggleActive'])->name('users.toggle-active');
     Route::delete('accounts/{account}/user', [AccountUserController::class, 'destroy'])->name('accounts.user.destroy');
     Route::resource('categories', CategoryController::class)->except(['show']);
     Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
