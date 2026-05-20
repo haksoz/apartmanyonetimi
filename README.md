@@ -1,58 +1,225 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# AidatCep - Apartman Yönetim Sistemi
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+AidatCep, apartman ve site yönetimlerinin finansal işlemlerini (aidat takibi, gider yönetimi, tahsilatlar) kolayca yönetebileceği web tabanlı bir uygulamadır.
 
-## About Laravel
+## Özellikler
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Aidat Yönetimi**: Daire bazlı aidat tahakkuku ve takibi
+- **Otomatik Aidat Planlama**: Aylık/yıllık tekrarlayan aidat oluşturma
+- **Tahsilat Yönetimi**: Gelen ödemelerin kaydı ve aidatlara tahsisi
+- **Gider Takibi**: Apartman giderlerinin kategorilere göre kaydı
+- **Kasa Yönetimi**: Nakit hareketleri ve kasa durumu
+- **Çoklu Apartman**: Tek hesapla birden fazla apartman yönetimi
+- **Kullanıcı Portalı**: Sakinlerin borç durumunu görüntülemesi
+- **Raporlar**: Hesap ekstresi ve finansal raporlar
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Gereksinimler
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.2+
+- MySQL 8.0+ veya MariaDB 10.6+
+- Composer 2.x
+- Node.js 18+ ve NPM
+- Git
 
-## Learning Laravel
+## Kurulum (Local Development)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Projeyi Klonla
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/kullaniciadi/KapitalOnlineApartmanYonetim.git aidatcep
+cd aidatcep
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Composer Paketlerini Yükle
 
-## Contributing
+```bash
+composer install
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 3. Environment Ayarları
 
-## Code of Conduct
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+`.env` dosyasını düzenle:
+```
+APP_NAME="AidatCep"
+APP_URL=http://localhost
 
-## Security Vulnerabilities
+# MySQL Ayarları (kendi bilgilerinizi girin)
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=aidatcep_db
+DB_USERNAME=root
+DB_PASSWORD=your_password
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 4. Veritabanı Oluştur
 
-## License
+MySQL'de veritabanı oluştur:
+```sql
+CREATE DATABASE aidatcep_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 5. Migration ve Seed Çalıştır
+
+```bash
+php artisan migrate
+```
+
+### 6. Asset Build
+
+```bash
+npm install
+npm run build
+```
+
+### 7. Geliştirme Sunucusunu Başlat
+
+```bash
+php artisan serve
+```
+
+Tarayıcıda `http://localhost:8000` adresine git.
+
+## Production Deploy (Ubuntu Sunucu)
+
+### 1. Sunucu Gereksinimleri
+
+```bash
+# PHP ve eklentiler
+sudo apt update
+sudo apt install php8.2 php8.2-mysql php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip unzip
+
+# MySQL
+sudo apt install mysql-server
+
+# Composer
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+
+# Node.js
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+### 2. Proje Dizini ve İzinler
+
+```bash
+sudo mkdir -p /var/www/aidatcep
+sudo chown -R $USER:$USER /var/www/aidatcep
+cd /var/www/aidatcep
+git clone https://github.com/kullaniciadi/KapitalOnlineApartmanYonetim.git .
+```
+
+### 3. Production Kurulum
+
+```bash
+# Composer (production optimize)
+composer install --no-dev --optimize-autoloader
+
+# Environment
+cp .env.example .env
+nano .env  # APP_URL, DB bilgileri, MAIL ayarlarını gir
+php artisan key:generate
+
+# Optimize
+cp .env .env.backup  # Yedek al
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Migration
+php artisan migrate --force
+
+# İzinler
+chmod -R 775 storage bootstrap/cache
+sudo chown -R www-data:www-data storage bootstrap/cache
+
+# Build
+npm ci
+npm run build
+```
+
+### 4. Nginx Yapılandırması
+
+`/etc/nginx/sites-available/aidatcep`:
+
+```nginx
+server {
+    listen 80;
+    server_name aidatcep.com www.aidatcep.com;
+    root /var/www/aidatcep/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
+
+Aktif et:
+```bash
+sudo ln -s /etc/nginx/sites-available/aidatcep /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+### 5. SSL (Let's Encrypt)
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d aidatcep.com -d www.aidatcep.com
+```
+
+## Güncelleme (Sunucu)
+
+```bash
+cd /var/www/aidatcep
+git pull origin main
+
+composer install --no-dev --optimize-autoloader --no-interaction
+npm ci
+npm run build
+
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+chmod -R 775 storage bootstrap/cache
+sudo chown -R www-data:www-data storage bootstrap/cache
+```
+
+## Yararlı Komutlar
+
+```bash
+# Cache temizle
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+
+# Logları gör
+php artisan tail  # veya tail -f storage/logs/laravel.log
+
+# Maintenance mode
+php artisan down  # Bakım modu aç
+php artisan up    # Bakım modu kapat
+```
+
+## Lisans
+
+Bu proje özel mülkiyet altındadır. Tüm hakları saklıdır.
