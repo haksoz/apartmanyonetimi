@@ -12,25 +12,50 @@
         </div>
     </div>
 
-    {{-- Filtre Barı --}}
-    <form method="GET" action="{{ route('accounts.index') }}" class="mb-5 flex flex-wrap gap-3 items-end">
-        <input type="text" name="search" value="{{ $filters['filterSearch'] }}" placeholder="Ad veya daire no..." class="rounded-xl border border-slate-300 px-4 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-300">
-        <select name="type" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-            <option value="">— Tüm Tipler —</option>
-            <option value="owner"    @selected($filters['filterType'] === 'owner')>Kat Maliki</option>
-            <option value="tenant"   @selected($filters['filterType'] === 'tenant')>Kiracı</option>
-            <option value="supplier" @selected($filters['filterType'] === 'supplier')>Tedarikçi</option>
-        </select>
-        <select name="status" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-            <option value="active" @selected(($filters['filterStatus'] ?? 'active') === 'active')>Aktif Hesaplar</option>
-            <option value="inactive" @selected(($filters['filterStatus'] ?? '') === 'inactive')>Pasif Hesaplar</option>
-            <option value="all" @selected(($filters['filterStatus'] ?? '') === 'all')>Tüm Hesaplar</option>
-        </select>
-        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-        @if ($filters['filterSearch'] || $filters['filterType'] || ($filters['filterStatus'] ?? 'active') !== 'active')
-            <a href="{{ route('accounts.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Temizle</a>
-        @endif
-    </form>
+    {{-- Arama + Filtre --}}
+    <div class="mb-5 flex flex-col md:flex-row gap-2">
+
+        {{-- Arama --}}
+        <form method="GET" action="{{ route('accounts.index') }}" class="flex gap-2 flex-1">
+            @if ($filters['filterType'])
+                <input type="hidden" name="type" value="{{ $filters['filterType'] }}">
+            @endif
+            @if (($filters['filterStatus'] ?? 'active') !== 'active')
+                <input type="hidden" name="status" value="{{ $filters['filterStatus'] }}">
+            @endif
+            <input type="text" name="search" value="{{ $filters['filterSearch'] }}"
+                placeholder="Ad veya daire no..."
+                class="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ara</button>
+            @if ($filters['filterSearch'])
+                <a href="{{ route('accounts.index', array_filter(['type' => $filters['filterType'], 'status' => $filters['filterStatus']])) }}"
+                   class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50">✕</a>
+            @endif
+        </form>
+
+        {{-- Filtreler --}}
+        <form method="GET" action="{{ route('accounts.index') }}" class="flex gap-2 items-center flex-wrap md:flex-nowrap">
+            @if ($filters['filterSearch'])
+                <input type="hidden" name="search" value="{{ $filters['filterSearch'] }}">
+            @endif
+            <select name="type" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="">— Tüm Tipler —</option>
+                <option value="owner"    @selected($filters['filterType'] === 'owner')>Kat Maliki</option>
+                <option value="tenant"   @selected($filters['filterType'] === 'tenant')>Kiracı</option>
+                <option value="supplier" @selected($filters['filterType'] === 'supplier')>Tedarikçi</option>
+            </select>
+            <select name="status" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="active"   @selected(($filters['filterStatus'] ?? 'active') === 'active')>Aktif</option>
+                <option value="inactive" @selected(($filters['filterStatus'] ?? '') === 'inactive')>Pasif</option>
+                <option value="all"      @selected(($filters['filterStatus'] ?? '') === 'all')>Tümü</option>
+            </select>
+            <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
+            @if ($filters['filterType'] || ($filters['filterStatus'] ?? 'active') !== 'active')
+                <a href="{{ route('accounts.index', array_filter(['search' => $filters['filterSearch']])) }}"
+                   class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">Temizle</a>
+            @endif
+        </form>
+    </div>
 
     {{-- Desktop Table View --}}
     <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">
