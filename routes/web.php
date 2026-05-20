@@ -46,6 +46,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
     Route::get('users', [AccountUserController::class, 'index'])->name('users.index');
     Route::get('users/create', [AccountUserController::class, 'create'])->name('users.create');
+    Route::get('users/lookup', [AccountUserController::class, 'lookupEmail'])->name('users.lookup');
     Route::post('users', [AccountUserController::class, 'storeUser'])->name('users.store');
     Route::get('users/{user}', [AccountUserController::class, 'show'])->name('users.show');
     Route::get('users/{user}/edit', [AccountUserController::class, 'edit'])->name('users.edit');

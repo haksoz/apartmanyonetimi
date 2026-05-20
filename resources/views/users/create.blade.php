@@ -38,8 +38,9 @@
 
                     <div>
                         <label class="block text-sm font-medium text-slate-600 mb-2">E-posta</label>
-                        <input type="email" name="email" value="{{ old('email') }}" required
+                        <input type="email" name="email" id="email-input" value="{{ old('email') }}" required
                             class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        <div id="email-lookup-banner" class="hidden mt-2"></div>
                         @error('email')
                             <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
                         @enderror
@@ -106,7 +107,41 @@
         </div>
     </form>
 <script>
+    const lookupUrl = '{{ route('users.lookup') }}';
+
     document.addEventListener('DOMContentLoaded', function () {
+        const emailInput = document.getElementById('email-input');
+        const banner = document.getElementById('email-lookup-banner');
+        const nameInput = document.querySelector('input[name="name"]');
+        const phoneInput = document.querySelector('input[name="phone"]');
+        let lookupTimer = null;
+
+        emailInput.addEventListener('blur', function () {
+            clearTimeout(lookupTimer);
+            const email = emailInput.value.trim();
+            if (! email || ! email.includes('@')) { banner.innerHTML = ''; banner.classList.add('hidden'); return; }
+
+            fetch(lookupUrl + '?email=' + encodeURIComponent(email))
+                .then(r => r.json())
+                .then(data => {
+                    if (! data.found) { banner.innerHTML = ''; banner.classList.add('hidden'); return; }
+
+                    if (data.is_member) {
+                        banner.innerHTML = '<p class="text-sm text-red-600 font-medium">&#9888; <strong>' + data.name + '</strong> zaten bu apartmanın üyesi.</p>';
+                    } else {
+                        banner.innerHTML = '<div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">'
+                            + '<span class="font-semibold">ℹ️ Sistemde kayıtlı kullanıcı bulundu:</span> <strong>' + data.name + '</strong>'
+                            + (data.phone ? ' &mdash; ' + data.phone : '')
+                            + '<br><span class="text-xs text-blue-600 mt-1 block">Bu kullanıcı mevcut bilgileriyle apartmanınıza eklenecektir. Ad ve telefon alanları güncellenmeyecektir.</span>'
+                            + '</div>';
+                        if (nameInput && ! nameInput.value) nameInput.value = data.name;
+                        if (phoneInput && ! phoneInput.value && data.phone) phoneInput.value = data.phone;
+                    }
+                    banner.classList.remove('hidden');
+                })
+                .catch(() => {});
+        });
+
         const checkboxes = document.querySelectorAll('.account-checkbox');
         const warning = document.getElementById('sync-warning');
         const warningText = document.getElementById('sync-warning-text');

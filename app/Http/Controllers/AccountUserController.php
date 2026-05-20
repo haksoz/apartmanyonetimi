@@ -82,14 +82,42 @@ class AccountUserController extends Controller
             ->with('unit')
             ->get();
 
-        // Tüm hesap isimleri (Ad Soyad için öneri)
+        // Sadece kullanıcı bağlanmamış hesap isimleri (Ad Soyad için öneri)
         $accountNames = Account::where('apartment_id', $apartment->id)
+            ->whereNull('user_id')
+            ->where('type', '!=', Account::TYPE_SUPPLIER)
             ->whereNotNull('name')
             ->pluck('name')
             ->unique()
             ->values();
 
         return view('users.create', compact('apartment', 'availableAccounts', 'accountNames'));
+    }
+
+    /**
+     * E-posta adresine göre sistemde kayıtlı kullanıcı ara (JSON).
+     */
+    public function lookupEmail(Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+        $email = $request->query('email', '');
+
+        $user = User::where('email', $email)->first();
+
+        if (! $user) {
+            return response()->json(['found' => false]);
+        }
+
+        $isMember = $apartment
+            ? $apartment->members()->whereKey($user->id)->exists()
+            : false;
+
+        return response()->json([
+            'found'     => true,
+            'name'      => $user->name,
+            'phone'     => $user->phone,
+            'is_member' => $isMember,
+        ]);
     }
 
     /**
@@ -212,6 +240,18 @@ class AccountUserController extends Controller
     }
 
     /**
+     * Apartmanda belirtilen kullanıcı dışında başka aktif yönetici var mı?
+     */
+    private function hasOtherActiveOwner(\App\Models\Apartment $apartment, int $excludeUserId): bool
+    {
+        return $apartment->members()
+            ->where('users.id', '!=', $excludeUserId)
+            ->where('apartment_user.role', 'owner')
+            ->where('apartment_user.is_active', true)
+            ->exists();
+    }
+
+    /**
      * Kullanıcının apartmandaki rolünü güncelle (account üzerinden).
      */
     public function updateRole(Request $request, CurrentApartment $currentApartment, Account $account)
@@ -224,6 +264,10 @@ class AccountUserController extends Controller
         $validated = $request->validate([
             'role' => ['required', 'in:owner,member'],
         ]);
+
+        if ($validated['role'] === 'member' && ! $this->hasOtherActiveOwner($apartment, $account->user_id)) {
+            return back()->withErrors(['role' => 'Apartmanda en az bir yönetici olmalıdır.']);
+        }
 
         $apartment->members()->updateExistingPivot($account->user_id, ['role' => $validated['role']]);
 
@@ -243,6 +287,10 @@ class AccountUserController extends Controller
         $validated = $request->validate([
             'role' => ['required', 'in:owner,member'],
         ]);
+
+        if ($validated['role'] === 'member' && ! $this->hasOtherActiveOwner($apartment, $user->id)) {
+            return back()->withErrors(['role' => 'Apartmanda en az bir yönetici olmalıdır.']);
+        }
 
         $apartment->members()->updateExistingPivot($user->id, ['role' => $validated['role']]);
 
@@ -278,20 +326,27 @@ class AccountUserController extends Controller
 
         $validated = $request->validate([
             'name'            => ['required', 'string', 'max:255'],
-            'email'           => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email'           => ['required', 'email', 'max:255'],
             'phone'           => ['nullable', 'string', 'max:255'],
             'account_ids'     => ['nullable', 'array'],
             'account_ids.*'   => ['integer', 'exists:accounts,id'],
             'sync_account_info' => ['nullable', 'boolean'],
         ]);
 
-        $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'phone'    => $validated['phone'] ?? null,
-            'password' => bcrypt(Str::random(16)),
-            'role'     => 'user',
-        ]);
+        $user = User::firstOrCreate(
+            ['email' => $validated['email']],
+            [
+                'name'     => $validated['name'],
+                'phone'    => $validated['phone'] ?? null,
+                'password' => bcrypt(Str::random(16)),
+                'role'     => 'user',
+            ]
+        );
+
+        // Bu apartmanda zaten üyeyse engelle
+        if ($apartment->members()->whereKey($user->id)->exists()) {
+            return back()->withErrors(['email' => $user->name.' zaten bu apartmanın üyesi.'])->withInput();
+        }
 
         // Apartmana ekle
         $apartment->members()->attach($user->id, ['role' => 'member']);
@@ -337,8 +392,13 @@ class AccountUserController extends Controller
         abort_unless($apartment->members()->whereKey($user->id)->exists(), 403);
         abort_if($user->id === auth()->id(), 403, 'Kendi üyeliğinizi pasife alamazsınız.');
 
-        $pivot = $apartment->members()->withPivot('is_active')->whereKey($user->id)->first()->pivot;
+        $member = $apartment->members()->withPivot('role', 'is_active')->whereKey($user->id)->first();
+        $pivot = $member->pivot;
         $newState = ! (bool) $pivot->is_active;
+
+        if (! $newState && $pivot->role === 'owner' && ! $this->hasOtherActiveOwner($apartment, $user->id)) {
+            return back()->withErrors(['active' => 'Apartmanda en az bir aktif yönetici olmalıdır.']);
+        }
 
         $apartment->members()->updateExistingPivot($user->id, ['is_active' => $newState]);
 
