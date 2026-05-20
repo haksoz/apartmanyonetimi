@@ -100,6 +100,10 @@ class DueController extends Controller
             return $apartment;
         }
 
+        if (! $this->isOwnerOf($apartment)) {
+            abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
+        }
+
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
             ->where(fn ($query) => $query->where('type', Category::TYPE_INCOME)->orWhere('type', Category::TYPE_ALL))
@@ -214,6 +218,10 @@ class DueController extends Controller
 
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
             return $apartment;
+        }
+
+        if (! $this->isOwnerOf($apartment)) {
+            abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
         }
 
         $validated = $request->validate([

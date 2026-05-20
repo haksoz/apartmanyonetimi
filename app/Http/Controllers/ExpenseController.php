@@ -44,16 +44,9 @@ class ExpenseController extends Controller
 
         $isOwner = $this->isOwnerOf($apartment);
 
-        $memberAccountIds = ! $isOwner && $apartment
-            ? Account::where('apartment_id', $apartment->id)
-                ->where('user_id', auth()->id())
-                ->pluck('id')
-            : null;
-
         $expenses = Expense::query()
             ->with(['account', 'categoryRelation'])
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
-            ->when($memberAccountIds, fn ($q) => $q->whereIn('account_id', $memberAccountIds))
             ->when($filterSearch, fn ($q) => $q->where(function ($sub) use ($filterSearch) {
                 $sub->whereHas('account', fn ($a) => $a->where('name', 'like', '%' . $filterSearch . '%'))
                     ->orWhere('amount', 'like', '%' . $filterSearch . '%');

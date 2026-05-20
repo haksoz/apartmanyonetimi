@@ -44,17 +44,27 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
     // Üye + Yönetici erişimi
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+    // Giderler - Üye ve Yönetici erişimi (tüm resource actions)
+    Route::resource('expenses', ExpenseController::class);
+    Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
+    Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');
+    Route::delete('expenses/{expense}/payment', [ExpenseController::class, 'destroyPayment'])->name('expenses.payment.destroy');
+
+    // Aidatlar - Üye ve Yönetici erişimi
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
+    Route::get('dues/create', [DueController::class, 'create'])->name('dues.create');
+    Route::post('dues', [DueController::class, 'store'])->name('dues.store');
     Route::get('dues/{due}', [DueController::class, 'show'])->name('dues.show');
-    Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
-    Route::get('expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');
 
     // Yönetici zorunlu
     Route::middleware('owner')->group(function () {
+
         Route::resource('apartments', ApartmentController::class);
         Route::resource('units', UnitController::class);
         Route::resource('accounts', AccountController::class);
         Route::get('accounts/{account}/statement', [AccountController::class, 'statement'])->name('accounts.statement');
+        Route::get('accounts/{account}/statement/export', [AccountController::class, 'statementExport'])->name('accounts.statement.export');
         Route::patch('accounts/{account}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
         Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
         Route::get('users', [AccountUserController::class, 'index'])->name('users.index');
@@ -86,11 +96,9 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('dues/batch/create', [DueController::class, 'createBatch'])->name('dues.batch.create');
         Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->name('dues.expenses.by-period');
         Route::delete('dues/bulk-destroy', [DueController::class, 'bulkDestroy'])->name('dues.bulk-destroy');
-        Route::resource('dues', DueController::class)->except(['index', 'show']);
-        Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
-        Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');
-        Route::delete('expenses/{expense}/payment', [ExpenseController::class, 'destroyPayment'])->name('expenses.payment.destroy');
-        Route::resource('expenses', ExpenseController::class)->except(['index', 'show']);
+        Route::get('dues/{due}/edit', [DueController::class, 'edit'])->name('dues.edit');
+        Route::patch('dues/{due}', [DueController::class, 'update'])->name('dues.update');
+        Route::delete('dues/{due}', [DueController::class, 'destroy'])->name('dues.destroy');
         Route::get('supplier-refunds/create', [PaymentController::class, 'createSupplierRefund'])->name('supplier-refunds.create');
         Route::post('supplier-refunds', [PaymentController::class, 'storeSupplierRefund'])->name('supplier-refunds.store');
         Route::resource('cash-boxes', CashBoxController::class)->except(['index']);

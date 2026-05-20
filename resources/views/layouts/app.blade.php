@@ -111,7 +111,17 @@
                     <div class="flex items-center gap-3">
                         <div class="text-right hidden sm:block">
                             <div class="text-sm font-medium text-slate-900">{{ auth()->user()->name }}</div>
-                            <div class="text-xs text-slate-500">{{ auth()->user()->isAdmin() ? 'Süper Yönetici' : 'Apartman Yöneticisi' }}</div>
+                            <div class="text-xs text-slate-500">
+                                @if(auth()->user()->isAdmin())
+                                    Süper Yönetici
+                                @elseif(isset($navIsOwner) && $navIsOwner)
+                                    Apartman Yöneticisi
+                                @elseif(isset($currentApartment) && $currentApartment)
+                                    Apartman Üyesi
+                                @else
+                                    Kullanıcı
+                                @endif
+                            </div>
                         </div>
                         <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
                             <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +161,7 @@
                         <span class="sidebar-text">Dashboard</span>
                     </a>
 
-                    @if($navIsOwner)
+                    @if($navIsOwner && $currentApartment)
                     <a href="{{ route('accounts.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('accounts.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.592-2.641m-3.958-5.599c.351.351.645.748.876 1.185M9 13.5V9.75a6 6 0 0112 0v3"/>
@@ -160,59 +170,75 @@
                     </a>
                     @endif
 
+                    @if($currentApartment)
                     <a href="{{ route('expenses.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('expenses.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 6L9 12.75l4.286-4.286a11.948 11.948 0 011.512.422m17.085 8.407l-3.82-3.82a9.969 9.969 0 011.512-3.686 9.971 9.971 0 013.686-1.512l3.82 3.82m-7.52-2.119l-3.82-3.82a9.969 9.969 0 011.512-3.686 9.971 9.971 0 013.686-1.512l3.82 3.82"/>
                         </svg>
                         <span class="sidebar-text">Giderler</span>
                     </a>
+                    @endif
 
+                    @if($currentApartment)
                     <a href="{{ route('dues.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('dues.*') && !request()->routeIs('due-plans.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                         <span class="sidebar-text">Aidatlar</span>
                     </a>
+                    @endif
 
-                    @if($navIsOwner)
+                    @if($navIsOwner && $currentApartment)
                     <a href="{{ route('due-plans.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('due-plans.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
                         <span class="sidebar-text">Aidat Planlama</span>
                     </a>
+                    @endif
 
+                    @if($navIsOwner && $currentApartment)
                     <a href="{{ route('cash.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('cash.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
                         </svg>
                         <span class="sidebar-text">Kasa</span>
                     </a>
+                    @endif
 
+                    @if($navIsOwner && $currentApartment)
                     <a href="{{ route('ledger.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('ledger.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
                         </svg>
                         <span class="sidebar-text">Muhasebe</span>
                     </a>
+                    @endif
 
+                    @if($navIsOwner && $currentApartment)
                     {{-- Ayarlar Grubu --}}
                     <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Ayarlar</div>
+                    @endif
 
+                    @if($navIsOwner && $currentApartment)
                     <a href="{{ route('apartments.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('apartments.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/>
                         </svg>
                         <span class="sidebar-text">Apartman</span>
                     </a>
+                    @endif
 
+                    @if($navIsOwner && $currentApartment)
                     <a href="{{ route('units.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('units.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m-3-1l-3-1m.75 3.205l-3 1m3-1l1.5.545M5.25 7.5l-1.5.545M5.25 7.5l3 1m-3-1l-3-1m.75 3.205l-3 1m3-1l1.5.545"/>
                         </svg>
                         <span class="sidebar-text">Daireler</span>
                     </a>
+                    @endif
 
+                    @if($navIsOwner && $currentApartment)
                     <a href="{{ route('categories.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('categories.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/>
@@ -220,7 +246,9 @@
                         </svg>
                         <span class="sidebar-text">Kategoriler</span>
                     </a>
+                    @endif
 
+                    @if($navIsOwner && $currentApartment)
                     <a href="{{ route('users.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('users.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>

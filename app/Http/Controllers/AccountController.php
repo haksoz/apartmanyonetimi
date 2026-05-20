@@ -229,7 +229,7 @@ class AccountController extends Controller
                 'unit',
                 'user',
                 'transactions' => fn ($query) => $query->orderBy('transaction_date')->orderBy('id'),
-                'dues' => fn ($query) => $query->whereIn('status', ['unpaid', 'partial'])->orderBy('due_date'),
+                'dues' => fn ($query) => $query->where('remaining_amount', '>', 0)->orderBy('due_date'),
                 'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0),
                 'expenses' => fn ($query) => $query->where('is_paid', false)->orderBy('expense_date'),
             ])
@@ -288,8 +288,9 @@ class AccountController extends Controller
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
             ->findOrFail($id);
 
-        $dateFrom = $request->query('date_from');
-        $dateTo   = $request->query('date_to');
+        // Varsayılan tarih aralığı: bir önceki ayın 1. günü - bugün
+        $dateFrom = $request->query('date_from') ?? now()->subMonth()->startOfMonth()->format('Y-m-d');
+        $dateTo   = $request->query('date_to') ?? now()->format('Y-m-d');
 
         // Filtre öncesi bakiye (açılış bakiyesi)
         $openingBalance = 0;
@@ -305,6 +306,7 @@ class AccountController extends Controller
 
         // Filtreli hareketler
         $query = $account->transactions()
+            ->with(['transactionable'])
             ->when($dateFrom, fn ($q) => $q->where('transaction_date', '>=', $dateFrom))
             ->when($dateTo,   fn ($q) => $q->where('transaction_date', '<=', $dateTo))
             ->orderBy('transaction_date')->orderBy('id');
@@ -344,6 +346,131 @@ class AccountController extends Controller
         return view('accounts.statement', compact(
             'account', 'transactions', 'openingBalance', 'closingBalance', 'dateFrom', 'dateTo'
         ));
+    }
+
+    /**
+     * Excel export for account statement (XLSX)
+     */
+    public function statementExport(string $id, Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        $account = Account::query()
+            ->with('unit')
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->findOrFail($id);
+
+        $dateFrom = $request->query('date_from') ?? now()->subMonth()->startOfMonth()->format('Y-m-d');
+        $dateTo   = $request->query('date_to') ?? now()->format('Y-m-d');
+
+        $openingBalance = 0;
+        $opening = $account->transactions()
+            ->where('transaction_date', '<', $dateFrom)
+            ->orderBy('transaction_date')->orderBy('id')
+            ->get();
+        foreach ($opening as $t) {
+            $openingBalance += $t->type === 'debit' ? $t->amount : -$t->amount;
+        }
+
+        $transactions = $account->transactions()
+            ->with(['transactionable'])
+            ->where('transaction_date', '>=', $dateFrom)
+            ->where('transaction_date', '<=', $dateTo)
+            ->orderBy('transaction_date')->orderBy('id')
+            ->get();
+
+        $running = $openingBalance;
+        foreach ($transactions as $t) {
+            $running += $t->type === 'debit' ? $t->amount : -$t->amount;
+            $t->running_balance = $running;
+        }
+
+        $transactions = $transactions->reverse()->values();
+
+        // PhpSpreadsheet ile XLSX oluştur
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Başlık
+        $sheet->setCellValue('A1', 'Hesap Ekstresi');
+        $sheet->setCellValue('A2', 'Hesap: ' . $account->name);
+        $sheet->setCellValue('A3', 'Daire: ' . ($account->unit?->unit_no ?? '-'));
+        $sheet->setCellValue('A4', 'Tarih Aralığı: ' . \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') . ' - ' . \Carbon\Carbon::parse($dateTo)->format('d.m.Y'));
+
+        // Stil
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A2:A4')->getFont()->setBold(true);
+
+        // Sütun başlıkları
+        $row = 6;
+        $sheet->setCellValue('A' . $row, 'Tarih');
+        $sheet->setCellValue('B' . $row, 'Referans');
+        $sheet->setCellValue('C' . $row, 'Açıklama');
+        $sheet->setCellValue('D' . $row, 'Borç');
+        $sheet->setCellValue('E' . $row, 'Alacak');
+        $sheet->setCellValue('F' . $row, 'Bakiye');
+        $sheet->getStyle('A' . $row . ':F' . $row)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $row . ':F' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
+
+        // Açılış bakiyesi
+        $row = 7;
+        $sheet->setCellValue('A' . $row, \Carbon\Carbon::parse($dateFrom)->format('d.m.Y'));
+        $sheet->setCellValue('B' . $row, '—');
+        $sheet->setCellValue('C' . $row, 'Dönem Açılış Bakiyesi');
+        $sheet->setCellValue('D' . $row, $openingBalance > 0 ? $openingBalance : 0);
+        $sheet->setCellValue('E' . $row, $openingBalance < 0 ? abs($openingBalance) : 0);
+        $sheet->setCellValue('F' . $row, $openingBalance);
+        $sheet->getStyle('A' . $row . ':F' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F8FAFC');
+
+        // Hareketler
+        $row = 8;
+        foreach ($transactions as $t) {
+            $desc = $t->description ?? '';
+            if ($t->transactionable_type === Payment::class) {
+                $desc = 'Ödeme' . ($t->description ? ' - ' . $t->description : '');
+            } elseif ($t->transactionable_type === Due::class) {
+                $desc = 'Aidat' . ($t->description ? ' - ' . $t->description : '');
+            } elseif ($t->transactionable_type === Expense::class) {
+                $desc = 'Gider' . ($t->description ? ' - ' . $t->description : '');
+            }
+
+            $sheet->setCellValue('A' . $row, $t->transaction_date->format('d.m.Y'));
+            $sheet->setCellValue('B' . $row, $t->transactionable?->reference_number ?? '—');
+            $sheet->setCellValue('C' . $row, $desc);
+            $sheet->setCellValue('D' . $row, $t->type === 'debit' ? $t->amount : 0);
+            $sheet->setCellValue('E' . $row, $t->type === 'credit' ? $t->amount : 0);
+            $sheet->setCellValue('F' . $row, $t->running_balance);
+
+            // Para formatı
+            $sheet->getStyle('D' . $row . ':F' . $row)->getNumberFormat()->setFormatCode('#,##0.00 "TL"');
+
+            $row++;
+        }
+
+        // Sütun genişlikleri
+        $sheet->getColumnDimension('A')->setWidth(12);
+        $sheet->getColumnDimension('B')->setWidth(18);
+        $sheet->getColumnDimension('C')->setWidth(35);
+        $sheet->getColumnDimension('D')->setWidth(15);
+        $sheet->getColumnDimension('E')->setWidth(15);
+        $sheet->getColumnDimension('F')->setWidth(15);
+
+        // Kenarlıklar
+        $lastRow = $row - 1;
+        $sheet->getStyle('A6:F' . $lastRow)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+        // Dosya oluştur
+        $filename = 'ekstre_' . $account->id . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     /**

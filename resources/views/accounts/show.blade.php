@@ -227,9 +227,9 @@
                                             @php $desc = $a->due->description ?: 'Aidat'; @endphp
                                             <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
                                         </td>
+                                        <td class="px-5 py-2 text-right">—</td>
                                         <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount,2,',','.') }} TL</td>
-                                        <td class="px-5 py-2"></td>
-                                        <td class="px-5 py-2"></td>
+                                        <td class="px-5 py-2 text-right">—</td>
                                         <td class="px-5 py-2 text-right">
                                             <a href="{{ route('dues.show', $a->due) }}" class="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Aidat Detay</a>
                                         </td>

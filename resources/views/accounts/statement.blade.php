@@ -11,6 +11,10 @@
             </p>
         </div>
         <div class="flex gap-2">
+            <a href="{{ route('accounts.statement.export', $account) }}"
+               class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+                Excel'e Aktar
+            </a>
             <a href="{{ route('accounts.show', $account) }}"
                class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 Hesaba Dön
@@ -45,35 +49,6 @@
         </div>
     </form>
 
-    {{-- Özet Kartları --}}
-    <div class="grid gap-4 md:grid-cols-3 mb-6">
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-xs font-medium text-slate-500 mb-1">
-                {{ $dateFrom ? 'Dönem Açılış Bakiyesi' : 'Tüm Zamanlar' }}
-            </div>
-            <div class="text-xl font-bold {{ $openingBalance > 0 ? 'text-red-600' : ($openingBalance < 0 ? 'text-emerald-600' : 'text-slate-900') }}">
-                {{ number_format(abs($openingBalance), 2, ',', '.') }} TL
-                @if($openingBalance != 0)
-                    <span class="text-xs font-normal">{{ $openingBalance > 0 ? '(Borç)' : '(Alacak)' }}</span>
-                @endif
-            </div>
-        </div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-xs font-medium text-slate-500 mb-1">Dönem Hareketi</div>
-            <div class="text-xl font-bold text-slate-900">{{ $transactions->count() }} kayıt</div>
-        </div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-xs font-medium text-slate-500 mb-1">
-                {{ $dateFrom ? 'Dönem Kapanış Bakiyesi' : 'Güncel Bakiye' }}
-            </div>
-            <div class="text-xl font-bold {{ $closingBalance > 0 ? 'text-red-600' : ($closingBalance < 0 ? 'text-emerald-600' : 'text-slate-900') }}">
-                {{ number_format(abs($closingBalance), 2, ',', '.') }} TL
-                @if($closingBalance != 0)
-                    <span class="text-xs font-normal">{{ $closingBalance > 0 ? '(Borç)' : '(Alacak)' }}</span>
-                @endif
-            </div>
-        </div>
-    </div>
 
     {{-- Hareketler Tablosu --}}
     <div class="rounded-2xl bg-white shadow-sm overflow-hidden">
@@ -96,22 +71,12 @@
                 Bu tarih aralığında hareket bulunamadı.
             </div>
         @else
-            {{-- Açılış bakiyesi satırı --}}
-            @if($dateFrom)
-                <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-sm">
-                    <span class="font-medium text-slate-600">Dönem Açılış Bakiyesi ({{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }} öncesi)</span>
-                    <span class="font-bold {{ $openingBalance > 0 ? 'text-red-600' : 'text-emerald-600' }}">
-                        {{ number_format(abs($openingBalance), 2, ',', '.') }} TL
-                        {{ $openingBalance > 0 ? '(Borç)' : ($openingBalance < 0 ? '(Alacak)' : '') }}
-                    </span>
-                </div>
-            @endif
-
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-100 text-sm">
                     <thead class="bg-slate-50 text-left text-slate-500">
                         <tr>
                             <th class="px-5 py-3 font-medium">Tarih</th>
+                            <th class="px-5 py-3 font-medium">Referans</th>
                             <th class="px-5 py-3 font-medium">Açıklama</th>
                             <th class="px-5 py-3 text-right font-medium">Borç</th>
                             <th class="px-5 py-3 text-right font-medium">Alacak</th>
@@ -120,6 +85,26 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
+                        @if($dateFrom)
+                            <tr class="bg-slate-50 font-medium">
+                                <td class="px-5 py-3.5 text-slate-500">{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }}</td>
+                                <td class="px-5 py-3.5 text-slate-400">—</td>
+                                <td class="px-5 py-3.5 text-slate-600">Dönem Açılış Bakiyesi</td>
+                                <td class="px-5 py-3.5 text-right {{ $openingBalance > 0 ? 'text-red-600' : 'text-slate-400' }}">
+                                    {{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' TL' : '—' }}
+                                </td>
+                                <td class="px-5 py-3.5 text-right {{ $openingBalance < 0 ? 'text-emerald-600' : 'text-slate-400' }}">
+                                    {{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' TL' : '—' }}
+                                </td>
+                                <td class="px-5 py-3.5 text-right {{ $openingBalance > 0 ? 'text-red-600' : ($openingBalance < 0 ? 'text-emerald-600' : 'text-slate-600') }}">
+                                    {{ number_format(abs($openingBalance), 2, ',', '.') }} TL
+                                    @if($openingBalance != 0)
+                                        <span class="text-xs font-normal">{{ $openingBalance > 0 ? 'B' : 'A' }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3.5 text-right text-slate-400">—</td>
+                            </tr>
+                        @endif
                         @foreach($transactions as $t)
                             @php
                                 $debit  = $t->type === 'debit'  ? $t->amount : 0;
@@ -128,6 +113,9 @@
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap">
                                     {{ $t->transaction_date->format('d.m.Y') }}
+                                </td>
+                                <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap font-mono text-xs">
+                                    {{ $t->transactionable?->reference_number ?? '—' }}
                                 </td>
                                 <td class="px-5 py-3.5 text-slate-700">
                                     {{ $t->description ?: ucfirst($t->type) }}
@@ -179,8 +167,10 @@
                                             <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-700 hover:text-emerald-600">#{{ $a->due->id }}</a>
                                             &mdash; {{ $a->due->due_date->format('d.m.Y') }}
                                         </td>
+                                        <td class="px-5 py-2 text-right">—</td>
                                         <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
-                                        <td colspan="3" class="px-5 py-2 text-right">
+                                        <td class="px-5 py-2 text-right">—</td>
+                                        <td class="px-5 py-2 text-right">
                                             <a href="{{ route('dues.show', $a->due) }}" class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">Aidat Detay</a>
                                         </td>
                                     </tr>
