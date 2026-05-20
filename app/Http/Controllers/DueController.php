@@ -39,14 +39,20 @@ class DueController extends Controller
             $sortDirection = 'desc';
         }
 
-        $filterPeriod = $request->query('period');
-        $filterStatus = $request->query('status');
-        $filterSource = $request->query('source');
+        $filterPeriod  = $request->query('period');
+        $filterStatus  = $request->query('status');
+        $filterSource  = $request->query('source');
         $filterBatchId = $request->query('batch_id');
+        $filterSearch  = $request->query('search');
 
         $dues = Due::query()
             ->with(['account', 'unit', 'category', 'batch.plan'])
             ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
+            ->when($filterSearch, fn ($q) => $q->where(function ($sub) use ($filterSearch) {
+                $sub->whereHas('account', fn ($a) => $a->where('name', 'like', '%' . $filterSearch . '%'))
+                    ->orWhereHas('unit',    fn ($u) => $u->where('unit_no', 'like', '%' . $filterSearch . '%'))
+                    ->orWhere('description', 'like', '%' . $filterSearch . '%');
+            }))
             ->when($filterPeriod,  fn ($q) => $q->where('period', $filterPeriod))
             ->when($filterStatus,  fn ($q) => $q->where('status', $filterStatus))
             ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))
@@ -72,7 +78,7 @@ class DueController extends Controller
                 ->get(['id', 'name', 'year', 'category_id'])
             : collect();
 
-        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId');
+        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch');
 
         return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters'));
     }

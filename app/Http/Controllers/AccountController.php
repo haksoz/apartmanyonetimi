@@ -38,7 +38,10 @@ class AccountController extends Controller
                 $query->where('type', 'credit');
             }], 'amount')
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
-            ->when($filterSearch, fn ($q) => $q->where('name', 'like', '%' . $filterSearch . '%'))
+            ->when($filterSearch, fn ($q) => $q->where(function ($sub) use ($filterSearch) {
+                $sub->where('accounts.name', 'like', '%' . $filterSearch . '%')
+                    ->orWhereHas('unit', fn ($u) => $u->where('unit_no', 'like', '%' . $filterSearch . '%'));
+            }))
             ->when($filterType,   fn ($q) => $q->where('type', $filterType))
             ->when($filterStatus === 'active', fn ($q) => $q->where('is_active', true))
             ->when($filterStatus === 'inactive', fn ($q) => $q->where('is_active', false))

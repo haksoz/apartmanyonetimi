@@ -11,7 +11,7 @@
             @if ($activePlans->isNotEmpty())
                 <button type="button" onclick="document.getElementById('modal-generate-plan').classList.remove('hidden')"
                         class="flex-1 md:flex-none rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 text-center">
-                    Plandan Aidat Oluştur
+                    Plandan Borçlandır
                 </button>
             @endif
             <a href="{{ route('dues.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 text-center">Borçlandır</a>
@@ -19,12 +19,12 @@
         </div>
     </div>
 
-    {{-- Plandan Aidat Oluştur Modal --}}
+    {{-- Plandan Borçlandır Modal --}}
     @if ($activePlans->isNotEmpty())
         <div id="modal-generate-plan" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
             <div class="w-full max-w-md rounded-2xl bg-white shadow-xl">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-                    <h2 class="text-base font-semibold text-slate-950">Plandan Aidat Oluştur</h2>
+                    <h2 class="text-base font-semibold text-slate-950">Plandan Borçlandır</h2>
                     <button type="button" onclick="document.getElementById('modal-generate-plan').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
@@ -134,6 +134,11 @@
     {{-- Filtre Barı --}}
     <form method="GET" action="{{ route('dues.index') }}" class="mb-4 flex flex-wrap gap-3 items-end">
         <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">Ara</label>
+            <input type="text" name="search" value="{{ $filters['filterSearch'] ?? '' }}" placeholder="Ad, daire no veya açıklama..."
+                   class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none w-52">
+        </div>
+        <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">Dönem</label>
             <input type="month" name="period" value="{{ $filters['filterPeriod'] }}"
                    class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none">
@@ -159,7 +164,7 @@
         </div>
         <div class="flex gap-2">
             <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'])
+            @if (($filters['filterSearch'] ?? '') || $filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'])
                 <a href="{{ route('dues.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Temizle</a>
             @endif
         </div>

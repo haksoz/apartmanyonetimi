@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-950">Hesabı Düzenle</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $account->name }} hesabını güncelleyin.</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
             <form method="POST" action="{{ route('accounts.destroy', $account) }}" class="inline" onsubmit="return confirm('Bu hesabı silmek istediğinize emin misiniz? Hesapta hareket varsa silinemez.')">
                 @csrf
                 @method('DELETE')

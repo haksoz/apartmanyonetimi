@@ -14,6 +14,7 @@
 
     {{-- Filtre Barı --}}
     <form method="GET" action="{{ route('expenses.index') }}" class="mb-5 flex flex-wrap gap-3 items-end">
+        <input type="text" name="search" value="{{ $filters['filterSearch'] ?? '' }}" placeholder="Hesap adı veya tutar..." class="rounded-xl border border-slate-300 px-4 py-2 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-slate-300">
         <input type="month" name="period" value="{{ $filters['filterPeriod'] }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
         <select name="status" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
             <option value="">— Tüm Durumlar —</option>
@@ -27,7 +28,7 @@
             @endforeach
         </select>
         <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-        @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterCategory'])
+        @if (($filters['filterSearch'] ?? '') || $filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterCategory'])
             <a href="{{ route('expenses.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Temizle</a>
         @endif
     </form>

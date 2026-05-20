@@ -14,7 +14,7 @@
 
     {{-- Filtre Barı --}}
     <form method="GET" action="{{ route('accounts.index') }}" class="mb-5 flex flex-wrap gap-3 items-end">
-        <input type="text" name="search" value="{{ $filters['filterSearch'] }}" placeholder="Ad ile ara..." class="rounded-xl border border-slate-300 px-4 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-300">
+        <input type="text" name="search" value="{{ $filters['filterSearch'] }}" placeholder="Ad veya daire no..." class="rounded-xl border border-slate-300 px-4 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-slate-300">
         <select name="type" class="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
             <option value="">— Tüm Tipler —</option>
             <option value="owner"    @selected($filters['filterType'] === 'owner')>Kat Maliki</option>
