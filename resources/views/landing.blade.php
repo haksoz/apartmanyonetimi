@@ -117,15 +117,15 @@
                 <p class="text-sm text-slate-500 leading-relaxed">Birden fazla apartmanı tek hesaptan yönetin. Kolayca apartmanlar arasında geçiş yapın.</p>
             </div>
 
-            {{-- Sakin Portalı --}}
+            {{-- Kullanıcı Portalı --}}
             <div class="rounded-2xl border border-slate-100 bg-slate-50 p-6 hover:shadow-md transition-shadow">
                 <div class="w-11 h-11 rounded-xl bg-teal-100 flex items-center justify-center mb-4">
                     <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold text-slate-900 mb-1.5">Sakin Portalı</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">Sakinler kendi borç durumunu ve ödeme geçmişini görebilir. Şeffaf yönetim, memnun sakinler.</p>
+                <h3 class="text-lg font-bold text-slate-900 mb-1.5">Kullanıcı Portalı</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">Kullanıcılar kendi borç durumunu ve ödeme geçmişini görebilir. Şeffaf yönetim, memnun kullanıcılar.</p>
             </div>
 
         </div>
