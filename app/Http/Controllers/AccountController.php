@@ -320,9 +320,6 @@ class AccountController extends Controller
             $t->running_balance = $running;
         }
 
-        // Yeniden eskiye
-        $transactions = $transactions->reverse()->values();
-
         // Tahsisleri yükle
         $paymentIds = $transactions
             ->filter(fn ($t) => ($t->transactionable_type ?? '') === Payment::class)
@@ -341,7 +338,7 @@ class AccountController extends Controller
             }
         }
 
-        $closingBalance = $transactions->first()?->running_balance ?? $openingBalance;
+        $closingBalance = $transactions->last()?->running_balance ?? $openingBalance;
 
         return view('accounts.statement', compact(
             'account', 'transactions', 'openingBalance', 'closingBalance', 'dateFrom', 'dateTo'
@@ -385,8 +382,6 @@ class AccountController extends Controller
             $t->running_balance = $running;
         }
 
-        $transactions = $transactions->reverse()->values();
-
         // PhpSpreadsheet ile XLSX oluştur
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -396,6 +391,17 @@ class AccountController extends Controller
         $sheet->setCellValue('A2', 'Hesap: ' . $account->name);
         $sheet->setCellValue('A3', 'Daire: ' . ($account->unit?->unit_no ?? '-'));
         $sheet->setCellValue('A4', 'Tarih Aralığı: ' . \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') . ' - ' . \Carbon\Carbon::parse($dateTo)->format('d.m.Y'));
+
+        // Özet mesajı
+        $closingBalance = $transactions->last()?->running_balance ?? $openingBalance;
+        $summary = $closingBalance > 0
+            ? 'Hesabın Toplam ' . number_format($closingBalance, 2, ',', '.') . ' TL borcu vardır'
+            : ($closingBalance < 0
+                ? 'Hesabın Toplam ' . number_format(abs($closingBalance), 2, ',', '.') . ' TL alacağı vardır'
+                : 'Hesabın bakiyesi sıfırdır');
+        $sheet->setCellValue('A5', $summary);
+        $sheet->getStyle('A5')->getFont()->setBold(true);
+        $sheet->getStyle('A5')->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color($closingBalance > 0 ? 'DC2626' : ($closingBalance < 0 ? '059669' : '64748B')));
 
         // Stil
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);

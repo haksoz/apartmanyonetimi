@@ -11,7 +11,7 @@
             </p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('accounts.statement.export', $account) }}"
+            <a href="{{ route('accounts.statement.export', ['account' => $account, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
                class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
                 Excel'e Aktar
             </a>
@@ -181,17 +181,13 @@
                 </table>
             </div>
 
-            {{-- Kapanış bakiyesi --}}
-            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-sm">
-                <span class="font-medium text-slate-600">
-                    {{ $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d.m.Y').' Kapanış Bakiyesi' : 'Güncel Bakiye' }}
-                </span>
-                <span class="font-bold text-base {{ $closingBalance > 0 ? 'text-red-600' : ($closingBalance < 0 ? 'text-emerald-600' : 'text-slate-900') }}">
-                    {{ number_format(abs($closingBalance), 2, ',', '.') }} TL
-                    @if($closingBalance != 0)
-                        {{ $closingBalance > 0 ? '(Borç)' : '(Alacak)' }}
-                    @endif
-                </span>
+            {{-- Kapanış bakiyesi özeti --}}
+            <div class="mt-4 p-4 rounded-2xl {{ $closingBalance > 0 ? 'bg-red-50 border border-red-200' : ($closingBalance < 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200') }}">
+                <p class="text-center text-base font-medium {{ $closingBalance > 0 ? 'text-red-700' : ($closingBalance < 0 ? 'text-emerald-700' : 'text-slate-700') }}">
+                    Hesabın Toplam
+                    <span class="font-bold text-lg mx-1">{{ number_format(abs($closingBalance), 2, ',', '.') }} TL</span>
+                    {{ $closingBalance > 0 ? 'borcu vardır' : ($closingBalance < 0 ? 'alacağı vardır' : 'bakiyesi sıfırdır') }}
+                </p>
             </div>
         @endif
     </div>
