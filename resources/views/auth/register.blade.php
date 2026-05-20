@@ -1,4 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.guest')
+
+@section('title', 'Üye Ol')
 
 @section('content')
     <div class="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-sm">

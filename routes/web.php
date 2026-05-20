@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AccountUserController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ApartmentController;
 use App\Http\Controllers\ApartmentSelectionController;
 use App\Http\Controllers\ApartmentSwitchController;
@@ -19,6 +20,8 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/', LandingController::class)->name('landing');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
@@ -40,7 +43,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::post('current-apartment', ApartmentSwitchController::class)->name('current-apartment.update');
 
     // Üye + Yönetici erişimi
-    Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
     Route::get('dues/{due}', [DueController::class, 'show'])->name('dues.show');
     Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');

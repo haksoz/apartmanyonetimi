@@ -1,13 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.guest')
+
+@section('title', 'Giriş Yap')
 
 @section('content')
-    <div class="mx-auto max-w-md mb-8 flex flex-col items-center gap-2">
-        <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-12 w-auto">
-        <div class="text-xl font-bold"><span class="text-emerald-600">Aidat</span><span class="text-slate-500">Cep</span></div>
-        <div class="text-xs text-slate-500">Apartman Yönetim Sistemleri</div>
-    </div>
-
-    <div class="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-sm">
+    <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
         <h1 class="text-2xl font-bold text-slate-950">Giriş Yap</h1>
         <p class="mt-2 text-sm text-slate-500">Apartman yönetim paneline erişmek için giriş yapın.</p>
 
