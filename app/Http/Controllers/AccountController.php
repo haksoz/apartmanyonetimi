@@ -173,7 +173,7 @@ class AccountController extends Controller
         $account = DB::transaction(function () use ($apartment, $request, $validated) {
             $account = Account::create([
                 'apartment_id' => $apartment->id,
-                'unit_id' => in_array($validated['type'], [Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_RESIDENT], true) ? ($validated['unit_id'] ?? null) : null,
+                'unit_id' => in_array($validated['type'], [Account::TYPE_OWNER, Account::TYPE_TENANT], true) ? ($validated['unit_id'] ?? null) : null,
                 'type' => $validated['type'],
                 'name' => $validated['name'],
                 'phone' => $validated['phone'] ?? null,
@@ -386,7 +386,7 @@ class AccountController extends Controller
 
         DB::transaction(function () use ($account, $request, $validated) {
             $updateData = [
-                'unit_id' => in_array($validated['type'], [Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_RESIDENT], true) ? ($validated['unit_id'] ?? null) : null,
+                'unit_id' => in_array($validated['type'], [Account::TYPE_OWNER, Account::TYPE_TENANT], true) ? ($validated['unit_id'] ?? null) : null,
                 'type' => $validated['type'],
                 'balance' => $validated['balance'] ?? 0,
                 'account_opening_date' => $validated['type'] === Account::TYPE_SUPPLIER ? $validated['account_opening_date'] : null,

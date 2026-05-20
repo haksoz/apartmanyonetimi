@@ -42,7 +42,7 @@ class AccountUserController extends Controller
                 // Pivot rolünü ata (yoksa resident varsay)
                 $user->pivot = $pivotUsers->has($user->id)
                     ? $pivotUsers[$user->id]->pivot
-                    : (object) ['role' => 'resident'];
+                    : (object) ['role' => 'member'];
                 return $user;
             })
             ->sortByDesc(fn ($u) => $u->pivot->role === 'owner');
@@ -204,7 +204,7 @@ class AccountUserController extends Controller
             ]);
 
             if (! $apartment->members()->whereKey($user->id)->exists()) {
-                $apartment->members()->attach($user->id, ['role' => 'resident']);
+                $apartment->members()->attach($user->id, ['role' => 'member']);
             }
         });
 
@@ -222,7 +222,7 @@ class AccountUserController extends Controller
         abort_unless($account->user_id, 404);
 
         $validated = $request->validate([
-            'role' => ['required', 'in:owner,resident'],
+            'role' => ['required', 'in:owner,member'],
         ]);
 
         $apartment->members()->updateExistingPivot($account->user_id, ['role' => $validated['role']]);
@@ -241,7 +241,7 @@ class AccountUserController extends Controller
         abort_unless($apartment->members()->whereKey($user->id)->exists(), 403);
 
         $validated = $request->validate([
-            'role' => ['required', 'in:owner,resident'],
+            'role' => ['required', 'in:owner,member'],
         ]);
 
         $apartment->members()->updateExistingPivot($user->id, ['role' => $validated['role']]);
@@ -294,7 +294,7 @@ class AccountUserController extends Controller
         ]);
 
         // Apartmana ekle
-        $apartment->members()->attach($user->id, ['role' => 'resident']);
+        $apartment->members()->attach($user->id, ['role' => 'member']);
 
         // Seçilen hesaplara bağla
         if (! empty($validated['account_ids'])) {

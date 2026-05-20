@@ -17,8 +17,6 @@ class Account extends Model
 
     public const TYPE_TENANT = 'tenant';
 
-    public const TYPE_RESIDENT = 'resident';
-
     public const TYPE_SUPPLIER = 'supplier';
 
     protected $fillable = [
@@ -111,7 +109,6 @@ class Account extends Model
     public function getTypeLabelAttribute(): string
     {
         return match ($this->type) {
-            self::TYPE_RESIDENT => 'Daire Sakini',
             self::TYPE_OWNER => 'Kat Maliki',
             self::TYPE_TENANT => 'Kiracı',
             self::TYPE_SUPPLIER => 'Tedarikçi',

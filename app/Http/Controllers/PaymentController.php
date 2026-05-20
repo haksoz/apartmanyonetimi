@@ -28,7 +28,7 @@ class PaymentController extends Controller
 
         $accounts = Account::query()
             ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_RESIDENT, Account::TYPE_SUPPLIER])
+            ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_SUPPLIER])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();

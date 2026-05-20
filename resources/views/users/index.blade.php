@@ -86,13 +86,13 @@
                                     @method('PATCH')
                                     <select name="role" onchange="this.form.submit()"
                                         class="text-xs rounded-lg border px-2 py-1.5 focus:outline-none cursor-pointer {{ $role === 'owner' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200' }}">
-                                        <option value="resident" {{ $role === 'resident' ? 'selected' : '' }}>Sakin</option>
+                                        <option value="member" {{ $role === 'member' ? 'selected' : '' }}>Üye</option>
                                         <option value="owner"    {{ $role === 'owner'    ? 'selected' : '' }}>Yönetici</option>
                                     </select>
                                 </form>
                             @else
                                 <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold {{ $role === 'owner' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700' }}">
-                                    {{ $role === 'owner' ? 'Yönetici' : 'Sakin' }} (Siz)
+                                    {{ $role === 'owner' ? 'Yönetici' : 'Üye' }} (Siz)
                                 </span>
                             @endif
                         </td>
@@ -138,7 +138,7 @@
                             </span>
                         @else
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                                <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>Sakin
+                                <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>Üye
                             </span>
                         @endif
                     </div>

@@ -50,7 +50,7 @@ class Unit extends Model
     {
         return $this->occupantAccount
             ?? $this->ownerAccount
-            ?? $this->accounts()->whereIn('type', [Account::TYPE_TENANT, Account::TYPE_OWNER, Account::TYPE_RESIDENT])->first();
+            ?? $this->accounts()->whereIn('type', [Account::TYPE_TENANT, Account::TYPE_OWNER])->first();
     }
 
     public function ownerHistories(): HasMany

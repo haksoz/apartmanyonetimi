@@ -105,7 +105,7 @@ class DueController extends Controller
             ->get();
         $accounts = Account::query()
             ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_RESIDENT])
+            ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
