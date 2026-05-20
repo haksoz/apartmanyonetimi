@@ -338,14 +338,8 @@ class AccountUserController extends Controller
         $userId = $account->user_id;
         $account->update(['user_id' => null]);
 
-        if ($userId) {
-            $hasOtherAccounts = Account::where('apartment_id', $apartment->id)
-                ->where('user_id', $userId)
-                ->exists();
-
-            if (! $hasOtherAccounts) {
-                $apartment->members()->detach($userId);
-            }
+        if ($userId && ! $apartment->members()->whereKey($userId)->exists()) {
+            $apartment->members()->attach($userId, ['role' => 'member']);
         }
 
         return back()->with('status', 'Kullanıcı bağlantısı kaldırıldı.');
