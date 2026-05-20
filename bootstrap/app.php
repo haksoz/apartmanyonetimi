@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'apartment' => \App\Http\Middleware\RequireApartment::class,
+            'owner'     => \App\Http\Middleware\EnsureOwner::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

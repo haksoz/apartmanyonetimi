@@ -7,6 +7,7 @@
             <h1 class="text-2xl font-bold text-slate-950">Aidatlar</h1>
             <p class="mt-1 text-sm text-slate-500">Tekil veya toplu aidat tahakkukları burada yönetilecek.</p>
         </div>
+        @if($isOwner)
         <div class="flex gap-2">
             @if ($activePlans->isNotEmpty())
                 <button type="button" onclick="document.getElementById('modal-generate-plan').classList.remove('hidden')"
@@ -17,6 +18,7 @@
             <a href="{{ route('dues.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 text-center">Borçlandır</a>
             <a href="{{ route('dues.batch.create') }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 text-center">Toplu Borçlandır</a>
         </div>
+        @endif
     </div>
 
     {{-- Plandan Borçlandır Modal --}}

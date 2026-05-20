@@ -24,6 +24,20 @@ class RequireApartment
             return redirect()->route('onboarding.show');
         }
 
+        $apartment = $currentApartment->getFor($user);
+
+        $isOwnerOfCurrent = false;
+        if ($apartment && $user) {
+            if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+                $isOwnerOfCurrent = true;
+            } else {
+                $member = $apartment->members()->withPivot('role')->whereKey($user->id)->first();
+                $isOwnerOfCurrent = $member && $member->pivot->role === 'owner';
+            }
+        }
+
+        view()->share('navIsOwner', $isOwnerOfCurrent);
+
         return $next($request);
     }
 }

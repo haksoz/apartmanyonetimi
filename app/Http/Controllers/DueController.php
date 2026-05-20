@@ -45,9 +45,18 @@ class DueController extends Controller
         $filterBatchId = $request->query('batch_id');
         $filterSearch  = $request->query('search');
 
+        $isOwner = $this->isOwnerOf($apartment);
+
+        $memberAccountIds = ! $isOwner && $apartment
+            ? Account::where('apartment_id', $apartment->id)
+                ->where('user_id', auth()->id())
+                ->pluck('id')
+            : null;
+
         $dues = Due::query()
             ->with(['account', 'unit', 'category', 'batch.plan'])
             ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
+            ->when($memberAccountIds, fn ($q) => $q->whereIn('account_id', $memberAccountIds))
             ->when($filterSearch, fn ($q) => $q->where(function ($sub) use ($filterSearch) {
                 $sub->whereHas('account', fn ($a) => $a->where('name', 'like', '%' . $filterSearch . '%'))
                     ->orWhereHas('unit',    fn ($u) => $u->where('unit_no', 'like', '%' . $filterSearch . '%'))
@@ -80,7 +89,7 @@ class DueController extends Controller
 
         $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch');
 
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters'));
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters', 'isOwner'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)

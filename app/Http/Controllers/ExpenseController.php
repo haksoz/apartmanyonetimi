@@ -42,9 +42,18 @@ class ExpenseController extends Controller
         $filterCategory = $request->query('category');
         $filterSearch   = $request->query('search');
 
+        $isOwner = $this->isOwnerOf($apartment);
+
+        $memberAccountIds = ! $isOwner && $apartment
+            ? Account::where('apartment_id', $apartment->id)
+                ->where('user_id', auth()->id())
+                ->pluck('id')
+            : null;
+
         $expenses = Expense::query()
             ->with(['account', 'categoryRelation'])
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->when($memberAccountIds, fn ($q) => $q->whereIn('account_id', $memberAccountIds))
             ->when($filterSearch, fn ($q) => $q->where(function ($sub) use ($filterSearch) {
                 $sub->whereHas('account', fn ($a) => $a->where('name', 'like', '%' . $filterSearch . '%'))
                     ->orWhere('amount', 'like', '%' . $filterSearch . '%');
@@ -65,7 +74,7 @@ class ExpenseController extends Controller
 
         $filters = compact('filterPeriod', 'filterStatus', 'filterCategory', 'filterSearch');
 
-        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories'));
+        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'isOwner'));
     }
 
     /**

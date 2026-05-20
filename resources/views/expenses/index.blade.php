@@ -7,9 +7,11 @@
             <h1 class="text-2xl font-bold text-slate-950">Giderler</h1>
             <p class="mt-1 text-sm text-slate-500">Apartman giderleri ve tedarikçi hesap bağlantıları burada yönetilecek.</p>
         </div>
+        @if($isOwner)
         <div class="flex gap-2">
             <a href="{{ route('expenses.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Gider Ekle</a>
         </div>
+        @endif
     </div>
 
     {{-- Arama + Filtre --}}
