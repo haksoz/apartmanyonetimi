@@ -247,8 +247,8 @@ class AccountController extends Controller
             $t->running_balance = $running;
         }
 
-        // Görüntüleme: yeniden eskiye (yeniden eskiye sıralama için ters çevir)
-        $transactions = $transactions->reverse()->values();
+        // Görüntüleme: yeniden eskiye, son 5 kayıt
+        $transactions = $transactions->reverse()->values()->take(5);
 
         // Ödemelere ait tahsisleri yükle ve transactionlara ekle
         $paymentIds = $transactions
@@ -274,6 +274,76 @@ class AccountController extends Controller
         }
 
         return view('accounts.show', compact('account', 'transactions'));
+    }
+
+    /**
+     * Hesap ekstresi — tarih aralığı filtreli tüm hareketler.
+     */
+    public function statement(string $id, Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        $account = Account::query()
+            ->with('unit')
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->findOrFail($id);
+
+        $dateFrom = $request->query('date_from');
+        $dateTo   = $request->query('date_to');
+
+        // Filtre öncesi bakiye (açılış bakiyesi)
+        $openingBalance = 0;
+        if ($dateFrom) {
+            $opening = $account->transactions()
+                ->where('transaction_date', '<', $dateFrom)
+                ->orderBy('transaction_date')->orderBy('id')
+                ->get();
+            foreach ($opening as $t) {
+                $openingBalance += $t->type === 'debit' ? $t->amount : -$t->amount;
+            }
+        }
+
+        // Filtreli hareketler
+        $query = $account->transactions()
+            ->when($dateFrom, fn ($q) => $q->where('transaction_date', '>=', $dateFrom))
+            ->when($dateTo,   fn ($q) => $q->where('transaction_date', '<=', $dateTo))
+            ->orderBy('transaction_date')->orderBy('id');
+
+        $transactions = $query->get();
+
+        // Running balance
+        $running = $openingBalance;
+        foreach ($transactions as $t) {
+            $running += $t->type === 'debit' ? $t->amount : -$t->amount;
+            $t->running_balance = $running;
+        }
+
+        // Yeniden eskiye
+        $transactions = $transactions->reverse()->values();
+
+        // Tahsisleri yükle
+        $paymentIds = $transactions
+            ->filter(fn ($t) => ($t->transactionable_type ?? '') === Payment::class)
+            ->pluck('transactionable_id')->unique()->values();
+
+        if ($paymentIds->isNotEmpty()) {
+            $payments = Payment::with('allocations.due')->whereIn('id', $paymentIds)->get()->keyBy('id');
+            foreach ($transactions as $t) {
+                $t->allocations = (($t->transactionable_type ?? '') === Payment::class && isset($payments[$t->transactionable_id]))
+                    ? $payments[$t->transactionable_id]->allocations
+                    : collect();
+            }
+        } else {
+            foreach ($transactions as $t) {
+                $t->allocations = collect();
+            }
+        }
+
+        $closingBalance = $transactions->first()?->running_balance ?? $openingBalance;
+
+        return view('accounts.statement', compact(
+            'account', 'transactions', 'openingBalance', 'closingBalance', 'dateFrom', 'dateTo'
+        ));
     }
 
     /**

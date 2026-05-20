@@ -26,14 +26,17 @@ class RequireApartment
 
         $apartment = $currentApartment->getFor($user);
 
-        $isOwnerOfCurrent = false;
-        if ($apartment && $user) {
-            if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
-                $isOwnerOfCurrent = true;
-            } else {
-                $member = $apartment->members()->withPivot('role')->whereKey($user->id)->first();
-                $isOwnerOfCurrent = $member && $member->pivot->role === 'owner';
-            }
+        if ($user->isAdmin()) {
+            $isOwnerOfCurrent = true;
+        } elseif ($apartment) {
+            $member = $apartment->members()->withPivot('role')->whereKey($user->id)->first();
+            $isOwnerOfCurrent = $member && $member->pivot->role === 'owner';
+        } else {
+            // Henüz apartman seçilmemis; herhangi bir apartmanda owner mi?
+            $isOwnerOfCurrent = $user->apartments()
+                ->wherePivot('role', 'owner')
+                ->wherePivot('is_active', true)
+                ->exists();
         }
 
         view()->share('navIsOwner', $isOwnerOfCurrent);

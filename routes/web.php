@@ -51,6 +51,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::resource('apartments', ApartmentController::class);
         Route::resource('units', UnitController::class);
         Route::resource('accounts', AccountController::class);
+        Route::get('accounts/{account}/statement', [AccountController::class, 'statement'])->name('accounts.statement');
         Route::patch('accounts/{account}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
         Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
         Route::get('users', [AccountUserController::class, 'index'])->name('users.index');

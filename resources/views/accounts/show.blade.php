@@ -171,7 +171,13 @@
     @endif
 
     <div class="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 class="mb-4 text-lg font-semibold text-slate-950">Hareketler</h2>
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-slate-950">Son Hareketler</h2>
+            <a href="{{ route('accounts.statement', $account) }}"
+               class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                Tüm Hareketler &rarr;
+            </a>
+        </div>
         @if ($transactions->isEmpty())
             <div class="py-6 text-sm text-slate-500">Henüz hareket yok.</div>
         @else

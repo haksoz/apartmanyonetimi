@@ -66,7 +66,7 @@ class Apartment extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
-            ->withPivot('role')
+            ->withPivot('role', 'is_active')
             ->withTimestamps();
     }
 }
