@@ -134,7 +134,7 @@
             <div class="rounded-2xl bg-white p-6 shadow-sm">
                 <h5 class="text-sm font-semibold text-slate-900 mb-3">Kullanıcıya Tanımlanabilecek Hesaplar</h5>
                 <p class="text-sm text-slate-500 mb-5">Boş bırakabilirsiniz. İsterseniz sonradan da hesap tanımlayabilirsiniz.</p>
-                <form method="POST" action="{{ route('accounts.user.store', $availableAccounts->first()) }}" id="attach-form">
+                <form method="POST" action="{{ route('users.attach-accounts', $user) }}" id="attach-form">
                     @csrf
                     <div class="space-y-2 max-h-64 overflow-y-auto border border-slate-200 rounded-xl p-3 mb-4">
                         @foreach ($availableAccounts as $account)
@@ -152,7 +152,15 @@
                             </label>
                         @endforeach
                     </div>
-                    <input type="hidden" name="user_id" value="{{ $user->id }}">
+                    <div class="mb-4 hidden" id="sync-info-box">
+                        <label class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 cursor-pointer">
+                            <input type="checkbox" name="sync_account_info" value="1" class="mt-0.5 rounded border-slate-300">
+                            <div>
+                                <div class="text-sm font-semibold text-amber-800">Hesap bilgilerini güncelle</div>
+                                <div class="text-xs text-amber-700 mt-1">Seçili hesabın ad, telefon ve e-posta bilgileri kullanıcı bilgileriyle güncellenecektir.</div>
+                            </div>
+                        </label>
+                    </div>
                     <button type="submit" class="rounded-xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800">
                         Seçilen Hesapları Bağla
                     </button>
@@ -188,6 +196,13 @@
     </div>
 
     <script>
+        document.querySelectorAll('.attach-checkbox').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                const anyChecked = document.querySelectorAll('.attach-checkbox:checked').length > 0;
+                document.getElementById('sync-info-box').classList.toggle('hidden', !anyChecked);
+            });
+        });
+
         function generatePassword() {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
             let password = '';

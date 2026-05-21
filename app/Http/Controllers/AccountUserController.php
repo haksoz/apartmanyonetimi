@@ -240,6 +240,47 @@ class AccountUserController extends Controller
     }
 
     /**
+     * Mevcut kullanıcıya hesap bağla.
+     */
+    public function attachAccounts(Request $request, CurrentApartment $currentApartment, User $user)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        abort_unless($apartment, 403);
+
+        $validated = $request->validate([
+            'account_ids'       => ['required', 'array', 'min:1'],
+            'account_ids.*'     => ['integer', 'exists:accounts,id'],
+            'sync_account_info' => ['nullable', 'boolean'],
+        ]);
+
+        $accounts = Account::where('apartment_id', $apartment->id)
+            ->whereNull('user_id')
+            ->whereIn('id', $validated['account_ids'])
+            ->get();
+
+        $syncInfo = ! empty($validated['sync_account_info']);
+
+        foreach ($accounts as $account) {
+            $updateData = ['user_id' => $user->id];
+
+            if ($syncInfo) {
+                $updateData['name']  = $user->name;
+                $updateData['phone'] = $user->phone;
+                $updateData['email'] = $user->email;
+            }
+
+            $account->update($updateData);
+
+            if ($account->type === Account::TYPE_TENANT && $account->unit) {
+                $account->unit->update(['occupant_account_id' => $account->id]);
+            }
+        }
+
+        return back()->with('status', 'Hesap(lar) kullanıcıya bağlandı.');
+    }
+
+    /**
      * Apartmanda belirtilen kullanıcı dışında başka aktif yönetici var mı?
      */
     private function hasOtherActiveOwner(\App\Models\Apartment $apartment, int $excludeUserId): bool

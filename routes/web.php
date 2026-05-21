@@ -77,6 +77,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::patch('users/{user}', [AccountUserController::class, 'update'])->name('users.update');
         Route::patch('users/{user}/password', [AccountUserController::class, 'updatePassword'])->name('users.password');
         Route::post('accounts/{account}/user', [AccountUserController::class, 'store'])->name('accounts.user.store');
+        Route::post('users/{user}/attach-accounts', [AccountUserController::class, 'attachAccounts'])->name('users.attach-accounts');
         Route::patch('accounts/{account}/user/role', [AccountUserController::class, 'updateRole'])->name('accounts.user.role');
         Route::patch('users/{user}/role', [AccountUserController::class, 'updateUserRole'])->name('users.role');
         Route::patch('users/{user}/toggle-active', [AccountUserController::class, 'toggleActive'])->name('users.toggle-active');

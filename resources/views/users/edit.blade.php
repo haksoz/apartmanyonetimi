@@ -78,7 +78,7 @@
     @if ($availableAccounts->isNotEmpty())
         <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
             <h2 class="text-lg font-semibold text-slate-900 mb-4">Hesap Bağla</h2>
-            <form method="POST" action="">
+            <form method="POST" action="{{ route('users.attach-accounts', $user) }}">
                 @csrf
                 <div class="space-y-2 max-h-64 overflow-y-auto border border-slate-200 rounded-xl p-3 mb-4">
                     @foreach ($availableAccounts as $account)
