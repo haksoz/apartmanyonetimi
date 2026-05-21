@@ -220,13 +220,10 @@
                     </th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Oluşturulma</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Kategori</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
                         <a href="{{ route('dues.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
                     </th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <a href="{{ route('dues.index', ['sort_by' => 'status', 'sort_direction' => $sortBy === 'status' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 hover:text-slate-700">Durum @if ($sortBy === 'status')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
-                    </th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">İşlemler</th>
                 </tr>
             </thead>
@@ -268,7 +265,6 @@
                                 @endif
                             </div>
                         </td>
-                        <td class="px-5 py-4 text-slate-700">{{ $due->category?->name ?? '-' }}</td>
                         <td class="px-5 py-4 text-right">
                             <div class="font-semibold text-slate-900 tabular-nums">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
                             @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
@@ -280,19 +276,19 @@
                         <td class="px-5 py-4">
                             @if ($isOverdue)
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>Gecikmiş
+                                    {{ $due->category?->name ?? '-' }} Gecikti
                                 </span>
                             @elseif ($due->status === 'paid')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Ödendi
+                                    {{ $due->category?->name ?? '-' }} Ödendi
                                 </span>
                             @elseif ($due->status === 'partial')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Kısmi
+                                    {{ $due->category?->name ?? '-' }} Kısmi
                                 </span>
                             @else
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Bekliyor
+                                    {{ $due->category?->name ?? '-' }} Bekliyor
                                 </span>
                             @endif
                         </td>
@@ -306,7 +302,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="px-5 py-12 text-center text-slate-400">Henüz aidat kaydı yok.</td></tr>
+                    <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400">Henüz aidat kaydı yok.</td></tr>
                 @endforelse
             </tbody>
         </table>
