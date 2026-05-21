@@ -8,10 +8,6 @@ class LandingController extends Controller
 {
     public function __invoke(Request $request)
     {
-        if (auth()->check()) {
-            return redirect()->route('dashboard');
-        }
-
         return view('landing');
     }
 }

@@ -12,7 +12,7 @@
             </span>
         </a>
         <div class="flex items-center gap-3">
-            <a href="{{ route('login') }}"
+            <a href="{{ route('dashboard') }}"
                class="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">
                 Giriş Yap
             </a>
@@ -360,14 +360,15 @@
 <footer class="py-10 px-4 sm:px-6 bg-slate-950 border-t border-slate-800">
     <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-2">
-            <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-7 w-auto opacity-80">
-            <span class="font-bold text-white"><span style="color:#5a9e5a">Aidat</span><span class="text-slate-400">Cep</span></span>
+            <a href="https://ko.com.tr/" target="_blank" rel="noopener noreferrer">
+                <img src="https://atmaca.ko.com.tr/images/uploads/firms/ko.png" alt="KO" class="h-7 w-auto opacity-80">
+            </a>
         </div>
         <div class="flex items-center gap-6 text-sm text-slate-500">
             <a href="tel:+902163774000" class="hover:text-slate-300 transition-colors">+90 216 377 4000</a>
             <a href="mailto:info@aidatcep.com" class="hover:text-slate-300 transition-colors">info@aidatcep.com</a>
         </div>
-        <p class="text-xs text-slate-600">&copy; {{ date('Y') }} AidatCep. Tüm hakları saklıdır.</p>
+        <p class="text-xs text-slate-600">&copy; {{ date('Y') }} AidatCep — Kapital Online markasıdır.</p>
     </div>
 </footer>
 
