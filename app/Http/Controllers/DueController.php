@@ -71,6 +71,8 @@ class DueController extends Controller
 
         if ($sortBy === 'unit_id') {
             $dues->orderByRaw('unit_id IS NULL, unit_id ' . $sortDirection);
+        } elseif ($sortBy === 'created_at') {
+            $dues->orderByRaw('COALESCE(created_at_manual, created_at) ' . $sortDirection);
         } else {
             $dues->orderBy($sortBy, $sortDirection);
         }

@@ -218,10 +218,9 @@
                     <th class="px-4 py-3.5 w-10">
                         <input type="checkbox" id="check-all" class="rounded border-slate-300 text-slate-700 cursor-pointer">
                     </th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Daire / Hesap</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Oluşturulma</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Kategori</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
                         <a href="{{ route('dues.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
                     </th>
@@ -241,23 +240,35 @@
                             <input type="checkbox" class="row-check rounded border-slate-300 text-slate-700 cursor-pointer" value="{{ $due->id }}" data-status="{{ $due->status }}">
                         </td>
                         <td class="px-5 py-4">
-                            <div class="font-semibold text-slate-900">{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</div>
-                            <div class="text-xs text-slate-500 mt-0.5">{{ $due->account?->name }}</div>
+                            <div class="text-slate-900 font-medium">{{ $due->description ?: '-' }}</div>
+                            @if ($due->account)
+                                @php
+                                    $title = match($due->account->type) {
+                                        App\Models\Account::TYPE_OWNER => 'Kat Maliki',
+                                        App\Models\Account::TYPE_TENANT => 'Kiracı',
+                                        App\Models\Account::TYPE_SUPPLIER => 'Tedarikçi',
+                                        default => ''
+                                    };
+                                @endphp
+                                <div class="text-xs text-slate-500 mt-1">
+                                    @if ($title){{ $title }} @endif{{ $due->account->name }}
+                                    @if ($due->unit) - Daire {{ str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) }}@endif
+                                </div>
+                            @endif
                         </td>
                         <td class="px-5 py-4">
                             <div class="text-slate-700 tabular-nums">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</div>
-                            <div class="mt-1">
+                            <div class="text-xs text-slate-500 mt-1">
                                 @if ($due->batch?->plan)
-                                    <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">Aidat Planı ile</span>
+                                    Aidat Planı ile
                                 @elseif ($due->batch)
-                                    <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">Toplu Borçlandırma</span>
+                                    Toplu Borçlandırma
                                 @else
-                                    <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">Manuel</span>
+                                    Manuel
                                 @endif
                             </div>
                         </td>
                         <td class="px-5 py-4 text-slate-700">{{ $due->category?->name ?? '-' }}</td>
-                        <td class="px-5 py-4 text-slate-600 max-w-48 truncate">{{ $due->description ?: '-' }}</td>
                         <td class="px-5 py-4 text-right">
                             <div class="font-semibold text-slate-900 tabular-nums">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
                             @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
