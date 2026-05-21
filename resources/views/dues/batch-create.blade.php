@@ -306,7 +306,7 @@
                 calcBtn.textContent = 'Yükleniyor...';
 
                 try {
-                    const response = await fetch(`{{ route('dues.expenses.by-period') }}?period=${period}`);
+                    const response = await fetch(`/dues/expenses-by-period?period=${period}`);
                     
                     if (!response.ok) {
                         const errorText = await response.text();
