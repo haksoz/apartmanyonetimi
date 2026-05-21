@@ -236,12 +236,12 @@
                     @php
                         $isOverdue = $due->status !== 'paid' && $due->due_date && $due->due_date->isPast();
                     @endphp
-                    <tr class="hover:bg-slate-50 transition-colors" data-id="{{ $due->id }}">
-                        <td class="px-4 py-4">
+                    <tr class="hover:bg-slate-50 transition-colors cursor-pointer" data-id="{{ $due->id }}" onclick="window.location.href='{{ route('dues.show', $due) }}'">
+                        <td class="px-4 py-4" onclick="event.stopPropagation()">
                             <input type="checkbox" class="row-check rounded border-slate-300 text-slate-700 cursor-pointer" value="{{ $due->id }}" data-status="{{ $due->status }}">
                         </td>
                         <td class="px-5 py-4">
-                            <div class="font-semibold text-slate-900">{{ $due->unit ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }} No.lu Daire</div>
+                            <div class="font-semibold text-slate-900">{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</div>
                             <div class="text-xs text-slate-500 mt-0.5">{{ $due->account?->name }}</div>
                         </td>
                         <td class="px-5 py-4">
@@ -285,7 +285,7 @@
                                 </span>
                             @endif
                         </td>
-                        <td class="px-5 py-4 text-right whitespace-nowrap">
+                        <td class="px-5 py-4 text-right whitespace-nowrap" onclick="event.stopPropagation()">
                             <div class="flex items-center justify-end gap-2">
                                 @if ($due->status !== 'paid')
                                     <a href="{{ route('dues.payment.create', $due) }}" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">Tahsil Et</a>
@@ -307,88 +307,47 @@
             @php
                 $isOverdue = $due->status !== 'paid' && $due->due_date && $due->due_date->isPast();
             @endphp
-            <div class="rounded-xl bg-white p-4 shadow-sm border border-slate-200">
-                {{-- Header: Unit & Status --}}
-                <div class="flex items-start justify-between mb-3">
-                    <div>
-                        <div class="text-lg font-bold text-slate-900">
-                            {{ $due->unit ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }} No.lu Daire
-                        </div>
-                        <div class="text-sm text-slate-600">{{ $due->account?->name }}</div>
+            <a href="{{ route('dues.show', $due) }}" class="flex items-start justify-between rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
+                <div class="flex-1">
+                    <div class="text-sm text-slate-900">
+                        <span class="font-bold">{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</span>
+                        <span class="mx-1 text-slate-400">•</span>
+                        <span>{{ $due->account?->name }}</span>
+                        <span class="mx-1 text-slate-400">•</span>
+                        <span class="text-xs text-slate-500">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
                     </div>
-                    <div>
-                        @if ($isOverdue)
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-                                <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
-                                Gecikmiş
-                            </span>
-                        @elseif ($due->status === 'paid')
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
-                                Ödendi
-                            </span>
-                        @elseif ($due->status === 'partial')
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                                <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
-                                Kısmi
-                            </span>
-                        @else
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                                <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
-                                Bekliyor
-                            </span>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Info Grid --}}
-                <div class="grid grid-cols-2 gap-3 mb-3 text-sm">
-                    <div>
-                        <div class="text-xs text-slate-500 mb-1">Oluşturulma</div>
-                        <div class="font-medium text-slate-900 tabular-nums">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</div>
-                    </div>
-                    <div>
-                        <div class="text-xs text-slate-500 mb-1">Kategori</div>
-                        <div class="font-medium text-slate-900">{{ $due->category?->name ?? '-' }}</div>
-                    </div>
-                    <div class="col-span-2">
-                        <div class="text-xs text-slate-500 mb-1">Açıklama</div>
-                        <div class="font-medium text-slate-900">{{ $due->description ?: '-' }}</div>
-                    </div>
-                </div>
-
-                {{-- Amount Section --}}
-                <div class="bg-slate-50 rounded-lg p-3 mb-3">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <div class="text-xs text-slate-500 mb-1">Tutar</div>
-                            <div class="text-lg font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
-                        </div>
-                        @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
-                            <div class="text-right">
-                                <div class="text-xs text-slate-500 mb-1">Kalan</div>
-                                <div class="text-base font-semibold text-amber-600">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
-                            </div>
-                        @elseif($due->remaining_amount == 0)
-                            <div class="text-right">
-                                <div class="text-xs text-emerald-600 font-medium">Tamamen Ödendi</div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Actions --}}
-                <div class="flex gap-2">
-                    @if ($due->status !== 'paid')
-                        <a href="{{ route('dues.payment.create', $due) }}" class="flex-1 rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">
-                            Tahsil Et
-                        </a>
+                    @if ($due->description)
+                        <div class="text-xs text-slate-600 mt-1 truncate">{{ $due->description }}</div>
                     @endif
-                    <a href="{{ route('dues.show', $due) }}" class="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">
-                        Detay
-                    </a>
+                    @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
+                        <div class="text-xs text-amber-600 mt-1">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                    @endif
                 </div>
-            </div>
+                <div class="ml-3 text-right">
+                    <div class="font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
+                    @if ($isOverdue)
+                        <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 mt-1">
+                            <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
+                            Gecikmiş
+                        </span>
+                    @elseif ($due->status === 'paid')
+                        <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 mt-1">
+                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
+                            Ödendi
+                        </span>
+                    @elseif ($due->status === 'partial')
+                        <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 mt-1">
+                            <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
+                            Kısmi
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 mt-1">
+                            <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
+                            Bekliyor
+                        </span>
+                    @endif
+                </div>
+            </a>
         @empty
             <div class="rounded-xl bg-white p-8 text-center text-slate-500 shadow-sm">
                 Henüz aidat kaydı yok.

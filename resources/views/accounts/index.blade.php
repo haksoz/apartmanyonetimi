@@ -80,7 +80,7 @@
                         $balance = $credit - $debit;
                     @endphp
                     <tr class="hover:bg-slate-50 transition-colors {{ ! $account->is_active ? 'bg-slate-50/50 text-slate-400' : '' }}">
-                        <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $account->unit ? str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT).' No.lu Daire' : '-' }}</td>
+                        <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $account->unit ? 'No '.str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</td>
                         <td class="px-5 py-4">
                             <div class="font-semibold {{ $account->is_active ? 'text-slate-900' : 'text-slate-500' }}">{{ $account->name }}</div>
                             <div class="text-xs text-slate-500 mt-0.5">{{ $account->type_label }}</div>
@@ -138,7 +138,7 @@
                         @endif
                         @if ($account->unit)
                             <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                                {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }} No.lu Daire
+                                No {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
                             </span>
                         @endif
                     </div>

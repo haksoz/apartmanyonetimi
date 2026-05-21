@@ -10,7 +10,22 @@
                 @endif
             </h1>
             <p class="mt-1 text-sm text-slate-500">
-                {{ $due->account?->name ?? '-' }}
+                @if ($due->account)
+                    @php
+                        $title = match($due->account->type) {
+                            App\Models\Account::TYPE_OWNER => 'Kat Maliki',
+                            App\Models\Account::TYPE_TENANT => 'Kiracı',
+                            App\Models\Account::TYPE_SUPPLIER => 'Tedarikçi',
+                            default => ''
+                        };
+                    @endphp
+                    @if ($title)
+                        <span class="font-semibold">{{ $title }}</span> -
+                    @endif
+                    {{ $due->account->name }}
+                @else
+                    -
+                @endif
                 @if ($due->reference_number)
                     <span class="mx-1 text-slate-300">&bull;</span>
                     {{ $due->reference_number }}
@@ -60,73 +75,54 @@
 
     {{-- Info Card --}}
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
-        <div class="grid gap-6 md:grid-cols-3">
+        <div class="space-y-4">
             <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Hesap</div>
-                <div class="mt-2 text-sm font-medium text-slate-900">
-                    @if ($due->account)
-                        <a href="{{ route('accounts.show', $due->account) }}" class="hover:text-emerald-600 hover:underline">{{ $due->account->name }}</a>
-                    @else
-                        -
-                    @endif
-                </div>
-            </div>
-            <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Daire</div>
-                <div class="mt-2 text-sm font-medium text-slate-900">{{ $due->unit ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT).' No.lu Daire' : '-' }}</div>
-            </div>
-            <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kategori</div>
-                <div class="mt-2 text-sm font-medium text-slate-900">{{ $due->category?->name ?? '-' }}</div>
-            </div>
-            <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Referans No</div>
-                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $due->reference_number ?? '-' }}</div>
-            </div>
-            <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dönem</div>
-                <div class="mt-2 text-sm font-medium text-slate-900">{{ $due->period }}</div>
-            </div>
-            <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Oluşturulma Tarihi</div>
-                <div class="mt-2 text-sm font-medium text-slate-900">
-                    {{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}
-                </div>
-            </div>
-            <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</div>
-                <div class="mt-2">
-                    @php
-                        $statusMap = [
-                            'paid'    => ['label' => 'Ödendi',        'class' => 'bg-emerald-100 text-emerald-700'],
-                            'partial' => ['label' => 'Kısmen Ödendi', 'class' => 'bg-amber-100 text-amber-700'],
-                            'overdue' => ['label' => 'Gecikmiş',      'class' => 'bg-red-100 text-red-700'],
-                        ];
-                        $statusInfo = $statusMap[$due->status] ?? ['label' => 'Bekliyor', 'class' => 'bg-slate-100 text-slate-700'];
-                    @endphp
-                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $statusInfo['class'] }}">
-                        {{ $statusInfo['label'] }}
-                    </span>
-                </div>
-            </div>
-            <div class="md:col-span-3">
                 <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</div>
                 <div class="mt-2 text-sm text-slate-900">{{ $due->description ?: '-' }}</div>
             </div>
-            <div class="md:col-span-3">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kaynak</div>
-                <div class="mt-2 text-sm text-slate-900">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                <div class="flex items-center gap-1">
+                    <span class="text-xs text-slate-400">KATEGORİ</span>
+                    <span class="text-slate-300">:</span>
+                    <span class="font-medium text-slate-700">{{ $due->category?->name ?? '-' }}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span class="text-xs text-slate-400">OLUŞTURULMA TARİHİ</span>
+                    <span class="text-slate-300">:</span>
+                    <span class="font-medium text-slate-700">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span class="text-xs text-slate-400">DURUM</span>
+                    <span class="text-slate-300">:</span>
+                    @php
+                        $isOverdue = $due->status !== 'paid' && $due->due_date && $due->due_date->isPast();
+                        if ($isOverdue) {
+                            $statusInfo = ['label' => 'Gecikmiş', 'class' => 'bg-red-50 text-red-600 border border-red-200'];
+                        } elseif ($due->status === 'paid') {
+                            $statusInfo = ['label' => 'Ödendi', 'class' => 'bg-emerald-50 text-emerald-600 border border-emerald-200'];
+                        } elseif ($due->status === 'partial') {
+                            $statusInfo = ['label' => 'Kısmen Ödendi', 'class' => 'bg-amber-50 text-amber-600 border border-amber-200'];
+                        } else {
+                            $statusInfo = ['label' => 'Bekliyor', 'class' => 'bg-slate-50 text-slate-600 border border-slate-200'];
+                        }
+                    @endphp
+                    <span class="inline-flex rounded-lg px-2 py-0.5 text-xs font-semibold {{ $statusInfo['class'] }}">
+                        {{ $statusInfo['label'] }}
+                    </span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span class="text-xs text-slate-400">KAYNAK</span>
+                    <span class="text-slate-300">:</span>
                     @if ($due->batch?->plan)
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        <span class="inline-flex items-center gap-1.5 rounded-lg bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700 border border-violet-200">
                             Aidat Planı: {{ $due->batch->plan->name }}
                         </span>
                     @elseif ($due->batch)
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                        <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-600 border border-slate-200">
                             Toplu Borçlandırma
                         </span>
                     @else
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                        <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-600 border border-slate-200">
                             Manuel
                         </span>
                     @endif
