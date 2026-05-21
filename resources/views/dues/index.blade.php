@@ -320,16 +320,16 @@
             @endphp
             <a href="{{ route('dues.show', $due) }}" class="flex items-start justify-between rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
                 <div class="flex-1">
-                    <div class="text-sm text-slate-900">
-                        <span class="font-bold">{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</span>
+                    @if ($due->description)
+                        <div class="text-base font-bold text-slate-900">{{ $due->description }}</div>
+                    @endif
+                    <div class="text-xs text-slate-600 mt-1">
+                        <span>{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</span>
                         <span class="mx-1 text-slate-400">•</span>
                         <span>{{ $due->account?->name }}</span>
                         <span class="mx-1 text-slate-400">•</span>
-                        <span class="text-xs text-slate-500">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
+                        <span>{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
                     </div>
-                    @if ($due->description)
-                        <div class="text-xs text-slate-600 mt-1 truncate">{{ $due->description }}</div>
-                    @endif
                     @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
                         <div class="text-xs text-amber-600 mt-1">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
                     @endif

@@ -62,9 +62,7 @@
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left">
                 <tr>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Daire No</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Adı Soyadı / Ünvan</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Tip</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Alacağı</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Borcu</th>
@@ -79,14 +77,12 @@
                         $credit = (float) ($account->credit_total ?? 0);
                         $balance = $credit - $debit;
                     @endphp
-                    <tr class="hover:bg-slate-50 transition-colors {{ ! $account->is_active ? 'bg-slate-50/50 text-slate-400' : '' }}">
-                        <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $account->unit ? 'No '.str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</td>
+                    <tr class="hover:bg-slate-50 transition-colors cursor-pointer {{ ! $account->is_active ? 'bg-slate-50/50 text-slate-400' : '' }}" onclick="window.location.href='{{ route('accounts.show', $account) }}'">
                         <td class="px-5 py-4">
                             <div class="font-semibold {{ $account->is_active ? 'text-slate-900' : 'text-slate-500' }}">{{ $account->name }}</div>
-                            <div class="text-xs text-slate-500 mt-0.5">{{ $account->type_label }}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">{{ $account->type_label }}@if ($account->unit) - Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}@endif</div>
                         </td>
-                        <td class="px-5 py-4 text-slate-600">{{ $account->type_label }}</td>
-                        <td class="px-5 py-4">
+                        <td class="px-5 py-4>
                             @if ($account->is_active)
                                 <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span> Aktif
@@ -99,13 +95,22 @@
                         </td>
                         <td class="px-5 py-4 text-right font-medium text-emerald-600 tabular-nums">{{ number_format($credit, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-right font-medium text-red-600 tabular-nums">{{ number_format($debit, 2, ',', '.') }} TL</td>
-                        <td class="px-5 py-4 text-right font-semibold tabular-nums {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format(abs($balance), 2, ',', '.') }} TL</td>
-                        <td class="px-5 py-4 text-right">
+                        <td class="px-5 py-4 text-right font-semibold tabular-nums {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }}">
+                            <div class="flex items-center justify-end gap-2">
+                                <span>{{ number_format(abs($balance), 2, ',', '.') }} TL</span>
+                                @if ($balance < 0)
+                                    <span class="text-xs text-red-500">(B)</span>
+                                @elseif ($balance > 0)
+                                    <span class="text-xs text-emerald-500">(A)</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td class="px-5 py-4 text-right" onclick="event.stopPropagation()">
                             <a href="{{ route('accounts.show', $account) }}" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Detay</a>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="px-5 py-12 text-center text-slate-400">Henüz hesap yok.</td></tr>
+                    <tr><td colspan="6" class="px-5 py-12 text-center text-slate-400">Henüz hesap yok.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -119,52 +124,31 @@
                 $credit = (float) ($account->credit_total ?? 0);
                 $balance = $credit - $debit;
             @endphp
-            <div class="rounded-xl bg-white p-4 shadow-sm border border-slate-200 {{ ! $account->is_active ? 'bg-slate-50/50' : '' }}">
-                {{-- Header: Name, Type & Status --}}
-                <div class="flex items-start justify-between mb-3">
-                    <div>
-                        <div class="text-lg font-bold {{ $account->is_active ? 'text-slate-900' : 'text-slate-500' }}">{{ $account->name }}</div>
-                        <div class="text-sm text-slate-600">{{ $account->type_label }}</div>
-                    </div>
-                    <div class="flex flex-col items-end gap-1">
-                        @if ($account->is_active)
-                            <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span> Aktif
-                            </span>
-                        @else
-                            <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500">
-                                <span class="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block"></span> Pasif
-                            </span>
-                        @endif
+            <a href="{{ route('accounts.show', $account) }}" class="flex items-start justify-between rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
+                <div class="flex-1">
+                    <div class="text-sm text-slate-900">
+                        <span class="font-bold">{{ $account->name }}</span>
+                        <span class="mx-1 text-slate-400">•</span>
+                        <span class="text-xs text-slate-500">{{ $account->type_label }}</span>
                         @if ($account->unit)
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                                No {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                            </span>
+                            <span class="mx-1 text-slate-400">•</span>
+                            <span class="text-xs text-slate-500">Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</span>
                         @endif
                     </div>
-                </div>
-
-                {{-- Balance Section --}}
-                <div class="bg-slate-50 rounded-lg p-3 mb-3">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="text-xs text-slate-500">Alacağı</div>
-                        <div class="text-sm font-semibold text-emerald-600">{{ number_format($credit, 2, ',', '.') }} TL</div>
-                    </div>
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="text-xs text-slate-500">Borcu</div>
-                        <div class="text-sm font-semibold text-red-600">{{ number_format($debit, 2, ',', '.') }} TL</div>
-                    </div>
-                    <div class="border-t border-slate-200 pt-2 flex items-center justify-between">
-                        <div class="text-xs text-slate-600 font-medium">Bakiye</div>
-                        <div class="text-base font-bold {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format(abs($balance), 2, ',', '.') }} TL</div>
+                    <div class="flex items-center gap-3 mt-1 text-xs text-slate-600">
+                        <span>Alacak: {{ number_format($credit, 2, ',', '.') }} TL</span>
+                        <span>Borç: {{ number_format($debit, 2, ',', '.') }} TL</span>
                     </div>
                 </div>
-
-                {{-- Actions --}}
-                <div class="flex gap-2">
-                    <a href="{{ route('accounts.show', $account) }}" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Detay</a>
+                <div class="ml-3 text-right">
+                    <div class="font-bold {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format(abs($balance), 2, ',', '.') }} TL</div>
+                    @if ($balance < 0)
+                        <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 mt-1">(B)</span>
+                    @elseif ($balance > 0)
+                        <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 mt-1">(A)</span>
+                    @endif
                 </div>
-            </div>
+            </a>
         @empty
             <div class="rounded-xl bg-white p-8 text-center text-slate-500 shadow-sm">
                 Henüz hesap yok.
