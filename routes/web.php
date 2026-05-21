@@ -55,6 +55,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
     Route::get('dues/create', [DueController::class, 'create'])->name('dues.create');
     Route::post('dues', [DueController::class, 'store'])->name('dues.store');
+    Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->name('dues.expenses.by-period');
     Route::get('dues/{due}', [DueController::class, 'show'])->name('dues.show');
 
     // Yönetici zorunlu
@@ -94,7 +95,6 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('due-plans/{duePlan}/generate-month', [DuePlanController::class, 'generateMonth'])->name('due-plans.generate-month');
         Route::resource('due-plans', DuePlanController::class);
         Route::get('dues/batch/create', [DueController::class, 'createBatch'])->name('dues.batch.create');
-        Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->name('dues.expenses.by-period');
         Route::delete('dues/bulk-destroy', [DueController::class, 'bulkDestroy'])->name('dues.bulk-destroy');
         Route::get('dues/{due}/edit', [DueController::class, 'edit'])->name('dues.edit');
         Route::patch('dues/{due}', [DueController::class, 'update'])->name('dues.update');
