@@ -30,6 +30,49 @@
         <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Bakiye</div><div class="mt-2 text-2xl font-bold">{{ number_format($account->ledger_balance, 2, ',', '.') }} TL</div></div>
     </div>
 
+    {{-- Kullanıcı ve Hesap Bilgileri --}}
+    <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+        <h2 class="mb-4 text-lg font-semibold text-slate-950">Bilgiler</h2>
+        @if ($account->user)
+            <div class="grid gap-4 md:grid-cols-3 text-sm mb-4">
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">Ad Soyad</div>
+                    <div class="font-semibold text-slate-900">{{ $account->user->name }}</div>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">E-posta</div>
+                    <div class="font-semibold text-slate-900">{{ $account->user->email }}</div>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">Telefon</div>
+                    <div class="font-semibold text-slate-900">{{ $account->user->phone ?: '—' }}</div>
+                </div>
+            </div>
+        @endif
+        <div class="grid gap-4 md:grid-cols-2 text-sm">
+            <div>
+                <div class="text-xs text-slate-500 mb-1">
+                    @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Giriş Tarihi
+                    @elseif ($account->type === App\Models\Account::TYPE_OWNER) Maliklik Başlangıcı
+                    @else Hesap Açılış Tarihi
+                    @endif
+                </div>
+                <div class="font-semibold text-slate-900">{{ $account->account_opening_date ? $account->account_opening_date->format('d.m.Y') : '—' }}</div>
+            </div>
+            @if ($account->account_end_date)
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">
+                        @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Çıkış Tarihi
+                        @elseif ($account->type === App\Models\Account::TYPE_OWNER) Maliklik Bitiş Tarihi
+                        @else Hesap Kapanış Tarihi
+                        @endif
+                    </div>
+                    <div class="font-semibold text-red-600">{{ $account->account_end_date->format('d.m.Y') }}</div>
+                </div>
+            @endif
+        </div>
+    </div>
+
     @if (!in_array($account->type, [App\Models\Account::TYPE_SUPPLIER]))
         <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
             <h2 class="mb-4 text-lg font-semibold text-slate-950">Açık Aidatlar</h2>

@@ -112,8 +112,8 @@ class AccountController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'balance' => ['nullable', 'numeric'],
             'is_active' => ['nullable', 'boolean'],
-            'move_in_date' => ['required_if:type,'.Account::TYPE_TENANT, 'nullable', 'date'],
-            'account_opening_date' => ['required_if:type,'.Account::TYPE_SUPPLIER, 'nullable', 'date'],
+            'move_in_date' => ['nullable', 'date'],
+            'account_opening_date' => ['nullable', 'date'],
             'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)],
         ]);
 
@@ -179,7 +179,7 @@ class AccountController extends Controller
                 'phone' => $validated['phone'] ?? null,
                 'email' => $validated['email'] ?? null,
                 'balance' => $validated['balance'] ?? 0,
-                'account_opening_date' => $validated['type'] === Account::TYPE_SUPPLIER ? now() : null,
+                'account_opening_date' => $validated['account_opening_date'] ?? null,
                 'is_active' => $request->boolean('is_active', true),
                 'default_category_id' => $validated['default_category_id'] ?? null,
             ]);
@@ -189,7 +189,7 @@ class AccountController extends Controller
                     'apartment_id' => $apartment->id,
                     'unit_id' => $account->unit_id,
                     'account_id' => $account->id,
-                    'move_in_date' => $validated['move_in_date'],
+                    'move_in_date' => $validated['account_opening_date'],
                 ]);
 
                 Unit::whereKey($account->unit_id)->update(['occupant_account_id' => $account->id]);
@@ -549,7 +549,7 @@ class AccountController extends Controller
             'balance' => ['nullable', 'numeric'],
             'is_active' => ['nullable', 'boolean'],
             'move_in_date' => ['required_if:type,'.Account::TYPE_TENANT, 'nullable', 'date'],
-            'account_opening_date' => ['required_if:type,'.Account::TYPE_SUPPLIER, 'nullable', 'date'],
+            'account_opening_date' => ['nullable', 'date'],
             'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
         ]);
 
@@ -592,7 +592,7 @@ class AccountController extends Controller
                 'unit_id' => in_array($validated['type'], [Account::TYPE_OWNER, Account::TYPE_TENANT], true) ? ($validated['unit_id'] ?? null) : null,
                 'type' => $validated['type'],
                 'balance' => $validated['balance'] ?? 0,
-                'account_opening_date' => $validated['type'] === Account::TYPE_SUPPLIER ? $validated['account_opening_date'] : null,
+                'account_opening_date' => $validated['account_opening_date'],
                 'is_active' => $request->boolean('is_active'),
                 'default_category_id' => $validated['default_category_id'] ?? null,
             ];
@@ -604,7 +604,7 @@ class AccountController extends Controller
             $account->update($updateData);
 
             if ($account->type === Account::TYPE_TENANT && $account->unit_id) {
-                // Sadece aktif kiralamada giriş tarihi güncellenebilir (çıkış sonlandır butonu ile yapılır)
+                // Giriş tarihi account_opening_date üzerinden yönetilir
                 $assignment = TenantAssignment::firstOrNew([
                     'account_id' => $account->id,
                     'move_out_date' => null,
@@ -613,7 +613,7 @@ class AccountController extends Controller
                 $assignment->fill([
                     'apartment_id' => $account->apartment_id,
                     'unit_id' => $account->unit_id,
-                    'move_in_date' => $validated['move_in_date'],
+                    'move_in_date' => $validated['account_opening_date'],
                 ])->save();
 
                 Unit::whereKey($account->unit_id)->update([
@@ -661,6 +661,7 @@ class AccountController extends Controller
             $account->update([
                 'is_active' => false,
                 'user_id' => null,
+                'account_end_date' => $validated['termination_date'],
             ]);
 
             // User'ı apartmandan çıkar
@@ -693,6 +694,7 @@ class AccountController extends Controller
             $account->update([
                 'is_active' => false,
                 'user_id' => null,
+                'account_end_date' => $validated['termination_date'],
             ]);
 
             // User bağını kopar

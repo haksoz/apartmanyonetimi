@@ -77,15 +77,19 @@
     <div class="rounded-2xl bg-white p-6 shadow-sm">
         <h3 class="text-sm font-semibold text-slate-700 mb-4">Hesap Bilgileri</h3>
         <div class="grid gap-5 md:grid-cols-2">
-            <div data-tenant-move-in-field>
-                <label for="move_in_date" class="mb-2 block text-sm font-medium text-slate-600">Kiracı Giriş Tarihi</label>
-                <input id="move_in_date" name="move_in_date" type="date" value="{{ old('move_in_date', $activeTenantAssignment?->move_in_date?->format('Y-m-d')) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                @error('move_in_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-            </div>
-
             <div data-account-opening-date-field>
-                <label for="account_opening_date" class="mb-2 block text-sm font-medium text-slate-600">Hesap Açılış Tarihi</label>
-                <input id="account_opening_date" name="account_opening_date" type="date" value="{{ old('account_opening_date', $account?->account_opening_date?->format('Y-m-d')) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                @php
+                    $openingLabel = match($account?->type) {
+                        'tenant'   => 'Kiracı Giriş Tarihi',
+                        'owner'    => 'Maliklik Başlangıcı',
+                        default    => 'Hesap Açılış Tarihi',
+                    };
+                    $openingValue = $account?->type === 'tenant'
+                        ? old('account_opening_date', $activeTenantAssignment?->move_in_date?->format('Y-m-d') ?? $account?->account_opening_date?->format('Y-m-d'))
+                        : old('account_opening_date', $account?->account_opening_date?->format('Y-m-d'));
+                @endphp
+                <label for="account_opening_date" class="mb-2 block text-sm font-medium text-slate-600">{{ $openingLabel }}</label>
+                <input id="account_opening_date" name="account_opening_date" type="date" value="{{ $openingValue }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 @error('account_opening_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
@@ -130,8 +134,6 @@
         const type = form.querySelector('#type');
         const unitField = form.querySelector('[data-unit-field]');
         const unitInput = form.querySelector('#unit_id');
-        const tenantMoveInField = form.querySelector('[data-tenant-move-in-field]');
-        const tenantMoveInInput = form.querySelector('#move_in_date');
         const accountOpeningDateField = form.querySelector('[data-account-opening-date-field]');
         const accountOpeningDateInput = form.querySelector('#account_opening_date');
         const defaultCategoryField = form.querySelector('[data-default-category-field]');
@@ -159,10 +161,8 @@
             } else if (unitInput && !unitInput.value && unitInput.options.length > 0) {
                 unitInput.value = unitInput.options[0].value;
             }
-            // Kiracı giriş tarihi: sadece tenant için göster (çıkış sonlandır butonu ile yapılır)
-            toggleField(tenantMoveInField, tenantMoveInInput, selectedType === 'tenant', selectedType === 'tenant', selectedType !== 'tenant');
-            // Hesap açılış tarihi: Owner ve Supplier için göster
-            toggleField(accountOpeningDateField, accountOpeningDateInput, ['owner', 'supplier'].includes(selectedType), selectedType === 'supplier', ! ['owner', 'supplier'].includes(selectedType));
+            // Hesap açılış tarihi: tüm hesap türleri için göster
+            toggleField(accountOpeningDateField, accountOpeningDateInput, true, false, false);
             if (defaultCategoryField && defaultCategoryInput) {
                 toggleField(defaultCategoryField, defaultCategoryInput, selectedType === 'supplier', false, selectedType !== 'supplier');
             }
