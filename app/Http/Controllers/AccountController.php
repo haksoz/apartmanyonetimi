@@ -518,14 +518,12 @@ class AccountController extends Controller
 
         // Talimatlar
         $sheet->setCellValue('A3', 'Talimatlar:');
-        $sheet->setCellValue('A4', '1. Bu şablonu doldurun ve sisteme yükleyin');
-        $sheet->setCellValue('A5', '2. Tarih formatı: GG.AA.YYYY (örn: 01.01.2024)');
-        $sheet->setCellValue('A6', '3. Borç veya Alacak sütunlarından birini doldurun (ikisi birden olmaz)');
-        $sheet->setCellValue('A7', '4. Açıklama zorunludur');
-        $sheet->getStyle('A3:A7')->getFont()->setSize(10);
+        $sheet->setCellValue('A4', '1. Tarih formatı: GG.AA.YYYY (örn: 01.01.2024)');
+        $sheet->setCellValue('A5', '2. Borç veya Alacak sütunlarından birini doldurun (ikisi birden olmaz)');
+        $sheet->getStyle('A3:A5')->getFont()->setSize(10);
 
         // Sütun başlıkları
-        $row = 9;
+        $row = 4;
         $sheet->setCellValue('A' . $row, 'Tarih');
         $sheet->setCellValue('B' . $row, 'Açıklama');
         $sheet->setCellValue('C' . $row, 'Borç');
@@ -534,20 +532,20 @@ class AccountController extends Controller
         $sheet->getStyle('A' . $row . ':D' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
 
         // Örnek veri
-        $row = 10;
+        $row = 5;
         $sheet->setCellValue('A' . $row, '01.01.2024');
         $sheet->setCellValue('B' . $row, 'Örnek borç kaydı');
         $sheet->setCellValue('C' . $row, 1000);
         $sheet->setCellValue('D' . $row, '');
 
-        $row = 11;
+        $row = 6;
         $sheet->setCellValue('A' . $row, '15.01.2024');
         $sheet->setCellValue('B' . $row, 'Örnek ödeme');
         $sheet->setCellValue('C' . $row, '');
         $sheet->setCellValue('D' . $row, 500);
 
         // Para formatı
-        $sheet->getStyle('C10:D11')->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('C5:D6')->getNumberFormat()->setFormatCode('#,##0.00');
 
         // Sütun genişlikleri
         $sheet->getColumnDimension('A')->setWidth(15);
@@ -556,7 +554,7 @@ class AccountController extends Controller
         $sheet->getColumnDimension('D')->setWidth(15);
 
         // Kenarlıklar
-        $sheet->getStyle('A9:D11')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        $sheet->getStyle('A4:D6')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
         // Dosya oluştur
         $filename = 'hesap_hareketleri_sablon.xlsx';
@@ -591,10 +589,10 @@ class AccountController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $rows = $sheet->toArray();
 
-        // Başlık satırını atla (ilk 9 satır talimatlar, 9. satır başlık)
+        // Başlık satırını atla (ilk 4 satır talimatlar, 4. satır başlık)
         $transactions = [];
         $errors = [];
-        for ($i = 9; $i < count($rows); $i++) {
+        for ($i = 4; $i < count($rows); $i++) {
             $row = $rows[$i];
             if (empty($row[0])) continue; // Tarih boşsa atla
 
