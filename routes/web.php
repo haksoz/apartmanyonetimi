@@ -96,6 +96,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('dues/{due}/payment', [DueController::class, 'storePayment'])->name('dues.payment.store');
         Route::get('payments/{payment}/allocations/create', [PaymentAllocationController::class, 'create'])->name('payments.allocations.create');
         Route::post('payments/{payment}/allocations', [PaymentAllocationController::class, 'store'])->name('payments.allocations.store');
+        Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
+        Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
         Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
         Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
         Route::post('due-plans/{duePlan}/generate-month', [DuePlanController::class, 'generateMonth'])->name('due-plans.generate-month');

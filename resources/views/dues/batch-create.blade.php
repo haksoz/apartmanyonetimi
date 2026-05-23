@@ -371,7 +371,7 @@
                 if (period && categoryName) {
                     const [year, month] = period.split('-');
                     const monthName = months[month] || month;
-                    descriptionInput.value = `${monthName} ${year} - ${categoryName} - `;
+                    descriptionInput.value = `${monthName} ${year} - ${categoryName}`;
                 }
             };
 

@@ -16,6 +16,7 @@
             @if ($payment->unallocated_amount > 0)
                 <a href="{{ route('payments.allocations.create', $payment) }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Tahsis Et</a>
             @endif
+            <a href="{{ route('payments.edit', $payment) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Ödemeyi Düzenle</a>
             <form method="POST" action="{{ route('payments.destroy', $payment) }}" onsubmit="return confirm('Ödeme kaydı ve tüm tahsisler silinsin mi? Bu işlem geri alınamaz.')">
                 @csrf
                 @method('DELETE')

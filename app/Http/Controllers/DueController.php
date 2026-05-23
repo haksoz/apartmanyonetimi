@@ -377,7 +377,35 @@ class DueController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $due->update($validated);
+        DB::transaction(function () use ($due, $validated) {
+            $oldAmount = (float) $due->amount;
+            $newAmount = (float) $validated['amount'];
+            $remainingAmount = (float) $due->remaining_amount;
+
+            // remaining_amount'ı güncelle (henüz ödeme yoksa yeni amount'a eşitle)
+            // Floating point karşılaştırması için tolerans kullan
+            $tolerance = 0.01;
+            if (abs($remainingAmount - $oldAmount) < $tolerance) {
+                $validated['remaining_amount'] = $newAmount;
+            } else {
+                // Ödeme varsa, kalan tutarı orantılı olarak güncelle
+                $paidAmount = $oldAmount - $remainingAmount;
+                $validated['remaining_amount'] = max(0, $newAmount - $paidAmount);
+            }
+
+            // Due'u güncelle
+            $due->update($validated);
+
+            // İlgili account_transaction'ı güncelle
+            $transaction = $due->transactions()->first();
+            if ($transaction) {
+                $transaction->update([
+                    'amount' => $newAmount,
+                    'transaction_date' => $validated['due_date'],
+                    'description' => $validated['description'] ?? $due->category?->name.' borçlandırması',
+                ]);
+            }
+        });
 
         return redirect()->route('dues.index')->with('status', 'Aidat kaydı güncellendi.');
     }

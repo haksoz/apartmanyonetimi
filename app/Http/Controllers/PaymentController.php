@@ -164,6 +164,113 @@ class PaymentController extends Controller
         return view('payments.show', compact('payment'));
     }
 
+    public function edit(CurrentApartment $currentApartment, Payment $payment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
+            return redirect()->route('current-apartment.select');
+        }
+
+        if (! $apartment) {
+            return redirect()->route('apartments.create');
+        }
+
+        if ($payment->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+
+        $payment->load(['account', 'allocations.due']);
+
+        $cashBoxes = CashBox::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // Ödemenin ait olduğu kasa ID'sini bul
+        $cashTransaction = CashTransaction::where('apartment_id', $payment->apartment_id)
+            ->where('account_id', $payment->account_id)
+            ->where('amount', $payment->amount)
+            ->where('transaction_date', $payment->payment_date)
+            ->where('type', 'income')
+            ->first();
+
+        $selectedCashBoxId = $cashTransaction ? $cashTransaction->cash_box_id : null;
+
+        return view('payments.edit', compact('payment', 'cashBoxes', 'selectedCashBoxId'));
+    }
+
+    public function update(Request $request, CurrentApartment $currentApartment, Payment $payment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        if (! $apartment || $payment->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'payment_date' => ['required', 'date'],
+            'cash_box_id' => [
+                'required',
+                'integer',
+                Rule::exists('cash_boxes', 'id')
+                    ->where('apartment_id', $apartment->id)
+                    ->where('is_active', true),
+            ],
+            'description' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $payment->load('allocations');
+        $allocatedAmount = $payment->allocations->sum('amount');
+
+        if ($validated['amount'] < $allocatedAmount) {
+            return back()->withErrors(['amount' => 'Ödeme tutarı tahsis edilen tutardan küçük olamaz. Tahsis edilen: '.number_format($allocatedAmount, 2, ',', '.').' TL'])->withInput();
+        }
+
+        DB::transaction(function () use ($payment, $validated, $allocatedAmount) {
+            $oldAmount = $payment->amount;
+
+            // Payment'u güncelle
+            $payment->update([
+                'amount' => $validated['amount'],
+                'unallocated_amount' => $validated['amount'] - $allocatedAmount,
+                'payment_date' => $validated['payment_date'],
+                'description' => $validated['description'] ?? 'Ödeme',
+            ]);
+
+            // İlgili account_transaction'ı güncelle
+            $transaction = $payment->transactions()->first();
+            if ($transaction) {
+                $transaction->update([
+                    'amount' => $validated['amount'],
+                    'transaction_date' => $validated['payment_date'],
+                    'description' => $validated['description'] ?? 'Ödeme alındı',
+                ]);
+            }
+
+            // İlgili cash_transaction'ı güncelle
+            $cashTransaction = CashTransaction::where('apartment_id', $payment->apartment_id)
+                ->where('account_id', $payment->account_id)
+                ->where('amount', $oldAmount)
+                ->where('transaction_date', $payment->payment_date)
+                ->where('type', 'income')
+                ->first();
+
+            if ($cashTransaction) {
+                $cashTransaction->update([
+                    'amount' => $validated['amount'],
+                    'transaction_date' => $validated['payment_date'],
+                    'description' => $validated['description'] ?? 'Ödeme alındı',
+                    'cash_box_id' => $validated['cash_box_id'],
+                ]);
+            }
+        });
+
+        return redirect()->route('payments.show', $payment)->with('status', 'Ödeme kaydı güncellendi.');
+    }
+
     public function destroy(CurrentApartment $currentApartment, Payment $payment)
     {
         $apartment = $currentApartment->getFor(auth()->user());
