@@ -82,6 +82,20 @@ class Due extends Model
         return (float) $this->allocations()->sum('amount');
     }
 
+    public function getComputedStatusAttribute(): string
+    {
+        if ($this->remaining_amount == 0) {
+            return 'paid';
+        }
+        if ($this->remaining_amount < $this->amount) {
+            return 'partial';
+        }
+        if ($this->due_date && $this->due_date->isPast()) {
+            return 'overdue';
+        }
+        return 'pending';
+    }
+
     protected function getReferencePrefix(): string
     {
         return 'BRC';

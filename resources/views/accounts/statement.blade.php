@@ -10,11 +10,27 @@
                 @if($account->unit) &mdash; {{ $account->unit->unit_no }} no.lu daire @endif
             </p>
         </div>
-        <div class="flex gap-2">
-            <a href="{{ route('accounts.statement.export', ['account' => $account, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+        <div class="flex gap-2 flex-wrap">
+            <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
                class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
                 Excel'e Aktar
             </a>
+            <a href="{{ route('accounts.statement.import-sample') }}"
+               class="rounded-xl bg-slate-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700">
+                Şablon İndir
+            </a>
+            <button type="button" onclick="document.getElementById('import-modal').classList.remove('hidden')"
+                    class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+                Excel'den İçe Aktar
+            </button>
+            @if($importedCount > 0)
+                <form method="POST" action="{{ route('accounts.statement.delete-last-import', $account->id) }}" onsubmit="return confirm('İçe aktarılmış {{ $importedCount }} kaydı silmek istediğinize emin misiniz?');">
+                    @csrf
+                    <button type="submit" class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">
+                        İçe Aktarılmışları Sil
+                    </button>
+                </form>
+            @endif
             <a href="{{ route('accounts.show', $account) }}"
                class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 Hesaba Dön
@@ -164,9 +180,10 @@
                                         <td class="px-5 py-2"></td>
                                         <td class="px-5 py-2 text-slate-500">
                                             Tahsis &rarr; Aidat
-                                            <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-700 hover:text-emerald-600">#{{ $a->due->id }}</a>
+                                            <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-700 hover:text-emerald-600">{{ $a->due->description }}</a>
                                             &mdash; {{ $a->due->due_date->format('d.m.Y') }}
                                         </td>
+                                        <td class="px-5 py-2 text-right">—</td>
                                         <td class="px-5 py-2 text-right">—</td>
                                         <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
                                         <td class="px-5 py-2 text-right">—</td>
@@ -192,6 +209,38 @@
         @endif
     </div>
 
+    {{-- Import Modal --}}
+    <div id="import-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
+            <h3 class="text-lg font-semibold text-slate-900 mb-1">Excel'den İçe Aktar</h3>
+            <p class="text-sm text-slate-500 mb-4">Hesap hareketlerini Excel dosyasından içeri aktarın.</p>
+
+            <form method="POST" action="{{ route('accounts.statement.import', $account->id) }}" enctype="multipart/form-data">
+                @csrf
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs font-medium text-slate-600">Excel Dosyası (.xlsx)</label>
+                        <input type="file" name="file" accept=".xlsx,.xls" required
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                    </div>
+                    <p class="text-xs text-slate-400">
+                        Henüz şablonunuz yok mu? <a href="{{ route('accounts.statement.import-sample') }}" class="text-blue-600 hover:underline">Şablon indir</a>
+                    </p>
+                </div>
+
+                <div class="flex gap-3 mt-5">
+                    <button type="submit" class="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+                        İçe Aktar
+                    </button>
+                    <button type="button" onclick="document.getElementById('import-modal').classList.add('hidden')"
+                        class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50">
+                        İptal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('click', function (e) {
             const btn = e.target.closest('[data-toggle-alloc]');
@@ -200,6 +249,13 @@
             document.querySelectorAll('[data-parent="' + key + '"]').forEach(r => r.classList.toggle('hidden'));
             const open = Array.from(document.querySelectorAll('[data-parent="' + key + '"]')).some(r => !r.classList.contains('hidden'));
             btn.textContent = open ? 'Gizle' : 'Tahsisler';
+        });
+
+        // Modal dışına tıklayınca kapat
+        document.getElementById('import-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+            }
         });
     </script>
 @endsection

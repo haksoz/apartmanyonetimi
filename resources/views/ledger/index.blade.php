@@ -23,6 +23,7 @@
                     <th class="px-5 py-3">Tip</th>
                     <th class="px-5 py-3 text-right">Tutar</th>
                     <th class="px-5 py-3">Belge</th>
+                    <th class="px-5 py-3">Referans ID</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -51,10 +52,17 @@
                                 {{ $relatedLabel }}
                             @endif
                         </td>
+                        <td class="px-5 py-4 text-slate-700 text-xs">
+                            @if ($related && $related->reference_number)
+                                {{ $related->reference_number }}
+                            @else
+                                -
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-5 py-6 text-sm text-slate-500">Henüz muhasebe hareketi bulunamadı.</td>
+                        <td colspan="7" class="px-5 py-6 text-sm text-slate-500">Henüz muhasebe hareketi bulunamadı.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -103,6 +111,12 @@
                         <div>
                             <div class="text-xs text-slate-500 mb-1">Belge</div>
                             <div class="font-medium text-slate-900">{{ $relatedLabel }}</div>
+                        </div>
+                    @endif
+                    @if ($related && $related->reference_number)
+                        <div>
+                            <div class="text-xs text-slate-500 mb-1">Referans ID</div>
+                            <div class="font-medium text-slate-900">{{ $related->reference_number }}</div>
                         </div>
                     @endif
                 </div>

@@ -56,12 +56,10 @@
                     </div>
                     
                     <div id="new-owner-section" class="hidden">
-                        <label class="text-xs font-medium text-slate-600">Yeni Kat Maliki (Hesap Seç veya Yeni Aç)</label>
-                        <select name="new_owner_account_id" id="new-owner-select"
-                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
-                            <option value="">Yeni hesap aç...</option>
-                        </select>
-                        <p class="text-xs text-slate-400 mt-1">Daire boş kalmayacak, yeni kat maliki hesabı otomatik oluşturulacak.</p>
+                        <p class="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">
+                            <span class="font-medium text-slate-900">{{ $account->unit ? str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) : 'XX' }} nolu dairenin yeni kat maliki hesabı otomatik oluşturulacak.</span>
+                            <span class="block mt-1 text-slate-500">Düzenlemeniz için ilgili sayfaya yönlendirileceksiniz.</span>
+                        </p>
                     </div>
                 </div>
 

@@ -29,6 +29,11 @@
                     <input type="number" name="manager_unit_no" value="{{ old('manager_unit_no') }}" min="1" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
                 </div>
             </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Daire Hesaplarının Açılış Tarihi</label>
+                <input type="date" name="account_opening_date" value="{{ old('account_opening_date', now()->toDateString()) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" required>
+                @error('account_opening_date') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+            </div>
         </div>
         <div class="mt-6 flex justify-end gap-3">
             <a href="{{ route('apartments.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Vazgeç</a>

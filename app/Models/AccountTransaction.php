@@ -19,6 +19,7 @@ class AccountTransaction extends Model
         'description',
         'amount',
         'transaction_date',
+        'is_imported',
     ];
 
     protected $casts = [

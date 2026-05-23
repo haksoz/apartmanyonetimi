@@ -94,45 +94,10 @@
                                 <td class="px-5 py-4 text-slate-700">{{ $allocation->due->description ?: 'Aidat' }}</td>
                                 <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</td>
                                 <td class="px-5 py-4">
-                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $allocation->due->status === 'paid' ? 'bg-emerald-100 text-emerald-700' : ($allocation->due->status === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700') }}">
-                                        {{ $allocation->due->status === 'paid' ? 'Ödendi' : ($allocation->due->status === 'partial' ? 'Kısmen Ödendi' : 'Bekliyor') }}
+                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $allocation->due->computed_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : ($allocation->due->computed_status === 'partial' ? 'bg-amber-100 text-amber-700' : ($allocation->due->computed_status === 'overdue' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700')) }}">
+                                        {{ $allocation->due->computed_status === 'paid' ? 'Ödendi' : ($allocation->due->computed_status === 'partial' ? 'Kısmen Ödendi' : ($allocation->due->computed_status === 'overdue' ? 'Gecikti' : 'Bekliyor')) }}
                                     </span>
                                 </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-    </div>
-
-    {{-- Accounting Transactions Section --}}
-    <div class="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 class="text-lg font-semibold text-slate-950 mb-4">Muhasebe Hareketleri</h2>
-        @if ($payment->transactions->isEmpty())
-            <div class="py-6 text-sm text-slate-500">Bu ödeme için kayıtlı muhasebe hareketi bulunamadı.</div>
-        @else
-            <div class="overflow-hidden rounded-xl border border-slate-200">
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="bg-slate-50 text-left">
-                        <tr>
-                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
-                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Tarih</th>
-                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Tip</th>
-                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Tutar</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach ($payment->transactions as $transaction)
-                            <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="px-5 py-4 text-slate-700">{{ $transaction->description ?: ($transaction->type === 'debit' ? 'Borç' : 'Alacak') }}</td>
-                                <td class="px-5 py-4 text-slate-700">{{ $transaction->transaction_date?->format('d.m.Y') ?? '-' }}</td>
-                                <td class="px-5 py-4">
-                                    <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {{ $transaction->type === 'debit' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700' }}">
-                                        {{ $transaction->type === 'debit' ? 'Borç' : 'Alacak' }}
-                                    </span>
-                                </td>
-                                <td class="px-5 py-4 text-right font-semibold {{ $transaction->type === 'debit' ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format($transaction->amount, 2, ',', '.') }} TL</td>
                             </tr>
                         @endforeach
                     </tbody>

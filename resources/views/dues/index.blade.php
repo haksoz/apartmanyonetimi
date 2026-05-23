@@ -177,6 +177,18 @@
                 <option value="paid"    {{ $filters['filterStatus'] === 'paid'    ? 'selected' : '' }}>Ödendi</option>
                 <option value="overdue" {{ $filters['filterStatus'] === 'overdue' ? 'selected' : '' }}>Gecikmiş</option>
             </select>
+            <select name="unit_id" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="">Tüm Daireler</option>
+                @foreach ($units as $unit)
+                    <option value="{{ $unit->id }}" {{ $filters['filterUnitId'] == $unit->id ? 'selected' : '' }}>Daire {{ str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT) }}</option>
+                @endforeach
+            </select>
+            <select name="account_type" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="">Tüm Hesaplar</option>
+                <option value="owner" {{ $filters['filterAccountType'] === 'owner' ? 'selected' : '' }}>Kat Maliki</option>
+                <option value="tenant" {{ $filters['filterAccountType'] === 'tenant' ? 'selected' : '' }}>Kiracı</option>
+                <option value="supplier" {{ $filters['filterAccountType'] === 'supplier' ? 'selected' : '' }}>Tedarikçi</option>
+            </select>
             <select name="source" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
                 <option value="">Tüm Kaynaklar</option>
                 <option value="plan"   {{ $filters['filterSource'] === 'plan'   ? 'selected' : '' }}>Aidat Planı</option>
@@ -184,7 +196,7 @@
                 <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
             </select>
             <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'])
+            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'] || $filters['filterUnitId'] || $filters['filterAccountType'])
                 <a href="{{ route('dues.index', array_filter(['search' => $filters['filterSearch']])) }}"
                    class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">Temizle</a>
             @endif
@@ -274,15 +286,15 @@
                             @endif
                         </td>
                         <td class="px-5 py-4">
-                            @if ($isOverdue)
+                            @if ($due->computed_status === 'overdue')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
                                     {{ $due->category?->name ?? '-' }} Gecikti
                                 </span>
-                            @elseif ($due->status === 'paid')
+                            @elseif ($due->computed_status === 'paid')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                                     {{ $due->category?->name ?? '-' }} Ödendi
                                 </span>
-                            @elseif ($due->status === 'partial')
+                            @elseif ($due->computed_status === 'partial')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
                                     {{ $due->category?->name ?? '-' }} Kısmi
                                 </span>
@@ -294,7 +306,7 @@
                         </td>
                         <td class="px-5 py-4 text-right whitespace-nowrap" onclick="event.stopPropagation()">
                             <div class="flex items-center justify-end gap-2">
-                                @if ($due->status !== 'paid')
+                                @if ($due->computed_status !== 'paid')
                                     <a href="{{ route('dues.payment.create', $due) }}" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">Tahsil Et</a>
                                 @endif
                                 <a href="{{ route('dues.show', $due) }}" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Detay</a>
@@ -332,17 +344,17 @@
                 </div>
                 <div class="ml-3 text-right">
                     <div class="font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
-                    @if ($isOverdue)
+                    @if ($due->computed_status === 'overdue')
                         <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 mt-1">
                             <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
                             Gecikmiş
                         </span>
-                    @elseif ($due->status === 'paid')
+                    @elseif ($due->computed_status === 'paid')
                         <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 mt-1">
                             <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
                             Ödendi
                         </span>
-                    @elseif ($due->status === 'partial')
+                    @elseif ($due->computed_status === 'partial')
                         <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 mt-1">
                             <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
                             Kısmi

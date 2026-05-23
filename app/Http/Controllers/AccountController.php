@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\AccountTransaction;
 use App\Models\Category;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
@@ -14,6 +15,26 @@ use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
+    /**
+     * Parse Turkish number format (1.135,00 -> 1135.00)
+     */
+    private function parseTurkishNumber($value)
+    {
+        if (is_numeric($value)) {
+            return floatval($value);
+        }
+
+        if (is_string($value)) {
+            // Türkçe format: binlik ayırıcı nokta, ondalık ayırıcı virgül
+            // Önce binlik ayırıcıları kaldır, sonra virgülü noktaya çevir
+            $value = str_replace('.', '', $value); // Binlik ayırıcıları kaldır
+            $value = str_replace(',', '.', $value); // Ondalık ayırıcıyı noktaya çevir
+            return floatval($value);
+        }
+
+        return 0.0;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -228,6 +249,7 @@ class AccountController extends Controller
             ->with([
                 'unit',
                 'user',
+                'activeTenantAssignment',
                 'transactions' => fn ($query) => $query->orderBy('transaction_date')->orderBy('id'),
                 'dues' => fn ($query) => $query->where('remaining_amount', '>', 0)->orderBy('due_date'),
                 'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0),
@@ -340,8 +362,11 @@ class AccountController extends Controller
 
         $closingBalance = $transactions->last()?->running_balance ?? $openingBalance;
 
+        // İçe aktarılmış transaction sayısı
+        $importedCount = $account->transactions()->where('is_imported', true)->count();
+
         return view('accounts.statement', compact(
-            'account', 'transactions', 'openingBalance', 'closingBalance', 'dateFrom', 'dateTo'
+            'account', 'transactions', 'openingBalance', 'closingBalance', 'dateFrom', 'dateTo', 'importedCount'
         ));
     }
 
@@ -477,6 +502,234 @@ class AccountController extends Controller
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
+    }
+
+    /**
+     * Download sample Excel template for import
+     */
+    public function statementImportSample()
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Başlık
+        $sheet->setCellValue('A1', 'Hesap Hareketleri İçeri Aktarma Şablonu');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+
+        // Talimatlar
+        $sheet->setCellValue('A3', 'Talimatlar:');
+        $sheet->setCellValue('A4', '1. Bu şablonu doldurun ve sisteme yükleyin');
+        $sheet->setCellValue('A5', '2. Tarih formatı: GG.AA.YYYY (örn: 01.01.2024)');
+        $sheet->setCellValue('A6', '3. Borç veya Alacak sütunlarından birini doldurun (ikisi birden olmaz)');
+        $sheet->setCellValue('A7', '4. Açıklama zorunludur');
+        $sheet->getStyle('A3:A7')->getFont()->setSize(10);
+
+        // Sütun başlıkları
+        $row = 9;
+        $sheet->setCellValue('A' . $row, 'Tarih');
+        $sheet->setCellValue('B' . $row, 'Açıklama');
+        $sheet->setCellValue('C' . $row, 'Borç');
+        $sheet->setCellValue('D' . $row, 'Alacak');
+        $sheet->getStyle('A' . $row . ':D' . $row)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $row . ':D' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
+
+        // Örnek veri
+        $row = 10;
+        $sheet->setCellValue('A' . $row, '01.01.2024');
+        $sheet->setCellValue('B' . $row, 'Örnek borç kaydı');
+        $sheet->setCellValue('C' . $row, 1000);
+        $sheet->setCellValue('D' . $row, '');
+
+        $row = 11;
+        $sheet->setCellValue('A' . $row, '15.01.2024');
+        $sheet->setCellValue('B' . $row, 'Örnek ödeme');
+        $sheet->setCellValue('C' . $row, '');
+        $sheet->setCellValue('D' . $row, 500);
+
+        // Para formatı
+        $sheet->getStyle('C10:D11')->getNumberFormat()->setFormatCode('#,##0.00');
+
+        // Sütun genişlikleri
+        $sheet->getColumnDimension('A')->setWidth(15);
+        $sheet->getColumnDimension('B')->setWidth(40);
+        $sheet->getColumnDimension('C')->setWidth(15);
+        $sheet->getColumnDimension('D')->setWidth(15);
+
+        // Kenarlıklar
+        $sheet->getStyle('A9:D11')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+        // Dosya oluştur
+        $filename = 'hesap_hareketleri_sablon.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * Import account transactions from Excel - preview before confirm
+     */
+    public function statementImport(Request $request, string $id, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+        $account = Account::query()
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls'],
+        ]);
+
+        $file = $validated['file'];
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file);
+        $sheet = $spreadsheet->getActiveSheet();
+        $rows = $sheet->toArray();
+
+        // Başlık satırını atla (ilk 9 satır talimatlar, 9. satır başlık)
+        $transactions = [];
+        $errors = [];
+        for ($i = 9; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            if (empty($row[0])) continue; // Tarih boşsa atla
+
+            $date = $row[0];
+            $description = $row[1] ?? '';
+            $debitRaw = $row[2] ?? 0;
+            $creditRaw = $row[3] ?? 0;
+
+            // Türkçe sayı formatını düzelt (1.135,00 -> 1135.00)
+            $debit = $this->parseTurkishNumber($debitRaw);
+            $credit = $this->parseTurkishNumber($creditRaw);
+
+            // Tarih formatı kontrolü
+            if (!preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $date)) {
+                $errors[] = 'Satır ' . ($i + 1) . ': Tarih formatı hatalı. GG.AA.YYYY formatında olmalı.';
+                continue;
+            }
+
+            // Borç/Alacak kontrolü - ikisi birden pozitif olamaz (0 değerleri kabul edilir)
+            if ($debit > 0 && $credit > 0) {
+                $errors[] = 'Satır ' . ($i + 1) . ': Borç ve Alacak sütunları aynı anda pozitif olamaz.';
+                continue;
+            }
+
+            // En az biri pozitif olmalı (ikisi de 0 olamaz)
+            if ($debit == 0 && $credit == 0) {
+                $errors[] = 'Satır ' . ($i + 1) . ': Borç veya Alacak sütunlarından biri dolu olmalı.';
+                continue;
+            }
+
+            if (empty($description)) {
+                $errors[] = 'Satır ' . ($i + 1) . ': Açıklama zorunludur.';
+                continue;
+            }
+
+            $transactions[] = [
+                'date' => \Carbon\Carbon::createFromFormat('d.m.Y', $date)->format('Y-m-d'),
+                'description' => $description,
+                'debit' => floatval($debit),
+                'credit' => floatval($credit),
+            ];
+        }
+
+        if (empty($transactions) && empty($errors)) {
+            return back()->with('error', 'İçeri aktarılacak veri bulunamadı.');
+        }
+
+        if (!empty($errors)) {
+            return back()->with('error', 'Lütfen dosyayı kontrol edin:<br><br>' . implode('<br>', $errors));
+        }
+
+        // Verileri session'a kaydet
+        session(['import_transactions' => $transactions, 'import_account_id' => $account->id]);
+
+        return redirect()->route('accounts.statement.import-preview', $account->id);
+    }
+
+    /**
+     * Show import preview page
+     */
+    public function statementImportPreview(string $id, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+        $account = Account::query()
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->findOrFail($id);
+
+        $transactions = session('import_transactions', []);
+
+        if (empty($transactions)) {
+            return redirect()->route('accounts.statement', $account->id)->with('error', 'Önizleme verisi bulunamadı.');
+        }
+
+        return view('accounts.statement-import-preview', compact('account', 'transactions'));
+    }
+
+    /**
+     * Confirm and import transactions
+     */
+    public function statementImportConfirm(Request $request, string $id, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+        $account = Account::query()
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->findOrFail($id);
+
+        $transactions = session('import_transactions', []);
+
+        if (empty($transactions)) {
+            return redirect()->route('accounts.statement', $account->id)->with('error', 'İçeri aktarılacak veri bulunamadı.');
+        }
+
+        // Transaction'ları kaydet
+        $importedIds = DB::transaction(function () use ($account, $transactions) {
+            $ids = [];
+            foreach ($transactions as $t) {
+                $transaction = AccountTransaction::create([
+                    'account_id' => $account->id,
+                    'transaction_date' => $t['date'],
+                    'description' => $t['description'],
+                    'type' => $t['debit'] > 0 ? 'debit' : 'credit',
+                    'amount' => $t['debit'] > 0 ? $t['debit'] : $t['credit'],
+                    'is_imported' => true,
+                ]);
+                $ids[] = $transaction->id;
+            }
+            return $ids;
+        });
+
+        // Session'ı temizle
+        session()->forget(['import_transactions', 'import_account_id']);
+
+        return redirect()->route('accounts.statement', $account->id)->with('status', count($transactions) . ' adet hareket başarıyla içeri aktarıldı.');
+    }
+
+    /**
+     * Delete imported transactions
+     */
+    public function deleteLastImport(string $id, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+        $account = Account::query()
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->findOrFail($id);
+
+        // İçe aktarılmış transaction'ları sil
+        $deletedCount = AccountTransaction::where('account_id', $account->id)
+            ->where('is_imported', true)
+            ->delete();
+
+        if ($deletedCount === 0) {
+            return redirect()->route('accounts.statement', $account->id)->with('error', 'Silinecek içeri aktarılmış kayıt bulunamadı.');
+        }
+
+        return redirect()->route('accounts.statement', $account->id)->with('status', $deletedCount . ' adet içeri aktarılmış hareket silindi.');
     }
 
     /**
@@ -676,20 +929,19 @@ class AccountController extends Controller
     /**
      * Kat maliki malikliğini sonlandır ve yeni malik ata.
      */
-    public function terminateOwnership(Request $request, Account $account, CurrentApartment $currentApartment)
+    public function terminateOwnership(Request $request, string $id, CurrentApartment $currentApartment)
     {
         $apartment = $currentApartment->getFor($request->user());
-        abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
+        $account = Account::where('apartment_id', $apartment->id)->findOrFail($id);
         abort_unless($account->type === Account::TYPE_OWNER, 400);
 
         $validated = $request->validate([
             'termination_date' => ['required', 'date'],
-            'new_owner_account_id' => ['nullable', 'exists:accounts,id'],
         ]);
 
-        DB::transaction(function () use ($account, $validated, $apartment) {
+        $newOwner = DB::transaction(function () use ($account, $validated, $apartment) {
             $unit = $account->unit;
-            
+
             // Eski maliki pasifleştir
             $account->update([
                 'is_active' => false,
@@ -702,38 +954,29 @@ class AccountController extends Controller
                 $apartment->members()->detach($account->user_id);
             }
 
-            if ($validated['new_owner_account_id']) {
-                // Mevcut hesabı yeni malik yap
-                $newOwner = Account::findOrFail($validated['new_owner_account_id']);
-                $newOwner->update([
-                    'type' => Account::TYPE_OWNER,
-                    'unit_id' => $unit?->id,
-                    'is_active' => true,
-                ]);
-                if ($unit) {
-                    $unit->update(['owner_account_id' => $newOwner->id]);
-                }
-            } else {
-                // Yeni boş malik hesabı aç
-                $newOwner = Account::create([
-                    'apartment_id' => $apartment->id,
-                    'unit_id' => $unit?->id,
-                    'type' => Account::TYPE_OWNER,
-                    'name' => $unit ? str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT).'. Daire Kat Maliki' : 'Kat Maliki',
-                    'is_active' => true,
-                ]);
-                if ($unit) {
-                    $unit->update(['owner_account_id' => $newOwner->id]);
-                }
+            // Yeni boş malik hesabı aç
+            $newOwner = Account::create([
+                'apartment_id' => $apartment->id,
+                'unit_id' => $unit?->id,
+                'type' => Account::TYPE_OWNER,
+                'name' => $unit ? str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT).'. Daire Kat Maliki' : 'Kat Maliki',
+                'is_active' => true,
+                'account_opening_date' => $validated['termination_date'],
+            ]);
+
+            if ($unit) {
+                $unit->update(['owner_account_id' => $newOwner->id]);
             }
 
             // Dairenin occupant'ını da güncelle (eğer eski malik occupant ise)
             if ($unit && $unit->occupant_account_id === $account->id) {
-                $unit->update(['occupant_account_id' => $unit->fresh()->owner_account_id]);
+                $unit->update(['occupant_account_id' => $newOwner->id]);
             }
+
+            return $newOwner;
         });
 
-        return redirect()->route('accounts.show', $account)->with('status', 'Maliklik sonlandırıldı ve yeni malik atandı.');
+        return redirect()->route('accounts.edit', $newOwner)->with('status', 'Maliklik sonlandırıldı ve yeni malik hesabı oluşturuldu.');
     }
 
     /**

@@ -44,6 +44,8 @@ class DueController extends Controller
         $filterSource  = $request->query('source');
         $filterBatchId = $request->query('batch_id');
         $filterSearch  = $request->query('search');
+        $filterUnitId  = $request->query('unit_id');
+        $filterAccountType = $request->query('account_type');
 
         $isOwner = $this->isOwnerOf($apartment);
 
@@ -65,6 +67,8 @@ class DueController extends Controller
             ->when($filterPeriod,  fn ($q) => $q->where('period', $filterPeriod))
             ->when($filterStatus,  fn ($q) => $q->where('status', $filterStatus))
             ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))
+            ->when($filterUnitId,  fn ($q) => $q->where('unit_id', $filterUnitId))
+            ->when($filterAccountType, fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $filterAccountType)))
             ->when($filterSource === 'plan',   fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('due_plan_id')))
             ->when($filterSource === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNull('due_plan_id')))
             ->when($filterSource === 'manual', fn ($q) => $q->whereNull('due_batch_id'));
@@ -89,9 +93,13 @@ class DueController extends Controller
                 ->get(['id', 'name', 'year', 'category_id'])
             : collect();
 
-        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch');
+        $units = $apartment
+            ? Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get(['id', 'unit_no'])
+            : collect();
 
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters', 'isOwner'));
+        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType');
+
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters', 'isOwner', 'units'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)

@@ -81,7 +81,6 @@
                 @php
                     $openingLabel = match($account?->type) {
                         'tenant'   => 'Kiracı Giriş Tarihi',
-                        'owner'    => 'Maliklik Başlangıcı',
                         default    => 'Hesap Açılış Tarihi',
                     };
                     $openingValue = $account?->type === 'tenant'

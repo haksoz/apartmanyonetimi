@@ -49,15 +49,32 @@
                 </div>
             </div>
         @endif
+        <div class="grid gap-4 md:grid-cols-2 text-sm mb-4">
+            <div>
+                <div class="text-xs text-slate-500 mb-1">Portal Erişimi</div>
+                <div class="font-semibold text-slate-900">
+                    @if ($account->user)
+                        Var ({{ $account->user->name }})
+                    @else
+                        Yok
+                    @endif
+                </div>
+            </div>
+        </div>
         <div class="grid gap-4 md:grid-cols-2 text-sm">
             <div>
                 <div class="text-xs text-slate-500 mb-1">
                     @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Giriş Tarihi
-                    @elseif ($account->type === App\Models\Account::TYPE_OWNER) Maliklik Başlangıcı
                     @else Hesap Açılış Tarihi
                     @endif
                 </div>
-                <div class="font-semibold text-slate-900">{{ $account->account_opening_date ? $account->account_opening_date->format('d.m.Y') : '—' }}</div>
+                <div class="font-semibold text-slate-900">
+                    @if ($account->type === App\Models\Account::TYPE_TENANT && $account->active_tenant_assignment)
+                        {{ $account->active_tenant_assignment->move_in_date->format('d.m.Y') }}
+                    @else
+                        {{ $account->account_opening_date ? $account->account_opening_date->format('d.m.Y') : '—' }}
+                    @endif
+                </div>
             </div>
             @if ($account->account_end_date)
                 <div>

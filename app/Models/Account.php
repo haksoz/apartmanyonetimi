@@ -84,6 +84,14 @@ class Account extends Model
         return $this->hasMany(TenantAssignment::class);
     }
 
+    public function activeTenantAssignment()
+    {
+        return $this->hasOne(TenantAssignment::class)
+            ->whereNull('move_out_date')
+            ->latest('move_in_date')
+            ->latest();
+    }
+
     public function getActiveTenantAssignmentAttribute(): ?TenantAssignment
     {
         return $this->tenantAssignments()

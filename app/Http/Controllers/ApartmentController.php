@@ -47,6 +47,7 @@ class ApartmentController extends Controller
             'address' => ['nullable', 'string'],
             'unit_count' => ['required', 'integer', 'min:1', 'max:500'],
             'manager_unit_no' => ['nullable', 'integer', 'min:1'],
+            'account_opening_date' => ['required', 'date'],
         ]);
 
         $user = auth()->user();
@@ -75,6 +76,7 @@ class ApartmentController extends Controller
                     'unit_id' => $unit->id,
                     'type' => Account::TYPE_OWNER,
                     'name' => $unitNo.'. Daire Kat Maliki',
+                    'account_opening_date' => $validated['account_opening_date'],
                 ]);
 
                 $unit->update([
