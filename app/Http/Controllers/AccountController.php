@@ -313,7 +313,16 @@ class AccountController extends Controller
             ->where('is_imported', true)
             ->get();
 
-        return view('accounts.show', compact('account', 'transactions', 'cashBoxes', 'importedDues', 'importedPayments'));
+        $transferableAccounts = $account->unit_id
+            ? \App\Models\Account::query()
+                ->where('unit_id', $account->unit_id)
+                ->where('id', '!=', $account->id)
+                ->where('apartment_id', $account->apartment_id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'type'])
+            : collect();
+
+        return view('accounts.show', compact('account', 'transactions', 'cashBoxes', 'importedDues', 'importedPayments', 'transferableAccounts'));
     }
 
     /**

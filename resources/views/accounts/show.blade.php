@@ -20,6 +20,12 @@
             @else
                 <a href="{{ route('payments.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Tahsilat Ekle</a>
             @endif
+            @if (in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && $account->dues->isNotEmpty() && $transferableAccounts->isNotEmpty())
+                <button type="button" onclick="document.getElementById('transfer-dues-modal').classList.remove('hidden')"
+                        class="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600">
+                    Borç Devret
+                </button>
+            @endif
             <a href="{{ route('accounts.edit', $account) }}" class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">Düzenle</a>
         </div>
     </div>
@@ -494,4 +500,77 @@
             </div>
         @endif
     </div>
+
+    {{-- Borç Devri Modal --}}
+    @if (in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && $account->dues->isNotEmpty() && $transferableAccounts->isNotEmpty())
+    <div id="transfer-dues-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-xl">
+            <h3 class="text-lg font-semibold text-slate-900 mb-1">Borç Devri</h3>
+            <p class="text-sm text-slate-500 mb-4">Seçilen açık aidat(lar) başka bir hesaba devredilir.</p>
+
+            <form method="POST" id="transfer-form" action="" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-2">Devredilecek Aidat</label>
+                    <div class="rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                        @foreach ($account->dues as $due)
+                            <label class="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50">
+                                <input type="radio" name="due_id" value="{{ $due->id }}"
+                                       data-action="{{ route('dues.transfer', $due) }}"
+                                       class="due-radio" required>
+                                <div class="flex-1 text-sm">
+                                    <span class="font-medium text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</span>
+                                    <span class="ml-2 text-slate-500">{{ $due->due_date?->format('d.m.Y') }}</span>
+                                    @if($due->description)
+                                        <div class="text-xs text-slate-400 mt-0.5">{{ $due->description }}</div>
+                                    @endif
+                                </div>
+                                @if($due->remaining_amount < $due->amount)
+                                    <span class="text-xs text-amber-600">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</span>
+                                @endif
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-2">Hedef Hesap</label>
+                    <select name="target_account_id" required
+                            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                        <option value="">— Hesap seçin —</option>
+                        @foreach ($transferableAccounts as $ta)
+                            @php
+                                $taType = match($ta->type) {
+                                    App\Models\Account::TYPE_OWNER  => 'Kat Maliki',
+                                    App\Models\Account::TYPE_TENANT => 'Kiracı',
+                                    default => ''
+                                };
+                            @endphp
+                            <option value="{{ $ta->id }}">{{ $ta->name }} @if($taType)( {{ $taType }})@endif</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="flex gap-3 pt-1">
+                    <button type="submit" class="flex-1 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">Devret</button>
+                    <button type="button" onclick="document.getElementById('transfer-dues-modal').classList.add('hidden')"
+                            class="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.due-radio').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                document.getElementById('transfer-form').action = this.dataset.action;
+            });
+        });
+        document.getElementById('transfer-dues-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) this.classList.add('hidden');
+        });
+    </script>
+    @endif
+
 @endsection

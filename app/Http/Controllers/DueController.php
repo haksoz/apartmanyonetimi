@@ -791,4 +791,43 @@ class DueController extends Controller
         // Kiracı yoksa veya dönemde aktif değilse sahibi döndür
         return $unit->ownerAccount;
     }
+
+    public function transfer(CurrentApartment $currentApartment, Due $due, Request $request)
+    {
+        if ($response = $this->authorizeDue($currentApartment, $due)) {
+            return $response;
+        }
+
+        if (in_array($due->status, ['paid', 'partial'])) {
+            return back()->with('error', 'Ödenmiş veya kısmen ödenmiş aidat devredilemez.');
+        }
+
+        $validated = $request->validate([
+            'target_account_id' => ['required', 'integer'],
+        ]);
+
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        $targetAccount = Account::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('id', '!=', $due->account_id)
+            ->findOrFail($validated['target_account_id']);
+
+        $fromAccountName = $due->account?->name ?? 'Bilinmeyen';
+
+        DB::transaction(function () use ($due, $targetAccount, $fromAccountName) {
+            $due->update([
+                'account_id'  => $targetAccount->id,
+                'unit_id'     => $targetAccount->unit_id ?? $due->unit_id,
+                'description' => ($due->description ? $due->description . ' ' : '') . '[Devir: ' . $fromAccountName . ']',
+            ]);
+
+            AccountTransaction::where('transactionable_type', Due::class)
+                ->where('transactionable_id', $due->id)
+                ->update(['account_id' => $targetAccount->id]);
+        });
+
+        return redirect()->route('accounts.show', $targetAccount->id)
+            ->with('status', 'Aidat "' . $targetAccount->name . '" hesabına devredildi.');
+    }
 }

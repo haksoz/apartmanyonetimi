@@ -109,6 +109,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('dues/{due}/edit', [DueController::class, 'edit'])->name('dues.edit');
         Route::patch('dues/{due}', [DueController::class, 'update'])->name('dues.update');
         Route::delete('dues/{due}', [DueController::class, 'destroy'])->name('dues.destroy');
+        Route::post('dues/{due}/transfer', [DueController::class, 'transfer'])->name('dues.transfer');
         Route::get('supplier-refunds/create', [PaymentController::class, 'createSupplierRefund'])->name('supplier-refunds.create');
         Route::post('supplier-refunds', [PaymentController::class, 'storeSupplierRefund'])->name('supplier-refunds.store');
         Route::resource('cash-boxes', CashBoxController::class)->except(['index']);
