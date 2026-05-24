@@ -21,12 +21,14 @@ class Payment extends Model
         'payment_date',
         'method',
         'description',
+        'is_imported',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'unallocated_amount' => 'decimal:2',
         'payment_date' => 'date',
+        'is_imported' => 'boolean',
     ];
 
     public function account(): BelongsTo

@@ -93,15 +93,23 @@
     @if (!in_array($account->type, [App\Models\Account::TYPE_SUPPLIER]))
         <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold text-slate-950">Açık Aidatlar</h2>
-                @if ($account->dues->isNotEmpty())
+                <div class="flex items-center gap-3">
+                    <h2 class="text-lg font-semibold text-slate-950">Açık Aidatlar</h2>
+                    @if ($importedDues->isNotEmpty())
+                        <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none">
+                            <input type="checkbox" id="show-imported-dues" class="rounded">
+                            Devir Öncesini Göster ({{ $importedDues->count() }})
+                        </label>
+                    @endif
+                </div>
+                @if ($account->dues->isNotEmpty() || $importedDues->isNotEmpty())
                     <button type="button" id="bulk-pay-btn" onclick="openBulkPayModal()"
                         class="hidden rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
                         Seçilenleri Tahsil Et &mdash; <span id="selected-count">0</span> aidat / <span id="selected-total">0,00</span> TL
                     </button>
                 @endif
             </div>
-            @if ($account->dues->isEmpty())
+            @if ($account->dues->isEmpty() && $importedDues->isEmpty())
                 <div class="py-6 text-sm text-slate-500">Bu hesap için ödenmemiş aidat yok.</div>
             @else
                 <div class="overflow-hidden rounded-2xl border border-slate-200">
@@ -133,6 +141,38 @@
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-right {{ $due->status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">
+                                        @php
+                                            $statusLabel = match($due->status) {
+                                                'paid'    => 'Ödendi',
+                                                'partial' => 'Kısmi Ödendi',
+                                                'overdue' => 'Gecikmiş',
+                                                default   => 'Bekliyor',
+                                            };
+                                        @endphp
+                                        {{ $statusLabel }}
+                                    </td>
+                                    <td class="px-5 py-4 text-right">
+                                        <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Tahsil Et</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                            {{-- Devir Öncesi Aidatlar (toggle ile gösterilir) --}}
+                            @foreach ($importedDues as $due)
+                                <tr class="imported-due-row hidden bg-blue-50/40">
+                                    <td class="px-5 py-4">
+                                        <input type="checkbox" class="due-checkbox rounded"
+                                               data-due-id="{{ $due->id }}"
+                                               data-amount="{{ $due->remaining_amount }}">
+                                    </td>
+                                    <td class="px-5 py-4 text-slate-700">{{ $due->due_date->format('d.m.Y') }}</td>
+                                    <td class="px-5 py-4 text-slate-700">
+                                        {{ $due->description ?: 'Aidat' }}
+                                        <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                    </td>
+                                    <td class="px-5 py-4 text-right text-slate-900 font-semibold">
+                                        {{ number_format($due->remaining_amount, 2, ',', '.') }} TL
+                                    </td>
+                                    <td class="px-5 py-4 text-right text-amber-600">
                                         @php
                                             $statusLabel = match($due->status) {
                                                 'paid'    => 'Ödendi',
@@ -303,6 +343,17 @@
             if (e.target === this) closeBulkPayModal();
         });
 
+        // Devir Öncesi toggle — DOMContentLoaded ile bağla (ödemeler bölümü bu script'ten sonra render edilir)
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('show-imported-dues')?.addEventListener('change', function() {
+                document.querySelectorAll('.imported-due-row').forEach(r => r.classList.toggle('hidden', !this.checked));
+            });
+
+            document.getElementById('show-imported-payments')?.addEventListener('change', function() {
+                document.querySelectorAll('.imported-payment-row').forEach(r => r.classList.toggle('hidden', !this.checked));
+            });
+        });
+
         (function(){
             function toggleAlloc(e){
                 const target = e.currentTarget.getAttribute('data-toggle-alloc');
@@ -321,9 +372,17 @@
         })();
     </script>
 
-    @if ($account->payments->isNotEmpty())
+    @if ($account->payments->isNotEmpty() || $importedPayments->isNotEmpty())
         <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
-            <h2 class="mb-4 text-lg font-semibold text-slate-950">Dağıtılmamış Ödemeler</h2>
+            <div class="flex items-center gap-3 mb-4">
+                <h2 class="text-lg font-semibold text-slate-950">Dağıtılmamış Ödemeler</h2>
+                @if ($importedPayments->isNotEmpty())
+                    <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none">
+                        <input type="checkbox" id="show-imported-payments" class="rounded">
+                        Devir Öncesini Göster ({{ $importedPayments->count() }})
+                    </label>
+                @endif
+            </div>
             <div class="overflow-hidden rounded-2xl border border-slate-200">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-left text-slate-500">
@@ -341,6 +400,21 @@
                                 <td class="px-5 py-4 text-slate-700">{{ $payment->id }}</td>
                                 <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
                                 <td class="px-5 py-4 text-slate-700">{{ $payment->description ?: 'Ödeme' }}</td>
+                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
+                                <td class="px-5 py-4 text-right space-x-2">
+                                    <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+                                </td>
+                            </tr>
+                        @endforeach
+                        @foreach ($importedPayments as $payment)
+                            <tr class="imported-payment-row hidden bg-blue-50/40">
+                                <td class="px-5 py-4 text-slate-700">{{ $payment->id }}</td>
+                                <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
+                                <td class="px-5 py-4 text-slate-700">
+                                    {{ $payment->description ?: 'Ödeme' }}
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                </td>
                                 <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
                                 <td class="px-5 py-4 text-right space-x-2">
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>

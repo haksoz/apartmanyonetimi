@@ -38,12 +38,15 @@ class CashBoxController extends Controller
             $runningMap[$t->id] = $running;
         }
 
-        // AccountTransaction eşleştirmesi
-        $accountTxs = AccountTransaction::query()
-            ->where('apartment_id', $cashBox->apartment_id)
-            ->whereIn('account_id', $allTransactions->pluck('account_id')->filter()->unique()->values())
-            ->get()
-            ->groupBy('account_id');
+        // AccountTransaction eşleştirmesi — account_id + tutar + tarih ile
+        $accountIds = $allTransactions->pluck('account_id')->filter()->unique()->values();
+        $accountTxs = $accountIds->isNotEmpty()
+            ? AccountTransaction::query()
+                ->where('apartment_id', $cashBox->apartment_id)
+                ->whereIn('account_id', $accountIds)
+                ->get()
+                ->groupBy('account_id')
+            : collect();
 
         $detailUrlMap = [];
         foreach ($allTransactions as $t) {
@@ -58,9 +61,9 @@ class CashBoxController extends Controller
 
             if (! $match) continue;
 
-            if ($match->transactionable_type === Payment::class) {
+            if ($match->transactionable_type === Payment::class && $match->transactionable_id) {
                 $detailUrlMap[$t->id] = route('payments.show', $match->transactionable_id);
-            } elseif ($match->transactionable_type === Expense::class) {
+            } elseif ($match->transactionable_type === Expense::class && $match->transactionable_id) {
                 $detailUrlMap[$t->id] = route('expenses.show', $match->transactionable_id);
             }
         }

@@ -252,8 +252,8 @@ class AccountController extends Controller
                 'user',
                 'activeTenantAssignment',
                 'transactions' => fn ($query) => $query->orderBy('transaction_date')->orderBy('id'),
-                'dues' => fn ($query) => $query->where('remaining_amount', '>', 0)->orderBy('due_date'),
-                'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0),
+                'dues' => fn ($query) => $query->where('remaining_amount', '>', 0)->where('is_imported', false)->orderBy('due_date'),
+                'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0)->where('is_imported', false),
                 'expenses' => fn ($query) => $query->where('is_paid', false)->orderBy('expense_date'),
             ])
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
@@ -302,7 +302,18 @@ class AccountController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('accounts.show', compact('account', 'transactions', 'cashBoxes'));
+        $importedDues = $account->dues()
+            ->where('remaining_amount', '>', 0)
+            ->where('is_imported', true)
+            ->orderBy('due_date')
+            ->get();
+
+        $importedPayments = $account->payments()
+            ->where('unallocated_amount', '>', 0)
+            ->where('is_imported', true)
+            ->get();
+
+        return view('accounts.show', compact('account', 'transactions', 'cashBoxes', 'importedDues', 'importedPayments'));
     }
 
     /**
@@ -526,42 +537,54 @@ class AccountController extends Controller
         // Talimatlar
         $sheet->setCellValue('A3', 'Talimatlar:');
         $sheet->setCellValue('A4', '1. Tarih formatı: GG.AA.YYYY (örn: 01.01.2024)');
-        $sheet->setCellValue('A5', '2. Borç veya Alacak sütunlarından birini doldurun (ikisi birden olmaz)');
-        $sheet->getStyle('A3:A5')->getFont()->setSize(10);
+        $sheet->setCellValue('A5', '2. Borç veya Alacak sütunlarından biri dolu olmalı. İkisi birden pozitif olamaz. Boş hücreye 0 yazılabilir.');
+        $sheet->setCellValue('A6', '3. Kategori sütunu opsiyoneldir. Borç satırları için kullanın (örn: Aidat, Demirbaş). Boş bırakılırsa "Aidat" atanır.');
+        $sheet->getStyle('A3:A6')->getFont()->setSize(10);
 
         // Sütun başlıkları
-        $row = 4;
+        $row = 7;
         $sheet->setCellValue('A' . $row, 'Tarih');
         $sheet->setCellValue('B' . $row, 'Açıklama');
         $sheet->setCellValue('C' . $row, 'Borç');
         $sheet->setCellValue('D' . $row, 'Alacak');
-        $sheet->getStyle('A' . $row . ':D' . $row)->getFont()->setBold(true);
-        $sheet->getStyle('A' . $row . ':D' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
+        $sheet->setCellValue('E' . $row, 'Kategori');
+        $sheet->getStyle('A' . $row . ':E' . $row)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $row . ':E' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
 
         // Örnek veri
-        $row = 5;
+        $row = 8;
         $sheet->setCellValue('A' . $row, '01.01.2024');
-        $sheet->setCellValue('B' . $row, 'Örnek borç kaydı');
+        $sheet->setCellValue('B' . $row, 'Ocak 2024 Aidatı');
         $sheet->setCellValue('C' . $row, 1000);
         $sheet->setCellValue('D' . $row, '');
+        $sheet->setCellValue('E' . $row, 'Aidat');
 
-        $row = 6;
+        $row = 9;
+        $sheet->setCellValue('A' . $row, '05.01.2024');
+        $sheet->setCellValue('B' . $row, 'Ocak 2024 Demirbaş');
+        $sheet->setCellValue('C' . $row, 200);
+        $sheet->setCellValue('D' . $row, '');
+        $sheet->setCellValue('E' . $row, 'Demirbaş');
+
+        $row = 10;
         $sheet->setCellValue('A' . $row, '15.01.2024');
-        $sheet->setCellValue('B' . $row, 'Örnek ödeme');
+        $sheet->setCellValue('B' . $row, 'Devir öncesi tahsilat');
         $sheet->setCellValue('C' . $row, '');
         $sheet->setCellValue('D' . $row, 500);
+        $sheet->setCellValue('E' . $row, '');
 
         // Para formatı
-        $sheet->getStyle('C5:D6')->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('C8:D10')->getNumberFormat()->setFormatCode('#,##0.00');
 
         // Sütun genişlikleri
         $sheet->getColumnDimension('A')->setWidth(15);
         $sheet->getColumnDimension('B')->setWidth(40);
         $sheet->getColumnDimension('C')->setWidth(15);
         $sheet->getColumnDimension('D')->setWidth(15);
+        $sheet->getColumnDimension('E')->setWidth(20);
 
         // Kenarlıklar
-        $sheet->getStyle('A4:D6')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        $sheet->getStyle('A7:E10')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
         // Dosya oluştur
         $filename = 'hesap_hareketleri_sablon.xlsx';
@@ -596,10 +619,19 @@ class AccountController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $rows = $sheet->toArray();
 
-        // Başlık satırını atla (ilk 4 satır talimatlar, 4. satır başlık)
+        // Başlık satırını dinamik bul: A sütununda 'Tarih' yazan ilk satır
+        $dataStartIndex = 1; // fallback: 2. satırdan başla
+        foreach ($rows as $idx => $row) {
+            $cell = trim((string)($row[0] ?? ''));
+            if (mb_strtolower($cell) === 'tarih') {
+                $dataStartIndex = $idx + 1;
+                break;
+            }
+        }
+
         $transactions = [];
         $errors = [];
-        for ($i = 4; $i < count($rows); $i++) {
+        for ($i = $dataStartIndex; $i < count($rows); $i++) {
             $row = $rows[$i];
             if (empty($row[0])) continue; // Tarih boşsa atla
 
@@ -607,6 +639,7 @@ class AccountController extends Controller
             $description = $row[1] ?? '';
             $debitRaw = $row[2] ?? 0;
             $creditRaw = $row[3] ?? 0;
+            $categoryName = trim($row[4] ?? '');
 
             // Türkçe sayı formatını düzelt (1.135,00 -> 1135.00)
             $debit = $this->parseTurkishNumber($debitRaw);
@@ -624,9 +657,8 @@ class AccountController extends Controller
                 continue;
             }
 
-            // En az biri pozitif olmalı (ikisi de 0 olamaz)
+            // Her ikisi de sıfırsa satırı sessizce atla (dış sistemlerden gelen 0/0,00/0.00 değerleri)
             if ($debit == 0 && $credit == 0) {
-                $errors[] = 'Satır ' . ($i + 1) . ': Borç veya Alacak sütunlarından biri dolu olmalı.';
                 continue;
             }
 
@@ -640,6 +672,7 @@ class AccountController extends Controller
                 'description' => $description,
                 'debit' => floatval($debit),
                 'credit' => floatval($credit),
+                'category_name' => $categoryName,
             ];
         }
 
@@ -692,27 +725,96 @@ class AccountController extends Controller
             return redirect()->route('accounts.statement', $account->id)->with('error', 'İçeri aktarılacak veri bulunamadı.');
         }
 
-        // Transaction'ları kaydet
-        $importedIds = DB::transaction(function () use ($account, $transactions) {
-            $ids = [];
+        // Devir Öncesi Kasası — yoksa otomatik oluştur
+        $cashBox = CashBox::firstOrCreate(
+            ['apartment_id' => $account->apartment_id, 'name' => 'Devir Öncesi Kasası'],
+            ['is_active' => true, 'description' => 'Devir Öncesi Kasası — import işlemleri için otomatik oluşturuldu.']
+        );
+
+        // Kategorileri önceden yükle (performans)
+        $categories = \App\Models\Category::where('apartment_id', $account->apartment_id)
+            ->whereIn('type', [\App\Models\Category::TYPE_INCOME, \App\Models\Category::TYPE_ALL])
+            ->where('is_active', true)
+            ->get();
+        $defaultCategory = $categories->firstWhere('name', 'Aidat') ?? $categories->first();
+
+        $importedCount = 0;
+        DB::transaction(function () use ($account, $transactions, $cashBox, $categories, $defaultCategory, &$importedCount) {
             foreach ($transactions as $t) {
-                $transaction = AccountTransaction::create([
-                    'account_id' => $account->id,
-                    'transaction_date' => $t['date'],
-                    'description' => $t['description'],
-                    'type' => $t['debit'] > 0 ? 'debit' : 'credit',
-                    'amount' => $t['debit'] > 0 ? $t['debit'] : $t['credit'],
-                    'is_imported' => true,
-                ]);
-                $ids[] = $transaction->id;
+                if ($t['debit'] > 0) {
+                    // Borç → Devir Öncesi Aidat (Due)
+                    $catName = $t['category_name'] ?? '';
+                    $category = $catName
+                        ? ($categories->first(fn($c) => mb_strtolower($c->name) === mb_strtolower($catName)) ?? $defaultCategory)
+                        : $defaultCategory;
+
+                    $due = \App\Models\Due::create([
+                        'apartment_id'    => $account->apartment_id,
+                        'account_id'      => $account->id,
+                        'category_id'     => $category?->id,
+                        'amount'          => $t['debit'],
+                        'remaining_amount' => $t['debit'],
+                        'due_date'        => $t['date'],
+                        'created_at_manual' => $t['date'],
+                        'status'          => 'unpaid',
+                        'description'     => $t['description'],
+                        'is_imported'     => true,
+                    ]);
+
+                    AccountTransaction::create([
+                        'apartment_id'         => $account->apartment_id,
+                        'account_id'           => $account->id,
+                        'transactionable_type' => \App\Models\Due::class,
+                        'transactionable_id'   => $due->id,
+                        'transaction_date'     => $t['date'],
+                        'description'          => $t['description'],
+                        'type'                 => 'debit',
+                        'amount'               => $t['debit'],
+                        'is_imported'          => true,
+                    ]);
+                } else {
+                    // Alacak → Devir Öncesi Ödeme (Payment + CashTransaction)
+                    $payment = \App\Models\Payment::create([
+                        'apartment_id'      => $account->apartment_id,
+                        'account_id'        => $account->id,
+                        'amount'            => $t['credit'],
+                        'unallocated_amount' => $t['credit'],
+                        'payment_date'      => $t['date'],
+                        'description'       => $t['description'],
+                        'is_imported'       => true,
+                    ]);
+
+                    \App\Models\CashTransaction::create([
+                        'cash_box_id'      => $cashBox->id,
+                        'apartment_id'     => $account->apartment_id,
+                        'account_id'       => $account->id,
+                        'type'             => 'income',
+                        'amount'           => $t['credit'],
+                        'description'      => $t['description'],
+                        'transaction_date' => $t['date'],
+                        'is_active'        => true,
+                    ]);
+
+                    AccountTransaction::create([
+                        'apartment_id'         => $account->apartment_id,
+                        'account_id'           => $account->id,
+                        'transactionable_type' => \App\Models\Payment::class,
+                        'transactionable_id'   => $payment->id,
+                        'transaction_date'     => $t['date'],
+                        'description'          => $t['description'],
+                        'type'                 => 'credit',
+                        'amount'               => $t['credit'],
+                        'is_imported'          => true,
+                    ]);
+                }
+                $importedCount++;
             }
-            return $ids;
         });
 
         // Session'ı temizle
         session()->forget(['import_transactions', 'import_account_id']);
 
-        return redirect()->route('accounts.statement', $account->id)->with('status', count($transactions) . ' adet hareket başarıyla içeri aktarıldı.');
+        return redirect()->route('accounts.statement', $account->id)->with('status', $importedCount . ' adet hareket başarıyla Devir Öncesi olarak içeri aktarıldı.');
     }
 
     /**
@@ -725,16 +827,41 @@ class AccountController extends Controller
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
             ->findOrFail($id);
 
-        // İçe aktarılmış transaction'ları sil
-        $deletedCount = AccountTransaction::where('account_id', $account->id)
-            ->where('is_imported', true)
-            ->delete();
+        $deletedCount = 0;
+
+        DB::transaction(function () use ($account, &$deletedCount) {
+            // Devir Öncesi Aidatlar
+            $dues = \App\Models\Due::where('account_id', $account->id)->where('is_imported', true)->get();
+            foreach ($dues as $due) {
+                AccountTransaction::where('transactionable_type', \App\Models\Due::class)
+                    ->where('transactionable_id', $due->id)->delete();
+                $due->delete();
+                $deletedCount++;
+            }
+
+            // Devir Öncesi Ödemeler
+            $payments = \App\Models\Payment::where('account_id', $account->id)->where('is_imported', true)->get();
+            foreach ($payments as $payment) {
+                \App\Models\CashTransaction::where('account_id', $account->id)
+                    ->whereDate('transaction_date', $payment->payment_date)
+                    ->where('amount', $payment->amount)
+                    ->delete();
+                AccountTransaction::where('transactionable_type', \App\Models\Payment::class)
+                    ->where('transactionable_id', $payment->id)->delete();
+                $payment->delete();
+                $deletedCount++;
+            }
+
+            // Geriye kalan eski ham is_imported transaction'lar (eski format)
+            $oldCount = AccountTransaction::where('account_id', $account->id)->where('is_imported', true)->delete();
+            $deletedCount += $oldCount;
+        });
 
         if ($deletedCount === 0) {
             return redirect()->route('accounts.statement', $account->id)->with('error', 'Silinecek içeri aktarılmış kayıt bulunamadı.');
         }
 
-        return redirect()->route('accounts.statement', $account->id)->with('status', $deletedCount . ' adet içeri aktarılmış hareket silindi.');
+        return redirect()->route('accounts.statement', $account->id)->with('status', $deletedCount . ' adet Devir Öncesi kayıt silindi.');
     }
 
     public function destroyTransaction(string $id, AccountTransaction $transaction, CurrentApartment $currentApartment)

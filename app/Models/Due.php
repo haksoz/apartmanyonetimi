@@ -27,12 +27,14 @@ class Due extends Model
         'status',
         'description',
         'created_at_manual',
+        'is_imported',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
         'due_date' => 'date',
+        'is_imported' => 'boolean',
     ];
 
     public function apartment(): BelongsTo

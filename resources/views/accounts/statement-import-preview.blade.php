@@ -26,7 +26,15 @@
             </div>
             <div>
                 <h3 class="text-lg font-semibold text-slate-900">{{ count($transactions) }} adet hareket içeri aktarılacak</h3>
-                <p class="text-sm text-slate-500">Lütfen verileri kontrol edin ve onaylayın.</p>
+                @php
+                    $debitCount  = collect($transactions)->where('debit', '>', 0)->count();
+                    $creditCount = collect($transactions)->where('credit', '>', 0)->count();
+                @endphp
+                <p class="text-sm text-slate-500">
+                    <span class="font-medium text-slate-700">{{ $debitCount }}</span> Devir Öncesi Aidat &bull;
+                    <span class="font-medium text-slate-700">{{ $creditCount }}</span> Devir Öncesi Ödeme
+                    <br>Onaylayınca <strong>Devir Öncesi Kasası</strong> otomatik oluşturulur (yoksa).
+                </p>
             </div>
         </div>
 
@@ -38,6 +46,8 @@
                         <th class="text-left py-3 px-4 font-semibold text-slate-700">Açıklama</th>
                         <th class="text-right py-3 px-4 font-semibold text-slate-700">Borç</th>
                         <th class="text-right py-3 px-4 font-semibold text-slate-700">Alacak</th>
+                        <th class="text-left py-3 px-4 font-semibold text-slate-700">Kategori</th>
+                        <th class="text-left py-3 px-4 font-semibold text-slate-700">Tür</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,6 +57,14 @@
                             <td class="py-3 px-4 text-slate-700">{{ $t['description'] }}</td>
                             <td class="py-3 px-4 text-right text-slate-900">{{ $t['debit'] > 0 ? number_format($t['debit'], 2, ',', '.') . ' TL' : '—' }}</td>
                             <td class="py-3 px-4 text-right text-slate-900">{{ $t['credit'] > 0 ? number_format($t['credit'], 2, ',', '.') . ' TL' : '—' }}</td>
+                            <td class="py-3 px-4 text-slate-500">{{ $t['debit'] > 0 ? ($t['category_name'] ?: 'Aidat') : '—' }}</td>
+                            <td class="py-3 px-4">
+                                @if($t['debit'] > 0)
+                                    <span class="inline-block rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">Devir Öncesi Aidat</span>
+                                @else
+                                    <span class="inline-block rounded-md bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-700">Devir Öncesi Ödeme</span>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
