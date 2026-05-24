@@ -195,8 +195,12 @@
                 <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
                 <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
             </select>
+            <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none whitespace-nowrap">
+                <input type="checkbox" name="show_imported" value="1" class="rounded" {{ $showImported ? 'checked' : '' }}>
+                Devir Öncesini Göster
+            </label>
             <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'] || $filters['filterUnitId'] || $filters['filterAccountType'])
+            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'] || $filters['filterUnitId'] || $filters['filterAccountType'] || $showImported)
                 <a href="{{ route('dues.index', array_filter(['search' => $filters['filterSearch']])) }}"
                    class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">Temizle</a>
             @endif
@@ -249,7 +253,12 @@
                             <input type="checkbox" class="row-check rounded border-slate-300 text-slate-700 cursor-pointer" value="{{ $due->id }}" data-status="{{ $due->status }}">
                         </td>
                         <td class="px-5 py-4">
-                            <div class="text-slate-900 font-medium">{{ $due->description ?: '-' }}</div>
+                            <div class="text-slate-900 font-medium">
+                                {{ $due->description ?: '-' }}
+                                @if ($due->is_imported)
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                @endif
+                            </div>
                             @if ($due->account)
                                 @php
                                     $title = match($due->account->type) {

@@ -829,25 +829,43 @@ class AccountController extends Controller
 
         $deletedCount = 0;
 
-        DB::transaction(function () use ($account, &$deletedCount) {
-            // Devir Öncesi Aidatlar
+        $skippedDues     = 0;
+        $skippedPayments = 0;
+
+        DB::transaction(function () use ($account, &$deletedCount, &$skippedDues, &$skippedPayments) {
+            // Devir Öncesi Aidatlar — tahsis yapılmışsa atla
             $dues = \App\Models\Due::where('account_id', $account->id)->where('is_imported', true)->get();
             foreach ($dues as $due) {
+                if ($due->allocations()->exists()) {
+                    $skippedDues++;
+                    continue;
+                }
                 AccountTransaction::where('transactionable_type', \App\Models\Due::class)
                     ->where('transactionable_id', $due->id)->delete();
                 $due->delete();
                 $deletedCount++;
             }
 
-            // Devir Öncesi Ödemeler
+            // Devir Öncesi Ödemeler — tahsis yapılmışsa atla
             $payments = \App\Models\Payment::where('account_id', $account->id)->where('is_imported', true)->get();
             foreach ($payments as $payment) {
-                \App\Models\CashTransaction::where('account_id', $account->id)
-                    ->whereDate('transaction_date', $payment->payment_date)
-                    ->where('amount', $payment->amount)
-                    ->delete();
+                if ($payment->allocations()->exists()) {
+                    $skippedPayments++;
+                    continue;
+                }
+                // CashTransaction'ı payment_id değil account_id+tarih+tutar ile bul
+                // ama önce AccountTransaction üzerinden transactionable_id ile doğru kaydı sil
                 AccountTransaction::where('transactionable_type', \App\Models\Payment::class)
                     ->where('transactionable_id', $payment->id)->delete();
+                \App\Models\CashTransaction::where('cash_box_id', function ($q) use ($account) {
+                    $q->select('id')->from('cash_boxes')
+                      ->where('apartment_id', $account->apartment_id)
+                      ->where('name', 'Devir Öncesi Kasası');
+                })
+                ->where('account_id', $account->id)
+                ->whereDate('transaction_date', $payment->payment_date)
+                ->where('amount', $payment->amount)
+                ->delete();
                 $payment->delete();
                 $deletedCount++;
             }
@@ -857,11 +875,16 @@ class AccountController extends Controller
             $deletedCount += $oldCount;
         });
 
-        if ($deletedCount === 0) {
+        if ($deletedCount === 0 && ($skippedDues + $skippedPayments) === 0) {
             return redirect()->route('accounts.statement', $account->id)->with('error', 'Silinecek içeri aktarılmış kayıt bulunamadı.');
         }
 
-        return redirect()->route('accounts.statement', $account->id)->with('status', $deletedCount . ' adet Devir Öncesi kayıt silindi.');
+        $msg = $deletedCount . ' adet Devir Öncesi kayıt silindi.';
+        if ($skippedDues + $skippedPayments > 0) {
+            $msg .= ' ' . ($skippedDues + $skippedPayments) . ' adet kayıt tahsis/ödeme ilişkisi olduğu için atlandı.';
+        }
+
+        return redirect()->route('accounts.statement', $account->id)->with('status', $msg);
     }
 
     public function destroyTransaction(string $id, AccountTransaction $transaction, CurrentApartment $currentApartment)

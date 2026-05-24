@@ -46,6 +46,7 @@ class DueController extends Controller
         $filterSearch  = $request->query('search');
         $filterUnitId  = $request->query('unit_id');
         $filterAccountType = $request->query('account_type');
+        $showImported = $request->boolean('show_imported', false);
 
         $isOwner = $this->isOwnerOf($apartment);
 
@@ -71,7 +72,8 @@ class DueController extends Controller
             ->when($filterAccountType, fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $filterAccountType)))
             ->when($filterSource === 'plan',   fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('due_plan_id')))
             ->when($filterSource === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNull('due_plan_id')))
-            ->when($filterSource === 'manual', fn ($q) => $q->whereNull('due_batch_id'));
+            ->when($filterSource === 'manual', fn ($q) => $q->whereNull('due_batch_id'))
+            ->when(! $showImported, fn ($q) => $q->where('is_imported', false));
 
         if ($sortBy === 'unit_id') {
             $dues->orderByRaw('unit_id IS NULL, unit_id ' . $sortDirection);
@@ -97,9 +99,9 @@ class DueController extends Controller
             ? Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get(['id', 'unit_no'])
             : collect();
 
-        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType');
+        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'showImported');
 
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters', 'isOwner', 'units'));
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters', 'isOwner', 'units', 'showImported'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)
