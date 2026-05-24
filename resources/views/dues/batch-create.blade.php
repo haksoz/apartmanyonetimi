@@ -14,7 +14,6 @@
 
     <form method="POST" action="{{ route('dues.store') }}" class="space-y-4">
         @csrf
-        <input type="hidden" name="distribution_type" value="equal">
 
         {{-- Source Selection - Side by Side with Icons --}}
         <div class="flex gap-3">
@@ -112,6 +111,29 @@
                 <div id="calc-summary" class="text-sm font-medium text-red-600 hidden"></div>
             </div>
 
+            {{-- Distribution Type Selection --}}
+            <div class="mb-4">
+                <label class="mb-2 block text-sm font-medium text-slate-600">Dağıtım Yöntemi</label>
+                <select name="distribution_type" id="distribution_type" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                    <option value="equal" @selected(old('distribution_type', 'equal') === 'equal')>Eşit dağıtım</option>
+                    <option value="square_meters" @selected(old('distribution_type') === 'square_meters')>Metrekareye göre</option>
+                    <option value="share_coefficient" @selected(old('distribution_type') === 'share_coefficient')>Pay çarpanına göre</option>
+                </select>
+                @error('distribution_type')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
+            {{-- Distribution Preview --}}
+            <div id="distribution-preview" class="hidden mb-4">
+                <div class="rounded-xl border border-slate-200 overflow-hidden">
+                    <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dağıtım Önizlemesi</span>
+                        <span id="preview-total-label" class="text-xs text-slate-500"></span>
+                    </div>
+                    <div id="preview-warning" class="hidden px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700"></div>
+                    <div id="preview-groups" class="divide-y divide-slate-100"></div>
+                </div>
+            </div>
+
             {{-- Target Audience Selection --}}
             <div class="mb-4">
                 <label class="mb-2 block text-sm font-medium text-slate-600">Borçlanacak Kişiler</label>
@@ -180,6 +202,7 @@
     <script>
         (() => {
             const units = {{ $units }};
+            const unitsData = {!! json_encode($unitsData->values()) !!};
 
             const sourceRadios = document.querySelectorAll('input[name="source_type"]');
             const expensesFields = document.getElementById('expenses-fields');
@@ -220,20 +243,13 @@
 
                 if (selectedSource === 'expenses') {
                     total = calculateSelectedTotal();
-
-                    if (total > 0) {
-                        expenseTotalDisplay.classList.remove('hidden');
-                        expenseTotalAmount.textContent = formatMoney(total);
-                    } else {
-                        expenseTotalDisplay.classList.remove('hidden');
-                        expenseTotalAmount.textContent = '0,00 TL';
-                    }
+                    expenseTotalDisplay.classList.remove('hidden');
+                    expenseTotalAmount.textContent = total > 0 ? formatMoney(total) : '0,00 TL';
                 } else {
                     total = parseFloat(sourceAmount.value) || 0;
                     expenseTotalDisplay.classList.add('hidden');
                 }
 
-                // Update red summary text in Debt Info section
                 if (units > 0 && total > 0) {
                     const perUnit = total / units;
                     calcSummary.textContent = `Toplam: ${formatMoney(total)} / Daire: ${formatMoney(perUnit)}`;
@@ -241,6 +257,81 @@
                 } else {
                     calcSummary.classList.add('hidden');
                 }
+
+                updateDistributionPreview(total);
+            };
+
+            const updateDistributionPreview = (total) => {
+                const distType = document.getElementById('distribution_type')?.value;
+                const previewEl = document.getElementById('distribution-preview');
+                const groupsEl = document.getElementById('preview-groups');
+                const warningEl = document.getElementById('preview-warning');
+                const totalLbl = document.getElementById('preview-total-label');
+
+                if (!total || total <= 0 || !unitsData.length) {
+                    previewEl.classList.add('hidden');
+                    return;
+                }
+
+                const activeUnits = unitsData.filter(u => {
+                    if (distType === 'square_meters') return u.sqm > 0;
+                    if (distType === 'share_coefficient') return u.coef > 0;
+                    return true;
+                });
+
+                const zeroCount = unitsData.length - activeUnits.length;
+                if (distType !== 'equal' && zeroCount > 0) {
+                    warningEl.textContent = zeroCount + ' dairenin ' + (distType === 'square_meters' ? 'metrekare' : 'pay çarpanı') + ' bilgisi 0 veya boş — bu daireler dağıtımdan hariç tutulur.';
+                    warningEl.classList.remove('hidden');
+                } else {
+                    warningEl.classList.add('hidden');
+                }
+
+                if (activeUnits.length === 0) {
+                    previewEl.classList.add('hidden');
+                    return;
+                }
+
+                const totalWeight = activeUnits.reduce((s, u) => {
+                    if (distType === 'square_meters') return s + u.sqm;
+                    if (distType === 'share_coefficient') return s + u.coef;
+                    return s + 1;
+                }, 0);
+
+                let shares = [];
+                let allocated = 0;
+                activeUnits.forEach((u, idx) => {
+                    const w = distType === 'equal' ? 1 : (distType === 'square_meters' ? u.sqm : u.coef);
+                    const share = idx === activeUnits.length - 1
+                        ? Math.round((total - allocated) * 100) / 100
+                        : Math.round(total * w / totalWeight * 100) / 100;
+                    allocated += share;
+                    shares.push({ unit: u, w, share });
+                });
+
+                const groups = {};
+                shares.forEach(s => {
+                    const key = distType === 'equal' ? 'equal' : s.w.toString();
+                    if (!groups[key]) groups[key] = { w: s.w, share: s.share, count: 0 };
+                    groups[key].count++;
+                });
+
+                const sortedGroups = Object.values(groups).sort((a, b) => a.w - b.w);
+
+                let html = '';
+                sortedGroups.forEach(g => {
+                    let weightLabel = distType === 'equal' ? 'Eşit dağıtım'
+                        : distType === 'square_meters' ? g.w.toLocaleString('tr-TR') + ' m²'
+                        : g.w.toLocaleString('tr-TR') + ' çarpan';
+                    html += `<div class="flex items-center justify-between px-4 py-3 text-sm">
+                        <div class="text-slate-700"><span class="font-medium">${weightLabel}</span> &mdash; <span class="text-slate-500">${g.count} daire</span></div>
+                        <div class="font-bold text-slate-900 tabular-nums">${formatMoney(g.share)} / daire</div>
+                    </div>`;
+                });
+
+                groupsEl.innerHTML = html;
+                totalLbl.textContent = formatMoney(total) + ' · ' + activeUnits.length + ' daire';
+                previewEl.classList.remove('hidden');
             };
 
             const renderExpenseList = () => {
@@ -348,6 +439,7 @@
 
             sourceRadios.forEach(radio => radio.addEventListener('change', toggleFields));
             sourceAmount.addEventListener('input', updateCalculation);
+            document.getElementById('distribution_type')?.addEventListener('change', updateCalculation);
 
             // Initialize
             toggleFields();

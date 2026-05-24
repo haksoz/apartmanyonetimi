@@ -127,10 +127,13 @@ class DueController extends Controller
             ->orderBy('name')
             ->get();
         $accounts = Account::query()
-            ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
-            ->where('is_active', true)
-            ->orderBy('name')
+            ->where('accounts.apartment_id', $apartment->id)
+            ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+            ->with('unit')
+            ->leftJoin('units', 'accounts.unit_id', '=', 'units.id')
+            ->orderByRaw('units.unit_no IS NULL, CAST(units.unit_no AS UNSIGNED)')
+            ->orderBy('accounts.name')
+            ->select('accounts.*')
             ->get();
 
         $selectedAccountId = $request->query('account_id');
@@ -159,9 +162,18 @@ class DueController extends Controller
             ->orderBy('name')
             ->get();
 
-        $units = Unit::query()
+        $unitsCollection = Unit::query()
             ->where('apartment_id', $apartment->id)
-            ->count();
+            ->orderBy('unit_no')
+            ->get(['id', 'unit_no', 'block', 'square_meters', 'share_coefficient']);
+
+        $units = $unitsCollection->count();
+
+        $unitsData = $unitsCollection->map(fn ($u) => [
+            'label' => ($u->block ? $u->block . '/' : '') . $u->unit_no,
+            'sqm'   => (float) ($u->square_meters ?? 0),
+            'coef'  => (float) ($u->share_coefficient ?? 0),
+        ]);
 
         // Get all expenses grouped by period for JavaScript calculation (SQLite compatible)
         $expensesByPeriod = Expense::query()
@@ -184,7 +196,7 @@ class DueController extends Controller
             $expensesByCategory[$category->id] = $categoryExpenses;
         }
 
-        return view('dues.batch-create', compact('apartment', 'categories', 'expenseCategories', 'units', 'expensesByPeriod', 'expensesByCategory'));
+        return view('dues.batch-create', compact('apartment', 'categories', 'expenseCategories', 'units', 'unitsData', 'expensesByPeriod', 'expensesByCategory'));
     }
 
     public function getExpensesForPeriod(Request $request, CurrentApartment $currentApartment)
@@ -236,7 +248,7 @@ class DueController extends Controller
 
         $validated = $request->validate([
             'source_type' => ['required', Rule::in([DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_INDIVIDUAL])],
-            'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL])],
+            'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL, DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT])],
             'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'period' => ['required', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
@@ -263,8 +275,8 @@ class DueController extends Controller
             return back()->withErrors(['distribution_type' => 'Birebir borçlandırma için dağıtım yöntemi birebir olmalıdır.'])->withInput();
         }
 
-        if ($validated['source_type'] !== DueBatch::SOURCE_INDIVIDUAL && $validated['distribution_type'] !== DueBatch::DISTRIBUTION_EQUAL) {
-            return back()->withErrors(['distribution_type' => 'Bu aşamada toplu borçlandırma için eşit böl dağıtımı destekleniyor.'])->withInput();
+        if ($validated['source_type'] !== DueBatch::SOURCE_INDIVIDUAL && $validated['distribution_type'] === DueBatch::DISTRIBUTION_INDIVIDUAL) {
+            return back()->withErrors(['distribution_type' => 'Birebir dağıtım yalnızca birebir borçlandırma kaynağıyla kullanılabilir.'])->withInput();
         }
 
         $selectedExpenseIds = collect(explode(',', $request->input('selected_expense_ids', '')))
@@ -321,14 +333,47 @@ class DueController extends Controller
                 return;
             }
 
-            $amountPerUnit = round($sourceAmount / count($unitAccounts), 2);
-            $allocated = 0;
+            $distributionType = $validated['distribution_type'];
             $lastIndex = count($unitAccounts) - 1;
 
-            foreach ($unitAccounts as $index => $item) {
-                $amount = $index === $lastIndex ? round($sourceAmount - $allocated, 2) : $amountPerUnit;
-                $allocated += $amount;
-                $this->createDue($batch, $item['unit'], $item['account'], $amount, $validated);
+            if ($distributionType === DueBatch::DISTRIBUTION_EQUAL) {
+                $amountPerUnit = round($sourceAmount / count($unitAccounts), 2);
+                $allocated = 0;
+                foreach ($unitAccounts as $index => $item) {
+                    $amount = $index === $lastIndex ? round($sourceAmount - $allocated, 2) : $amountPerUnit;
+                    $allocated += $amount;
+                    $this->createDue($batch, $item['unit'], $item['account'], $amount, $validated);
+                }
+            } else {
+                // Ağırlıklı dağıtım (metrekare veya pay çarpanı)
+                $totalWeight = collect($unitAccounts)->sum(function ($item) use ($distributionType) {
+                    return $distributionType === DueBatch::DISTRIBUTION_SQUARE_METERS
+                        ? (float) ($item['unit']->square_meters ?? 0)
+                        : (float) ($item['unit']->share_coefficient ?? 0);
+                });
+
+                if ($totalWeight <= 0) {
+                    // Ağırlık bilgisi yoksa eşit dağıt
+                    $amountPerUnit = round($sourceAmount / count($unitAccounts), 2);
+                    $allocated = 0;
+                    foreach ($unitAccounts as $index => $item) {
+                        $amount = $index === $lastIndex ? round($sourceAmount - $allocated, 2) : $amountPerUnit;
+                        $allocated += $amount;
+                        $this->createDue($batch, $item['unit'], $item['account'], $amount, $validated);
+                    }
+                } else {
+                    $allocated = 0;
+                    foreach ($unitAccounts as $index => $item) {
+                        $weight = $distributionType === DueBatch::DISTRIBUTION_SQUARE_METERS
+                            ? (float) ($item['unit']->square_meters ?? 0)
+                            : (float) ($item['unit']->share_coefficient ?? 0);
+                        $amount = $index === $lastIndex
+                            ? round($sourceAmount - $allocated, 2)
+                            : round($sourceAmount * $weight / $totalWeight, 2);
+                        $allocated += $amount;
+                        $this->createDue($batch, $item['unit'], $item['account'], $amount, $validated);
+                    }
+                }
             }
         });
 
@@ -355,7 +400,14 @@ class DueController extends Controller
         $due->load('allocations');
         $units = Unit::where('apartment_id', $due->apartment_id)->orderBy('unit_no')->get();
         $categories = Category::where('apartment_id', $due->apartment_id)->where('is_active', true)->orderBy('name')->get();
-        $accounts = Account::where('apartment_id', $due->apartment_id)->where('is_active', true)->orderBy('name')->get();
+        $accounts = Account::where('accounts.apartment_id', $due->apartment_id)
+            ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+            ->with('unit')
+            ->leftJoin('units', 'accounts.unit_id', '=', 'units.id')
+            ->orderByRaw('units.unit_no IS NULL, CAST(units.unit_no AS UNSIGNED)')
+            ->orderBy('accounts.name')
+            ->select('accounts.*')
+            ->get();
 
         return view('dues.edit', compact('due', 'units', 'categories', 'accounts'));
     }

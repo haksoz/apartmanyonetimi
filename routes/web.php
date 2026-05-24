@@ -71,8 +71,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('accounts/{id}/statement/import-preview', [AccountController::class, 'statementImportPreview'])->name('accounts.statement.import-preview');
         Route::post('accounts/{id}/statement/import-confirm', [AccountController::class, 'statementImportConfirm'])->name('accounts.statement.import-confirm');
         Route::post('accounts/{id}/statement/delete-last-import', [AccountController::class, 'deleteLastImport'])->name('accounts.statement.delete-last-import');
-        Route::patch('accounts/{id}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
-        Route::patch('accounts/{id}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
+        Route::patch('accounts/{account}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
+        Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
         Route::get('users', [AccountUserController::class, 'index'])->name('users.index');
         Route::get('users/create', [AccountUserController::class, 'create'])->name('users.create');
         Route::get('users/lookup', [AccountUserController::class, 'lookupEmail'])->name('users.lookup');

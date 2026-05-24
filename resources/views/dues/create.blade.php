@@ -26,7 +26,9 @@
                     <select id="account_id" name="account_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Hesap seçin</option>
                         @foreach ($accounts as $account)
-                            <option value="{{ $account->id }}" @selected((string) old('account_id', $selectedAccountId ?? '') === (string) $account->id)>{{ $account->name }} ({{ $account->type_label }})</option>
+                            <option value="{{ $account->id }}" @selected((string) old('account_id', $selectedAccountId ?? '') === (string) $account->id)>
+                                {{ $account->unit ? 'No:'.str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT).' ' : '' }}{{ $account->name }} ({{ $account->type_label }}){{ !$account->is_active ? ' - Pasif' : '' }}
+                            </option>
                         @endforeach
                     </select>
                     @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
