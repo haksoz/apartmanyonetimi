@@ -18,11 +18,27 @@
         {{-- Source Selection - Side by Side with Icons --}}
         <div class="flex gap-3">
             <label class="cursor-pointer flex-1">
-                <input type="radio" name="source_type" value="manual" class="peer sr-only" @checked(old('source_type', 'manual') === 'manual')>
+                <input type="radio" name="source_type" value="fixed" class="peer sr-only" @checked(old('source_type', 'fixed') === 'fixed')>
                 <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center peer-checked:bg-emerald-100">
-                            <svg class="w-5 h-5 text-slate-600 peer-checked:text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700">Sabit Tutar</div>
+                            <div class="text-xs text-slate-500">Daire başına sabit tutar</div>
+                        </div>
+                    </div>
+                </div>
+            </label>
+            <label class="cursor-pointer flex-1">
+                <input type="radio" name="source_type" value="manual" class="peer sr-only" @checked(old('source_type') === 'manual')>
+                <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
@@ -95,7 +111,17 @@
             <input type="hidden" name="selected_expense_ids" id="selected_expense_ids" value="">
         </div>
 
-        <div id="manual-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'manual') !== 'manual') hidden @endif">
+        <div id="fixed-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'fixed') !== 'fixed') hidden @endif">
+            <h3 class="text-sm font-semibold text-slate-700 mb-4">Sabit Tutar Girişi</h3>
+            <div class="md:w-1/2">
+                <label for="fixed_amount" class="mb-2 block text-sm font-medium text-slate-600">Daire Başına Tutar</label>
+                <input id="fixed_amount" name="fixed_amount" type="number" min="0.01" step="0.01" value="{{ old('fixed_amount') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold" placeholder="0,00">
+                <p class="mt-1.5 text-xs text-slate-400">Her daire bu tutarla borçlandırılır. Toplam = tutar &times; daire sayısı.</p>
+                @error('fixed_amount')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+        </div>
+
+        <div id="manual-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type') !== 'manual') hidden @endif">
             <h3 class="text-sm font-semibold text-slate-700 mb-4">Tutar Girişi</h3>
             <div class="md:w-1/2">
                 <label for="source_amount" class="mb-2 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Tutar</label>
@@ -207,6 +233,8 @@
             const sourceRadios = document.querySelectorAll('input[name="source_type"]');
             const expensesFields = document.getElementById('expenses-fields');
             const manualFields = document.getElementById('manual-fields');
+            const fixedFields = document.getElementById('fixed-fields');
+            const fixedAmount = document.getElementById('fixed_amount');
             const sourcePeriod = document.getElementById('source_period');
             const sourceAmount = document.getElementById('source_amount');
             const expenseTotalDisplay = document.getElementById('expense-total-display');
@@ -245,12 +273,24 @@
                     total = calculateSelectedTotal();
                     expenseTotalDisplay.classList.remove('hidden');
                     expenseTotalAmount.textContent = total > 0 ? formatMoney(total) : '0,00 TL';
+                } else if (selectedSource === 'fixed') {
+                    const perUnit = parseFloat(fixedAmount?.value) || 0;
+                    total = perUnit * units;
+                    expenseTotalDisplay.classList.add('hidden');
                 } else {
                     total = parseFloat(sourceAmount.value) || 0;
                     expenseTotalDisplay.classList.add('hidden');
                 }
 
-                if (units > 0 && total > 0) {
+                if (selectedSource === 'fixed') {
+                    const perUnit = parseFloat(fixedAmount?.value) || 0;
+                    if (units > 0 && perUnit > 0) {
+                        calcSummary.textContent = `Daire Başına: ${formatMoney(perUnit)} / Toplam: ${formatMoney(perUnit * units)} (${units} daire)`;
+                        calcSummary.classList.remove('hidden');
+                    } else {
+                        calcSummary.classList.add('hidden');
+                    }
+                } else if (units > 0 && total > 0) {
                     const perUnit = total / units;
                     calcSummary.textContent = `Toplam: ${formatMoney(total)} / Daire: ${formatMoney(perUnit)}`;
                     calcSummary.classList.remove('hidden');
@@ -258,7 +298,7 @@
                     calcSummary.classList.add('hidden');
                 }
 
-                updateDistributionPreview(total);
+                updateDistributionPreview(selectedSource === 'fixed' ? (parseFloat(fixedAmount?.value) || 0) : total);
             };
 
             const updateDistributionPreview = (total) => {
@@ -425,20 +465,20 @@
                 }
             });
 
+            const distTypeWrapper = document.getElementById('distribution_type')?.closest('.mb-4');
+
             const toggleFields = () => {
                 const selected = document.querySelector('input[name="source_type"]:checked').value;
-                if (selected === 'expenses') {
-                    expensesFields.classList.remove('hidden');
-                    manualFields.classList.add('hidden');
-                } else {
-                    expensesFields.classList.add('hidden');
-                    manualFields.classList.remove('hidden');
-                    updateCalculation();
-                }
+                expensesFields.classList.toggle('hidden', selected !== 'expenses');
+                manualFields.classList.toggle('hidden', selected !== 'manual');
+                fixedFields.classList.toggle('hidden', selected !== 'fixed');
+                if (distTypeWrapper) distTypeWrapper.classList.toggle('hidden', selected === 'fixed');
+                updateCalculation();
             };
 
             sourceRadios.forEach(radio => radio.addEventListener('change', toggleFields));
             sourceAmount.addEventListener('input', updateCalculation);
+            fixedAmount?.addEventListener('input', updateCalculation);
             document.getElementById('distribution_type')?.addEventListener('change', updateCalculation);
 
             // Initialize

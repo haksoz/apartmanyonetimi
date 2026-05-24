@@ -249,7 +249,7 @@ class DueController extends Controller
         }
 
         $validated = $request->validate([
-            'source_type' => ['required', Rule::in([DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_INDIVIDUAL])],
+            'source_type' => ['required', Rule::in([DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_INDIVIDUAL, DueBatch::SOURCE_FIXED])],
             'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL, DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT])],
             'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'period' => ['required', 'date_format:Y-m'],
@@ -264,6 +264,7 @@ class DueController extends Controller
             'source_period' => ['required_if:source_type,'.DueBatch::SOURCE_EXPENSES, 'nullable', 'date_format:Y-m'],
             'selected_expense_ids' => ['nullable', 'string'],
             'source_amount' => ['required_if:source_type,'.DueBatch::SOURCE_MANUAL, 'nullable', 'numeric', 'min:0.01'],
+            'fixed_amount'  => ['required_if:source_type,'.DueBatch::SOURCE_FIXED,  'nullable', 'numeric', 'min:0.01'],
             'account_id' => [
                 'required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL,
                 'nullable',
@@ -272,6 +273,10 @@ class DueController extends Controller
             ],
             'individual_amount' => ['required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL, 'nullable', 'numeric', 'min:0.01'],
         ]);
+
+        if ($validated['source_type'] === DueBatch::SOURCE_FIXED && $validated['distribution_type'] !== DueBatch::DISTRIBUTION_EQUAL) {
+            $validated['distribution_type'] = DueBatch::DISTRIBUTION_EQUAL;
+        }
 
         if ($validated['source_type'] === DueBatch::SOURCE_INDIVIDUAL && $validated['distribution_type'] !== DueBatch::DISTRIBUTION_INDIVIDUAL) {
             return back()->withErrors(['distribution_type' => 'Birebir borçlandırma için dağıtım yöntemi birebir olmalıdır.'])->withInput();
@@ -310,6 +315,27 @@ class DueController extends Controller
             if ($validated['source_type'] === DueBatch::SOURCE_INDIVIDUAL) {
                 $account = Account::query()->where('apartment_id', $apartment->id)->findOrFail($validated['account_id']);
                 $this->createDue($batch, $account->unit, $account, $sourceAmount, $validated);
+
+                return;
+            }
+
+            if ($validated['source_type'] === DueBatch::SOURCE_FIXED) {
+                $perUnitAmount = (float) $validated['fixed_amount'];
+                $periodStart   = \Carbon\Carbon::parse($validated['period'].'-01')->startOfMonth();
+                $periodEnd     = $periodStart->copy()->endOfMonth();
+
+                $units = Unit::query()
+                    ->with(['ownerAccount', 'accounts'])
+                    ->where('apartment_id', $apartment->id)
+                    ->orderBy('unit_no')
+                    ->get();
+
+                foreach ($units as $unit) {
+                    $account = $this->getAccountForPeriod($unit, $periodStart, $periodEnd, $validated['target_audience']);
+                    if ($account) {
+                        $this->createDue($batch, $unit, $account, $perUnitAmount, $validated);
+                    }
+                }
 
                 return;
             }
@@ -719,6 +745,10 @@ class DueController extends Controller
     {
         if ($validated['source_type'] === DueBatch::SOURCE_MANUAL) {
             return (float) $validated['source_amount'];
+        }
+
+        if ($validated['source_type'] === DueBatch::SOURCE_FIXED) {
+            return (float) $validated['fixed_amount'];
         }
 
         if ($validated['source_type'] === DueBatch::SOURCE_INDIVIDUAL) {

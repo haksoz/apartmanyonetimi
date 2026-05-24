@@ -14,6 +14,8 @@ class DueBatch extends Model
 
     public const SOURCE_INDIVIDUAL = 'individual';
 
+    public const SOURCE_FIXED = 'fixed';
+
     public const DISTRIBUTION_EQUAL = 'equal';
 
     public const DISTRIBUTION_INDIVIDUAL = 'individual';
