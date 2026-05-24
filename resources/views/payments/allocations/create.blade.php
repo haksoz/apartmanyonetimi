@@ -16,7 +16,7 @@
                 <p class="mt-2 text-sm text-slate-900">#{{ $payment->id }} - {{ $payment->description ?: 'Ödeme' }}</p>
             </div>
             <div>
-                <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Unallocated Tutar</h2>
+                <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tahsis Edilebilir Bakiye</h2>
                 <p class="mt-2 text-sm font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</p>
             </div>
             <div>
@@ -79,16 +79,78 @@
                 </tbody>
             </table>
         </div>
+        {{-- Live summary --}}
+        <div id="alloc-summary" class="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm hidden">
+            <div class="flex flex-wrap gap-x-8 gap-y-2">
+                <div>
+                    <span class="text-slate-500">Tahsis Edilecek:</span>
+                    <span id="sum-allocated" class="ml-1 font-bold text-slate-900">0,00 TL</span>
+                </div>
+                <div>
+                    <span class="text-slate-500">Tahsis Edilebilir Bakiye:</span>
+                    <span class="ml-1 font-bold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</span>
+                </div>
+                <div>
+                    <span class="text-slate-500">Kalan:</span>
+                    <span id="sum-remaining" class="ml-1 font-bold">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</span>
+                </div>
+            </div>
+        </div>
+
         <div class="mt-4">
             <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Tahsis Et</button>
         </div>
 
         <script>
             (function(){
+                const budget = {{ $payment->unallocated_amount }};
+
                 function toFloat(v){
                     const n = parseFloat(String(v).replace(',', '.'));
                     return Number.isFinite(n) ? n : 0;
                 }
+
+                function fmt(n){
+                    return n.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' TL';
+                }
+
+                function updateSummary(){
+                    let total = 0;
+                    document.querySelectorAll('input[name^="allocations"][name$="[amount]"]').forEach(inp => {
+                        total += toFloat(inp.value);
+                    });
+
+                    const summaryEl  = document.getElementById('alloc-summary');
+                    const allocEl    = document.getElementById('sum-allocated');
+                    const remainEl   = document.getElementById('sum-remaining');
+                    const diff       = budget - total;
+
+                    if (total > 0) {
+                        summaryEl.classList.remove('hidden');
+                    } else {
+                        summaryEl.classList.add('hidden');
+                    }
+
+                    allocEl.textContent  = fmt(total);
+                    remainEl.textContent = fmt(diff);
+
+                    if (diff < -0.001) {
+                        remainEl.classList.remove('text-slate-900', 'text-emerald-600');
+                        remainEl.classList.add('text-red-600');
+                    } else if (diff < 0.001) {
+                        remainEl.classList.remove('text-slate-900', 'text-red-600');
+                        remainEl.classList.add('text-emerald-600');
+                    } else {
+                        remainEl.classList.remove('text-red-600', 'text-emerald-600');
+                        remainEl.classList.add('text-slate-900');
+                    }
+                }
+
+                document.addEventListener('input', function(e){
+                    if (e.target.matches('input[name^="allocations"][name$="[amount]"]')) {
+                        updateSummary();
+                    }
+                });
 
                 document.addEventListener('click', function(e){
                     const btn = e.target.closest('[data-fill-selector]');
@@ -98,6 +160,7 @@
                         if(!input) return;
                         const remaining = toFloat(input.getAttribute('data-remaining'));
                         input.value = remaining ? remaining.toFixed(2) : '';
+                        updateSummary();
                     }
                 });
             })();

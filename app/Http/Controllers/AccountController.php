@@ -7,6 +7,7 @@ use App\Models\AccountTransaction;
 use App\Models\Category;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
+use App\Models\CashBox;
 use App\Models\Payment;
 use App\Support\CurrentApartment;
 use Illuminate\Support\Facades\DB;
@@ -295,7 +296,13 @@ class AccountController extends Controller
             }
         }
 
-        return view('accounts.show', compact('account', 'transactions'));
+        $cashBoxes = CashBox::query()
+            ->where('apartment_id', $account->apartment_id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('accounts.show', compact('account', 'transactions', 'cashBoxes'));
     }
 
     /**
@@ -728,6 +735,20 @@ class AccountController extends Controller
         }
 
         return redirect()->route('accounts.statement', $account->id)->with('status', $deletedCount . ' adet içeri aktarılmış hareket silindi.');
+    }
+
+    public function destroyTransaction(string $id, AccountTransaction $transaction, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+        $account = Account::query()
+            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->findOrFail($id);
+
+        abort_unless($transaction->account_id === $account->id && $transaction->is_imported, 403);
+
+        $transaction->delete();
+
+        return redirect()->route('accounts.statement', $account->id)->with('status', 'Kayıt silindi.');
     }
 
     /**

@@ -92,7 +92,15 @@
 
     @if (!in_array($account->type, [App\Models\Account::TYPE_SUPPLIER]))
         <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
-            <h2 class="mb-4 text-lg font-semibold text-slate-950">Açık Aidatlar</h2>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-slate-950">Açık Aidatlar</h2>
+                @if ($account->dues->isNotEmpty())
+                    <button type="button" id="bulk-pay-btn" onclick="openBulkPayModal()"
+                        class="hidden rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                        Seçilenleri Tahsil Et &mdash; <span id="selected-count">0</span> aidat / <span id="selected-total">0,00</span> TL
+                    </button>
+                @endif
+            </div>
             @if ($account->dues->isEmpty())
                 <div class="py-6 text-sm text-slate-500">Bu hesap için ödenmemiş aidat yok.</div>
             @else
@@ -100,9 +108,10 @@
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50 text-left text-slate-500">
                             <tr>
+                                <th class="px-5 py-3"><input type="checkbox" id="select-all-dues" class="rounded"></th>
                                 <th class="px-5 py-3">Tarih</th>
                                 <th class="px-5 py-3">Açıklama</th>
-                                <th class="px-5 py-3 text-right">Tutar</th>
+                                <th class="px-5 py-3 text-right">Kalan Tutar</th>
                                 <th class="px-5 py-3 text-right">Durum</th>
                                 <th class="px-5 py-3 text-right">İşlem</th>
                             </tr>
@@ -110,12 +119,17 @@
                         <tbody class="divide-y divide-slate-100">
                             @foreach ($account->dues as $due)
                                 <tr>
+                                    <td class="px-5 py-4">
+                                        <input type="checkbox" class="due-checkbox rounded"
+                                               data-due-id="{{ $due->id }}"
+                                               data-amount="{{ $due->remaining_amount }}">
+                                    </td>
                                     <td class="px-5 py-4 text-slate-700">{{ $due->due_date->format('d.m.Y') }}</td>
                                     <td class="px-5 py-4 text-slate-700">{{ $due->description ?: 'Aidat' }}</td>
                                     <td class="px-5 py-4 text-right text-slate-900 font-semibold">
-                                        {{ number_format($due->amount, 2, ',', '.') }} TL
+                                        {{ number_format($due->remaining_amount, 2, ',', '.') }} TL
                                         @if ($due->status === 'partial')
-                                            <div class="text-xs text-amber-600 font-normal">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                                            <div class="text-xs text-slate-400 font-normal">Toplam: {{ number_format($due->amount, 2, ',', '.') }} TL</div>
                                         @endif
                                     </td>
                                     <td class="px-5 py-4 text-right {{ $due->status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">
@@ -130,7 +144,7 @@
                                         {{ $statusLabel }}
                                     </td>
                                     <td class="px-5 py-4 text-right">
-                                        <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Tahsil Et</a>
+                                        <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Tahsil Et</a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -138,6 +152,51 @@
                     </table>
                 </div>
             @endif
+        </div>
+
+        {{-- Bulk Pay Modal --}}
+        <div id="bulk-pay-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900 mb-1">Seçili Aidatları Tahsil Et</h3>
+                <p class="text-sm text-slate-500 mb-4">Toplam: <span id="modal-total" class="font-bold text-slate-900">0,00 TL</span></p>
+
+                <form id="bulk-pay-form" method="POST" action="{{ route('accounts.dues.bulk-pay', $account) }}">
+                    @csrf
+                    <div id="bulk-due-ids"></div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1.5">Kasa</label>
+                            <select name="cash_box_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                                <option value="">Kasa seçin</option>
+                                @foreach ($cashBoxes as $cashBox)
+                                    <option value="{{ $cashBox->id }}">{{ $cashBox->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1.5">Ödeme Tarihi</label>
+                            <input type="date" name="payment_date" required value="{{ now()->toDateString() }}"
+                                   class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1.5">Açıklama <span class="text-slate-400">(opsiyonel)</span></label>
+                            <input type="text" name="description" placeholder="Çoklu Aidat Tahsilatı"
+                                   class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 mt-5">
+                        <button type="submit" class="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+                            Tahsil Et
+                        </button>
+                        <button type="button" onclick="closeBulkPayModal()"
+                                class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50">
+                            İptal
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     @endif
 
@@ -177,6 +236,73 @@
     @endif
 
     <script>
+        // Checkbox & bulk pay
+        (function(){
+            const selectAll = document.getElementById('select-all-dues');
+            const bulkBtn   = document.getElementById('bulk-pay-btn');
+            const countEl   = document.getElementById('selected-count');
+
+            if (!selectAll) return;
+
+            const totalEl = document.getElementById('selected-total');
+
+            const updateBtn = () => {
+                const checked = document.querySelectorAll('.due-checkbox:checked');
+                if (checked.length > 0) {
+                    let total = 0;
+                    checked.forEach(cb => total += parseFloat(cb.dataset.amount));
+                    bulkBtn.classList.remove('hidden');
+                    countEl.textContent = checked.length;
+                    totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                } else {
+                    bulkBtn.classList.add('hidden');
+                }
+            };
+
+            selectAll.addEventListener('change', function() {
+                document.querySelectorAll('.due-checkbox').forEach(cb => cb.checked = this.checked);
+                updateBtn();
+            });
+
+            document.querySelectorAll('.due-checkbox').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    const all = document.querySelectorAll('.due-checkbox');
+                    selectAll.checked = Array.from(all).every(c => c.checked);
+                    selectAll.indeterminate = !selectAll.checked && Array.from(all).some(c => c.checked);
+                    updateBtn();
+                });
+            });
+        })();
+
+        function openBulkPayModal() {
+            const checked = document.querySelectorAll('.due-checkbox:checked');
+            if (!checked.length) return;
+
+            let total = 0;
+            const container = document.getElementById('bulk-due-ids');
+            container.innerHTML = '';
+            checked.forEach(cb => {
+                total += parseFloat(cb.dataset.amount);
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'due_ids[]';
+                inp.value = cb.dataset.dueId;
+                container.appendChild(inp);
+            });
+
+            document.getElementById('modal-total').textContent =
+                total.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + ' TL';
+            document.getElementById('bulk-pay-modal').classList.remove('hidden');
+        }
+
+        function closeBulkPayModal() {
+            document.getElementById('bulk-pay-modal').classList.add('hidden');
+        }
+
+        document.getElementById('bulk-pay-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeBulkPayModal();
+        });
+
         (function(){
             function toggleAlloc(e){
                 const target = e.currentTarget.getAttribute('data-toggle-alloc');

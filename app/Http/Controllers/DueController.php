@@ -597,6 +597,94 @@ class DueController extends Controller
         return redirect()->route('dues.index')->with('status', 'Aidat ödemesi kaydedildi.');
     }
 
+    public function bulkPay(Request $request, CurrentApartment $currentApartment, Account $account)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+
+        abort_unless($account->apartment_id === $apartment->id, 403);
+
+        $validated = $request->validate([
+            'due_ids'      => ['required', 'array', 'min:1'],
+            'due_ids.*'    => ['integer', Rule::exists('dues', 'id')->where('apartment_id', $apartment->id)],
+            'cash_box_id'  => ['required', 'integer', Rule::exists('cash_boxes', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
+            'payment_date' => ['required', 'date'],
+            'description'  => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $dues = Due::query()
+            ->whereIn('id', $validated['due_ids'])
+            ->where('apartment_id', $apartment->id)
+            ->where('account_id', $account->id)
+            ->whereIn('status', ['pending', 'overdue', 'partial', 'unpaid'])
+            ->get();
+
+        if ($dues->isEmpty()) {
+            return back()->withErrors(['due_ids' => 'Seçilen aidatlar bulunamadı veya zaten ödendi.']);
+        }
+
+        $totalAmount = $dues->sum('remaining_amount');
+
+        DB::transaction(function () use ($dues, $account, $apartment, $validated, $totalAmount) {
+            $description = $validated['description'] ?: 'Çoklu Aidat Tahsilatı';
+
+            $payment = Payment::create([
+                'apartment_id'       => $apartment->id,
+                'account_id'         => $account->id,
+                'amount'             => $totalAmount,
+                'unallocated_amount' => $totalAmount,
+                'payment_date'       => $validated['payment_date'],
+                'method'             => null,
+                'description'        => $description,
+            ]);
+
+            CashTransaction::create([
+                'apartment_id'     => $apartment->id,
+                'cash_box_id'      => $validated['cash_box_id'],
+                'account_id'       => $account->id,
+                'category_id'      => null,
+                'type'             => 'income',
+                'description'      => $description,
+                'amount'           => $totalAmount,
+                'transaction_date' => $validated['payment_date'],
+                'is_active'        => true,
+            ]);
+
+            AccountTransaction::create([
+                'apartment_id'         => $apartment->id,
+                'account_id'           => $account->id,
+                'transactionable_type' => Payment::class,
+                'transactionable_id'   => $payment->id,
+                'type'                 => 'credit',
+                'description'          => $description,
+                'amount'               => $totalAmount,
+                'transaction_date'     => $validated['payment_date'],
+            ]);
+
+            foreach ($dues as $due) {
+                $allocationAmount = $due->remaining_amount;
+
+                $payment->allocations()->create([
+                    'due_id' => $due->id,
+                    'amount' => $allocationAmount,
+                ]);
+
+                $due->remaining_amount = 0;
+                $due->status = 'paid';
+                $due->save();
+
+                $payment->unallocated_amount -= $allocationAmount;
+            }
+
+            $payment->save();
+        });
+
+        return redirect()->route('accounts.show', $account)->with('status', $dues->count() . ' aidat tahsil edildi.');
+    }
+
     private function authorizeDue(CurrentApartment $currentApartment, Due $due)
     {
         $apartment = $this->resolveApartment($currentApartment);

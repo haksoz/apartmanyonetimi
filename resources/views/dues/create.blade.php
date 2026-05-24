@@ -16,6 +16,7 @@
         @csrf
         <input type="hidden" name="source_type" value="individual">
         <input type="hidden" name="distribution_type" value="individual">
+        <input type="hidden" name="target_audience" value="tenant_priority">
 
         {{-- Main Fields --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
@@ -87,4 +88,43 @@
             <button type="submit" class="w-full md:w-auto rounded-xl bg-slate-950 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800">Borçlandır</button>
         </div>
     </form>
+
+    <script>
+        (() => {
+            const categorySelect = document.getElementById('category_id');
+            const periodInput = document.getElementById('period');
+            const descriptionInput = document.getElementById('description');
+
+            const months = {
+                '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+                '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+                '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+            };
+
+            const updateDescription = () => {
+                if (descriptionInput.value && descriptionInput.dataset.userEdited) return;
+                const period = periodInput.value;
+                const categoryOption = categorySelect.options[categorySelect.selectedIndex];
+                const categoryName = categoryOption?.value ? categoryOption.text : '';
+
+                if (period && categoryName) {
+                    const [year, month] = period.split('-');
+                    descriptionInput.value = `${months[month] || month} ${year} - ${categoryName}`;
+                }
+            };
+
+            descriptionInput.addEventListener('input', () => {
+                descriptionInput.dataset.userEdited = '1';
+            });
+
+            categorySelect.addEventListener('change', () => {
+                descriptionInput.dataset.userEdited = '';
+                updateDescription();
+            });
+            periodInput.addEventListener('change', () => {
+                descriptionInput.dataset.userEdited = '';
+                updateDescription();
+            });
+        })();
+    </script>
 @endsection

@@ -71,6 +71,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('accounts/{id}/statement/import-preview', [AccountController::class, 'statementImportPreview'])->name('accounts.statement.import-preview');
         Route::post('accounts/{id}/statement/import-confirm', [AccountController::class, 'statementImportConfirm'])->name('accounts.statement.import-confirm');
         Route::post('accounts/{id}/statement/delete-last-import', [AccountController::class, 'deleteLastImport'])->name('accounts.statement.delete-last-import');
+        Route::delete('accounts/{id}/transactions/{transaction}', [AccountController::class, 'destroyTransaction'])->name('accounts.transactions.destroy');
         Route::patch('accounts/{account}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
         Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
         Route::get('users', [AccountUserController::class, 'index'])->name('users.index');
@@ -94,6 +95,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('ledger', [LedgerController::class, 'index'])->name('ledger.index');
         Route::get('dues/{due}/payment', [DueController::class, 'createPayment'])->name('dues.payment.create');
         Route::post('dues/{due}/payment', [DueController::class, 'storePayment'])->name('dues.payment.store');
+        Route::post('accounts/{account}/dues/bulk-pay', [DueController::class, 'bulkPay'])->name('accounts.dues.bulk-pay');
         Route::get('payments/{payment}/allocations/create', [PaymentAllocationController::class, 'create'])->name('payments.allocations.create');
         Route::post('payments/{payment}/allocations', [PaymentAllocationController::class, 'store'])->name('payments.allocations.store');
         Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');

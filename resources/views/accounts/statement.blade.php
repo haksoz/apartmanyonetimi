@@ -149,27 +149,36 @@
                                     @endif
                                 </td>
                                 <td class="px-5 py-3.5 text-right whitespace-nowrap space-x-1">
-                                    @if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->transactionable_id)
-                                        @if($t->allocations->isNotEmpty())
-                                            <button type="button" data-toggle-alloc="alloc-{{ $t->id }}"
-                                                    class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                                Tahsisler
-                                            </button>
+                                    @if($t->is_imported)
+                                        <span class="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">İçe Aktarıldı</span>
+                                        <form method="POST" action="{{ route('accounts.transactions.destroy', [$account->id, $t->id]) }}" class="inline" onsubmit="return confirm('Bu kayıt silinsin mi?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                                        </form>
+                                    @else
+                                        @if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->transactionable_id)
+                                            @if($t->allocations->isNotEmpty())
+                                                <button type="button" data-toggle-alloc="alloc-{{ $t->id }}"
+                                                        class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                                                    Tahsisler
+                                                </button>
+                                            @endif
+                                            <a href="{{ route('payments.show', $t->transactionable_id) }}"
+                                               class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                                                Detay
+                                            </a>
+                                        @elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)
+                                            <a href="{{ route('dues.show', $t->transactionable_id) }}"
+                                               class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                                                Detay
+                                            </a>
+                                        @elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
+                                            <a href="{{ route('expenses.show', $t->transactionable_id) }}"
+                                               class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                                                Detay
+                                            </a>
                                         @endif
-                                        <a href="{{ route('payments.show', $t->transactionable_id) }}"
-                                           class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                            Detay
-                                        </a>
-                                    @elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)
-                                        <a href="{{ route('dues.show', $t->transactionable_id) }}"
-                                           class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                            Detay
-                                        </a>
-                                    @elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
-                                        <a href="{{ route('expenses.show', $t->transactionable_id) }}"
-                                           class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                            Detay
-                                        </a>
                                     @endif
                                 </td>
                             </tr>
