@@ -2,11 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AccountTransaction;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
-use App\Models\Expense;
-use App\Models\Payment;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 
@@ -21,6 +18,7 @@ class CashBoxController extends Controller
         }
 
         $allTransactions = CashTransaction::query()
+            ->with(['account', 'category', 'expense'])
             ->where('cash_box_id', $cashBox->id)
             ->orderBy('transaction_date')
             ->orderBy('id')
@@ -38,39 +36,15 @@ class CashBoxController extends Controller
             $runningMap[$t->id] = $running;
         }
 
-        // AccountTransaction eşleştirmesi — account_id + tutar + tarih ile
-        $accountIds = $allTransactions->pluck('account_id')->filter()->unique()->values();
-        $accountTxs = $accountIds->isNotEmpty()
-            ? AccountTransaction::query()
-                ->where('apartment_id', $cashBox->apartment_id)
-                ->whereIn('account_id', $accountIds)
-                ->get()
-                ->groupBy('account_id')
-            : collect();
-
+        // Her kasa hareketinin detay URL'i (kasa hareketi detayı)
         $detailUrlMap = [];
         foreach ($allTransactions as $t) {
-            $detailUrlMap[$t->id] = null;
-            if (! $t->account_id) continue;
-
-            $match = ($accountTxs[$t->account_id] ?? collect())
-                ->first(fn ($at) =>
-                    (string) $at->amount === (string) $t->amount &&
-                    $at->transaction_date->toDateString() === $t->transaction_date->toDateString()
-                );
-
-            if (! $match) continue;
-
-            if ($match->transactionable_type === Payment::class && $match->transactionable_id) {
-                $detailUrlMap[$t->id] = route('payments.show', $match->transactionable_id);
-            } elseif ($match->transactionable_type === Expense::class && $match->transactionable_id) {
-                $detailUrlMap[$t->id] = route('expenses.show', $match->transactionable_id);
-            }
+            $detailUrlMap[$t->id] = route('cash.show', $t->id);
         }
 
         // Sayfalama için ters sırada paginate
         $transactions = CashTransaction::query()
-            ->with(['account', 'category'])
+            ->with(['account', 'category', 'expense'])
             ->where('cash_box_id', $cashBox->id)
             ->orderByDesc('transaction_date')
             ->orderByDesc('id')

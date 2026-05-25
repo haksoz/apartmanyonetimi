@@ -15,6 +15,8 @@ class CashTransaction extends Model
         'apartment_id',
         'cash_box_id',
         'account_id',
+        'expense_id',
+        'payment_id',
         'category_id',
         'type',
         'description',
@@ -47,6 +49,16 @@ class CashTransaction extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function expense(): BelongsTo
+    {
+        return $this->belongsTo(Expense::class);
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
     }
 
     protected function getReferencePrefix(): string

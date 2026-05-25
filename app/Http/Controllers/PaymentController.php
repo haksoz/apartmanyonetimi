@@ -94,6 +94,7 @@ class PaymentController extends Controller
                 'apartment_id' => $apartment->id,
                 'cash_box_id' => $validated['cash_box_id'],
                 'account_id' => $validated['account_id'],
+                'payment_id' => $payment->id,
                 'category_id' => null,
                 'type' => 'income',
                 'description' => $validated['description'] ?? 'Ödeme alındı',
@@ -159,7 +160,7 @@ class PaymentController extends Controller
             abort(404);
         }
 
-        $payment->load(['account', 'allocations.due', 'transactions']);
+        $payment->load(['account', 'allocations.due', 'transactions', 'cashTransactions']);
 
         return view('payments.show', compact('payment'));
     }
@@ -250,13 +251,8 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // İlgili cash_transaction'ı güncelle
-            $cashTransaction = CashTransaction::where('apartment_id', $payment->apartment_id)
-                ->where('account_id', $payment->account_id)
-                ->where('amount', $oldAmount)
-                ->where('transaction_date', $payment->payment_date)
-                ->where('type', 'income')
-                ->first();
+            // İlgili cash_transaction'ı güncelle (payment_id ile daha güvenli)
+            $cashTransaction = CashTransaction::where('payment_id', $payment->id)->first();
 
             if ($cashTransaction) {
                 $cashTransaction->update([
@@ -264,6 +260,7 @@ class PaymentController extends Controller
                     'transaction_date' => $validated['payment_date'],
                     'description' => $validated['description'] ?? 'Ödeme alındı',
                     'cash_box_id' => $validated['cash_box_id'],
+                    'account_id' => $validated['account_id'],
                 ]);
             }
         });

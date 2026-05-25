@@ -468,7 +468,7 @@
                                         @if($t->allocations->isNotEmpty())
                                             <button type="button" data-toggle-alloc="alloc-{{ $t->id }}" class="toggle-alloc rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Tahsisleri Göster</button>
                                         @endif
-                                        <a href="{{ route('payments.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+                                        <a href="{{ $cashUrlMap[$t->id] ?? route('payments.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                                     @elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
                                         <a href="{{ route('expenses.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                                     @elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)

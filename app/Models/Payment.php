@@ -58,6 +58,11 @@ class Payment extends Model
         return $this->morphMany(AccountTransaction::class, 'transactionable');
     }
 
+    public function cashTransactions(): HasMany
+    {
+        return $this->hasMany(CashTransaction::class);
+    }
+
     public function getAllocatedAmountAttribute(): float
     {
         return (float) $this->allocations()->sum('amount');

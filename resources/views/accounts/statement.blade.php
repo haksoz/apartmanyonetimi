@@ -162,7 +162,7 @@
                                                     Tahsisler
                                                 </button>
                                             @endif
-                                            <a href="{{ route('payments.show', $t->transactionable_id) }}"
+                                            <a href="{{ $cashUrlMap[$t->id] ?? route('payments.show', $t->transactionable_id) }}"
                                                class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
                                                 Detay
                                             </a>

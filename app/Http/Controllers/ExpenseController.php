@@ -335,6 +335,7 @@ class ExpenseController extends Controller
                 'apartment_id' => $expense->apartment_id,
                 'cash_box_id' => $validated['cash_box_id'],
                 'account_id' => $expense->account_id,
+                'expense_id' => $expense->id,
                 'category_id' => $validated['category_id'],
                 'type' => 'expense',
                 'description' => $validated['description'] ?? $expense->category.' gider ödemesi',
@@ -399,7 +400,7 @@ class ExpenseController extends Controller
         }
 
         return Expense::query()
-            ->with(['account', 'categoryRelation', 'transactions'])
+            ->with(['account', 'categoryRelation', 'transactions', 'cashTransactions'])
             ->where('apartment_id', $apartment->id)
             ->findOrFail($id);
     }

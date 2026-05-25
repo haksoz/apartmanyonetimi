@@ -101,11 +101,7 @@
                                 {{ number_format($t->running_balance, 2, ',', '.') }} TL
                             </td>
                             <td class="px-5 py-4 text-right">
-                                @if ($t->detail_url)
-                                    <a href="{{ $t->detail_url }}" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
-                                @else
-                                    <span class="text-xs text-slate-400">-</span>
-                                @endif
+                                <a href="{{ $t->detail_url }}" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                             </td>
                         </tr>
                         @endforeach

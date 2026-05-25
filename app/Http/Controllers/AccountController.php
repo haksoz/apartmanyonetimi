@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\AccountTransaction;
 use App\Models\Category;
+use App\Models\Expense;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
 use App\Models\CashBox;
@@ -280,12 +281,18 @@ class AccountController extends Controller
             ->unique()
             ->values();
 
+        // Ödemelere ait tahsisleri ve kasa hareketlerini yükle
+        $cashUrlMap = [];
         if ($paymentIds->isNotEmpty()) {
-            $payments = Payment::with('allocations.due')->whereIn('id', $paymentIds)->get()->keyBy('id');
+            $payments = Payment::with(['allocations.due', 'cashTransactions'])->whereIn('id', $paymentIds)->get()->keyBy('id');
 
             foreach ($transactions as $t) {
                 if (($t->transactionable_type ?? '') === Payment::class && isset($payments[$t->transactionable_id])) {
                     $t->allocations = $payments[$t->transactionable_id]->allocations;
+                    $cashTx = $payments[$t->transactionable_id]->cashTransactions->first();
+                    if ($cashTx) {
+                        $cashUrlMap[$t->id] = route('cash.show', $cashTx);
+                    }
                 } else {
                     $t->allocations = collect();
                 }
@@ -293,6 +300,26 @@ class AccountController extends Controller
         } else {
             foreach ($transactions as $t) {
                 $t->allocations = collect();
+            }
+        }
+
+        // Giderlere ait kasa hareketlerini yükle
+        $expenseIds = $transactions
+            ->filter(fn($t) => ($t->transactionable_type ?? '') === Expense::class)
+            ->pluck('transactionable_id')
+            ->unique()
+            ->values();
+
+        if ($expenseIds->isNotEmpty()) {
+            $expenses = Expense::with('cashTransactions')->whereIn('id', $expenseIds)->get()->keyBy('id');
+
+            foreach ($transactions as $t) {
+                if (($t->transactionable_type ?? '') === Expense::class && isset($expenses[$t->transactionable_id])) {
+                    $cashTx = $expenses[$t->transactionable_id]->cashTransactions->first();
+                    if ($cashTx) {
+                        $cashUrlMap[$t->id] = route('cash.show', $cashTx);
+                    }
+                }
             }
         }
 
@@ -322,7 +349,7 @@ class AccountController extends Controller
                 ->get(['id', 'name', 'type'])
             : collect();
 
-        return view('accounts.show', compact('account', 'transactions', 'cashBoxes', 'importedDues', 'importedPayments', 'transferableAccounts'));
+        return view('accounts.show', compact('account', 'transactions', 'cashBoxes', 'importedDues', 'importedPayments', 'transferableAccounts', 'cashUrlMap'));
     }
 
     /**
@@ -369,21 +396,45 @@ class AccountController extends Controller
             $t->running_balance = $running;
         }
 
-        // Tahsisleri yükle
+        // Tahsisleri ve kasa hareketlerini yükle
         $paymentIds = $transactions
             ->filter(fn ($t) => ($t->transactionable_type ?? '') === Payment::class)
             ->pluck('transactionable_id')->unique()->values();
 
+        $cashUrlMap = [];
         if ($paymentIds->isNotEmpty()) {
-            $payments = Payment::with('allocations.due')->whereIn('id', $paymentIds)->get()->keyBy('id');
+            $payments = Payment::with(['allocations.due', 'cashTransactions'])->whereIn('id', $paymentIds)->get()->keyBy('id');
             foreach ($transactions as $t) {
                 $t->allocations = (($t->transactionable_type ?? '') === Payment::class && isset($payments[$t->transactionable_id]))
                     ? $payments[$t->transactionable_id]->allocations
                     : collect();
+                if (($t->transactionable_type ?? '') === Payment::class && isset($payments[$t->transactionable_id])) {
+                    $cashTx = $payments[$t->transactionable_id]->cashTransactions->first();
+                    if ($cashTx) {
+                        $cashUrlMap[$t->id] = route('cash.show', $cashTx);
+                    }
+                }
             }
         } else {
             foreach ($transactions as $t) {
                 $t->allocations = collect();
+            }
+        }
+
+        // Giderlere ait kasa hareketlerini yükle
+        $expenseIds = $transactions
+            ->filter(fn ($t) => ($t->transactionable_type ?? '') === Expense::class)
+            ->pluck('transactionable_id')->unique()->values();
+
+        if ($expenseIds->isNotEmpty()) {
+            $expenses = Expense::with('cashTransactions')->whereIn('id', $expenseIds)->get()->keyBy('id');
+            foreach ($transactions as $t) {
+                if (($t->transactionable_type ?? '') === Expense::class && isset($expenses[$t->transactionable_id])) {
+                    $cashTx = $expenses[$t->transactionable_id]->cashTransactions->first();
+                    if ($cashTx) {
+                        $cashUrlMap[$t->id] = route('cash.show', $cashTx);
+                    }
+                }
             }
         }
 
@@ -393,7 +444,7 @@ class AccountController extends Controller
         $importedCount = $account->transactions()->where('is_imported', true)->count();
 
         return view('accounts.statement', compact(
-            'account', 'transactions', 'openingBalance', 'closingBalance', 'dateFrom', 'dateTo', 'importedCount'
+            'account', 'transactions', 'openingBalance', 'closingBalance', 'dateFrom', 'dateTo', 'importedCount', 'cashUrlMap'
         ));
     }
 
@@ -874,7 +925,7 @@ class AccountController extends Controller
                 ->where('account_id', $account->id)
                 ->whereDate('transaction_date', $payment->payment_date)
                 ->where('amount', $payment->amount)
-                ->delete();
+                ->forceDelete();
                 $payment->delete();
                 $deletedCount++;
             }

@@ -3,6 +3,7 @@
 @section('content')
     @php
         $paymentTx = $expense->transactions->firstWhere('type', 'debit');
+        $cashTx = $expense->cashTransactions->first();
         $months = ['January' => 'Ocak', 'February' => 'Şubat', 'March' => 'Mart', 'April' => 'Nisan', 'May' => 'Mayıs', 'June' => 'Haziran',
                    'July' => 'Temmuz', 'August' => 'Ağustos', 'September' => 'Eylül', 'October' => 'Ekim', 'November' => 'Kasım', 'December' => 'Aralık'];
         $periodText = $expense->period_month ? $expense->period_month->format('F Y') : null;
@@ -88,6 +89,19 @@
                 <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</div>
                 <div class="mt-2 text-sm text-slate-900">{{ $paymentTx?->description ?? '-' }}</div>
             </div>
+            @if ($cashTx)
+            <div class="md:col-span-3">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kasa Hareketi</div>
+                <div class="mt-2">
+                    <a href="{{ route('cash.show', $cashTx) }}" class="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        {{ $cashTx->reference_number }} — {{ $cashTx->cashBox?->name }} — {{ number_format($cashTx->amount, 2, ',', '.') }} TL
+                    </a>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
     @endif
@@ -123,7 +137,17 @@
                 <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $paymentTx->transaction_date->format('d.m.Y') }}</div>
             </div>
             @endif
-            <div class="{{ $expense->is_paid && $paymentTx ? '' : 'md:col-span-2' }} md:col-span-3">
+            @if ($cashTx)
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kasa Hareketi</div>
+                <div class="mt-2">
+                    <a href="{{ route('cash.show', $cashTx) }}" class="text-sm font-medium text-blue-700 hover:text-blue-800 hover:underline">
+                        {{ $cashTx->reference_number }}
+                    </a>
+                </div>
+            </div>
+            @endif
+            <div class="{{ $expense->is_paid && $paymentTx && !$cashTx ? '' : ($cashTx ? '' : 'md:col-span-2') }} {{ $cashTx ? 'md:col-span-2' : 'md:col-span-3' }}">
                 <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</div>
                 <div class="mt-2 text-sm text-slate-900">{{ $expense->description ?: '-' }}</div>
             </div>

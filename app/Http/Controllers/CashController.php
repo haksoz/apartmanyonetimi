@@ -6,8 +6,10 @@ use App\Models\Account;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
 use App\Models\Category;
+use App\Models\Payment;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CashController extends Controller
@@ -157,16 +159,53 @@ class CashController extends Controller
 
         $validated = $this->validateCashTransaction($request, $transaction->apartment_id);
 
-        $transaction->update([
-            'account_id' => $validated['account_id'] ?? null,
-            'cash_box_id' => $validated['cash_box_id'],
-            'category_id' => $validated['category_id'],
-            'type' => $validated['type'],
-            'description' => $validated['description'],
-            'amount' => $validated['amount'],
-            'transaction_date' => $validated['transaction_date'],
-            'is_active' => $request->boolean('is_active'),
-        ]);
+        // Eğer bu kasa hareketi bir ödemeye/tahsilata bağlıysa, tahsis kontrolü yap
+        if ($transaction->payment_id) {
+            $payment = Payment::with('allocations')->find($transaction->payment_id);
+            if ($payment) {
+                $allocatedAmount = $payment->allocations->sum('amount');
+                if ($validated['amount'] < $allocatedAmount) {
+                    return back()->withErrors(['amount' => 'Tutar tahsis edilen tutardan küçük olamaz. Tahsis edilen: '.number_format($allocatedAmount, 2, ',', '.').' TL'])->withInput();
+                }
+            }
+        }
+
+        DB::transaction(function () use ($transaction, $validated, $request) {
+            $transaction->update([
+                'account_id' => $validated['account_id'] ?? null,
+                'cash_box_id' => $validated['cash_box_id'],
+                'category_id' => $validated['category_id'],
+                'type' => $validated['type'],
+                'description' => $validated['description'],
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['transaction_date'],
+                'is_active' => $request->boolean('is_active'),
+            ]);
+
+            // İlişkili Payment'i senkronize güncelle (eğer varsa)
+            if ($transaction->payment_id) {
+                $payment = Payment::find($transaction->payment_id);
+                if ($payment) {
+                    $allocatedAmount = $payment->allocations()->sum('amount');
+                    $payment->update([
+                        'amount' => $validated['amount'],
+                        'unallocated_amount' => $validated['amount'] - $allocatedAmount,
+                        'payment_date' => $validated['transaction_date'],
+                        'description' => $validated['description'] ?? $payment->description,
+                    ]);
+
+                    // Account transaction'ı da güncelle
+                    $accountTransaction = $payment->transactions()->first();
+                    if ($accountTransaction) {
+                        $accountTransaction->update([
+                            'amount' => $validated['amount'],
+                            'transaction_date' => $validated['transaction_date'],
+                            'description' => $validated['description'] ?? $accountTransaction->description,
+                        ]);
+                    }
+                }
+            }
+        });
 
         return redirect()->route('cash.show', $transaction)->with('status', 'Kasa hareketi güncellendi.');
     }
@@ -208,7 +247,7 @@ class CashController extends Controller
         }
 
         return CashTransaction::query()
-            ->with(['account', 'cashBox', 'category'])
+            ->with(['account', 'cashBox', 'category', 'expense', 'payment'])
             ->where('apartment_id', $apartment->id)
             ->findOrFail($id);
     }
