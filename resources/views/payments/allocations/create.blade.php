@@ -37,6 +37,15 @@
             <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ $errors->first('allocations') }}</div>
         @endif
 
+        @if ($hasImportedDues)
+            <div class="mb-4 flex items-center justify-between">
+                <button type="button" id="toggle-imported" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    Devir Öncesi Göster
+                </button>
+                <span id="imported-count" class="text-xs text-slate-500"></span>
+            </div>
+        @endif
+
         <div class="mb-4 overflow-hidden rounded-2xl border border-slate-200">
             <table class="min-w-full divide-y divide-slate-200 text-sm">
                 <thead class="bg-slate-50 text-left text-slate-500">
@@ -49,7 +58,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($dues as $index => $due)
-                        <tr>
+                        <tr data-imported="{{ $due->is_imported ? '1' : '0' }}">
                             <td class="px-5 py-4 text-slate-700">{{ $due->due_date?->format('d.m.Y') ?? '-' }}</td>
                             <td class="px-5 py-4 text-slate-700">{{ $due->description ?: 'Aidat' }}</td>
                             <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</td>
@@ -163,6 +172,32 @@
                         updateSummary();
                     }
                 });
+
+                // Toggle imported dues visibility
+                const toggleBtn = document.getElementById('toggle-imported');
+                const countSpan = document.getElementById('imported-count');
+                if(toggleBtn){
+                    let showImported = false;
+                    const importedRows = document.querySelectorAll('tr[data-imported="1"]');
+                    const normalRows = document.querySelectorAll('tr[data-imported="0"]');
+                    const importedCount = importedRows.length;
+                    const normalCount = normalRows.length;
+
+                    // Initially hide imported rows
+                    importedRows.forEach(row => row.style.display = 'none');
+                    countSpan.textContent = `${importedCount} devir öncesi gizli`;
+
+                    toggleBtn.addEventListener('click', function(){
+                        showImported = !showImported;
+                        importedRows.forEach(row => {
+                            row.style.display = showImported ? '' : 'none';
+                        });
+                        toggleBtn.textContent = showImported ? 'Devir Öncesi Gizle' : 'Devir Öncesi Göster';
+                        countSpan.textContent = showImported
+                            ? `${importedCount} devir öncesi gösteriliyor, ${normalCount} normal`
+                            : `${importedCount} devir öncesi gizli, ${normalCount} normal gösteriliyor`;
+                    });
+                }
             })();
         </script>
     </form>

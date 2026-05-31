@@ -253,8 +253,8 @@ class AccountController extends Controller
                 'user',
                 'activeTenantAssignment',
                 'transactions' => fn ($query) => $query->orderBy('transaction_date')->orderBy('id'),
-                'dues' => fn ($query) => $query->where('remaining_amount', '>', 0)->where('is_imported', false)->orderBy('due_date'),
-                'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0)->where('is_imported', false),
+                'dues' => fn ($query) => $query->where('remaining_amount', '>', 0)->where('is_imported', false)->orderByDesc('due_date'),
+                'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0)->where('is_imported', false)->orderByDesc('payment_date'),
                 'expenses' => fn ($query) => $query->where('is_paid', false)->orderBy('expense_date'),
             ])
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
@@ -332,12 +332,13 @@ class AccountController extends Controller
         $importedDues = $account->dues()
             ->where('remaining_amount', '>', 0)
             ->where('is_imported', true)
-            ->orderBy('due_date')
+            ->orderByDesc('due_date')
             ->get();
 
         $importedPayments = $account->payments()
             ->where('unallocated_amount', '>', 0)
             ->where('is_imported', true)
+            ->orderByDesc('payment_date')
             ->get();
 
         $transferableAccounts = $account->unit_id
@@ -811,6 +812,7 @@ class AccountController extends Controller
                     $due = \App\Models\Due::create([
                         'apartment_id'    => $account->apartment_id,
                         'account_id'      => $account->id,
+                        'unit_id'         => $account->unit_id,
                         'category_id'     => $category?->id,
                         'amount'          => $t['debit'],
                         'remaining_amount' => $t['debit'],
@@ -848,6 +850,7 @@ class AccountController extends Controller
                         'cash_box_id'      => $cashBox->id,
                         'apartment_id'     => $account->apartment_id,
                         'account_id'       => $account->id,
+                        'payment_id'       => $payment->id,
                         'type'             => 'income',
                         'amount'           => $t['credit'],
                         'description'      => $t['description'],

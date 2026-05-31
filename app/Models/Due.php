@@ -34,6 +34,7 @@ class Due extends Model
         'amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
         'due_date' => 'date',
+        'created_at_manual' => 'date',
         'is_imported' => 'boolean',
     ];
 

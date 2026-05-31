@@ -138,7 +138,7 @@
                                                data-due-id="{{ $due->id }}"
                                                data-amount="{{ $due->remaining_amount }}">
                                     </td>
-                                    <td class="px-5 py-4 text-slate-700">{{ $due->due_date->format('d.m.Y') }}</td>
+                                    <td class="px-5 py-4 text-slate-700">{{ ($due->created_at_manual ?? $due->due_date)?->format('d.m.Y') }}</td>
                                     <td class="px-5 py-4 text-slate-700">{{ $due->description ?: 'Aidat' }}</td>
                                     <td class="px-5 py-4 text-right text-slate-900 font-semibold">
                                         {{ number_format($due->remaining_amount, 2, ',', '.') }} TL
@@ -170,7 +170,7 @@
                                                data-due-id="{{ $due->id }}"
                                                data-amount="{{ $due->remaining_amount }}">
                                     </td>
-                                    <td class="px-5 py-4 text-slate-700">{{ $due->due_date->format('d.m.Y') }}</td>
+                                    <td class="px-5 py-4 text-slate-700">{{ ($due->created_at_manual ?? $due->due_date)?->format('d.m.Y') }}</td>
                                     <td class="px-5 py-4 text-slate-700">
                                         {{ $due->description ?: 'Aidat' }}
                                         <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
@@ -482,6 +482,9 @@
                                     <tr class="bg-slate-50 text-sm alloc-row alloc-{{ $t->id }} hidden" data-parent="alloc-{{ $t->id }}">
                                         <td class="px-5 py-2"></td>
                                         <td class="px-5 py-2">Tahsis — Aidat <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-900 hover:text-emerald-600">#{{ $a->due->id }}</a> — {{ $a->due->due_date->format('d.m.Y') }}
+                                            @if($a->due->is_imported)
+                                                <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                            @endif
                                             @php $desc = $a->due->description ?: 'Aidat'; @endphp
                                             <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
                                         </td>

@@ -30,10 +30,12 @@ class PaymentAllocationController extends Controller
             ->where('apartment_id', $apartment->id)
             ->where('account_id', $payment->account_id)
             ->where('remaining_amount', '>', 0)
-            ->orderBy('due_date')
+            ->orderByDesc('due_date')
             ->get();
 
-        return view('payments.allocations.create', compact('payment', 'dues'));
+        $hasImportedDues = $dues->contains(fn ($due) => $due->is_imported);
+
+        return view('payments.allocations.create', compact('payment', 'dues', 'hasImportedDues'));
     }
 
     public function store(Request $request, CurrentApartment $currentApartment, Payment $payment)
