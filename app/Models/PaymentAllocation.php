@@ -10,6 +10,7 @@ class PaymentAllocation extends Model
     protected $fillable = [
         'payment_id',
         'due_id',
+        'expense_id',
         'amount',
     ];
 
@@ -25,5 +26,10 @@ class PaymentAllocation extends Model
     public function due(): BelongsTo
     {
         return $this->belongsTo(Due::class);
+    }
+
+    public function expense(): BelongsTo
+    {
+        return $this->belongsTo(Expense::class);
     }
 }

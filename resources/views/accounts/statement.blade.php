@@ -193,21 +193,34 @@
                                 @foreach($t->allocations as $a)
                                     <tr class="bg-slate-50 text-xs alloc-{{ $t->id }} hidden" data-parent="alloc-{{ $t->id }}">
                                         <td class="px-5 py-2"></td>
-                                        <td class="px-5 py-2 text-slate-500">
-                                            Tahsis &rarr; Aidat
-                                            <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-700 hover:text-emerald-600">{{ $a->due->description }}</a>
-                                            &mdash; {{ $a->due->due_date->format('d.m.Y') }}
-                                            @if($a->due->is_imported)
-                                                <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-5 py-2 text-right">—</td>
-                                        <td class="px-5 py-2 text-right">—</td>
-                                        <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
-                                        <td class="px-5 py-2 text-right">—</td>
-                                        <td class="px-5 py-2 text-right">
-                                            <a href="{{ route('dues.show', $a->due) }}" class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">Aidat Detay</a>
-                                        </td>
+                                        @if($a->due)
+                                            <td class="px-5 py-2 text-slate-500">
+                                                Tahsis &rarr; Aidat
+                                                <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-700 hover:text-emerald-600">{{ $a->due->description ?: 'Aidat' }}</a>
+                                                &mdash; {{ $a->due->due_date->format('d.m.Y') }}
+                                                @if($a->due->is_imported)
+                                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right">
+                                                <a href="{{ route('dues.show', $a->due) }}" class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">Aidat Detay</a>
+                                            </td>
+                                        @elseif($a->expense)
+                                            <td class="px-5 py-2 text-slate-500">
+                                                Tahsis &rarr; Gider #{{ $a->expense->id }}
+                                                &mdash; {{ $a->expense->expense_date?->format('d.m.Y') }}
+                                                &mdash; {{ $a->expense->description ?: ($a->expense->category ?: 'Gider') }}
+                                            </td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right"></td>
+                                        @endif
                                     </tr>
                                 @endforeach
                             @endif

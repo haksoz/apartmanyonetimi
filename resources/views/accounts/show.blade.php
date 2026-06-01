@@ -15,8 +15,7 @@
                 <a href="{{ route('dues.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">+ Borçlandır</a>
             @endif
             @if ($account->type === App\Models\Account::TYPE_SUPPLIER)
-                <span title="Toplu gider ödeme özelliği henüz geliştirme aşamasındadır" class="cursor-not-allowed rounded-xl bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-500 select-none">+ Tahsilat Al</span>
-                <span title="Giderler menüsünden ekleyin" class="cursor-not-allowed rounded-xl bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-500 select-none">+ Gider Ekle</span>
+                <a href="{{ route('payments.create', ['account_id' => $account->id, 'redirect_to' => request()->fullUrl()]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Ödeme Yap</a>
             @else
                 <a href="{{ route('payments.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Tahsilat Ekle</a>
             @endif
@@ -481,19 +480,30 @@
                                 @foreach($t->allocations as $a)
                                     <tr class="bg-slate-50 text-sm alloc-row alloc-{{ $t->id }} hidden" data-parent="alloc-{{ $t->id }}">
                                         <td class="px-5 py-2"></td>
-                                        <td class="px-5 py-2">Tahsis — Aidat <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-900 hover:text-emerald-600">#{{ $a->due->id }}</a> — {{ $a->due->due_date->format('d.m.Y') }}
-                                            @if($a->due->is_imported)
-                                                <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
-                                            @endif
-                                            @php $desc = $a->due->description ?: 'Aidat'; @endphp
-                                            <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
-                                        </td>
-                                        <td class="px-5 py-2 text-right">—</td>
-                                        <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount,2,',','.') }} TL</td>
-                                        <td class="px-5 py-2 text-right">—</td>
-                                        <td class="px-5 py-2 text-right">
-                                            <a href="{{ route('dues.show', $a->due) }}" class="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Aidat Detay</a>
-                                        </td>
+                                        @if($a->due)
+                                            <td class="px-5 py-2">Tahsis — Aidat <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-900 hover:text-emerald-600">#{{ $a->due->id }}</a> — {{ $a->due->due_date->format('d.m.Y') }}
+                                                @if($a->due->is_imported)
+                                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                                @endif
+                                                @php $desc = $a->due->description ?: 'Aidat'; @endphp
+                                                <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
+                                            </td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount,2,',','.') }} TL</td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right">
+                                                <a href="{{ route('dues.show', $a->due) }}" class="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Aidat Detay</a>
+                                            </td>
+                                        @elseif($a->expense)
+                                            <td class="px-5 py-2">Tahsis — Gider #{{ $a->expense->id }} — {{ $a->expense->expense_date?->format('d.m.Y') }}
+                                                @php $desc = $a->expense->description ?: ($a->expense->category ?: 'Gider'); @endphp
+                                                <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
+                                            </td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount,2,',','.') }} TL</td>
+                                            <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right"></td>
+                                        @endif
                                     </tr>
                                 @endforeach
                             @endif

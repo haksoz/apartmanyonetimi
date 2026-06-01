@@ -77,9 +77,10 @@ class PaymentController extends Controller
         ]);
 
         $account = Account::findOrFail($validated['account_id']);
+        $isSupplier = $account->type === Account::TYPE_SUPPLIER;
         $payment = null;
 
-        DB::transaction(function () use ($validated, $apartment, $request, &$payment) {
+        DB::transaction(function () use ($validated, $apartment, $account, $isSupplier, &$payment) {
             $payment = Payment::create([
                 'apartment_id' => $apartment->id,
                 'account_id' => $validated['account_id'],
@@ -87,7 +88,7 @@ class PaymentController extends Controller
                 'unallocated_amount' => $validated['amount'],
                 'payment_date' => $validated['payment_date'],
                 'method' => null,
-                'description' => $validated['description'] ?? 'Ödeme',
+                'description' => $validated['description'] ?? ($isSupplier ? 'Tedarikçi ödemesi' : 'Ödeme'),
             ]);
 
             CashTransaction::create([
@@ -96,8 +97,8 @@ class PaymentController extends Controller
                 'account_id' => $validated['account_id'],
                 'payment_id' => $payment->id,
                 'category_id' => null,
-                'type' => 'income',
-                'description' => $validated['description'] ?? 'Ödeme alındı',
+                'type' => $isSupplier ? 'expense' : 'income',
+                'description' => $validated['description'] ?? ($isSupplier ? 'Tedarikçi ödemesi' : 'Ödeme alındı'),
                 'amount' => $validated['amount'],
                 'transaction_date' => $validated['payment_date'],
                 'is_active' => true,
@@ -109,14 +110,23 @@ class PaymentController extends Controller
                 'transactionable_type' => Payment::class,
                 'transactionable_id' => $payment->id,
                 'type' => 'credit',
-                'description' => $validated['description'] ?? 'Ödeme alındı',
+                'description' => $validated['description'] ?? ($isSupplier ? 'Tedarikçi ödemesi' : 'Ödeme alındı'),
                 'amount' => $validated['amount'],
                 'transaction_date' => $validated['payment_date'],
             ]);
         });
 
+        $redirectTo = $request->input('redirect_to');
+
         if ($validated['action'] === 'allocate') {
-            return redirect()->route('payments.allocations.create', $payment)->with('status', 'Ödeme kaydedildi. Şimdi borçlara tahsis edin.');
+            return redirect()->route('payments.allocations.create', [
+                'payment' => $payment,
+                'redirect_to' => $redirectTo ?? route('accounts.show', $account),
+            ])->with('status', 'Ödeme kaydedildi. Şimdi borçlara tahsis edin.');
+        }
+
+        if ($redirectTo) {
+            return redirect($redirectTo)->with('status', 'Ödeme kaydedildi.');
         }
 
         return redirect()->route('accounts.show', $account)->with('status', 'Ödeme kaydedildi.');
@@ -382,13 +392,13 @@ class PaymentController extends Controller
                 'is_active' => true,
             ]);
 
-            // Cari işlem - alacak (tedarikçiye olan alacağımız azalır)
+            // Cari işlem - borç (tedarikçiye olan alacağımız azalır, debit ile denge kurulur)
             AccountTransaction::create([
                 'apartment_id' => $apartment->id,
                 'account_id' => $validated['account_id'],
                 'transactionable_type' => null,
                 'transactionable_id' => null,
-                'type' => 'credit',
+                'type' => 'debit',
                 'description' => $validated['description'] ?? 'Tedarikçi iadesi',
                 'amount' => $validated['amount'],
                 'transaction_date' => $validated['transaction_date'],
