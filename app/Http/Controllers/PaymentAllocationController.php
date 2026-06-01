@@ -35,7 +35,9 @@ class PaymentAllocationController extends Controller
 
         $hasImportedDues = $dues->contains(fn ($due) => $due->is_imported);
 
-        return view('payments.allocations.create', compact('payment', 'dues', 'hasImportedDues'));
+        $redirectTo = request('redirect_to');
+
+        return view('payments.allocations.create', compact('payment', 'dues', 'hasImportedDues', 'redirectTo'));
     }
 
     public function store(Request $request, CurrentApartment $currentApartment, Payment $payment)
@@ -108,7 +110,51 @@ class PaymentAllocationController extends Controller
             $payment->decrement('unallocated_amount', $totalAmount);
         });
 
+        $redirectTo = $request->input('redirect_to');
+        if ($redirectTo) {
+            return redirect($redirectTo)->with('status', 'Ödeme başarıyla borçlara tahsis edildi.');
+        }
+
         return redirect()->route('dues.index')->with('status', 'Ödeme başarıyla borçlara tahsis edildi.');
+    }
+
+    public function destroy(CurrentApartment $currentApartment, PaymentAllocation $allocation)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+
+        // Tahsisin bu apartmana ait olduğunu kontrol et
+        if ($allocation->payment->apartment_id !== $apartment->id) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($allocation) {
+            $due = $allocation->due;
+            $payment = $allocation->payment;
+            $amount = $allocation->amount;
+
+            // Tahsisi sil
+            $allocation->delete();
+
+            // Borcun kalan tutarını artır
+            $due->remaining_amount += $amount;
+
+            // Borcun durumunu güncelle
+            if ($due->remaining_amount >= $due->amount) {
+                $due->status = 'unpaid';
+            } else {
+                $due->status = 'partial';
+            }
+            $due->save();
+
+            // Ödemenin tahsis edilmemiş tutarını artır
+            $payment->increment('unallocated_amount', $amount);
+        });
+
+        return back()->with('status', 'Tahsis başarıyla geri alındı.');
     }
 
     private function resolveApartment(CurrentApartment $currentApartment)

@@ -32,6 +32,9 @@
 
     <form method="POST" action="{{ route('payments.allocations.store', $payment) }}" class="rounded-2xl bg-white p-6 shadow-sm">
         @csrf
+        @if (!empty($redirectTo))
+            <input type="hidden" name="redirect_to" value="{{ $redirectTo }}">
+        @endif
 
         @if ($errors->has('allocations'))
             <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ $errors->first('allocations') }}</div>

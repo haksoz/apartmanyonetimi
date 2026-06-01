@@ -10,11 +10,11 @@
             @endif
         </div>
         <div class="flex gap-2">
-            @if ($due->status !== 'paid')
+            @if ($due->computed_status !== 'paid')
                 <a href="{{ route('dues.payment.create', $due) }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Tahsil Et</a>
             @endif
             <a href="{{ route('dues.edit', $due) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Düzenle</a>
-            @if (in_array($due->status, ['paid', 'partial']))
+            @if (in_array($due->computed_status, ['paid', 'partial']))
                 <button type="button" onclick="alert('Bu aidat ödenmiş olduğu için silinemez. Önce ilgili ödemeleri iptal edin.')" class="flex-1 md:flex-none rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
             @else
                 <form method="POST" action="{{ route('dues.destroy', $due) }}" onsubmit="return confirm('Aidat kaydı silinsin mi?')">
@@ -66,12 +66,11 @@
             <div>
                 <div class="text-xs text-slate-400 mb-1">DURUM</div>
                 @php
-                    $isOverdue = $due->status !== 'paid' && $due->due_date && $due->due_date->isPast();
-                    if ($isOverdue) {
+                    if ($due->computed_status === 'overdue') {
                         $statusInfo = ['label' => 'Gecikmiş', 'class' => 'bg-red-50 text-red-600 border border-red-200'];
-                    } elseif ($due->status === 'paid') {
+                    } elseif ($due->computed_status === 'paid') {
                         $statusInfo = ['label' => 'Ödendi', 'class' => 'bg-emerald-50 text-emerald-600 border border-emerald-200'];
-                    } elseif ($due->status === 'partial') {
+                    } elseif ($due->computed_status === 'partial') {
                         $statusInfo = ['label' => 'Kısmen Ödendi', 'class' => 'bg-amber-50 text-amber-600 border border-amber-200'];
                     } else {
                         $statusInfo = ['label' => 'Bekliyor', 'class' => 'bg-slate-50 text-slate-600 border border-slate-200'];

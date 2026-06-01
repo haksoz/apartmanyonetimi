@@ -103,6 +103,7 @@
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Tahsis Edilen</th>
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Borç Durumu</th>
+                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -117,6 +118,13 @@
                                     <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $allocation->due->computed_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : ($allocation->due->computed_status === 'partial' ? 'bg-amber-100 text-amber-700' : ($allocation->due->computed_status === 'overdue' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700')) }}">
                                         {{ $allocation->due->computed_status === 'paid' ? 'Ödendi' : ($allocation->due->computed_status === 'partial' ? 'Kısmen Ödendi' : ($allocation->due->computed_status === 'overdue' ? 'Gecikti' : 'Bekliyor')) }}
                                     </span>
+                                </td>
+                                <td class="px-5 py-4 text-right">
+                                    <form method="POST" action="{{ route('allocations.destroy', $allocation) }}" class="inline" onsubmit="return confirm('Bu tahsis geri alınsın mı? Borç durumu güncellenecek.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Geri Al</button>
+                                    </form>
                                 </td>
                             </tr>
                         @endforeach
