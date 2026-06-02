@@ -54,7 +54,7 @@
                 @endforeach
             </div>
 
-            @php $dueTotal = $duePaid + $dueUnpaid + $duePartial; @endphp
+            @php $dueTotal = $duePaid + $dueUnpaid + $duePartial + $dueOverdue; @endphp
             @if ($dueTotal > 0 || count($dueByCat) > 0)
                 <div class="relative flex justify-center">
                     <canvas id="duePieChart" width="180" height="180"></canvas>
@@ -67,6 +67,10 @@
                     <div class="flex items-center justify-between text-xs">
                         <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>Kısmen</span>
                         <span id="due-label-partial" class="font-semibold">{{ number_format($duePartial, 2, ',', '.') }} TL</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-red-600 inline-block"></span>Gecikmiş</span>
+                        <span id="due-label-overdue" class="font-semibold">{{ number_format($dueOverdue, 2, ',', '.') }} TL</span>
                     </div>
                     <div class="flex items-center justify-between text-xs">
                         <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"></span>Bekliyor</span>
@@ -147,18 +151,18 @@
 
         // Aidat kategori verisi — obje olarak (key = kategori id)
         const dueByCatMap = {!! json_encode(collect($dueByCat)->mapWithKeys(fn($v, $k) => [(string)$k => $v])) !!};
-        const dueAll = { paid: {{ $duePaid }}, partial: {{ $duePartial }}, unpaid: {{ $dueUnpaid }} };
+        const dueAll = { paid: {{ $duePaid }}, partial: {{ $duePartial }}, overdue: {{ $dueOverdue }}, unpaid: {{ $dueUnpaid }} };
 
         const fmt = (n) => Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
 
-        @if ($duePaid + $dueUnpaid + $duePartial > 0 || count($dueByCat) > 0)
+        @if ($duePaid + $dueUnpaid + $duePartial + $dueOverdue > 0 || count($dueByCat) > 0)
         const duePieChart = new Chart(document.getElementById('duePieChart'), {
             type: 'doughnut',
             data: {
-                labels: ['Ödendi', 'Kısmen', 'Bekliyor'],
+                labels: ['Ödendi', 'Kısmen', 'Gecikmiş', 'Bekliyor'],
                 datasets: [{
-                    data: [{{ $duePaid }}, {{ $duePartial }}, {{ $dueUnpaid }}],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    data: [{{ $duePaid }}, {{ $duePartial }}, {{ $dueOverdue }}, {{ $dueUnpaid }}],
+                    backgroundColor: ['#10b981', '#f59e0b', '#dc2626', '#f87171'],
                     borderWidth: 2,
                     borderColor: '#fff',
                 }]
@@ -167,17 +171,18 @@
         });
 
         function selectDueCat(catId) {
-            let paid, partial, unpaid;
+            let paid, partial, overdue, unpaid;
             if (catId === 'all') {
-                paid = dueAll.paid; partial = dueAll.partial; unpaid = dueAll.unpaid;
+                paid = dueAll.paid; partial = dueAll.partial; overdue = dueAll.overdue; unpaid = dueAll.unpaid;
             } else {
-                const cat = dueByCatMap[String(catId)] || { paid: 0, partial: 0, unpaid: 0 };
-                paid = cat.paid || 0; partial = cat.partial || 0; unpaid = cat.unpaid || 0;
+                const cat = dueByCatMap[String(catId)] || { paid: 0, partial: 0, overdue: 0, unpaid: 0 };
+                paid = cat.paid || 0; partial = cat.partial || 0; overdue = cat.overdue || 0; unpaid = cat.unpaid || 0;
             }
-            duePieChart.data.datasets[0].data = [paid, partial, unpaid];
+            duePieChart.data.datasets[0].data = [paid, partial, overdue, unpaid];
             duePieChart.update();
             document.getElementById('due-label-paid').textContent    = fmt(paid);
             document.getElementById('due-label-partial').textContent  = fmt(partial);
+            document.getElementById('due-label-overdue').textContent  = fmt(overdue);
             document.getElementById('due-label-unpaid').textContent   = fmt(unpaid);
 
             document.querySelectorAll('.due-cat-btn').forEach(b => {

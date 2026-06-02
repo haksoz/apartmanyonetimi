@@ -30,34 +30,60 @@ class DashboardController extends Controller
         $totalUnits    = Unit::where('apartment_id', $id)->count();
         $totalAccounts = Account::where('apartment_id', $id)->where('is_active', true)->count();
 
-        // Aidat durumu — tüm kategoriler (tüm zamanlar)
-        $dueStats = Due::where('apartment_id', $id)
-            ->selectRaw("status, SUM(amount) as total, COUNT(*) as cnt")
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        $dueUnpaid  = (float) ($dueStats['unpaid']  ?? 0);
-        $duePaid    = (float) ($dueStats['paid']     ?? 0);
-        $duePartial = (float) ($dueStats['partial']  ?? 0);
-
-        // Aidat durumu — kategori bazında (tüm zamanlar)
-        $dueCategories = \App\Models\Category::where('apartment_id', $id)
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $dueByCategoryAndStatus = Due::where('dues.apartment_id', $id)
-            ->join('categories', 'dues.category_id', '=', 'categories.id')
-            ->selectRaw("categories.id as cat_id, categories.name as cat_name, dues.status, SUM(dues.amount) as total")
-            ->groupBy('categories.id', 'categories.name', 'dues.status')
+        // Aidat durumu — tüm kategoriler (tüm zamanlar) — remaining_amount ve due_date'e göre
+        $allDues = Due::where('apartment_id', $id)
+            ->select('amount', 'remaining_amount', 'due_date')
             ->get();
 
-        // [cat_id => ['name'=>..., 'paid'=>..., 'unpaid'=>..., 'partial'=>...]]
-        $dueByCat = [];
-        foreach ($dueByCategoryAndStatus as $row) {
-            if (!isset($dueByCat[$row->cat_id])) {
-                $dueByCat[$row->cat_id] = ['name' => $row->cat_name, 'paid' => 0, 'unpaid' => 0, 'partial' => 0];
+        $dueUnpaid = $duePaid = $duePartial = $dueOverdue = 0.0;
+        $today = now()->startOfDay();
+
+        foreach ($allDues as $due) {
+            $remaining = (float) $due->remaining_amount;
+            $amount = (float) $due->amount;
+            $isPastDue = $due->due_date && $due->due_date->startOfDay()->lt($today);
+
+            if ($remaining == 0) {
+                $duePaid += $amount;
+            } elseif ($isPastDue && $remaining > 0) {
+                $dueOverdue += $amount;
+            } elseif ($remaining >= $amount) {
+                $dueUnpaid += $amount;
+            } else {
+                $duePartial += $amount;
             }
-            $dueByCat[$row->cat_id][$row->status] += (float) $row->total;
+        }
+
+        // Aidat durumu — kategori bazında (tüm zamanlar) — remaining_amount ve due_date'e göre
+        $duesWithCategories = Due::where('dues.apartment_id', $id)
+            ->with('category')
+            ->select('id', 'category_id', 'amount', 'remaining_amount', 'due_date')
+            ->get();
+
+        // [cat_id => ['name'=>..., 'paid'=>..., 'unpaid'=>..., 'partial'=>..., 'overdue'=>...]]
+        $dueByCat = [];
+        foreach ($duesWithCategories as $due) {
+            if (!$due->category) continue;
+
+            $catId = $due->category_id;
+            $catName = $due->category->name;
+            $amount = (float) $due->amount;
+            $remaining = (float) $due->remaining_amount;
+            $isPastDue = $due->due_date && $due->due_date->startOfDay()->lt($today);
+
+            if (!isset($dueByCat[$catId])) {
+                $dueByCat[$catId] = ['name' => $catName, 'paid' => 0, 'unpaid' => 0, 'partial' => 0, 'overdue' => 0];
+            }
+
+            if ($remaining == 0) {
+                $dueByCat[$catId]['paid'] += $amount;
+            } elseif ($isPastDue && $remaining > 0) {
+                $dueByCat[$catId]['overdue'] += $amount;
+            } elseif ($remaining >= $amount) {
+                $dueByCat[$catId]['unpaid'] += $amount;
+            } else {
+                $dueByCat[$catId]['partial'] += $amount;
+            }
         }
 
         // Gider kategorileri (tüm zamanlar)
@@ -115,7 +141,7 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'apartment',
             'totalUnits', 'totalAccounts',
-            'dueUnpaid', 'duePaid', 'duePartial',
+            'dueUnpaid', 'duePaid', 'duePartial', 'dueOverdue',
             'dueByCat',
             'expenseByCategory', 'totalExpenses',
             'expensePaid', 'expenseUnpaid',
