@@ -487,12 +487,21 @@
             // Auto-populate description based on period and category
             const categorySelect = document.getElementById('category_id');
             const periodInput = document.getElementById('period');
+            const createdAtInput = document.getElementById('created_at_manual');
             const descriptionInput = document.getElementById('description');
 
             const months = {
                 '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
                 '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
                 '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+            };
+
+            const syncPeriodFromDate = () => {
+                const dateVal = createdAtInput?.value;
+                if (dateVal) {
+                    periodInput.value = dateVal.substring(0, 7);
+                    updateDescription();
+                }
             };
 
             const updateDescription = () => {
@@ -507,8 +516,12 @@
                 }
             };
 
+            createdAtInput?.addEventListener('change', syncPeriodFromDate);
             categorySelect?.addEventListener('change', updateDescription);
             periodInput?.addEventListener('change', updateDescription);
+
+            // Init
+            syncPeriodFromDate();
         })();
     </script>
 @endsection

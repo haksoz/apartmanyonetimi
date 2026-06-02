@@ -14,10 +14,9 @@
 
     <form method="POST" action="{{ route('expenses.store') }}" class="space-y-4">
         @csrf
+        <input id="period_month" name="period_month" type="hidden" value="{{ old('period_month', now()->format('Y-m')) }}">
 
-        {{-- Hesap & Gider Bilgisi --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Hesap &amp; Gider Bilgisi</h3>
             <div class="grid gap-5 md:grid-cols-2">
                 <div>
                     <div class="mb-2 flex items-center justify-between">
@@ -45,30 +44,6 @@
                 </div>
 
                 <div>
-                    <label for="amount" class="mb-2 block text-sm font-medium text-slate-600">Tutar</label>
-                    <input id="amount" name="amount" type="number" min="0.01" step="0.01" value="{{ old('amount') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <div>
-                    <label for="period_month" class="mb-2 block text-sm font-medium text-slate-600">Dönem</label>
-                    <input id="period_month" name="period_month" type="month" value="{{ old('period_month', now()->format('Y-m')) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('period_month')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <div class="md:col-span-2">
-                    <label for="description" class="mb-2 block text-sm font-medium text-slate-600">Açıklama</label>
-                    <input id="description" name="description" value="{{ old('description') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none" placeholder="Fatura no, dönem veya kısa açıklama">
-                    @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-            </div>
-        </div>
-
-        {{-- Tarih Bilgileri --}}
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Tarih Bilgileri</h3>
-            <div class="grid gap-5 md:grid-cols-2">
-                <div>
                     <label for="expense_date" class="mb-2 block text-sm font-medium text-slate-600">Gider Tarihi</label>
                     <input id="expense_date" name="expense_date" type="date" value="{{ old('expense_date', now()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                     @error('expense_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -78,6 +53,18 @@
                     <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi <span class="font-normal text-slate-400">(opsiyonel)</span></label>
                     <input id="due_date" name="due_date" type="date" value="{{ old('due_date') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                     @error('due_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                    <label for="amount" class="mb-2 block text-sm font-medium text-slate-600">Tutar</label>
+                    <input id="amount" name="amount" type="number" min="0.01" step="0.01" value="{{ old('amount') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                    <label for="description" class="mb-2 block text-sm font-medium text-slate-600">Açıklama</label>
+                    <input id="description" name="description" value="{{ old('description') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none" placeholder="Fatura no, dönem veya kısa açıklama">
+                    @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
             </div>
         </div>
@@ -125,6 +112,7 @@
             const accountSelect = document.getElementById('account_id');
             const categorySelect = document.getElementById('category_id');
             const periodInput = document.getElementById('period_month');
+            const expenseDateInput = document.getElementById('expense_date');
             const descriptionInput = document.getElementById('description');
             const isPaidCheckbox = document.getElementById('is_paid');
             const paymentFields = document.getElementById('payment-fields');
@@ -165,6 +153,13 @@
                 '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
             };
 
+            const syncPeriodFromDate = () => {
+                const dateVal = expenseDateInput?.value;
+                if (dateVal) {
+                    periodInput.value = dateVal.substring(0, 7);
+                }
+            };
+
             const updateDescription = () => {
                 const period = periodInput.value;
                 const categoryOption = categorySelect.options[categorySelect.selectedIndex];
@@ -177,8 +172,15 @@
                 }
             };
 
+            expenseDateInput?.addEventListener('change', () => {
+                syncPeriodFromDate();
+                updateDescription();
+            });
+
             categorySelect?.addEventListener('change', updateDescription);
-            periodInput?.addEventListener('change', updateDescription);
+
+            // Init
+            syncPeriodFromDate();
 
             // On page load: if account is pre-selected, fill category
             if (accountSelect?.value) fillCategoryFromAccount();
