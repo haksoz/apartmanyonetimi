@@ -179,13 +179,13 @@ class ExpenseController extends Controller
             ]);
 
             if ($validated['account_id']) {
-                // Gider kaydı: biz borçlandık (debit - borç artar)
+                // Gider kaydı: tedarikçi alacaklı oldu (credit)
                 AccountTransaction::create([
                     'apartment_id' => $apartment->id,
                     'account_id' => $validated['account_id'],
                     'transactionable_type' => Expense::class,
                     'transactionable_id' => $expense->id,
-                    'type' => 'debit',
+                    'type' => 'credit',
                     'description' => $validated['description'] ?? 'Gider kaydı',
                     'amount' => $validated['amount'],
                     'transaction_date' => $validated['expense_date'],
@@ -208,14 +208,14 @@ class ExpenseController extends Controller
                     'is_active' => true,
                 ]);
 
-                // Tedarikçi varsa ödeme kaydı: borç azaldı (credit)
+                // Tedarikçi varsa ödeme kaydı: alacak kapandı (debit)
                 if ($validated['account_id']) {
                     AccountTransaction::create([
                         'apartment_id' => $apartment->id,
                         'account_id' => $validated['account_id'],
                         'transactionable_type' => Expense::class,
                         'transactionable_id' => $expense->id,
-                        'type' => 'credit',
+                        'type' => 'debit',
                         'description' => $paymentDescription,
                         'amount' => $validated['amount'],
                         'transaction_date' => $validated['payment_date'],
@@ -344,14 +344,14 @@ class ExpenseController extends Controller
                 'is_active' => true,
             ]);
 
-            // Gider tedarikçi hesapla bağlıysa, ödeme muhasebe hareketi oluştur (credit - borç azalıyor)
+            // Gider tedarikçi hesapla bağlıysa, ödeme muhasebe hareketi oluştur (debit - alacak kapanıyor)
             if ($expense->account_id) {
                 AccountTransaction::create([
                     'apartment_id' => $expense->apartment_id,
                     'account_id' => $expense->account_id,
                     'transactionable_type' => Expense::class,
                     'transactionable_id' => $expense->id,
-                    'type' => 'credit',
+                    'type' => 'debit',
                     'description' => ($expense->description ? $expense->description.' ödemesi' : 'Gider ödemesi'),
                     'amount' => $validated['amount'],
                     'transaction_date' => $validated['payment_date'],

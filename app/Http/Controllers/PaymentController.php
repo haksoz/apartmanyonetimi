@@ -109,7 +109,7 @@ class PaymentController extends Controller
                 'account_id' => $validated['account_id'],
                 'transactionable_type' => Payment::class,
                 'transactionable_id' => $payment->id,
-                'type' => 'credit',
+                'type' => $isSupplier ? 'debit' : 'credit',
                 'description' => $validated['description'] ?? ($isSupplier ? 'Tedarikçi ödemesi' : 'Ödeme alındı'),
                 'amount' => $validated['amount'],
                 'transaction_date' => $validated['payment_date'],
@@ -392,13 +392,13 @@ class PaymentController extends Controller
                 'is_active' => true,
             ]);
 
-            // Cari işlem - borç (tedarikçiye olan alacağımız azalır, debit ile denge kurulur)
+            // Cari işlem - tedarikçi iade etti, debit bakiye azalır (credit)
             AccountTransaction::create([
                 'apartment_id' => $apartment->id,
                 'account_id' => $validated['account_id'],
                 'transactionable_type' => null,
                 'transactionable_id' => null,
-                'type' => 'debit',
+                'type' => 'credit',
                 'description' => $validated['description'] ?? 'Tedarikçi iadesi',
                 'amount' => $validated['amount'],
                 'transaction_date' => $validated['transaction_date'],

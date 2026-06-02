@@ -24,10 +24,17 @@ trait HasReferenceNumber
 
         $pattern = $prefix . '-' . $apartmentCode . '-' . $year . '-%';
 
-        $lastRef = static::query()
+        // Silinmiş kayıtları da dahil et (soft delete + unique constraint çakışmasını önler)
+        $query = static::query()
             ->where('apartment_id', $this->apartment_id)
-            ->where('reference_number', 'like', $pattern)
-            ->orderBy('reference_number', 'desc')
+            ->where('reference_number', 'like', $pattern);
+
+        if (in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses_recursive(static::class))) {
+            $query = $query->withTrashed();
+        }
+
+        $lastRef = $query
+            ->orderByRaw('CAST(SUBSTRING_INDEX(reference_number, "-", -1) AS UNSIGNED) DESC')
             ->value('reference_number');
 
         if ($lastRef) {

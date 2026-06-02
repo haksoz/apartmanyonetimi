@@ -11,7 +11,12 @@
         </div>
         <div class="flex gap-2">
             @if ($due->computed_status !== 'paid')
-                <a href="{{ route('dues.payment.create', $due) }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Tahsil Et</a>
+                <a href="{{ route('dues.payment.create', $due) }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">
+                    Tahsil Et
+                    @if ($due->remaining_amount < $due->amount)
+                        <span class="ml-1 font-normal opacity-80">({{ number_format($due->remaining_amount, 2, ',', '.') }} TL)</span>
+                    @endif
+                </a>
             @endif
             <a href="{{ route('dues.edit', $due) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Düzenle</a>
             @if (in_array($due->computed_status, ['paid', 'partial']))
@@ -51,6 +56,12 @@
                 <div class="text-xs text-slate-400 mb-1">TUTAR</div>
                 <div class="text-sm font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
             </div>
+            @if ($due->remaining_amount < $due->amount)
+            <div>
+                <div class="text-xs text-slate-400 mb-1">KALAN TUTAR</div>
+                <div class="text-sm font-bold text-amber-600">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+            </div>
+            @endif
             <div>
                 <div class="text-xs text-slate-400 mb-1">KATEGORİ</div>
                 <div class="text-sm font-medium text-slate-900">{{ $due->category?->name ?? '-' }}</div>
@@ -63,6 +74,12 @@
                 <div class="text-xs text-slate-400 mb-1">SON ÖDEME TARİHİ</div>
                 <div class="text-sm font-medium text-slate-900">{{ $due->due_date?->format('d.m.Y') ?? '-' }}</div>
             </div>
+            @if ($due->reference_number)
+                <div>
+                    <div class="text-xs text-slate-400 mb-1">REFERANS</div>
+                    <div class="text-sm font-medium text-slate-900">{{ $due->reference_number }}</div>
+                </div>
+            @endif
             <div>
                 <div class="text-xs text-slate-400 mb-1">DURUM</div>
                 @php
@@ -80,12 +97,6 @@
                     {{ $statusInfo['label'] }}
                 </span>
             </div>
-            @if ($due->reference_number)
-                <div>
-                    <div class="text-xs text-slate-400 mb-1">REFERANS</div>
-                    <div class="text-sm font-medium text-slate-900">{{ $due->reference_number }}</div>
-                </div>
-            @endif
             <div>
                 <div class="text-xs text-slate-400 mb-1">KAYNAK</div>
                 @if ($due->batch?->plan)

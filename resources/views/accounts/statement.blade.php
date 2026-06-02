@@ -126,12 +126,7 @@
                             @endphp
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap">
-                                    @php
-                                        $displayDate = ($t->transactionable_type ?? '') === \App\Models\Due::class
-                                            ? ($t->transactionable?->created_at_manual ?? $t->transaction_date)
-                                            : $t->transaction_date;
-                                    @endphp
-                                    {{ $displayDate?->format('d.m.Y') }}
+                                    {{ $t->transaction_date?->format('d.m.Y') }}
                                 </td>
                                 <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap font-mono text-xs">
                                     {{ $t->transactionable?->reference_number ?? '—' }}

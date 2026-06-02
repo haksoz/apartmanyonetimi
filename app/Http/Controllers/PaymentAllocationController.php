@@ -46,7 +46,8 @@ class PaymentAllocationController extends Controller
                 ->where('apartment_id', $apartment->id)
                 ->where('account_id', $payment->account_id)
                 ->where('remaining_amount', '>', 0)
-                ->orderByDesc('due_date')
+                ->orderBy('due_date')
+                ->orderBy('id')
                 ->get();
             $expenses = collect();
             $hasImportedDues = $dues->contains(fn ($due) => $due->is_imported);
@@ -107,9 +108,9 @@ class PaymentAllocationController extends Controller
                 return back()->withErrors(['allocations' => 'Lütfen en az bir gider için geçerli bir tutar girin.']);
             }
 
-            $totalAmount = $allocations->sum('amount');
+            $totalAmount = round($allocations->sum('amount'), 2);
 
-            if ($totalAmount > $payment->unallocated_amount) {
+            if ($totalAmount > round((float) $payment->unallocated_amount + 0.005, 2)) {
                 return back()->withErrors(['allocations' => 'Girilen toplam tutar, ödemede kalan bakiyeden büyük olamaz.']);
             }
 
@@ -159,9 +160,9 @@ class PaymentAllocationController extends Controller
                 return back()->withErrors(['allocations' => 'Lütfen en az bir borç için geçerli bir tutar girin.']);
             }
 
-            $totalAmount = $allocations->sum('amount');
+            $totalAmount = round($allocations->sum('amount'), 2);
 
-            if ($totalAmount > $payment->unallocated_amount) {
+            if ($totalAmount > round((float) $payment->unallocated_amount + 0.005, 2)) {
                 return back()->withErrors(['allocations' => 'Girilen toplam tutar, ödemede kalan bakiyeden büyük olamaz.']);
             }
 

@@ -131,7 +131,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @foreach ($account->dues as $due)
-                                <tr>
+                                <tr class="cursor-pointer hover:bg-slate-50" onclick="if(!event.target.closest('a,button,input'))window.location='{{ route('dues.show', $due) }}'">
                                     <td class="px-5 py-4">
                                         <input type="checkbox" class="due-checkbox rounded"
                                                data-due-id="{{ $due->id }}"
@@ -163,7 +163,7 @@
                             @endforeach
                             {{-- Devir Öncesi Aidatlar (toggle ile gösterilir) --}}
                             @foreach ($importedDues as $due)
-                                <tr class="imported-due-row hidden bg-blue-50/40">
+                                <tr class="imported-due-row hidden bg-blue-50/40 cursor-pointer hover:bg-blue-100/40" onclick="if(!event.target.closest('a,button,input'))window.location='{{ route('dues.show', $due) }}'">
                                     <td class="px-5 py-4">
                                         <input type="checkbox" class="due-checkbox rounded"
                                                data-due-id="{{ $due->id }}"

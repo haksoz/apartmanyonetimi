@@ -795,7 +795,7 @@ class DueController extends Controller
             'type' => 'debit',
             'description' => $validated['description'] ?? $batch->category?->name.' borçlandırması',
             'amount' => $amount,
-            'transaction_date' => $validated['due_date'],
+            'transaction_date' => $validated['created_at_manual'] ?? $validated['due_date'],
         ]);
     }
 

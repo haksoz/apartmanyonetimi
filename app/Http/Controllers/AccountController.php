@@ -23,7 +23,7 @@ class AccountController extends Controller
     private function parseTurkishNumber($value)
     {
         if (is_numeric($value)) {
-            return floatval($value);
+            return round(floatval($value), 2);
         }
 
         if (is_string($value)) {
@@ -31,7 +31,7 @@ class AccountController extends Controller
             // Önce binlik ayırıcıları kaldır, sonra virgülü noktaya çevir
             $value = str_replace('.', '', $value); // Binlik ayırıcıları kaldır
             $value = str_replace(',', '.', $value); // Ondalık ayırıcıyı noktaya çevir
-            return floatval($value);
+            return round(floatval($value), 2);
         }
 
         return 0.0;

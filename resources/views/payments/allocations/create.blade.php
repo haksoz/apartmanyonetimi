@@ -262,22 +262,21 @@
                             : `${importedCount} devir öncesi gizli, ${normalCount} normal gösteriliyor`;
                     });
                 }
-                // FIFO: eskiden yeniye inputları doldur
+                // FIFO: eskiden yeniye inputları doldur (cent cinsinden hesapla, float drift yok)
                 const fifoBtn = document.getElementById('btn-fifo');
                 if (fifoBtn) {
                     fifoBtn.addEventListener('click', function(){
-                        // Tüm amount inputlarını sıfırla
                         const inputs = Array.from(document.querySelectorAll('input[name$="[amount]"]'));
                         inputs.forEach(inp => { inp.value = ''; });
 
-                        let remaining = budget;
+                        let remainingCents = Math.round(budget * 100);
                         for (const inp of inputs) {
-                            if (remaining <= 0.001) break;
-                            const max = toFloat(inp.getAttribute('data-remaining') || inp.getAttribute('max'));
-                            if (max <= 0) continue;
-                            const alloc = Math.min(remaining, max);
-                            inp.value = alloc.toFixed(2);
-                            remaining -= alloc;
+                            if (remainingCents <= 0) break;
+                            const maxCents = Math.round(toFloat(inp.getAttribute('data-remaining') || inp.getAttribute('max')) * 100);
+                            if (maxCents <= 0) continue;
+                            const allocCents = Math.min(remainingCents, maxCents);
+                            inp.value = (allocCents / 100).toFixed(2);
+                            remainingCents -= allocCents;
                         }
                         updateSummary();
                     });

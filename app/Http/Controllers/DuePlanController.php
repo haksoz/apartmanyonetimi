@@ -256,7 +256,7 @@ class DuePlanController extends Controller
                     'type'               => 'debit',
                     'description'        => $batchDescription,
                     'amount'             => $amount,
-                    'transaction_date'   => $dueDate,
+                    'transaction_date'   => $periodDate->startOfMonth()->toDateString(),
                 ]);
             }
         });
