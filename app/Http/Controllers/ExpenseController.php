@@ -72,7 +72,11 @@ class ExpenseController extends Controller
 
         $filters = compact('filterPeriod', 'filterStatus', 'filterCategory', 'filterSearch', 'showImported');
 
-        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'isOwner', 'showImported'));
+        $hasImported = $apartment
+            ? Expense::where('apartment_id', $apartment->id)->where('is_imported', true)->exists()
+            : false;
+
+        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'isOwner', 'showImported', 'hasImported'));
     }
 
     /**
@@ -341,6 +345,10 @@ class ExpenseController extends Controller
         DB::transaction(function () use ($expense) {
             // Muhasebe kayıtlarını sil
             $expense->transactions()->delete();
+            // Bağlı kasa hareketlerini sil (devir öncesi dahil)
+            CashTransaction::where('apartment_id', $expense->apartment_id)
+                ->where('expense_id', $expense->id)
+                ->delete();
             // Gideri soft delete ile sil
             $expense->delete();
         });
@@ -442,7 +450,12 @@ class ExpenseController extends Controller
     {
         $expense = $this->findExpense($id);
 
-        if (! $expense->is_paid) {
+        $hasPayment = $expense->is_paid
+            || PaymentAllocation::where('expense_id', $expense->id)->exists()
+            || ($expense->is_imported && $expense->paid_amount > 0)
+            || $expense->cashTransactions()->exists();
+
+        if (! $hasPayment) {
             return redirect()->route('expenses.show', $expense)->with('error', 'Bu gider zaten ödenmemiş durumda.');
         }
 
@@ -489,8 +502,12 @@ class ExpenseController extends Controller
                     ->delete();
             }
 
-            // 2. Gider'i aç
-            $expense->update(['is_paid' => false]);
+            // 2. Gider'i aç (devir öncesi ise paid_amount da sıfırla)
+            $updateData = ['is_paid' => false];
+            if ($expense->is_imported) {
+                $updateData['paid_amount'] = 0;
+            }
+            $expense->update($updateData);
         });
 
         return redirect()->route('expenses.show', $expense)->with('status', 'Ödeme iptal edildi ve gider tekrar açık durumuna alındı.');
@@ -895,6 +912,64 @@ class ExpenseController extends Controller
 
         return redirect()->route('expenses.index', ['show_imported' => 1])
             ->with('status', $importedCount . ' adet gider başarıyla Devir Öncesi olarak içeri aktarıldı.');
+    }
+
+    public function destroyAllImported(CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        if (! $apartment) {
+            abort(403);
+        }
+
+        if (! $this->isOwnerOf($apartment)) {
+            abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
+        }
+
+        // Tedarikçiye bağlanmamış devir öncesi giderler — hesaba bağlananlar korunur
+        $imported = Expense::where('apartment_id', $apartment->id)
+            ->where('is_imported', true)
+            ->whereNull('account_id')
+            ->get();
+
+        if ($imported->isEmpty()) {
+            return redirect()->route('expenses.index')->with('error', 'Silinecek devir öncesi gider bulunamadı. Tedarikçiye bağlı olanlar korunmaktadır.');
+        }
+
+        $imported->load(['paymentAllocations.payment', 'cashTransactions']);
+
+        DB::transaction(function () use ($imported, $apartment) {
+            foreach ($imported as $expense) {
+                // Tahsisleri sil - bağlı Payment kaydı varsa onu da tamamen temizle
+                foreach ($expense->paymentAllocations as $allocation) {
+                    $payment = $allocation->payment;
+                    $allocation->delete();
+
+                    if ($payment) {
+                        // Payment'e ait AccountTransaction sil
+                        AccountTransaction::where('transactionable_type', Payment::class)
+                            ->where('transactionable_id', $payment->id)
+                            ->delete();
+                        // Payment'e ait CashTransaction sil
+                        CashTransaction::where('payment_id', $payment->id)->delete();
+                        // Payment kaydını sil
+                        $payment->delete();
+                    }
+                }
+
+                // Expense'e ait AccountTransaction kayıtlarını sil
+                $expense->transactions()->delete();
+
+                // Expense'e ait eski (expense_id ile bağlı) kasa hareketlerini sil
+                CashTransaction::where('apartment_id', $apartment->id)
+                    ->where('expense_id', $expense->id)
+                    ->delete();
+
+                $expense->delete();
+            }
+        });
+
+        return redirect()->route('expenses.index')->with('status', $imported->count() . ' adet devir öncesi gider silindi.');
     }
 
     private function parseDate($value): ?\Carbon\Carbon

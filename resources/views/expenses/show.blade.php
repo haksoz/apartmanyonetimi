@@ -92,11 +92,11 @@
     </div>
 
     {{-- Payment Info Card --}}
-    @if ($expense->is_paid || $hasAllocations)
+    @if ($expense->is_paid || $hasAllocations || ($expense->is_imported && $expense->paid_amount > 0) || $cashTx)
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-base font-semibold text-slate-950">Ödeme Bilgisi</h2>
-            @if ($paymentTx && !$hasAllocations)
+            @if (!$hasAllocations && ($paymentTx || $cashTx || ($expense->is_imported && $expense->paid_amount > 0)))
                 {{-- Direk ödeme yapılmışsa iptal edilebilir --}}
                 <form method="POST" action="{{ route('expenses.payment.destroy', $expense) }}" onsubmit="return confirm('Gider ödemesi silinsin mi? Gider tekrar ödenmemiş durumuna döner.')">
                     @csrf

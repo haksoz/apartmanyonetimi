@@ -51,6 +51,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::post('expenses/import/preview', [ExpenseController::class, 'importPreview'])->name('expenses.import-preview');
     Route::get('expenses/import/preview', [ExpenseController::class, 'importPreviewPage'])->name('expenses.import-preview-page');
     Route::post('expenses/import/confirm', [ExpenseController::class, 'importConfirm'])->name('expenses.import-confirm');
+    Route::delete('expenses/imported/destroy-all', [ExpenseController::class, 'destroyAllImported'])->name('expenses.imported.destroy-all');
 
     Route::resource('expenses', ExpenseController::class);
     Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
