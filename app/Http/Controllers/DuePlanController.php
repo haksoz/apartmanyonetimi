@@ -60,9 +60,10 @@ class DuePlanController extends Controller
         $validated = $request->validate([
             'name'              => ['required', 'string', 'max:255'],
             'year'              => ['required', 'integer', 'min:2000', 'max:2100'],
-            'amount_type'       => ['required', Rule::in(['monthly', 'yearly'])],
+            'amount_type'       => ['required', Rule::in(['monthly', 'yearly', 'per_unit'])],
             'monthly_amount'    => ['required_if:amount_type,monthly', 'nullable', 'numeric', 'min:0.01'],
             'yearly_amount'     => ['required_if:amount_type,yearly', 'nullable', 'numeric', 'min:0.01'],
+            'per_unit_amount'   => ['required_if:amount_type,per_unit', 'nullable', 'numeric', 'min:0.01'],
             'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
             'target_audience'   => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'category_id'       => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)],
@@ -70,6 +71,10 @@ class DuePlanController extends Controller
             'description'       => ['nullable', 'string', 'max:255'],
             'is_active'         => ['boolean'],
         ]);
+
+        if (isset($validated['per_unit_amount'])) {
+            $validated['per_unit_amount'] = round((float) $validated['per_unit_amount'], 2);
+        }
 
         DuePlan::create(array_merge($validated, [
             'apartment_id' => $apartment->id,
@@ -109,15 +114,20 @@ class DuePlanController extends Controller
         $validated = $request->validate([
             'name'              => ['required', 'string', 'max:255'],
             'year'              => ['required', 'integer', 'min:2000', 'max:2100'],
-            'amount_type'       => ['required', Rule::in(['monthly', 'yearly'])],
+            'amount_type'       => ['required', Rule::in(['monthly', 'yearly', 'per_unit'])],
             'monthly_amount'    => ['required_if:amount_type,monthly', 'nullable', 'numeric', 'min:0.01'],
             'yearly_amount'     => ['required_if:amount_type,yearly', 'nullable', 'numeric', 'min:0.01'],
+            'per_unit_amount'   => ['required_if:amount_type,per_unit', 'nullable', 'numeric', 'min:0.01'],
             'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
             'target_audience'   => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'category_id'       => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)],
             'due_day'           => ['required', 'integer', 'min:1', 'max:28'],
             'description'       => ['nullable', 'string', 'max:255'],
         ]);
+
+        if (isset($validated['per_unit_amount'])) {
+            $validated['per_unit_amount'] = round((float) $validated['per_unit_amount'], 2);
+        }
 
         $duePlan->update(array_merge($validated, [
             'is_active' => $request->boolean('is_active', true),
@@ -217,11 +227,15 @@ class DuePlanController extends Controller
 
             $count     = count($unitAccounts);
             $allocated = 0;
+            $isPerUnit = $duePlan->amount_type === DuePlan::AMOUNT_TYPE_PER_UNIT;
 
             foreach ($unitAccounts as $index => $item) {
                 $isLast = $index === $count - 1;
 
-                if ($duePlan->distribution_type === DuePlan::DISTRIBUTION_EQUAL) {
+                if ($isPerUnit) {
+                    // Daire başı sabit tutar — her daireye aynı miktar
+                    $amount = (float) number_format((float) $duePlan->per_unit_amount, 2, '.', '');
+                } elseif ($duePlan->distribution_type === DuePlan::DISTRIBUTION_EQUAL) {
                     $amount = $isLast
                         ? round($monthlyAmount - $allocated, 2)
                         : round($monthlyAmount / $count, 2);

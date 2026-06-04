@@ -372,6 +372,14 @@
         </main>
     </div>
 
+    <script>
+        document.addEventListener('wheel', function(e) {
+            if (document.activeElement.type === 'number') {
+                document.activeElement.blur();
+            }
+        }, { passive: true });
+    </script>
+
     @auth
         <script>
             function toggleSidebar() {

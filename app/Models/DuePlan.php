@@ -8,8 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DuePlan extends Model
 {
-    public const AMOUNT_TYPE_MONTHLY = 'monthly';
-    public const AMOUNT_TYPE_YEARLY  = 'yearly';
+    public const AMOUNT_TYPE_MONTHLY  = 'monthly';
+    public const AMOUNT_TYPE_YEARLY   = 'yearly';
+    public const AMOUNT_TYPE_PER_UNIT = 'per_unit';
 
     public const DISTRIBUTION_EQUAL             = 'equal';
     public const DISTRIBUTION_SQUARE_METERS     = 'square_meters';
@@ -23,6 +24,7 @@ class DuePlan extends Model
         'amount_type',
         'monthly_amount',
         'yearly_amount',
+        'per_unit_amount',
         'distribution_type',
         'target_audience',
         'due_day',
@@ -31,8 +33,9 @@ class DuePlan extends Model
     ];
 
     protected $casts = [
-        'monthly_amount' => 'decimal:2',
-        'yearly_amount'  => 'decimal:2',
+        'monthly_amount'  => 'decimal:2',
+        'yearly_amount'   => 'decimal:2',
+        'per_unit_amount' => 'decimal:2',
         'due_day'        => 'integer',
         'year'           => 'integer',
         'is_active'      => 'boolean',
@@ -58,7 +61,11 @@ class DuePlan extends Model
         if ($this->amount_type === self::AMOUNT_TYPE_MONTHLY) {
             return (float) $this->monthly_amount;
         }
-        return round((float) $this->yearly_amount / 12, 2);
+        if ($this->amount_type === self::AMOUNT_TYPE_YEARLY) {
+            return round((float) $this->yearly_amount / 12, 2);
+        }
+        // per_unit: daire başı tutar * daire sayısı = aylık toplam (aidat oluşturma sırasında hesaplanır)
+        return (float) number_format((float) $this->per_unit_amount, 2, '.', '');
     }
 
     public function isGeneratedForPeriod(string $period): bool

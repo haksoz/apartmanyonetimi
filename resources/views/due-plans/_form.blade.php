@@ -45,6 +45,11 @@
                    {{ old('amount_type', $plan?->amount_type) === 'yearly' ? 'checked' : '' }}>
             <span class="text-sm text-slate-700">Yıllık toplam</span>
         </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="amount_type" value="per_unit" id="amount_per_unit"
+                   {{ old('amount_type', $plan?->amount_type) === 'per_unit' ? 'checked' : '' }}>
+            <span class="text-sm text-slate-700">Daire başı tutar</span>
+        </label>
     </div>
 </div>
 
@@ -64,7 +69,16 @@
     <p class="mt-1 text-xs text-slate-500">12'ye bölünerek aylık tutar hesaplanır.</p>
 </div>
 
-<div>
+<div id="field-per-unit" class="{{ old('amount_type', $plan?->amount_type ?? 'monthly') === 'per_unit' ? '' : 'hidden' }}">
+    <label class="block text-sm font-medium text-slate-700 mb-1">Daire Başı Tutar (TL)</label>
+    <input type="number" name="per_unit_amount" value="{{ old('per_unit_amount', $plan?->per_unit_amount ? (float)$plan->per_unit_amount : '') }}"
+           step="any" min="0.01"
+           onwheel="this.blur()"
+           class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
+    <p class="mt-1 text-xs text-slate-500">Her daireye bu sabit tutar uygulanır. Toplam = daire sayısı × tutar.</p>
+</div>
+
+<div id="field-distribution" class="{{ old('amount_type', $plan?->amount_type ?? 'monthly') === 'per_unit' ? 'hidden' : '' }}">
     <label class="block text-sm font-medium text-slate-700 mb-1">Dağıtım Yöntemi</label>
     <select name="distribution_type" id="distribution_type" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
         <option value="equal" {{ old('distribution_type', $plan?->distribution_type ?? 'equal') === 'equal' ? 'selected' : '' }}>Eşit dağıtım</option>
@@ -102,9 +116,13 @@
         var type = document.querySelector('input[name="amount_type"]:checked')?.value;
         if (type === 'monthly') {
             return parseFloat(document.querySelector('input[name="monthly_amount"]')?.value) || 0;
-        } else {
+        } else if (type === 'yearly') {
             var y = parseFloat(document.querySelector('input[name="yearly_amount"]')?.value) || 0;
             return Math.round(y / 12 * 100) / 100;
+        } else {
+            // per_unit: önizleme için daire başı tutar * daire sayısı
+            var perUnit = parseFloat(document.querySelector('input[name="per_unit_amount"]')?.value) || 0;
+            return Math.round(perUnit * units.length * 100) / 100;
         }
     }
 
@@ -200,7 +218,7 @@
         if (e.target.name === 'amount_type' || e.target.name === 'distribution_type') updatePreview();
     });
     document.addEventListener('input', function(e) {
-        if (e.target.name === 'monthly_amount' || e.target.name === 'yearly_amount') updatePreview();
+        if (e.target.name === 'monthly_amount' || e.target.name === 'yearly_amount' || e.target.name === 'per_unit_amount') updatePreview();
     });
 
     // İlk yükleme
@@ -240,6 +258,8 @@
         radio.addEventListener('change', function() {
             document.getElementById('field-monthly').classList.toggle('hidden', this.value !== 'monthly');
             document.getElementById('field-yearly').classList.toggle('hidden', this.value !== 'yearly');
+            document.getElementById('field-per-unit').classList.toggle('hidden', this.value !== 'per_unit');
+            document.getElementById('field-distribution').classList.toggle('hidden', this.value === 'per_unit');
         });
     });
 </script>
