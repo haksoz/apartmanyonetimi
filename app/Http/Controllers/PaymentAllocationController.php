@@ -199,7 +199,7 @@ class PaymentAllocationController extends Controller
         return redirect()->route('dues.index')->with('status', 'Ödeme başarıyla tahsis edildi.');
     }
 
-    public function destroy(CurrentApartment $currentApartment, PaymentAllocation $allocation)
+    public function destroy(CurrentApartment $currentApartment, Payment $payment, PaymentAllocation $allocation)
     {
         $apartment = $this->resolveApartment($currentApartment);
 
@@ -214,22 +214,35 @@ class PaymentAllocationController extends Controller
 
         DB::transaction(function () use ($allocation) {
             $due = $allocation->due;
+            $expense = $allocation->expense;
             $payment = $allocation->payment;
             $amount = $allocation->amount;
 
             // Tahsisi sil
             $allocation->delete();
 
-            // Borcun kalan tutarını artır
-            $due->remaining_amount += $amount;
+            // Aidat tahsisiyse borç güncelle
+            if ($due) {
+                $due->remaining_amount += $amount;
 
-            // Borcun durumunu güncelle
-            if ($due->remaining_amount >= $due->amount) {
-                $due->status = 'unpaid';
-            } else {
-                $due->status = 'partial';
+                if ($due->remaining_amount >= $due->amount) {
+                    $due->status = 'unpaid';
+                } else {
+                    $due->status = 'partial';
+                }
+                $due->save();
             }
-            $due->save();
+
+            // Gider tahsisiyse ödenmiş durumunu güncelle
+            if ($expense) {
+                $totalAllocated = $expense->paymentAllocations()->sum('amount');
+
+                if ($totalAllocated <= 0) {
+                    // Hiç tahsis kalmadıysa ödenmemiş yap
+                    $expense->update(['is_paid' => false]);
+                }
+                // Kısmi tahsis varsa is_paid zaten false olmalı
+            }
 
             // Ödemenin tahsis edilmemiş tutarını artır
             $payment->increment('unallocated_amount', $amount);

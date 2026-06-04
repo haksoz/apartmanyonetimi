@@ -4,6 +4,9 @@
     @php
         $paymentTx = $expense->transactions->firstWhere('type', 'debit');
         $cashTx = $expense->cashTransactions->first();
+        $allocations = $expense->paymentAllocations()->with('payment')->get();
+        $hasAllocations = $allocations->isNotEmpty();
+        $totalAllocated = $allocations->sum('amount');
         $months = ['January' => 'Ocak', 'February' => 'Şubat', 'March' => 'Mart', 'April' => 'Nisan', 'May' => 'Mayıs', 'June' => 'Haziran',
                    'July' => 'Temmuz', 'August' => 'Ağustos', 'September' => 'Eylül', 'October' => 'Ekim', 'November' => 'Kasım', 'December' => 'Aralık'];
         $periodText = $expense->period_month ? $expense->period_month->format('F Y') : null;
@@ -13,7 +16,12 @@
     {{-- Header --}}
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-950">Gider Detayı</h1>
+            <h1 class="text-2xl font-bold text-slate-950">
+                Gider Detayı
+                @if ($expense->is_imported)
+                    <span class="ml-2 inline-block rounded-md bg-blue-100 px-2 py-1 text-sm font-medium text-blue-700">Devir Öncesi</span>
+                @endif
+            </h1>
             <p class="mt-1 text-sm text-slate-500">
                 {{ $expense->reference_number ?? 'Gider' }}
                 @if ($expense->account)
@@ -26,8 +34,13 @@
                 <a href="{{ route('expenses.payment.create', $expense) }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Ödeme Ekle</a>
             @endunless
             <a href="{{ route('expenses.edit', $expense) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Düzenle</a>
-            @if ($expense->is_paid)
-                <button type="button" onclick="alert('Bu gider ödenmiş olduğu için silinemez. Önce ödemeyi iptal edin.')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+            @if ($expense->is_paid || $hasAllocations)
+                @php
+                    $deleteWarning = $hasAllocations
+                        ? 'Bu gider tahsis edilmiş ödemelerle bağlantılı. Önce tahsisleri iptal edin.'
+                        : 'Bu gider ödenmiş olduğu için silinemez. Önce ödemeyi iptal edin.';
+                @endphp
+                <button type="button" onclick="alert('{{ $deleteWarning }}')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
             @else
                 <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Gider kaydı silinsin mi?')">
                     @csrf
@@ -45,6 +58,16 @@
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gider Tutarı</div>
             <div class="mt-2 text-xl font-bold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
         </div>
+        @if ($expense->is_imported && $expense->paid_amount !== null)
+        <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-emerald-600">Ödenen</div>
+            <div class="mt-2 text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($expense->paid_amount, 2, ',', '.') }} TL</div>
+        </div>
+        <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-amber-600">Kalan</div>
+            <div class="mt-2 text-xl font-bold text-amber-600 tabular-nums">{{ number_format($expense->remaining_amount, 2, ',', '.') }} TL</div>
+        </div>
+        @else
         <div class="rounded-2xl bg-white p-5 shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gider Tarihi</div>
             <div class="mt-2 text-xl font-bold text-slate-900 tabular-nums">{{ $expense->expense_date->format('d.m.Y') }}</div>
@@ -53,11 +76,14 @@
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Son Ödeme Tarihi</div>
             <div class="mt-2 text-xl font-bold text-slate-900 tabular-nums">{{ $expense->due_date?->format('d.m.Y') ?? '-' }}</div>
         </div>
+        @endif
         <div class="rounded-2xl bg-white p-5 shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</div>
             <div class="mt-2">
                 @if ($expense->is_paid)
                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">Ödendi</span>
+                @elseif ($expense->is_imported && $expense->paid_amount > 0)
+                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-700">Kısmen Ödendi</span>
                 @else
                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-700">Bekliyor</span>
                 @endif
@@ -66,31 +92,76 @@
     </div>
 
     {{-- Payment Info Card --}}
-    @if ($expense->is_paid)
+    @if ($expense->is_paid || $hasAllocations)
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-base font-semibold text-slate-950">Ödeme Bilgisi</h2>
-            <form method="POST" action="{{ route('expenses.payment.destroy', $expense) }}" onsubmit="return confirm('Gider ödemesi silinsin mi? Gider tekrar ödenmemiş durumuna döner.')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Ödemeyi İptal Et</button>
-            </form>
+            @if ($paymentTx && !$hasAllocations)
+                {{-- Direk ödeme yapılmışsa iptal edilebilir --}}
+                <form method="POST" action="{{ route('expenses.payment.destroy', $expense) }}" onsubmit="return confirm('Gider ödemesi silinsin mi? Gider tekrar ödenmemiş durumuna döner.')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Ödemeyi İptal Et</button>
+                </form>
+            @endif
         </div>
-        <div class="grid gap-6 md:grid-cols-3">
+
+        {{-- Tahsis edilmiş ödemeler --}}
+        @if ($hasAllocations)
+        <div class="mb-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Tahsis Edilmiş Ödemeler ({{ $allocations->count() }})</div>
+            <div class="space-y-2">
+                @foreach ($allocations as $allocation)
+                <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
+                    <div class="flex items-center gap-3">
+                        <div>
+                            <a href="{{ route('accounts.show', $allocation->payment->account_id) }}" class="text-sm font-medium text-blue-700 hover:text-blue-800">
+                                {{ $allocation->payment->account?->name ?? 'Hesap' }}
+                            </a>
+                            <div class="text-xs text-slate-500">Ödeme: {{ $allocation->payment->reference_number }}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="text-right">
+                            <div class="text-sm font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</div>
+                            <div class="text-xs text-slate-500">{{ $allocation->created_at->format('d.m.Y') }}</div>
+                        </div>
+                        {{-- Tahsis iptal butonu --}}
+                        <form method="POST" action="{{ route('payments.allocations.destroy', ['payment' => $allocation->payment_id, 'allocation' => $allocation]) }}" onsubmit="return confirm('Tahsis geri alınsın mı? Ödeme tekrar tahsis edilebilir hale gelir.')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">İptal</button>
+                        </form>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            <div class="mt-3 flex justify-between items-center text-sm">
+                <span class="text-slate-600">Toplam Tahsis:</span>
+                <span class="font-semibold text-slate-900 tabular-nums">{{ number_format($totalAllocated, 2, ',', '.') }} TL</span>
+            </div>
+        </div>
+        @endif
+
+        {{-- Direk ödeme bilgisi --}}
+        @if ($paymentTx || $cashTx)
+        <div class="grid gap-6 md:grid-cols-3 {{ $hasAllocations ? 'border-t border-slate-200 pt-4' : '' }}">
+            @if ($paymentTx)
             <div>
                 <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ödeme Tarihi</div>
-                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $paymentTx?->transaction_date->format('d.m.Y') ?? '-' }}</div>
+                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $paymentTx->transaction_date->format('d.m.Y') }}</div>
             </div>
             <div>
                 <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tutar</div>
-                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $paymentTx ? number_format($paymentTx->amount, 2, ',', '.') . ' TL' : '-' }}</div>
+                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ number_format($paymentTx->amount, 2, ',', '.') }} TL</div>
             </div>
             <div>
                 <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</div>
-                <div class="mt-2 text-sm text-slate-900">{{ $paymentTx?->description ?? '-' }}</div>
+                <div class="mt-2 text-sm text-slate-900">{{ $paymentTx->description ?? '-' }}</div>
             </div>
+            @endif
             @if ($cashTx)
-            <div class="md:col-span-3">
+            <div class="{{ $paymentTx ? 'md:col-span-3' : 'md:col-span-3' }}">
                 <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kasa Hareketi</div>
                 <div class="mt-2">
                     <a href="{{ route('cash.show', $cashTx) }}" class="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800">
@@ -103,6 +174,7 @@
             </div>
             @endif
         </div>
+        @endif
     </div>
     @endif
 

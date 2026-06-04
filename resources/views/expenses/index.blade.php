@@ -9,6 +9,7 @@
         </div>
         @if($isOwner)
         <div class="flex gap-2">
+            <a href="{{ route('expenses.import') }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Gider İçe Aktar</a>
             <a href="{{ route('expenses.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Gider Ekle</a>
         </div>
         @endif
@@ -56,8 +57,12 @@
                     <option value="{{ $cat }}" @selected($filters['filterCategory'] === $cat)>{{ $cat }}</option>
                 @endforeach
             </select>
+            <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none whitespace-nowrap">
+                <input type="checkbox" name="show_imported" value="1" class="rounded" {{ $showImported ? 'checked' : '' }}>
+                Devir Öncesini Göster
+            </label>
             <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterCategory'])
+            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterCategory'] || $showImported)
                 <a href="{{ route('expenses.index', array_filter(['search' => $filters['filterSearch']])) }}"
                    class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">Temizle</a>
             @endif
@@ -98,7 +103,12 @@
                     @endphp
                     <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('expenses.show', $expense) }}'">
                         <td class="px-5 py-4">
-                            <div class="text-slate-900 font-medium">{{ $expense->description ?? '-' }}</div>
+                            <div class="text-slate-900 font-medium">
+                                {{ $expense->description ?? '-' }}
+                                @if ($expense->is_imported)
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                @endif
+                            </div>
                             @if ($expense->account)
                                 <div class="text-xs text-slate-500 mt-1">{{ $expense->account->name }}</div>
                             @endif
@@ -166,6 +176,9 @@
                 </div>
                 <div class="ml-3 text-right">
                     <div class="font-bold text-slate-900">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
+                    @if ($expense->is_imported)
+                        <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 mt-1">Devir Öncesi</span>
+                    @endif
                     @if ($expense->is_paid)
                         <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 mt-1">
                             <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>

@@ -46,6 +46,12 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     // Giderler - Üye ve Yönetici erişimi (tüm resource actions)
+    Route::get('expenses/import', [ExpenseController::class, 'importForm'])->name('expenses.import');
+    Route::get('expenses/import/sample', [ExpenseController::class, 'importSample'])->name('expenses.import-sample');
+    Route::post('expenses/import/preview', [ExpenseController::class, 'importPreview'])->name('expenses.import-preview');
+    Route::get('expenses/import/preview', [ExpenseController::class, 'importPreviewPage'])->name('expenses.import-preview-page');
+    Route::post('expenses/import/confirm', [ExpenseController::class, 'importConfirm'])->name('expenses.import-confirm');
+
     Route::resource('expenses', ExpenseController::class);
     Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
     Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');
@@ -98,7 +104,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('accounts/{account}/dues/bulk-pay', [DueController::class, 'bulkPay'])->name('accounts.dues.bulk-pay');
         Route::get('payments/{payment}/allocations/create', [PaymentAllocationController::class, 'create'])->name('payments.allocations.create');
         Route::post('payments/{payment}/allocations', [PaymentAllocationController::class, 'store'])->name('payments.allocations.store');
-        Route::delete('allocations/{allocation}', [PaymentAllocationController::class, 'destroy'])->name('allocations.destroy');
+        Route::delete('payments/{payment}/allocations/{allocation}', [PaymentAllocationController::class, 'destroy'])->name('payments.allocations.destroy');
         Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
         Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
         Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');

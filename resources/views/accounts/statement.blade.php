@@ -158,7 +158,7 @@
                                                 Tahsisler
                                             </button>
                                         @endif
-                                        <a href="{{ $cashUrlMap[$t->id] ?? route('payments.show', $t->transactionable_id) }}"
+                                        <a href="{{ route('payments.show', $t->transactionable_id) }}"
                                            class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
                                             Detay
                                         </a>
@@ -209,12 +209,17 @@
                                                 Tahsis &rarr; Gider #{{ $a->expense->id }}
                                                 &mdash; {{ $a->expense->expense_date?->format('d.m.Y') }}
                                                 &mdash; {{ $a->expense->description ?: ($a->expense->category ?: 'Gider') }}
+                                                @if($a->expense->is_imported)
+                                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                                @endif
                                             </td>
                                             <td class="px-5 py-2 text-right">—</td>
                                             <td class="px-5 py-2 text-right">—</td>
                                             <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
                                             <td class="px-5 py-2 text-right">—</td>
-                                            <td class="px-5 py-2 text-right"></td>
+                                            <td class="px-5 py-2 text-right">
+                                                <a href="{{ route('expenses.show', $a->expense) }}" class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">Gider Detay</a>
+                                            </td>
                                         @endif
                                     </tr>
                                 @endforeach

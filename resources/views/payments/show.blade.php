@@ -108,19 +108,37 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @foreach ($payment->allocations as $allocation)
+                            @php
+                                $isDue = $allocation->due !== null;
+                                $isExpense = $allocation->expense !== null;
+                                $item = $isDue ? $allocation->due : ($isExpense ? $allocation->expense : null);
+                                $refNumber = $item?->reference_number ?? '#' . ($isDue ? $allocation->due_id : $allocation->expense_id);
+                                $description = $isDue ? ($item->description ?: 'Aidat') : ($isExpense ? ($item->category . ($item->description ? ' — ' . $item->description : '')) : '—');
+                                $statusBadge = $isDue
+                                    ? ($item->computed_status === 'paid' ? ['bg-emerald-100 text-emerald-700', 'Ödendi'] : ($item->computed_status === 'partial' ? ['bg-amber-100 text-amber-700', 'Kısmen Ödendi'] : ($item->computed_status === 'overdue' ? ['bg-red-100 text-red-700', 'Gecikti'] : ['bg-slate-100 text-slate-700', 'Bekliyor'])))
+                                    : ($isExpense
+                                        ? ($item->is_paid ? ['bg-emerald-100 text-emerald-700', 'Ödendi'] : ($item->paid_amount > 0 ? ['bg-amber-100 text-amber-700', 'Kısmen Ödendi'] : ['bg-slate-100 text-slate-700', 'Bekliyor']))
+                                        : ['bg-slate-100 text-slate-700', '—']);
+                            @endphp
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-4">
-                                    <a href="{{ route('dues.show', $allocation->due) }}" class="font-medium text-slate-900 hover:text-emerald-600">{{ $allocation->due->reference_number ?? '#'.$allocation->due->id }}</a>
+                                    @if ($isDue && $item)
+                                        <a href="{{ route('dues.show', $item) }}" class="font-medium text-slate-900 hover:text-emerald-600">{{ $refNumber }}</a>
+                                    @elseif ($isExpense && $item)
+                                        <a href="{{ route('expenses.show', $item) }}" class="font-medium text-slate-900 hover:text-emerald-600">{{ $refNumber }}</a>
+                                    @else
+                                        <span class="text-slate-500">{{ $refNumber }}</span>
+                                    @endif
                                 </td>
-                                <td class="px-5 py-4 text-slate-700">{{ $allocation->due->description ?: 'Aidat' }}</td>
+                                <td class="px-5 py-4 text-slate-700">{{ $description }}</td>
                                 <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</td>
                                 <td class="px-5 py-4">
-                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $allocation->due->computed_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : ($allocation->due->computed_status === 'partial' ? 'bg-amber-100 text-amber-700' : ($allocation->due->computed_status === 'overdue' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700')) }}">
-                                        {{ $allocation->due->computed_status === 'paid' ? 'Ödendi' : ($allocation->due->computed_status === 'partial' ? 'Kısmen Ödendi' : ($allocation->due->computed_status === 'overdue' ? 'Gecikti' : 'Bekliyor')) }}
+                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusBadge[0] }}">
+                                        {{ $statusBadge[1] }}
                                     </span>
                                 </td>
                                 <td class="px-5 py-4 text-right">
-                                    <form method="POST" action="{{ route('allocations.destroy', $allocation) }}" class="inline" onsubmit="return confirm('Bu tahsis geri alınsın mı? Borç durumu güncellenecek.')">
+                                    <form method="POST" action="{{ route('payments.allocations.destroy', ['payment' => $allocation->payment_id, 'allocation' => $allocation]) }}" class="inline" onsubmit="return confirm('Bu tahsis geri alınsın mı? Borç durumu güncellenecek.')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Geri Al</button>

@@ -284,7 +284,7 @@ class AccountController extends Controller
         // Ödemelere ait tahsisleri ve kasa hareketlerini yükle
         $cashUrlMap = [];
         if ($paymentIds->isNotEmpty()) {
-            $payments = Payment::with(['allocations.due', 'cashTransactions'])->whereIn('id', $paymentIds)->get()->keyBy('id');
+            $payments = Payment::with(['allocations.due', 'allocations.expense', 'cashTransactions'])->whereIn('id', $paymentIds)->get()->keyBy('id');
 
             foreach ($transactions as $t) {
                 if (($t->transactionable_type ?? '') === Payment::class && isset($payments[$t->transactionable_id])) {
@@ -404,7 +404,7 @@ class AccountController extends Controller
 
         $cashUrlMap = [];
         if ($paymentIds->isNotEmpty()) {
-            $payments = Payment::with(['allocations.due', 'cashTransactions'])->whereIn('id', $paymentIds)->get()->keyBy('id');
+            $payments = Payment::with(['allocations.due', 'allocations.expense', 'cashTransactions'])->whereIn('id', $paymentIds)->get()->keyBy('id');
             foreach ($transactions as $t) {
                 $t->allocations = (($t->transactionable_type ?? '') === Payment::class && isset($payments[$t->transactionable_id]))
                     ? $payments[$t->transactionable_id]->allocations

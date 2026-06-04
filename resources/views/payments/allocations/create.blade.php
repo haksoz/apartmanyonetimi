@@ -10,14 +10,18 @@
     </div>
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
-        <div class="grid gap-4 lg:grid-cols-2">
+        <div class="grid gap-4 lg:grid-cols-3">
             <div>
                 <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ödeme</h2>
                 <p class="mt-2 text-sm text-slate-900">#{{ $payment->id }} - {{ $payment->description ?: 'Ödeme' }}</p>
             </div>
             <div>
+                <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ödeme Tutarı</h2>
+                <p class="mt-2 text-sm font-semibold text-slate-900">{{ number_format($payment->amount, 2, ',', '.') }} TL</p>
+            </div>
+            <div>
                 <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tahsis Edilebilir Bakiye</h2>
-                <p class="mt-2 text-sm font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</p>
+                <p class="mt-2 text-sm font-semibold text-emerald-600">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</p>
             </div>
             <div>
                 <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Hesap</h2>

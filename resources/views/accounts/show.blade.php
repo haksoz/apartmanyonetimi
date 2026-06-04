@@ -395,6 +395,7 @@
                             <th class="px-5 py-3">#</th>
                             <th class="px-5 py-3">Tarih</th>
                             <th class="px-5 py-3">Açıklama</th>
+                            <th class="px-5 py-3 text-right">Tutar</th>
                             <th class="px-5 py-3 text-right">Kalan</th>
                             <th class="px-5 py-3 text-right">İşlem</th>
                         </tr>
@@ -405,7 +406,8 @@
                                 <td class="px-5 py-4 text-slate-700">{{ $payment->id }}</td>
                                 <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
                                 <td class="px-5 py-4 text-slate-700">{{ $payment->description ?: 'Ödeme' }}</td>
-                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
+                                <td class="px-5 py-4 text-right text-slate-900">{{ number_format($payment->amount, 2, ',', '.') }} TL</td>
+                                <td class="px-5 py-4 text-right text-emerald-600 font-semibold">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
                                 <td class="px-5 py-4 text-right space-x-2">
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                                     <a href="{{ route('payments.allocations.create', ['payment' => $payment, 'redirect_to' => request()->fullUrl()]) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
@@ -420,7 +422,8 @@
                                     {{ $payment->description ?: 'Ödeme' }}
                                     <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
                                 </td>
-                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
+                                <td class="px-5 py-4 text-right text-slate-900">{{ number_format($payment->amount, 2, ',', '.') }} TL</td>
+                                <td class="px-5 py-4 text-right text-emerald-600 font-semibold">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
                                 <td class="px-5 py-4 text-right space-x-2">
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                                     <a href="{{ route('payments.allocations.create', ['payment' => $payment, 'redirect_to' => request()->fullUrl()]) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
@@ -467,7 +470,7 @@
                                         @if($t->allocations->isNotEmpty())
                                             <button type="button" data-toggle-alloc="alloc-{{ $t->id }}" class="toggle-alloc rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Tahsisleri Göster</button>
                                         @endif
-                                        <a href="{{ $cashUrlMap[$t->id] ?? route('payments.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+                                        <a href="{{ route('payments.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                                     @elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
                                         <a href="{{ route('expenses.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                                     @elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)
@@ -496,13 +499,18 @@
                                             </td>
                                         @elseif($a->expense)
                                             <td class="px-5 py-2">Tahsis — Gider #{{ $a->expense->id }} — {{ $a->expense->expense_date?->format('d.m.Y') }}
+                                                @if($a->expense->is_imported)
+                                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                                @endif
                                                 @php $desc = $a->expense->description ?: ($a->expense->category ?: 'Gider'); @endphp
                                                 <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
                                             </td>
                                             <td class="px-5 py-2 text-right">—</td>
                                             <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount,2,',','.') }} TL</td>
                                             <td class="px-5 py-2 text-right">—</td>
-                                            <td class="px-5 py-2 text-right"></td>
+                                            <td class="px-5 py-2 text-right">
+                                                <a href="{{ route('expenses.show', $a->expense) }}" class="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Gider Detay</a>
+                                            </td>
                                         @endif
                                     </tr>
                                 @endforeach

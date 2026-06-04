@@ -64,8 +64,8 @@
                 <tr>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Adı Soyadı / Ünvan</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Alacağı</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Borcu</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Borç</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Alacak</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Bakiye</th>
                     <th class="px-5 py-3.5"></th>
                 </tr>
@@ -93,8 +93,8 @@
                                 </span>
                             @endif
                         </td>
-                        <td class="px-5 py-4 text-right font-medium text-emerald-600 tabular-nums">{{ number_format($credit, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-right font-medium text-red-600 tabular-nums">{{ number_format($debit, 2, ',', '.') }} TL</td>
+                        <td class="px-5 py-4 text-right font-medium text-emerald-600 tabular-nums">{{ number_format($credit, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-right font-semibold tabular-nums {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }}">
                             <div class="flex items-center justify-end gap-2">
                                 <span>{{ number_format(abs($balance), 2, ',', '.') }} TL</span>
@@ -136,8 +136,8 @@
                         @endif
                     </div>
                     <div class="flex items-center gap-3 mt-1 text-xs text-slate-600">
-                        <span>Alacak: {{ number_format($credit, 2, ',', '.') }} TL</span>
                         <span>Borç: {{ number_format($debit, 2, ',', '.') }} TL</span>
+                        <span>Alacak: {{ number_format($credit, 2, ',', '.') }} TL</span>
                     </div>
                 </div>
                 <div class="ml-3 text-right">
