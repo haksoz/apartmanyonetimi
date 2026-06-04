@@ -4,7 +4,13 @@
     <div class="mb-6 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-slate-950">{{ $account->name }}</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ $account->unit ? $account->unit->unit_no.' no.lu daire' : 'Daire bağlantısı yok' }}</p>
+            <p class="mt-1 text-sm text-slate-500">
+                @if ($account->unit)
+                    {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }} no.lu daire - {{ $account->type_label }}
+                @else
+                    {{ $account->type_label }}
+                @endif
+            </p>
         </div>
         <div class="flex gap-2">
             <a href="{{ route('accounts.statement', $account) }}"

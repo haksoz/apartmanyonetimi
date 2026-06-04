@@ -199,13 +199,8 @@ class PaymentController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Ödemenin ait olduğu kasa ID'sini bul
-        $cashTransaction = CashTransaction::where('apartment_id', $payment->apartment_id)
-            ->where('account_id', $payment->account_id)
-            ->where('amount', $payment->amount)
-            ->where('transaction_date', $payment->payment_date)
-            ->where('type', 'income')
-            ->first();
+        // Ödemenin ait olduğu kasa ID'sini bul (payment_id üzerinden - hem income hem expense destekler)
+        $cashTransaction = CashTransaction::where('payment_id', $payment->id)->first();
 
         $selectedCashBoxId = $cashTransaction ? $cashTransaction->cash_box_id : null;
 
