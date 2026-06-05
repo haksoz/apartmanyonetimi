@@ -173,10 +173,17 @@ class ExpenseController extends Controller
 
         $category = Category::findOrFail($validated['category_id']);
 
-        DB::transaction(function () use ($apartment, $validated, $category, $request, $isPaid) {
+        // If no account specified, use the orphan (Hesapsız) account
+        $accountId = $validated['account_id'] ?? null;
+        if (!$accountId) {
+            $orphanAccount = $apartment->getOrphanAccount();
+            $accountId = $orphanAccount->id;
+        }
+
+        DB::transaction(function () use ($apartment, $validated, $category, $request, $isPaid, $accountId) {
             $expense = Expense::create([
                 'apartment_id' => $apartment->id,
-                'account_id' => $validated['account_id'] ?? null,
+                'account_id' => $accountId,
                 'category_id' => $category->id,
                 'category' => $category->name,
                 'description' => $validated['description'] ?? null,
@@ -187,19 +194,17 @@ class ExpenseController extends Controller
                 'is_paid' => $isPaid,
             ]);
 
-            if ($validated['account_id']) {
-                // Gider kaydı: tedarikçi alacaklı oldu (credit)
-                AccountTransaction::create([
-                    'apartment_id' => $apartment->id,
-                    'account_id' => $validated['account_id'],
-                    'transactionable_type' => Expense::class,
-                    'transactionable_id' => $expense->id,
-                    'type' => 'credit',
-                    'description' => $validated['description'] ?? 'Gider kaydı',
-                    'amount' => $validated['amount'],
-                    'transaction_date' => $validated['expense_date'],
-                ]);
-            }
+            // Gider kaydı: tedarikçi (veya Hesapsız) alacaklı oldu (credit)
+            AccountTransaction::create([
+                'apartment_id' => $apartment->id,
+                'account_id' => $accountId,
+                'transactionable_type' => Expense::class,
+                'transactionable_id' => $expense->id,
+                'type' => 'credit',
+                'description' => $validated['description'] ?? 'Gider kaydı',
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['expense_date'],
+            ]);
 
             if ($isPaid) {
                 $paymentDescription = ($validated['description'] ?? 'Gider').' Ödemesi';
@@ -208,7 +213,7 @@ class ExpenseController extends Controller
                 CashTransaction::create([
                     'apartment_id' => $apartment->id,
                     'cash_box_id' => $validated['cash_box_id'],
-                    'account_id' => $validated['account_id'] ?? null,
+                    'account_id' => $accountId,
                     'category_id' => $category->id,
                     'type' => 'expense',
                     'description' => $paymentDescription,
@@ -217,19 +222,17 @@ class ExpenseController extends Controller
                     'is_active' => true,
                 ]);
 
-                // Tedarikçi varsa ödeme kaydı: alacak kapandı (debit)
-                if ($validated['account_id']) {
-                    AccountTransaction::create([
-                        'apartment_id' => $apartment->id,
-                        'account_id' => $validated['account_id'],
-                        'transactionable_type' => Expense::class,
-                        'transactionable_id' => $expense->id,
-                        'type' => 'debit',
-                        'description' => $paymentDescription,
-                        'amount' => $validated['amount'],
-                        'transaction_date' => $validated['payment_date'],
-                    ]);
-                }
+                // Ödeme kaydı: alacak kapandı (debit)
+                AccountTransaction::create([
+                    'apartment_id' => $apartment->id,
+                    'account_id' => $accountId,
+                    'transactionable_type' => Expense::class,
+                    'transactionable_id' => $expense->id,
+                    'type' => 'debit',
+                    'description' => $paymentDescription,
+                    'amount' => $validated['amount'],
+                    'transaction_date' => $validated['payment_date'],
+                ]);
             }
         });
 
@@ -887,14 +890,25 @@ class ExpenseController extends Controller
         );
 
         $importedCount = 0;
-        DB::transaction(function () use ($apartment, $validTransactions, $cashBox, &$importedCount) {
+
+        // Get or create the orphan account for imported expenses
+        $orphanAccount = $apartment->getOrphanAccount();
+
+        DB::transaction(function () use ($apartment, $validTransactions, $cashBox, &$importedCount, $orphanAccount) {
             foreach ($validTransactions as $t) {
+                // Store the original account name in description if exists
+                $originalAccountName = $t['account_name'] ?? null;
+                $description = $t['description'];
+                if ($originalAccountName && $originalAccountName !== 'Hesapsız') {
+                    $description .= ' (Orijinal Hesap: ' . $originalAccountName . ')';
+                }
+
                 $expense = Expense::create([
                     'apartment_id' => $apartment->id,
-                    'account_id' => null, // Tedarikçi sonradan bağlanacak
+                    'account_id' => $orphanAccount->id, // Hesapsız hesabına bağlanıyor
                     'category_id' => $t['category_id'],
                     'category' => Category::find($t['category_id'])?->name ?? 'Diğer',
-                    'description' => $t['description'] . ($t['account_name'] ? ' (Hesap: ' . $t['account_name'] . ')' : ''),
+                    'description' => $description,
                     'amount' => $t['alacak'],
                     'paid_amount' => $t['borc'],
                     'remaining_amount' => $t['remaining'],
@@ -905,17 +919,41 @@ class ExpenseController extends Controller
                     'is_imported' => true,
                 ]);
 
+                // Create AccountTransaction for the expense (credit - tedarikçi alacaklı)
+                AccountTransaction::create([
+                    'apartment_id' => $apartment->id,
+                    'account_id' => $orphanAccount->id,
+                    'transactionable_type' => Expense::class,
+                    'transactionable_id' => $expense->id,
+                    'type' => 'credit',
+                    'description' => $description,
+                    'amount' => $t['alacak'],
+                    'transaction_date' => $t['date'],
+                ]);
+
                 // If paid_amount > 0, create Payment + Allocation + CashTransaction
                 if ($t['borc'] > 0) {
-                    // 1. Payment kaydı oluştur (tedarikçi hesabına)
+                    // 1. Payment kaydı oluştur (Hesapsız hesabına)
                     $payment = Payment::create([
                         'apartment_id' => $apartment->id,
-                        'account_id' => null, // Devir öncesi hesap yok
+                        'account_id' => $orphanAccount->id, // Hesapsız hesabına bağlanıyor
                         'amount' => $t['borc'],
                         'unallocated_amount' => 0, // Tamamen tahsis edilecek
                         'payment_date' => $t['date'],
                         'method' => null,
                         'description' => 'Devir Öncesi: ' . $t['description'],
+                    ]);
+
+                    // Create AccountTransaction for the payment (debit - alacak kapandı)
+                    AccountTransaction::create([
+                        'apartment_id' => $apartment->id,
+                        'account_id' => $orphanAccount->id,
+                        'transactionable_type' => Payment::class,
+                        'transactionable_id' => $payment->id,
+                        'type' => 'debit',
+                        'description' => 'Devir Öncesi Ödeme: ' . $t['description'],
+                        'amount' => $t['borc'],
+                        'transaction_date' => $t['date'],
                     ]);
 
                     // 2. Gider'e PaymentAllocation oluştur (tahsis)

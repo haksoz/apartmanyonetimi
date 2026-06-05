@@ -76,7 +76,23 @@ class AccountController extends Controller
 
         $filters = compact('filterSearch', 'filterType', 'filterStatus');
 
-        return view('accounts.index', compact('accounts', 'apartment', 'filters'));
+        // Hesapsız (account_id = null) ödemeleri hesapla
+        $orphanPaymentsCount = 0;
+        $orphanPaymentsTotal = 0;
+        if ($apartment) {
+            $orphanPayments = \App\Models\Payment::where('apartment_id', $apartment->id)
+                ->whereNull('account_id')
+                ->where('unallocated_amount', '>', 0)
+                ->selectRaw('COUNT(*) as count, SUM(unallocated_amount) as total')
+                ->first();
+            $orphanPaymentsCount = $orphanPayments->count ?? 0;
+            $orphanPaymentsTotal = $orphanPayments->total ?? 0;
+        }
+
+        return view('accounts.index', compact(
+            'accounts', 'apartment', 'filters',
+            'orphanPaymentsCount', 'orphanPaymentsTotal'
+        ));
     }
 
     /**

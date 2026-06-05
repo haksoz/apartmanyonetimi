@@ -4,11 +4,21 @@
     {{-- Header Section --}}
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-950">Tahsilatlar</h1>
-            <p class="mt-1 text-sm text-slate-500">Hesaplardan alınan tahsilatlar ve tahsis durumları.</p>
+            @if($isOrphanFilter ?? false)
+                <h1 class="text-2xl font-bold text-amber-700">Hesapsız Ödemeler</h1>
+                <p class="mt-1 text-sm text-amber-600">Tahsis edilmemiş, hesaba bağlı olmayan ödemeler.</p>
+            @else
+                <h1 class="text-2xl font-bold text-slate-950">Ödeme Hareketleri</h1>
+                <p class="mt-1 text-sm text-slate-500">Hesaplardan alınan tahsilatlar ve yapılan ödemeler.</p>
+            @endif
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('accounts.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Hesaplara Dön</a>
+            @if($isOrphanFilter ?? false)
+                <a href="{{ route('accounts.index') }}" class="flex-1 md:flex-none rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-amber-700">← Hesaplara Dön</a>
+                <a href="{{ route('payments.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Tüm Ödemeler</a>
+            @else
+                <a href="{{ route('accounts.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Hesaplara Dön</a>
+            @endif
         </div>
     </div>
 

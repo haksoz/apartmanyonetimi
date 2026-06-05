@@ -63,6 +63,28 @@ class Apartment extends Model
         return $this->hasMany(Account::class);
     }
 
+    /**
+     * Get or create the special "Hesapsız" (orphan) account for this apartment.
+     * This account is used for expenses and payments without a specific account.
+     */
+    public function getOrphanAccount(): Account
+    {
+        $account = $this->accounts()
+            ->where('type', Account::TYPE_SUPPLIER)
+            ->where('name', 'Hesapsız')
+            ->first();
+
+        if (!$account) {
+            $account = $this->accounts()->create([
+                'type' => Account::TYPE_SUPPLIER,
+                'name' => 'Hesapsız',
+                'is_active' => true,
+            ]);
+        }
+
+        return $account;
+    }
+
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class)

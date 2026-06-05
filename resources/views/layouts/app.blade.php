@@ -212,7 +212,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.207.03.411.049.62.049a3.79 3.79 0 003.629-2.95 60.104 60.104 0 003.139-11.15 3.79 3.79 0 00-3.629-2.95 60.07 60.07 0 01-15.797 2.101 3.79 3.79 0 00-3.629 2.95A60.104 60.104 0 002.25 18.75z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 9.75a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
-                        <span class="sidebar-text">Tahsilatlar</span>
+                        <span class="sidebar-text">Ödeme Hareketleri</span>
                     </a>
                     @endif
 

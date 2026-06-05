@@ -58,7 +58,7 @@ class PaymentController extends Controller
 
         $validated = $request->validate([
             'account_id' => [
-                'required',
+                'nullable',
                 'integer',
                 Rule::exists('accounts', 'id')
                     ->where('apartment_id', $apartment->id),
@@ -76,14 +76,20 @@ class PaymentController extends Controller
             'action' => ['required', Rule::in(['save', 'allocate'])],
         ]);
 
-        $account = Account::findOrFail($validated['account_id']);
+        // If no account specified, use the orphan (Hesapsız) account
+        $accountId = $validated['account_id'] ?? null;
+        if (!$accountId) {
+            $account = $apartment->getOrphanAccount();
+        } else {
+            $account = Account::findOrFail($accountId);
+        }
         $isSupplier = $account->type === Account::TYPE_SUPPLIER;
         $payment = null;
 
         DB::transaction(function () use ($validated, $apartment, $account, $isSupplier, &$payment) {
             $payment = Payment::create([
                 'apartment_id' => $apartment->id,
-                'account_id' => $validated['account_id'],
+                'account_id' => $account->id,
                 'amount' => $validated['amount'],
                 'unallocated_amount' => $validated['amount'],
                 'payment_date' => $validated['payment_date'],
@@ -94,7 +100,7 @@ class PaymentController extends Controller
             CashTransaction::create([
                 'apartment_id' => $apartment->id,
                 'cash_box_id' => $validated['cash_box_id'],
-                'account_id' => $validated['account_id'],
+                'account_id' => $account->id,
                 'payment_id' => $payment->id,
                 'category_id' => null,
                 'type' => $isSupplier ? 'expense' : 'income',
@@ -106,7 +112,7 @@ class PaymentController extends Controller
 
             AccountTransaction::create([
                 'apartment_id' => $apartment->id,
-                'account_id' => $validated['account_id'],
+                'account_id' => $account->id,
                 'transactionable_type' => Payment::class,
                 'transactionable_id' => $payment->id,
                 'type' => $isSupplier ? 'debit' : 'credit',
@@ -132,7 +138,7 @@ class PaymentController extends Controller
         return redirect()->route('accounts.show', $account)->with('status', 'Ödeme kaydedildi.');
     }
 
-    public function index(CurrentApartment $currentApartment)
+    public function index(Request $request, CurrentApartment $currentApartment)
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
@@ -144,14 +150,21 @@ class PaymentController extends Controller
             return redirect()->route('apartments.create');
         }
 
+        $filter = $request->query('filter');
+
         $payments = Payment::query()
             ->with('account')
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
+            ->when($filter === 'orphan', fn ($query) => $query
+                ->whereNull('account_id')
+                ->where('unallocated_amount', '>', 0))
             ->orderByDesc('payment_date')
             ->orderByDesc('id')
             ->get();
 
-        return view('payments.index', compact('payments'));
+        $isOrphanFilter = $filter === 'orphan';
+
+        return view('payments.index', compact('payments', 'isOrphanFilter'));
     }
 
     public function show(CurrentApartment $currentApartment, Payment $payment)
