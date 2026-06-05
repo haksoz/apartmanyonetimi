@@ -207,6 +207,16 @@
                     @endif
 
                     @if($navIsOwner && $currentApartment)
+                    <a href="{{ route('payments.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('payments.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.207.03.411.049.62.049a3.79 3.79 0 003.629-2.95 60.104 60.104 0 003.139-11.15 3.79 3.79 0 00-3.629-2.95 60.07 60.07 0 01-15.797 2.101 3.79 3.79 0 00-3.629 2.95A60.104 60.104 0 002.25 18.75z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 9.75a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span class="sidebar-text">Tahsilatlar</span>
+                    </a>
+                    @endif
+
+                    @if($navIsOwner && $currentApartment)
                     <a href="{{ route('ledger.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('ledger.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>

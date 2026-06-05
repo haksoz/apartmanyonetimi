@@ -439,8 +439,15 @@ class ExpenseController extends Controller
                 'amount' => $validated['amount'],
             ]);
 
-            // 5. Gider'i kapat
-            $expense->update(['is_paid' => true]);
+            // 5. Gider'i kapat (devir öncesi ise paid_amount ve remaining_amount da güncelle)
+            $updateData = ['is_paid' => true];
+            if ($expense->is_imported) {
+                $newPaidAmount = $expense->paid_amount + $validated['amount'];
+                $newRemainingAmount = max(0, $expense->amount - $newPaidAmount);
+                $updateData['paid_amount'] = $newPaidAmount;
+                $updateData['remaining_amount'] = $newRemainingAmount;
+            }
+            $expense->update($updateData);
         });
 
         return redirect()->route('expenses.index')->with('status', 'Gider ödemesi kaydedildi ve tahsis edildi.');
@@ -502,10 +509,19 @@ class ExpenseController extends Controller
                     ->delete();
             }
 
-            // 2. Gider'i aç (devir öncesi ise paid_amount da sıfırla)
+            // 2. Gider'i aç (devir öncesi ise paid_amount ve remaining_amount güncelle)
             $updateData = ['is_paid' => false];
             if ($expense->is_imported) {
-                $updateData['paid_amount'] = 0;
+                // Eğer PaymentAllocation varsa (yeni ödeme sistemi), silinen tutarı çıkar
+                if (isset($amount)) {
+                    $newPaidAmount = max(0, $expense->paid_amount - $amount);
+                    $updateData['paid_amount'] = $newPaidAmount;
+                    $updateData['remaining_amount'] = $expense->amount - $newPaidAmount;
+                } else {
+                    // Eski ödeme sistemi - tamamen sıfırla
+                    $updateData['paid_amount'] = 0;
+                    $updateData['remaining_amount'] = $expense->amount;
+                }
             }
             $expense->update($updateData);
         });
@@ -889,12 +905,30 @@ class ExpenseController extends Controller
                     'is_imported' => true,
                 ]);
 
-                // If paid_amount > 0, create cash transaction
+                // If paid_amount > 0, create Payment + Allocation + CashTransaction
                 if ($t['borc'] > 0) {
+                    // 1. Payment kaydı oluştur (tedarikçi hesabına)
+                    $payment = Payment::create([
+                        'apartment_id' => $apartment->id,
+                        'account_id' => null, // Devir öncesi hesap yok
+                        'amount' => $t['borc'],
+                        'unallocated_amount' => 0, // Tamamen tahsis edilecek
+                        'payment_date' => $t['date'],
+                        'method' => null,
+                        'description' => 'Devir Öncesi: ' . $t['description'],
+                    ]);
+
+                    // 2. Gider'e PaymentAllocation oluştur (tahsis)
+                    $payment->allocations()->create([
+                        'expense_id' => $expense->id,
+                        'amount' => $t['borc'],
+                    ]);
+
+                    // 3. Kasa hareketi oluştur (payment_id ile ilişkilendirilmiş)
                     CashTransaction::create([
                         'apartment_id' => $apartment->id,
                         'cash_box_id' => $cashBox->id,
-                        'expense_id' => $expense->id,
+                        'payment_id' => $payment->id,
                         'category_id' => $t['category_id'],
                         'type' => 'expense',
                         'description' => 'Devir Öncesi Gider Ödemesi: ' . $t['description'],

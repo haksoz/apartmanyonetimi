@@ -115,10 +115,14 @@
                 <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
                     <div class="flex items-center gap-3">
                         <div>
-                            <a href="{{ route('accounts.show', $allocation->payment->account_id) }}" class="text-sm font-medium text-blue-700 hover:text-blue-800">
-                                {{ $allocation->payment->account?->name ?? 'Hesap' }}
-                            </a>
-                            <div class="text-xs text-slate-500">Ödeme: {{ $allocation->payment->reference_number }}</div>
+                            @if ($allocation->payment && $allocation->payment->account_id)
+                                <a href="{{ route('accounts.show', $allocation->payment->account_id) }}" class="text-sm font-medium text-blue-700 hover:text-blue-800">
+                                    {{ $allocation->payment->account?->name ?? 'Hesap' }}
+                                </a>
+                            @else
+                                <span class="text-sm font-medium text-slate-700">{{ $allocation->payment->account?->name ?? 'Hesapsız Ödeme' }}</span>
+                            @endif
+                            <div class="text-xs text-slate-500">Ödeme: {{ $allocation->payment->reference_number ?? '-' }}</div>
                         </div>
                     </div>
                     <div class="flex items-center gap-4">

@@ -130,9 +130,17 @@ class PaymentAllocationController extends Controller
 
                     // Gider tamamen ödendiyse kapat
                     $alreadyPaid = $payment->allocations()->where('expense_id', $expense->id)->sum('amount');
-                    if ($alreadyPaid >= $expense->amount) {
-                        $expense->update(['is_paid' => true]);
+                    $updateData = ['is_paid' => $alreadyPaid >= $expense->amount];
+
+                    // Devir öncesi giderse paid_amount ve remaining_amount güncelle
+                    if ($expense->is_imported) {
+                        $newPaidAmount = $expense->paid_amount + $alloc['amount'];
+                        $newRemainingAmount = max(0, $expense->amount - $newPaidAmount);
+                        $updateData['paid_amount'] = $newPaidAmount;
+                        $updateData['remaining_amount'] = $newRemainingAmount;
                     }
+
+                    $expense->update($updateData);
                 }
 
                 $payment->decrement('unallocated_amount', $totalAmount);
@@ -237,11 +245,22 @@ class PaymentAllocationController extends Controller
             if ($expense) {
                 $totalAllocated = $expense->paymentAllocations()->sum('amount');
 
-                if ($totalAllocated <= 0) {
-                    // Hiç tahsis kalmadıysa ödenmemiş yap
-                    $expense->update(['is_paid' => false]);
+                $updateData = ['is_paid' => false];
+
+                // Devir öncesi giderse paid_amount ve remaining_amount güncelle
+                if ($expense->is_imported) {
+                    $newPaidAmount = max(0, $expense->paid_amount - $amount);
+                    $updateData['paid_amount'] = $newPaidAmount;
+                    $updateData['remaining_amount'] = $expense->amount - $newPaidAmount;
                 }
-                // Kısmi tahsis varsa is_paid zaten false olmalı
+
+                // Hiç tahsis kalmadıysa ödenmemiş yap (is_paid zaten false)
+                if ($totalAllocated <= 0) {
+                    $expense->update($updateData);
+                } elseif ($expense->is_imported) {
+                    // Kısmi tahsis varsa ama devir öncesi giderse paid_amount güncelle
+                    $expense->update($updateData);
+                }
             }
 
             // Ödemenin tahsis edilmemiş tutarını artır

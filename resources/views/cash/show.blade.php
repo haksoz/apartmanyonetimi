@@ -7,7 +7,11 @@
             <p class="mt-1 text-sm text-slate-500">Kasa hareketi detayı</p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('cash.edit', $transaction) }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Düzenle</a>
+            @if (!$transaction->payment_id)
+                <a href="{{ route('cash.edit', $transaction) }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Düzenle</a>
+            @else
+                <a href="{{ route('payments.show', $transaction->payment_id) }}" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Ödemeye Git</a>
+            @endif
             <a href="{{ route('cash.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri</a>
         </div>
     </div>

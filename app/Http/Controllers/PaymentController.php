@@ -306,7 +306,12 @@ class PaymentController extends Controller
             $payment->delete();
         });
 
-        return redirect()->route('accounts.show', $accountId)->with('status', 'Ödeme kaydı ve tüm tahsisler silindi.');
+        // Hesaba dön veya ödemeler listesine git
+        if ($accountId) {
+            return redirect()->route('accounts.show', $accountId)->with('status', 'Ödeme kaydı ve tüm tahsisler silindi.');
+        }
+
+        return redirect()->route('payments.index')->with('status', 'Ödeme kaydı ve tüm tahsisler silindi.');
     }
 
     public function createSupplierRefund(Request $request, CurrentApartment $currentApartment)

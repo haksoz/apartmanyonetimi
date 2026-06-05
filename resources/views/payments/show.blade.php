@@ -28,7 +28,9 @@
                 @method('DELETE')
                 <button type="submit" class="flex-1 md:flex-none rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">{{ $labelAccusative }} Sil</button>
             </form>
+            @if ($payment->account)
             <a href="{{ route('accounts.show', $payment->account) }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Hesaba Dön</a>
+            @endif
         </div>
     </div>
 
