@@ -138,6 +138,9 @@ class AccountController extends Controller
             'move_in_date' => ['nullable', 'date'],
             'account_opening_date' => ['nullable', 'date'],
             'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)],
+        ], [
+            'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
+            'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
         ]);
 
         if ($validator->fails()) {
@@ -1033,9 +1036,12 @@ class AccountController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'balance' => ['nullable', 'numeric'],
             'is_active' => ['nullable', 'boolean'],
-            'move_in_date' => ['required_if:type,'.Account::TYPE_TENANT, 'nullable', 'date'],
+            'move_in_date' => ['nullable', 'date'],
             'account_opening_date' => ['nullable', 'date'],
             'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
+        ], [
+            'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
+            'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
         ]);
 
         // Mevcut type'ı validated'a ekle
@@ -1045,7 +1051,7 @@ class AccountController extends Controller
             return back()->withErrors(['unit_id' => 'Kiracı hesabı için daire bağlantısı zorunludur.'])->withInput();
         }
 
-        if ($validated['type'] === Account::TYPE_TENANT && ! empty($validated['unit_id'])) {
+        if ($validated['type'] === Account::TYPE_TENANT && ! empty($validated['unit_id']) && $request->boolean('is_active')) {
             $hasOtherActiveTenant = TenantAssignment::where('unit_id', $validated['unit_id'])
                 ->whereNull('move_out_date')
                 ->where('account_id', '!=', $account->id)
@@ -1089,23 +1095,33 @@ class AccountController extends Controller
             $account->update($updateData);
 
             if ($account->type === Account::TYPE_TENANT && $account->unit_id) {
-                // Giriş tarihi account_opening_date üzerinden yönetilir
-                $assignment = TenantAssignment::firstOrNew([
-                    'account_id' => $account->id,
-                    'move_out_date' => null,
-                ]);
+                $isActive = $request->boolean('is_active');
 
-                $assignment->fill([
-                    'apartment_id' => $account->apartment_id,
-                    'unit_id' => $account->unit_id,
-                    'move_in_date' => $validated['account_opening_date'],
-                ])->save();
+                if ($isActive) {
+                    // Aktif — açık assignment güncelle veya oluştur
+                    $assignment = TenantAssignment::firstOrNew([
+                        'account_id' => $account->id,
+                        'move_out_date' => null,
+                    ]);
 
-                Unit::whereKey($account->unit_id)->update([
-                    'occupant_account_id' => $account->id
-                        ? $account->id
-                        : Unit::find($account->unit_id)?->owner_account_id,
-                ]);
+                    $assignment->fill([
+                        'apartment_id' => $account->apartment_id,
+                        'unit_id' => $account->unit_id,
+                        'move_in_date' => $validated['account_opening_date'],
+                    ])->save();
+
+                    Unit::whereKey($account->unit_id)->update(['occupant_account_id' => $account->id]);
+                } else {
+                    // Pasif — açık assignment'ı kapat
+                    TenantAssignment::where('account_id', $account->id)
+                        ->whereNull('move_out_date')
+                        ->update(['move_out_date' => now()->toDateString()]);
+
+                    // Dairenin kiracısını temizle (sadece bu kiracıysa)
+                    Unit::whereKey($account->unit_id)
+                        ->where('occupant_account_id', $account->id)
+                        ->update(['occupant_account_id' => null]);
+                }
             }
 
             if ($account->type === Account::TYPE_OWNER && $account->unit_id) {

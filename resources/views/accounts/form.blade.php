@@ -111,6 +111,7 @@
 
             <div class="md:col-span-2">
                 <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700 cursor-pointer">
+                    <input type="hidden" name="is_active" value="0">
                     <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $account?->is_active ?? true)) class="rounded border-slate-300">
                     Aktif hesap
                 </label>
