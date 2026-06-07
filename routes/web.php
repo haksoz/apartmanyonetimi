@@ -63,6 +63,14 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
         Route::resource('apartments', ApartmentController::class);
         Route::resource('units', UnitController::class);
+
+        // Bulk account import from Excel - MUST be before resource route
+        Route::get('accounts/bulk-import', [AccountController::class, 'bulkImportForm'])->name('accounts.bulk-import');
+        Route::get('accounts/bulk-import/sample', [AccountController::class, 'bulkImportSample'])->name('accounts.bulk-import-sample');
+        Route::post('accounts/bulk-import/preview', [AccountController::class, 'bulkImportPreview'])->name('accounts.bulk-import-preview');
+        Route::get('accounts/bulk-import/preview', [AccountController::class, 'bulkImportPreviewPage'])->name('accounts.bulk-import-preview-page');
+        Route::post('accounts/bulk-import/confirm', [AccountController::class, 'bulkImportConfirm'])->name('accounts.bulk-import-confirm');
+
         Route::resource('accounts', AccountController::class);
         Route::get('accounts/{id}/statement', [AccountController::class, 'statement'])->name('accounts.statement');
         Route::get('accounts/{id}/statement/export', [AccountController::class, 'statementExport'])->name('accounts.statement.export');
@@ -71,7 +79,15 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('accounts/{id}/statement/import-preview', [AccountController::class, 'statementImportPreview'])->name('accounts.statement.import-preview');
         Route::post('accounts/{id}/statement/import-confirm', [AccountController::class, 'statementImportConfirm'])->name('accounts.statement.import-confirm');
         Route::post('accounts/{id}/statement/delete-last-import', [AccountController::class, 'deleteLastImport'])->name('accounts.statement.delete-last-import');
+        // Expenses import from Excel
+        Route::get('expenses/import', [ExpenseController::class, 'importForm'])->name('expenses.import');
+        Route::get('expenses/import/sample', [ExpenseController::class, 'importSample'])->name('expenses.import-sample');
+        Route::post('expenses/import/preview', [ExpenseController::class, 'importPreview'])->name('expenses.import-preview');
+        Route::post('expenses/import/confirm', [ExpenseController::class, 'importConfirm'])->name('expenses.import-confirm');
+        Route::delete('expenses/imported', [ExpenseController::class, 'destroyAllImported'])->name('expenses.imported.destroy-all');
+
         Route::delete('accounts/{id}/transactions/{transaction}', [AccountController::class, 'destroyTransaction'])->name('accounts.transactions.destroy');
+        Route::post('accounts/imported-transactions', [AccountController::class, 'destroyAllImported'])->name('accounts.imported.destroy-all');
         Route::patch('accounts/{account}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
         Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
         Route::get('users', [AccountUserController::class, 'index'])->name('users.index');

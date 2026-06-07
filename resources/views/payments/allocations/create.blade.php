@@ -37,14 +37,24 @@
             <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ $errors->first('allocations') }}</div>
         @endif
 
-        @if ($hasImportedDues)
-            <div class="mb-4 flex items-center justify-between">
-                <button type="button" id="toggle-imported" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    Devir Öncesi Göster
+        <div class="mb-4 flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-3">
+                <button type="button" id="btn-fifo" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    Eskiden Yeniye Otomatik Dağıt (FIFO)
                 </button>
-                <span id="imported-count" class="text-xs text-slate-500"></span>
+                <button type="button" id="btn-clear" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    Temizle
+                </button>
             </div>
-        @endif
+            @if ($hasImportedDues)
+                <div class="flex items-center gap-3">
+                    <button type="button" id="toggle-imported" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        Devir Öncesi Göster
+                    </button>
+                    <span id="imported-count" class="text-xs text-slate-500"></span>
+                </div>
+            @endif
+        </div>
 
         <div class="mb-4 overflow-hidden rounded-2xl border border-slate-200">
             <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -171,6 +181,30 @@
                         input.value = remaining ? remaining.toFixed(2) : '';
                         updateSummary();
                     }
+                });
+
+                // FIFO: eskiden yeniye otomatik dağıt
+                document.getElementById('btn-fifo').addEventListener('click', function(){
+                    const inputs = Array.from(document.querySelectorAll('input[name^="allocations"][name$="[amount]"]'));
+                    // Önce temizle
+                    inputs.forEach(inp => inp.value = '');
+
+                    let remaining = budget;
+                    inputs.forEach(inp => {
+                        if (remaining <= 0) { inp.value = ''; return; }
+                        const maxAlloc = toFloat(inp.getAttribute('data-remaining'));
+                        const alloc = Math.min(remaining, maxAlloc);
+                        inp.value = alloc > 0 ? alloc.toFixed(2) : '';
+                        remaining = Math.round((remaining - alloc) * 100) / 100;
+                    });
+
+                    updateSummary();
+                });
+
+                // Temizle
+                document.getElementById('btn-clear').addEventListener('click', function(){
+                    document.querySelectorAll('input[name^="allocations"][name$="[amount]"]').forEach(inp => inp.value = '');
+                    updateSummary();
                 });
 
                 // Toggle imported dues visibility

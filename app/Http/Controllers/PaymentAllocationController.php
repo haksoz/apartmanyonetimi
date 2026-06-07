@@ -30,7 +30,8 @@ class PaymentAllocationController extends Controller
             ->where('apartment_id', $apartment->id)
             ->where('account_id', $payment->account_id)
             ->where('remaining_amount', '>', 0)
-            ->orderByDesc('due_date')
+            ->orderBy('due_date')
+            ->orderBy('id')
             ->get();
 
         $hasImportedDues = $dues->contains(fn ($due) => $due->is_imported);

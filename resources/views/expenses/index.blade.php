@@ -121,7 +121,7 @@
                                 <div class="text-xs text-slate-500 mt-1">{{ $expense->account->name }}</div>
                             @endif
                         </td>
-                        <td class="px-5 py-4 font-semibold text-slate-900 tabular-nums">{{ $expense->expense_date->format('d.m.Y') }}</td>
+                        <td class="px-5 py-4 font-semibold text-slate-900 tabular-nums">{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</td>
                         <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $periodText ?? '-' }}</td>
                         <td class="px-5 py-4 text-slate-700">{{ $expense->category }}</td>
                         <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
@@ -174,7 +174,7 @@
                         <div class="text-base font-bold text-slate-900">{{ $expense->description }}</div>
                     @endif
                     <div class="text-xs text-slate-600 mt-1">
-                        <span>{{ $expense->expense_date->format('d.m.Y') }}</span>
+                        <span>{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</span>
                         <span class="mx-1 text-slate-400">•</span>
                         <span>{{ $periodText ?? '-' }}</span>
                         <span class="mx-1 text-slate-400">•</span>

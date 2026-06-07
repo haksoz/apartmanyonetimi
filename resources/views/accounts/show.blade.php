@@ -534,7 +534,7 @@
 
                             <tr>
 
-                                <td class="px-5 py-4 text-slate-700">{{ $expense->expense_date->format('d.m.Y') }}</td>
+                                <td class="px-5 py-4 text-slate-700">{{ $expense->expense_date?->format('d.m.Y') ?? ($expense->period_month?->format('d.m.Y') ?? '-') }}</td>
 
                                 <td class="px-5 py-4 text-slate-700">{{ $expense->description ?: $expense->category }}</td>
 

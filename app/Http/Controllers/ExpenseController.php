@@ -84,6 +84,8 @@ class ExpenseController extends Controller
 
         $filterSearch   = $request->query('search');
 
+        $showImported   = $request->query('show_imported', false);
+
 
 
         $isOwner = $this->isOwnerOf($apartment);
@@ -112,6 +114,8 @@ class ExpenseController extends Controller
 
             ->when($filterCategory, fn ($q) => $q->where('category', $filterCategory))
 
+            ->when(! $showImported, fn ($q) => $q->where('is_imported', false))
+
             ->orderBy($sortBy, $sortDirection)
 
             ->paginate(25)->withQueryString();
@@ -134,9 +138,12 @@ class ExpenseController extends Controller
 
         $filters = compact('filterPeriod', 'filterStatus', 'filterCategory', 'filterSearch');
 
+        // Check if there are any imported expenses for this apartment
+        $hasImported = Expense::where('apartment_id', $apartment->id)
+            ->where('is_imported', true)
+            ->exists();
 
-
-        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'isOwner'));
+        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'isOwner', 'hasImported', 'showImported'));
 
     }
 
