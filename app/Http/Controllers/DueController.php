@@ -860,4 +860,89 @@ class DueController extends Controller
         return redirect()->route('accounts.show', $targetAccount->id)
             ->with('status', 'Aidat "' . $targetAccount->name . '" hesabına devredildi.');
     }
+
+    public function export(CurrentApartment $currentApartment, Request $request)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        $sortBy        = in_array($request->query('sort_by'), ['created_at','unit_id','due_date','amount','status']) ? $request->query('sort_by') : 'created_at';
+        $sortDirection = in_array($request->query('sort_direction'), ['asc','desc']) ? $request->query('sort_direction') : 'desc';
+        $showImported  = $request->boolean('show_imported', false);
+
+        $dues = Due::query()
+            ->with(['account', 'unit', 'category', 'batch.plan'])
+            ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
+            ->when($request->query('search'),       fn ($q) => $q->where(function ($s) use ($request) {
+                $s->whereHas('account', fn ($a) => $a->where('name', 'like', '%'.$request->query('search').'%'))
+                  ->orWhereHas('unit',  fn ($u) => $u->where('unit_no', 'like', '%'.$request->query('search').'%'))
+                  ->orWhere('description', 'like', '%'.$request->query('search').'%');
+            }))
+            ->when($request->query('period'),       fn ($q) => $q->where('period', $request->query('period')))
+            ->when($request->query('status'),       fn ($q) => $q->where('status', $request->query('status')))
+            ->when($request->query('batch_id'),     fn ($q) => $q->where('due_batch_id', $request->query('batch_id')))
+            ->when($request->query('unit_id'),      fn ($q) => $q->where('unit_id', $request->query('unit_id')))
+            ->when($request->query('account_type'), fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $request->query('account_type'))))
+            ->when($request->query('source') === 'plan',   fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('due_plan_id')))
+            ->when($request->query('source') === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNull('due_plan_id')))
+            ->when($request->query('source') === 'manual', fn ($q) => $q->whereNull('due_batch_id'))
+            ->when(! $showImported, fn ($q) => $q->where('is_imported', false));
+
+        if ($sortBy === 'unit_id') {
+            $dues->orderByRaw('unit_id IS NULL, unit_id '.$sortDirection);
+        } elseif ($sortBy === 'created_at') {
+            $dues->orderByRaw('COALESCE(created_at_manual, created_at) '.$sortDirection);
+        } else {
+            $dues->orderBy($sortBy, $sortDirection);
+        }
+
+        $dues = $dues->get();
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $sheet->setCellValue('A1', 'Aidatlar');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->setCellValue('A2', 'Oluşturulma Tarihi: '.now()->format('d.m.Y H:i'));
+        $sheet->getStyle('A2')->getFont()->setBold(true);
+
+        $headers = ['Daire', 'Hesap', 'Tip', 'Açıklama', 'Oluşturulma', 'Tutar (TL)', 'Kalan (TL)', 'Durum'];
+        foreach ($headers as $i => $h) {
+            $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1).'4', $h);
+        }
+        $sheet->getStyle('A4:H4')->getFont()->setBold(true);
+        $sheet->getStyle('A4:H4')->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FFE2E8F0');
+
+        $statusMap = ['paid' => 'Ödendi', 'partial' => 'Kısmi', 'overdue' => 'Gecikti', 'pending' => 'Bekliyor'];
+        $row = 5;
+        foreach ($dues as $due) {
+            $sheet->setCellValue('A'.$row, $due->unit ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-');
+            $sheet->setCellValue('B'.$row, $due->account?->name ?? '-');
+            $sheet->setCellValue('C'.$row, $due->category?->name ?? '-');
+            $sheet->setCellValue('D'.$row, $due->description ?? '-');
+            $sheet->setCellValue('E'.$row, $due->created_at_manual
+                ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y')
+                : $due->created_at->format('d.m.Y'));
+            $sheet->setCellValue('F'.$row, $due->amount);
+            $sheet->getStyle('F'.$row)->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->setCellValue('G'.$row, $due->remaining_amount ?? $due->amount);
+            $sheet->getStyle('G'.$row)->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->setCellValue('H'.$row, $statusMap[$due->computed_status] ?? $due->computed_status);
+            $row++;
+        }
+
+        foreach (range('A', 'H') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'aidatlar_'.now()->format('Ymd_Hi').'.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
 }

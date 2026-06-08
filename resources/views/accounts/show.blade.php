@@ -494,7 +494,7 @@
 
                 <div class="flex items-center gap-3">
 
-                    <h2 class="text-lg font-semibold text-slate-950">Dağıtılmamış Tahsilatlar</h2>
+                    <h2 class="text-lg font-semibold text-slate-950">Açık Tahsilatlar</h2>
 
                     @if ($importedPayments->isNotEmpty())
 
@@ -519,7 +519,7 @@
                     <button type="submit" id="multi-allocate-btn"
                         class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
 
-                        Seçilileri Tahsis Et &mdash; <span id="selected-payment-count">0</span> tahsilat / <span id="selected-payment-total">0,00</span> TL
+                        Seçilileri Kapat &mdash; <span id="selected-payment-count">0</span> tahsilat / <span id="selected-payment-total">0,00</span> TL
 
                     </button>
 
@@ -575,7 +575,7 @@
 
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
 
-                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Kapat</a>
 
                                 </td>
 
@@ -613,13 +613,101 @@
 
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
 
-                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Kapat</a>
 
                                 </td>
 
                             </tr>
 
                         @endforeach
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    @endif
+
+
+
+
+
+    @if ($account->type === App\Models\Account::TYPE_SUPPLIER && $account->expenses->isNotEmpty())
+
+        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+
+                <h2 class="text-lg font-semibold text-slate-950">Açık Giderler</h2>
+
+                <div class="flex items-center gap-3 flex-wrap">
+
+                    <form id="multi-expense-pay-form" method="POST" action="{{ route('accounts.expenses.multi-pay', $account) }}">
+                        @csrf
+                        <input type="hidden" name="expense_ids" id="multi-expense-pay-ids">
+                        <button type="submit" id="multi-expense-pay-btn"
+                            class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
+                            Seçilileri Öde &mdash; <span id="selected-expense-count">0</span> gider / <span id="selected-expense-total">0,00</span> TL
+                        </button>
+                    </form>
+
+                </div>
+
+            </div>
+
+            <div class="overflow-hidden rounded-2xl border border-slate-200">
+
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+
+                    <thead class="bg-slate-50 text-left text-slate-500">
+
+                        <tr>
+
+                            <th class="px-4 py-3"><input type="checkbox" id="select-all-expenses" class="rounded"></th>
+
+                            <th class="px-5 py-3">Tarih</th>
+
+                            <th class="px-5 py-3">Açıklama</th>
+
+                            <th class="px-5 py-3 text-right">Tutar</th>
+
+                            <th class="px-5 py-3 text-right">İşlem</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody class="divide-y divide-slate-100">
+
+                        @foreach ($account->expenses as $expense)
+
+                            <tr>
+
+                                <td class="px-4 py-4">
+                                    <input type="checkbox" class="expense-checkbox rounded"
+                                        data-expense-id="{{ $expense->id }}"
+                                        data-amount="{{ $expense->amount }}">
+                                </td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $expense->expense_date?->format('d.m.Y') ?? ($expense->period_month?->format('d.m.Y') ?? '-') }}</td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $expense->description ?: $expense->category }}</td>
+
+                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
+
+                                <td class="px-5 py-4 text-right">
+
+                                    <a href="{{ route('expenses.payment.create', $expense) }}" class="rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ödeme Yap</a>
+
+                                </td>
+
+                            </tr>
+
+                        @endforeach
+
 
                     </tbody>
 
@@ -641,7 +729,7 @@
 
                 <div class="flex items-center gap-3">
 
-                    <h2 class="text-lg font-semibold text-slate-950">Dağıtılmamış Ödemeler</h2>
+                    <h2 class="text-lg font-semibold text-slate-950">Açık Ödemeler</h2>
 
                     @if ($importedPayments->isNotEmpty())
 
@@ -666,7 +754,7 @@
                     <button type="submit" id="multi-supplier-allocate-btn"
                         class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
 
-                        Seçilileri Tahsis Et &mdash; <span id="selected-supplier-payment-count">0</span> ödeme / <span id="selected-supplier-payment-total">0,00</span> TL
+                        Seçilileri Kapat &mdash; <span id="selected-supplier-payment-count">0</span> ödeme / <span id="selected-supplier-payment-total">0,00</span> TL
 
                     </button>
 
@@ -722,7 +810,7 @@
 
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
 
-                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Kapat</a>
 
                                 </td>
 
@@ -760,77 +848,7 @@
 
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
 
-                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
-
-                                </td>
-
-                            </tr>
-
-                        @endforeach
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </div>
-
-    @endif
-
-
-
-    @if ($account->type === App\Models\Account::TYPE_SUPPLIER && $account->expenses->isNotEmpty())
-
-        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
-
-            <div class="flex items-center justify-between">
-
-                <h2 class="mb-4 text-lg font-semibold text-slate-950">Açık Giderler</h2>
-
-                <a href="{{ route('expenses.index') }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Giderler</a>
-
-            </div>
-
-            <div class="overflow-hidden rounded-2xl border border-slate-200">
-
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
-
-                    <thead class="bg-slate-50 text-left text-slate-500">
-
-                        <tr>
-
-                            <th class="px-5 py-3">Tarih</th>
-
-                            <th class="px-5 py-3">Açıklama</th>
-
-                            <th class="px-5 py-3 text-right">Tutar</th>
-
-                            <th class="px-5 py-3 text-right">Durum</th>
-
-                            <th class="px-5 py-3 text-right">İşlem</th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody class="divide-y divide-slate-100">
-
-                        @foreach ($account->expenses as $expense)
-
-                            <tr>
-
-                                <td class="px-5 py-4 text-slate-700">{{ $expense->expense_date?->format('d.m.Y') ?? ($expense->period_month?->format('d.m.Y') ?? '-') }}</td>
-
-                                <td class="px-5 py-4 text-slate-700">{{ $expense->description ?: $expense->category }}</td>
-
-                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
-
-                                <td class="px-5 py-4 text-right text-amber-600">Bekliyor</td>
-
-                                <td class="px-5 py-4 text-right">
-
-                                    <a href="{{ route('expenses.payment.create', $expense) }}" class="rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ödeme Yap</a>
+                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Kapat</a>
 
                                 </td>
 
@@ -1020,6 +1038,7 @@
 
             });
 
+
         });
 
 
@@ -1194,6 +1213,55 @@
 
                 });
 
+            });
+
+        })();
+
+
+
+        // Tedarikçi gider checkbox & toplu ödeme
+
+        (function(){
+
+            const selectAll = document.getElementById('select-all-expenses');
+            const multiBtn  = document.getElementById('multi-expense-pay-btn');
+            const countEl   = document.getElementById('selected-expense-count');
+            const totalEl   = document.getElementById('selected-expense-total');
+            const idsInput  = document.getElementById('multi-expense-pay-ids');
+
+            if (!selectAll) return;
+
+            const updateBtn = () => {
+                const checked = document.querySelectorAll('.expense-checkbox:checked');
+                let total = 0, ids = [];
+                checked.forEach(cb => { total += parseFloat(cb.dataset.amount); ids.push(cb.dataset.expenseId); });
+                countEl.textContent = checked.length;
+                totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                idsInput.value = ids.join(',');
+                if (checked.length > 0) {
+                    multiBtn.disabled = false;
+                    multiBtn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
+                    multiBtn.classList.add('bg-slate-950', 'text-white', 'hover:bg-slate-800', 'cursor-pointer');
+                } else {
+                    multiBtn.disabled = true;
+                    multiBtn.classList.remove('bg-slate-950', 'text-white', 'hover:bg-slate-800', 'cursor-pointer');
+                    multiBtn.classList.add('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
+                    idsInput.value = '';
+                }
+            };
+
+            selectAll.addEventListener('change', function() {
+                document.querySelectorAll('.expense-checkbox').forEach(cb => cb.checked = this.checked);
+                updateBtn();
+            });
+
+            document.querySelectorAll('.expense-checkbox').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    const all = document.querySelectorAll('.expense-checkbox');
+                    selectAll.checked = Array.from(all).every(c => c.checked);
+                    selectAll.indeterminate = !selectAll.checked && Array.from(all).some(c => c.checked);
+                    updateBtn();
+                });
             });
 
         })();

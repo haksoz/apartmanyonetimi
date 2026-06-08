@@ -3,8 +3,19 @@
 @section('content')
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-950">Ödemeleri Giderlere Tahsis Et</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ $account->name }} — {{ $payments->count() }} ödeme seçildi</p>
+            <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
+                <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+                <span>/</span>
+                <span>{{ $account->type_label }}</span>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-950">Ödemelerden Açık Giderleri Kapama</h1>
+            <p class="mt-1 text-sm text-slate-500">
+                {{ $account->name }}
+                @if ($account->unit)
+                    — Daire No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @endif
+                &mdash; {{ $payments->count() }} ödeme seçildi
+            </p>
         </div>
         <a href="{{ route('accounts.show', $account) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri Dön</a>
     </div>

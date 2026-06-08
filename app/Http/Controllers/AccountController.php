@@ -2128,4 +2128,89 @@ class AccountController extends Controller
         return redirect()->route('accounts.index')
             ->with('status', $statusMsg);
     }
+
+    public function multiPayExpenses(Request $request, Account $account)
+    {
+        $expenseIds = array_filter(explode(',', $request->input('expense_ids', '')));
+
+        $expenses = Expense::whereIn('id', $expenseIds)
+            ->where('account_id', $account->id)
+            ->where('is_paid', false)
+            ->orderBy('expense_date')
+            ->get();
+
+        if ($expenses->isEmpty()) {
+            return redirect()->route('accounts.show', $account)->with('error', 'Geçerli gider seçilmedi.');
+        }
+
+        $cashBoxes = CashBox::where('apartment_id', $account->apartment_id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $categories = Category::where('apartment_id', $account->apartment_id)
+            ->where('type', Category::TYPE_EXPENSE)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $totalAmount = $expenses->sum('amount');
+
+        return view('accounts.expenses.multi-pay', compact('account', 'expenses', 'cashBoxes', 'categories', 'totalAmount'));
+    }
+
+    public function storeMultiPayExpenses(Request $request, Account $account)
+    {
+        $validated = $request->validate([
+            'expense_ids'   => ['required', 'string'],
+            'cash_box_id'   => ['required', 'integer', Rule::exists('cash_boxes', 'id')->where('apartment_id', $account->apartment_id)->where('is_active', true)],
+            'category_id'   => ['required', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
+            'payment_date'  => ['required', 'date'],
+            'description'   => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $expenseIds = array_filter(explode(',', $validated['expense_ids']));
+
+        $expenses = Expense::whereIn('id', $expenseIds)
+            ->where('account_id', $account->id)
+            ->where('is_paid', false)
+            ->get();
+
+        if ($expenses->isEmpty()) {
+            return redirect()->route('accounts.show', $account)->with('error', 'Geçerli gider bulunamadı.');
+        }
+
+        DB::transaction(function () use ($account, $expenses, $validated) {
+            foreach ($expenses as $expense) {
+                CashTransaction::create([
+                    'apartment_id'     => $account->apartment_id,
+                    'cash_box_id'      => $validated['cash_box_id'],
+                    'account_id'       => $account->id,
+                    'expense_id'       => $expense->id,
+                    'category_id'      => $validated['category_id'],
+                    'type'             => 'expense',
+                    'description'      => $validated['description'] ?? ($expense->description ?: 'Gider ödemesi'),
+                    'amount'           => $expense->amount,
+                    'transaction_date' => $validated['payment_date'],
+                    'is_active'        => true,
+                ]);
+
+                AccountTransaction::create([
+                    'apartment_id'         => $account->apartment_id,
+                    'account_id'           => $account->id,
+                    'transactionable_type' => Expense::class,
+                    'transactionable_id'   => $expense->id,
+                    'type'                 => 'debit',
+                    'description'          => ($expense->description ? $expense->description . ' ödemesi' : 'Gider ödemesi'),
+                    'amount'               => $expense->amount,
+                    'transaction_date'     => $validated['payment_date'],
+                ]);
+
+                $expense->update(['is_paid' => true]);
+            }
+        });
+
+        return redirect()->route('accounts.show', $account)
+            ->with('status', $expenses->count() . ' gider ödemesi başarıyla kaydedildi.');
+    }
 }

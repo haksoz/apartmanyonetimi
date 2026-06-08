@@ -53,6 +53,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
     // Aidatlar - Üye ve Yönetici erişimi
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
+    Route::get('dues/export', [DueController::class, 'export'])->name('dues.export');
     Route::get('dues/create', [DueController::class, 'create'])->name('dues.create');
     Route::post('dues', [DueController::class, 'store'])->name('dues.store');
     Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->name('dues.expenses.by-period');
@@ -110,6 +111,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('accounts/{account}/payments/multi-allocate/store', [PaymentAllocationController::class, 'multiStore'])->name('accounts.payments.multi-allocate.store');
         Route::post('accounts/{account}/payments/multi-supplier-allocate', [PaymentAllocationController::class, 'multiSupplierCreate'])->name('accounts.payments.multi-supplier-allocate');
         Route::post('accounts/{account}/payments/multi-supplier-allocate/store', [PaymentAllocationController::class, 'multiSupplierStore'])->name('accounts.payments.multi-supplier-allocate.store');
+        Route::post('accounts/{account}/expenses/multi-pay', [AccountController::class, 'multiPayExpenses'])->name('accounts.expenses.multi-pay');
+        Route::post('accounts/{account}/expenses/multi-pay/store', [AccountController::class, 'storeMultiPayExpenses'])->name('accounts.expenses.multi-pay.store');
         Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
         Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
         Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');

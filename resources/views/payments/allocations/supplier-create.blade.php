@@ -3,11 +3,17 @@
 @section('content')
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-950">Ödemeyi Giderlere Tahsis Et</h1>
+            <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
+                <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+                <span>/</span>
+                <span>{{ $payment->account?->type_label ?? '' }}</span>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-950">Ödemeyle Açık Giderleri Kapama</h1>
             <p class="mt-1 text-sm text-slate-500">
-                {{ $payment->payment_date?->format('d.m.Y') }} —
-                {{ number_format($payment->amount, 2, ',', '.') }} TL
-                @if($payment->description) · {{ $payment->description }} @endif
+                {{ $payment->account?->name ?? '-' }}
+                @if ($payment->account?->unit)
+                    — Daire No: {{ str_pad($payment->account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @endif
             </p>
         </div>
         <a href="{{ route('accounts.show', $payment->account_id) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri Dön</a>

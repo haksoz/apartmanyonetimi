@@ -3,8 +3,19 @@
 @section('content')
     <div class="mb-6 flex items-center justify-between">
         <div>
+            <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
+                <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+                <span>/</span>
+                <a href="{{ route('accounts.show', $account) }}" class="hover:text-slate-600">{{ $account->type_label }}</a>
+            </div>
             <h1 class="text-2xl font-bold text-slate-950">Tahsilattan Açık Aidat Kapama</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ $account->name }} — {{ $payments->count() }} tahsilat seçildi</p>
+            <p class="mt-1 text-sm text-slate-500">
+                {{ $account->name }}
+                @if ($account->unit)
+                    — Daire No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @endif
+                &mdash; {{ $payments->count() }} tahsilat seçildi
+            </p>
         </div>
         <a href="{{ route('accounts.show', $account) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri Dön</a>
     </div>
@@ -122,7 +133,7 @@
         <div id="alloc-summary" class="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm hidden">
             <div class="flex flex-wrap gap-x-8 gap-y-2">
                 <div>
-                    <span class="text-slate-500">Tahsis Edilecek:</span>
+                    <span class="text-slate-500">Kapatılacak Bakiye:</span>
                     <span id="sum-allocated" class="ml-1 font-bold text-slate-900">0,00 TL</span>
                 </div>
                 <div>
@@ -137,7 +148,7 @@
         </div>
 
         <div class="mt-4">
-            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Kaydet</button>
+            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Aidat Kapat &mdash; Kaydet</button>
         </div>
 
         <script>

@@ -26,7 +26,7 @@ class PaymentAllocationController extends Controller
             abort(404);
         }
 
-        $payment->load('allocations.due');
+        $payment->load('allocations.due', 'account.unit');
         $payment->unallocated_amount = $payment->unallocated_amount ?? max(0, $payment->amount - $payment->allocated_amount);
 
         $dues = Due::query()
@@ -121,7 +121,7 @@ class PaymentAllocationController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
         if ($payment->apartment_id !== $apartment->id) abort(404);
 
-        $payment->load('allocations.expense');
+        $payment->load('allocations.expense', 'account.unit');
         $payment->unallocated_amount = $payment->unallocated_amount ?? max(0, $payment->amount - $payment->allocated_amount);
 
         $expenses = Expense::query()

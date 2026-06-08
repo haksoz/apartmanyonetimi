@@ -46,11 +46,11 @@ class DashboardController extends Controller
             if ($remaining == 0) {
                 $duePaid += $amount;
             } elseif ($isPastDue && $remaining > 0) {
-                $dueOverdue += $amount;
+                $dueOverdue += $remaining;
             } elseif ($remaining >= $amount) {
                 $dueUnpaid += $amount;
             } else {
-                $duePartial += $amount;
+                $duePartial += $remaining;
             }
         }
 
@@ -78,11 +78,11 @@ class DashboardController extends Controller
             if ($remaining == 0) {
                 $dueByCat[$catId]['paid'] += $amount;
             } elseif ($isPastDue && $remaining > 0) {
-                $dueByCat[$catId]['overdue'] += $amount;
+                $dueByCat[$catId]['overdue'] += $remaining;
             } elseif ($remaining >= $amount) {
                 $dueByCat[$catId]['unpaid'] += $amount;
             } else {
-                $dueByCat[$catId]['partial'] += $amount;
+                $dueByCat[$catId]['partial'] += $remaining;
             }
         }
 
