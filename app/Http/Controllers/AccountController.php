@@ -1800,12 +1800,16 @@ class AccountController extends Controller
                     }
                 } else {
                     // Yeni hesap oluştur
+                    $firstDate = $accountDateRanges[$accountKey]['first'] ?? null;
+                    $lastDate  = $accountDateRanges[$accountKey]['last'] ?? null;
                     $newAccountData = [
-                        'apartment_id' => $apartment->id,
-                        'type' => $dbType, // Veritabanı için dönüştürülmüş tip
-                        'name' => $accountName,
-                        'is_active' => $type === 'former_tenant' ? false : true, // Eski kiracı pasif
-                        'unit_id' => $effectiveUnitId,
+                        'apartment_id'         => $apartment->id,
+                        'type'                 => $dbType,
+                        'name'                 => $accountName,
+                        'is_active'            => $type === 'former_tenant' ? false : true,
+                        'unit_id'              => $effectiveUnitId,
+                        'account_opening_date' => $firstDate,
+                        'account_end_date'     => ($type === 'former_tenant' && $lastDate) ? $lastDate : null,
                     ];
 
                     $account = Account::create($newAccountData);
