@@ -8,9 +8,29 @@
 
         <div>
 
+            <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
+                <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+                <span>/</span>
+                <span class="text-slate-500">{{ $account->type_label }}</span>
+            </div>
+
             <h1 class="text-2xl font-bold text-slate-950">{{ $account->name }}</h1>
 
-            <p class="mt-1 text-sm text-slate-500">{{ $account->unit ? $account->unit->unit_no.' no.lu daire' : 'Daire bağlantısı yok' }}</p>
+            <div class="mt-1 flex items-center gap-3">
+                @if ($account->unit)
+                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                        Daire No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                    </span>
+                @endif
+                <span class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-sm font-semibold
+                    {{ $account->type === App\Models\Account::TYPE_OWNER ? 'bg-blue-50 text-blue-700' :
+                       ($account->type === App\Models\Account::TYPE_TENANT ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700') }}">
+                    {{ $account->type_label }}
+                </span>
+                @if (!$account->is_active)
+                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
+                @endif
+            </div>
 
         </div>
 
