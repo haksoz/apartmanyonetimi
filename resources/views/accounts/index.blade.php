@@ -116,6 +116,7 @@
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left">
                 <tr>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-center">Daire</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <a href="{{ $sortLink('name') }}" class="inline-flex items-center gap-0.5 hover:text-slate-700">Adı Soyadı / Ünvan {!! $sortIcon('name') !!}</a>
                     </th>
@@ -142,11 +143,15 @@
                         $balance = $credit - $debit;
                     @endphp
                     <tr class="hover:bg-slate-50 transition-colors cursor-pointer {{ ! $account->is_active ? 'bg-slate-50/50 text-slate-400' : '' }}" onclick="window.location.href='{{ route('accounts.show', $account) }}'">
+                        <td class="px-5 py-4 text-center tabular-nums">
+                            @if ($account->unit)
+                                <span class="text-xs font-semibold text-slate-700">No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</span>
+                            @else
+                                <span class="text-slate-300">—</span>
+                            @endif
+                        </td>
                         <td class="px-5 py-4">
                             <div class="font-semibold {{ $account->is_active ? 'text-slate-900' : 'text-slate-500' }}">{{ $account->name }}</div>
-                            @if ($account->unit)
-                                <div class="text-xs text-slate-500 mt-0.5">Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</div>
-                            @endif
                         </td>
                         <td class="px-5 py-4 text-xs text-slate-600">{{ $account->type_label }}</td>
                         <td class="px-5 py-4">
@@ -174,7 +179,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-5 py-12 text-center text-slate-400">Henüz hesap yok.</td></tr>
+                    <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400">Henüz hesap yok.</td></tr>
                 @endforelse
             </tbody>
         </table>
