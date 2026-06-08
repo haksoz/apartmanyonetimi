@@ -214,7 +214,7 @@
 
                     <button type="button" id="bulk-pay-btn" onclick="openBulkPayModal()"
 
-                        class="hidden rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
 
                         Seçilenleri Tahsil Et &mdash; <span id="selected-count">0</span> aidat / <span id="selected-total">0,00</span> TL
 
@@ -876,21 +876,29 @@
 
                 const checked = document.querySelectorAll('.due-checkbox:checked');
 
+                let total = 0;
+
+                checked.forEach(cb => total += parseFloat(cb.dataset.amount));
+
+                countEl.textContent = checked.length;
+
+                totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
                 if (checked.length > 0) {
 
-                    let total = 0;
+                    bulkBtn.disabled = false;
 
-                    checked.forEach(cb => total += parseFloat(cb.dataset.amount));
+                    bulkBtn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
 
-                    bulkBtn.classList.remove('hidden');
-
-                    countEl.textContent = checked.length;
-
-                    totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    bulkBtn.classList.add('bg-emerald-600', 'text-white', 'hover:bg-emerald-700', 'cursor-pointer');
 
                 } else {
 
-                    bulkBtn.classList.add('hidden');
+                    bulkBtn.disabled = true;
+
+                    bulkBtn.classList.remove('bg-emerald-600', 'text-white', 'hover:bg-emerald-700', 'cursor-pointer');
+
+                    bulkBtn.classList.add('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
 
                 }
 
