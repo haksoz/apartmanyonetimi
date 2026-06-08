@@ -54,7 +54,7 @@ class AccountController extends Controller
         $filterSearch = $request->query('search');
         $filterType   = $request->query('type');
         $filterStatus = $request->query('status', 'active'); // Default: sadece aktifler
-        $sortBy       = $request->query('sort', 'name');
+        $sortBy       = $request->query('sort', 'unit_no');
         $sortDir      = $request->query('direction', 'asc') === 'desc' ? 'desc' : 'asc';
 
         $allowedSorts = ['name', 'type', 'debit_total', 'credit_total', 'balance', 'unit_no'];
