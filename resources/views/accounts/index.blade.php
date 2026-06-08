@@ -89,16 +89,49 @@
     </div>
     @endif
 
+    @php
+        $sortBy  = $filters['sortBy']  ?? 'name';
+        $sortDir = $filters['sortDir'] ?? 'asc';
+        $baseParams = array_filter([
+            'search'    => $filters['filterSearch'],
+            'type'      => $filters['filterType'],
+            'status'    => ($filters['filterStatus'] ?? 'active') !== 'active' ? $filters['filterStatus'] : null,
+        ]);
+        $sortLink = function (string $col) use ($sortBy, $sortDir, $baseParams): string {
+            $dir = ($sortBy === $col && $sortDir === 'asc') ? 'desc' : 'asc';
+            return route('accounts.index', array_merge($baseParams, ['sort' => $col, 'direction' => $dir]));
+        };
+        $sortIcon = function (string $col) use ($sortBy, $sortDir): string {
+            if ($sortBy !== $col) {
+                return '<span class="inline-flex flex-col leading-none ml-1 text-slate-300"><span>▲</span><span>▼</span></span>';
+            }
+            return $sortDir === 'asc'
+                ? '<span class="ml-1 text-slate-700">▲</span>'
+                : '<span class="ml-1 text-slate-700">▼</span>';
+        };
+    @endphp
+
     {{-- Desktop Table View --}}
     <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left">
                 <tr>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Adı Soyadı / Ünvan</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <a href="{{ $sortLink('name') }}" class="inline-flex items-center gap-0.5 hover:text-slate-700">Adı Soyadı / Ünvan {!! $sortIcon('name') !!}</a>
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <a href="{{ $sortLink('type') }}" class="inline-flex items-center gap-0.5 hover:text-slate-700">Tip {!! $sortIcon('type') !!}</a>
+                    </th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Borç</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Alacak</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Bakiye</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
+                        <a href="{{ $sortLink('debit_total') }}" class="inline-flex items-center gap-0.5 hover:text-slate-700">Borç {!! $sortIcon('debit_total') !!}</a>
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
+                        <a href="{{ $sortLink('credit_total') }}" class="inline-flex items-center gap-0.5 hover:text-slate-700">Alacak {!! $sortIcon('credit_total') !!}</a>
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
+                        <a href="{{ $sortLink('balance') }}" class="inline-flex items-center gap-0.5 hover:text-slate-700">Bakiye {!! $sortIcon('balance') !!}</a>
+                    </th>
                     <th class="px-5 py-3.5"></th>
                 </tr>
             </thead>
@@ -112,9 +145,12 @@
                     <tr class="hover:bg-slate-50 transition-colors cursor-pointer {{ ! $account->is_active ? 'bg-slate-50/50 text-slate-400' : '' }}" onclick="window.location.href='{{ route('accounts.show', $account) }}'">
                         <td class="px-5 py-4">
                             <div class="font-semibold {{ $account->is_active ? 'text-slate-900' : 'text-slate-500' }}">{{ $account->name }}</div>
-                            <div class="text-xs text-slate-500 mt-0.5">{{ $account->type_label }}@if ($account->unit) - Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}@endif</div>
+                            @if ($account->unit)
+                                <div class="text-xs text-slate-500 mt-0.5">Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</div>
+                            @endif
                         </td>
-                        <td class="px-5 py-4>
+                        <td class="px-5 py-4 text-xs text-slate-600">{{ $account->type_label }}</td>
+                        <td class="px-5 py-4">
                             @if ($account->is_active)
                                 <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span> Aktif
@@ -142,7 +178,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-5 py-12 text-center text-slate-400">Henüz hesap yok.</td></tr>
+                    <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400">Henüz hesap yok.</td></tr>
                 @endforelse
             </tbody>
         </table>

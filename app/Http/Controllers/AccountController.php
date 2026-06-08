@@ -54,6 +54,13 @@ class AccountController extends Controller
         $filterSearch = $request->query('search');
         $filterType   = $request->query('type');
         $filterStatus = $request->query('status', 'active'); // Default: sadece aktifler
+        $sortBy       = $request->query('sort', 'name');
+        $sortDir      = $request->query('direction', 'asc') === 'desc' ? 'desc' : 'asc';
+
+        $allowedSorts = ['name', 'type', 'debit_total', 'credit_total', 'balance'];
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'name';
+        }
 
         $accounts = Account::query()
             ->with('unit')
@@ -71,13 +78,11 @@ class AccountController extends Controller
             ->when($filterType,   fn ($q) => $q->where('type', $filterType))
             ->when($filterStatus === 'active', fn ($q) => $q->where('is_active', true))
             ->when($filterStatus === 'inactive', fn ($q) => $q->where('is_active', false))
-            // 'all' seçeneğinde filtre uygulanmaz
-            ->orderByRaw('unit_id IS NULL, unit_id')
-            ->orderBy('type')
-            ->orderBy('name')
+            ->when($sortBy === 'balance', fn ($q) => $q->orderByRaw("(credit_total - debit_total) {$sortDir}"))
+            ->when($sortBy !== 'balance', fn ($q) => $q->orderBy($sortBy, $sortDir))
             ->paginate(25)->withQueryString();
 
-        $filters = compact('filterSearch', 'filterType', 'filterStatus');
+        $filters = compact('filterSearch', 'filterType', 'filterStatus', 'sortBy', 'sortDir');
 
         // Hesapsız (account_id = null) ödemeleri hesapla
         $orphanPaymentsCount = 0;
