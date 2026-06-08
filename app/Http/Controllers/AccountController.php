@@ -57,29 +57,32 @@ class AccountController extends Controller
         $sortBy       = $request->query('sort', 'name');
         $sortDir      = $request->query('direction', 'asc') === 'desc' ? 'desc' : 'asc';
 
-        $allowedSorts = ['name', 'type', 'debit_total', 'credit_total', 'balance'];
+        $allowedSorts = ['name', 'type', 'debit_total', 'credit_total', 'balance', 'unit_no'];
         if (!in_array($sortBy, $allowedSorts)) {
             $sortBy = 'name';
         }
 
         $accounts = Account::query()
             ->with('unit')
+            ->leftJoin('units', 'units.id', '=', 'accounts.unit_id')
+            ->select('accounts.*')
             ->withSum(['transactions as debit_total' => function ($query) {
                 $query->where('type', 'debit');
             }], 'amount')
             ->withSum(['transactions as credit_total' => function ($query) {
                 $query->where('type', 'credit');
             }], 'amount')
-            ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
+            ->when($apartment, fn ($q) => $q->where('accounts.apartment_id', $apartment->id))
             ->when($filterSearch, fn ($q) => $q->where(function ($sub) use ($filterSearch) {
                 $sub->where('accounts.name', 'like', '%' . $filterSearch . '%')
-                    ->orWhereHas('unit', fn ($u) => $u->where('unit_no', 'like', '%' . $filterSearch . '%'));
+                    ->orWhere('units.unit_no', 'like', '%' . $filterSearch . '%');
             }))
-            ->when($filterType,   fn ($q) => $q->where('type', $filterType))
-            ->when($filterStatus === 'active', fn ($q) => $q->where('is_active', true))
-            ->when($filterStatus === 'inactive', fn ($q) => $q->where('is_active', false))
+            ->when($filterType,   fn ($q) => $q->where('accounts.type', $filterType))
+            ->when($filterStatus === 'active', fn ($q) => $q->where('accounts.is_active', true))
+            ->when($filterStatus === 'inactive', fn ($q) => $q->where('accounts.is_active', false))
             ->when($sortBy === 'balance', fn ($q) => $q->orderByRaw("(credit_total - debit_total) {$sortDir}"))
-            ->when($sortBy !== 'balance', fn ($q) => $q->orderBy($sortBy, $sortDir))
+            ->when($sortBy === 'unit_no', fn ($q) => $q->orderByRaw("units.unit_no IS NULL {$sortDir}, units.unit_no {$sortDir}"))
+            ->when(!in_array($sortBy, ['balance', 'unit_no']), fn ($q) => $q->orderBy($sortBy, $sortDir))
             ->paginate(25)->withQueryString();
 
         $filters = compact('filterSearch', 'filterType', 'filterStatus', 'sortBy', 'sortDir');

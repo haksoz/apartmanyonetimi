@@ -116,7 +116,9 @@
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left">
                 <tr>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-center">Daire</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-center">
+                        <a href="{{ $sortLink('unit_no') }}" class="inline-flex items-center gap-0.5 hover:text-slate-700">Daire {!! $sortIcon('unit_no') !!}</a>
+                    </th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <a href="{{ $sortLink('name') }}" class="inline-flex items-center gap-0.5 hover:text-slate-700">Adı Soyadı / Ünvan {!! $sortIcon('name') !!}</a>
                     </th>
