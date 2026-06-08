@@ -127,6 +127,41 @@
 
         @endif
 
+        {{-- Daire Bilgileri --}}
+        @if ($account->unit)
+            <div class="grid gap-4 md:grid-cols-4 text-sm mb-4 pb-4 border-b border-slate-100">
+
+                @if ($account->unit->floor)
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">Kat</div>
+                    <div class="font-semibold text-slate-900">{{ $account->unit->floor }}</div>
+                </div>
+                @endif
+
+                @if ($account->unit->block)
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">Blok</div>
+                    <div class="font-semibold text-slate-900">{{ $account->unit->block }}</div>
+                </div>
+                @endif
+
+                @if ($account->unit->square_meters)
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">Alan</div>
+                    <div class="font-semibold text-slate-900">{{ number_format($account->unit->square_meters, 0, ',', '.') }} m²</div>
+                </div>
+                @endif
+
+                @if ($account->unit->share_coefficient)
+                <div>
+                    <div class="text-xs text-slate-500 mb-1">Hisse Katsayısı</div>
+                    <div class="font-semibold text-slate-900">{{ $account->unit->share_coefficient }}</div>
+                </div>
+                @endif
+
+            </div>
+        @endif
+
         <div class="grid gap-4 md:grid-cols-2 text-sm mb-4">
 
             <div>
