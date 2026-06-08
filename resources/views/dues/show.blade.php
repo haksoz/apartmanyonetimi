@@ -218,7 +218,7 @@
 
     <div class="rounded-2xl bg-white p-6 shadow-sm">
 
-        <h2 class="text-lg font-semibold text-slate-950 mb-4">Ödeme Tahsisleri</h2>
+        <h2 class="text-lg font-semibold text-slate-950 mb-4">Borcu Kapatan Tahsilat</h2>
 
         @if ($due->allocations->isEmpty())
 
@@ -238,7 +238,9 @@
 
                             <th class="px-5 py-3">Açıklama</th>
 
-                            <th class="px-5 py-3 text-right">Tahsis Edilen</th>
+                            <th class="px-5 py-3 text-right">Tutar</th>
+
+                            <th class="px-5 py-3 text-right">Kapatılan</th>
 
                             <th class="px-5 py-3">Ödeme Tarihi</th>
 
@@ -262,7 +264,9 @@
 
                                 <td class="px-5 py-4 text-slate-700">{{ $allocation->payment->description ?: 'Ödeme' }}</td>
 
-                                <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</td>
+                                <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->payment->amount, 2, ',', '.') }} TL</td>
+
+                                <td class="px-5 py-4 text-right font-semibold text-emerald-600 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</td>
 
                                 <td class="px-5 py-4 text-slate-700">{{ $allocation->payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
 

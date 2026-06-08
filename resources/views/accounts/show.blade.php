@@ -1335,8 +1335,6 @@
 
                             <th class="px-5 py-3 text-right">Bakiye</th>
 
-                            <th class="px-5 py-3 text-right">İşlem</th>
-
                         </tr>
 
                     </thead>
@@ -1353,7 +1351,18 @@
 
                             @endphp
 
-                            <tr>
+                            @php
+                                $detailUrl = null;
+                                if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->transactionable_id)
+                                    $detailUrl = route('payments.show', $t->transactionable_id);
+                                elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
+                                    $detailUrl = route('expenses.show', $t->transactionable_id);
+                                elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)
+                                    $detailUrl = route('dues.show', $t->transactionable_id);
+                            @endphp
+
+                            <tr class="hover:bg-slate-50 transition-colors {{ $detailUrl ? 'cursor-pointer' : '' }}"
+                                @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
 
                                 <td class="px-5 py-4 text-slate-700">{{ $t->transaction_date->format('d.m.Y') }}</td>
 
@@ -1365,33 +1374,6 @@
 
                                 <td class="px-5 py-4 text-right font-semibold">{{ number_format($t->running_balance, 2, ',', '.') }} TL</td>
 
-                                <td class="px-5 py-4 text-right space-x-2">
-
-                                    @if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->transactionable_id)
-
-                                        @if($t->allocations->isNotEmpty())
-
-                                            <button type="button" data-toggle-alloc="alloc-{{ $t->id }}" class="toggle-alloc rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Tahsisleri Göster</button>
-
-                                        @endif
-
-                                        <a href="{{ route('payments.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
-
-                                        @if(isset($cashUrlMap[$t->id]))
-                                            <a href="{{ $cashUrlMap[$t->id] }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Kasa</a>
-                                        @endif
-
-                                    @elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
-
-                                        <a href="{{ route('expenses.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
-
-                                    @elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)
-
-                                        <a href="{{ route('dues.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
-
-                                    @endif
-
-                                </td>
 
                             </tr>
 

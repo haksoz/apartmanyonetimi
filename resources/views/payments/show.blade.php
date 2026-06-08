@@ -80,7 +80,7 @@
 
         <div class="rounded-2xl bg-white p-5 shadow-sm">
 
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tahsis Edilen</div>
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kapatılan</div>
 
             <div class="mt-2 text-xl font-bold text-emerald-600">{{ number_format($payment->allocated_amount, 2, ',', '.') }} TL</div>
 
@@ -184,7 +184,7 @@
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 
-        <h2 class="text-lg font-semibold text-slate-950 mb-4">Tahsis Edilen Borçlar</h2>
+        <h2 class="text-lg font-semibold text-slate-950 mb-4">Kapatılan Borçlar</h2>
 
         @if ($payment->allocations->isEmpty())
 
@@ -204,7 +204,7 @@
 
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Tür / Açıklama</th>
 
-                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Tahsis Edilen</th>
+                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Kapatılan</th>
 
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
 

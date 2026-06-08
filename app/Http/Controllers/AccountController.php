@@ -308,8 +308,8 @@ class AccountController extends Controller
             $t->running_balance = $running;
         }
 
-        // Görüntüleme: yeniden eskiye, son 5 kayıt
-        $transactions = $transactions->reverse()->values()->take(5);
+        // Görüntüleme: yeniden eskiye, son 8 kayıt
+        $transactions = $transactions->reverse()->values()->take(8);
 
         // Ödemelere ait tahsisleri yükle ve transactionlara ekle
         $paymentIds = $transactions

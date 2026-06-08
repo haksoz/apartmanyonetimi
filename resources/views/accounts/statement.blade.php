@@ -81,7 +81,6 @@
                             <th class="px-5 py-3 text-right font-medium">Borç</th>
                             <th class="px-5 py-3 text-right font-medium">Alacak</th>
                             <th class="px-5 py-3 text-right font-medium">Bakiye</th>
-                            <th class="px-5 py-3 text-right font-medium">İşlem</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -102,70 +101,52 @@
                                         <span class="text-xs font-normal">{{ $openingBalance > 0 ? 'B' : 'A' }}</span>
                                     @endif
                                 </td>
-                                <td class="px-5 py-3.5 text-right text-slate-400">—</td>
+                                <td class="px-5 py-3.5 text-right text-slate-400"></td>
                             </tr>
                         @endif
                         @foreach($transactions as $t)
                             @php
                                 $debit  = $t->type === 'debit'  ? $t->amount : 0;
                                 $credit = $t->type === 'credit' ? $t->amount : 0;
+                                $detailUrl = null;
+                                if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->transactionable_id)
+                                    $detailUrl = route('payments.show', $t->transactionable_id);
+                                elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)
+                                    $detailUrl = route('dues.show', $t->transactionable_id);
+                                elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
+                                    $detailUrl = route('expenses.show', $t->transactionable_id);
                             @endphp
                             <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap">
+                                <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                                     {{ $t->transaction_date?->format('d.m.Y') }}
                                 </td>
-                                <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap font-mono text-xs">
+                                <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap font-mono text-xs {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                                     {{ $t->transactionable?->reference_number ?? '—' }}
                                 </td>
-                                <td class="px-5 py-3.5 text-slate-700">
+                                <td class="px-5 py-3.5 text-slate-700 {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                                     {{ $t->description ?: ucfirst($t->type) }}
+                                    @if($t->is_imported)
+                                        <span class="ml-1 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">İçe Aktarıldı</span>
+                                    @endif
                                 </td>
-                                <td class="px-5 py-3.5 text-right font-semibold text-red-600 tabular-nums whitespace-nowrap">
+                                <td class="px-5 py-3.5 text-right font-semibold text-red-600 tabular-nums whitespace-nowrap {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                                     {{ $debit  ? number_format($debit,  2, ',', '.') . ' TL' : '—' }}
                                 </td>
-                                <td class="px-5 py-3.5 text-right font-semibold text-emerald-600 tabular-nums whitespace-nowrap">
+                                <td class="px-5 py-3.5 text-right font-semibold text-emerald-600 tabular-nums whitespace-nowrap {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                                     {{ $credit ? number_format($credit, 2, ',', '.') . ' TL' : '—' }}
                                 </td>
-                                <td class="px-5 py-3.5 text-right font-bold tabular-nums whitespace-nowrap {{ $t->running_balance > 0 ? 'text-red-600' : ($t->running_balance < 0 ? 'text-emerald-600' : 'text-slate-600') }}">
+                                <td class="px-5 py-3.5 text-right font-bold tabular-nums whitespace-nowrap {{ $detailUrl ? 'cursor-pointer' : '' }} {{ $t->running_balance > 0 ? 'text-red-600' : ($t->running_balance < 0 ? 'text-emerald-600' : 'text-slate-600') }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                                     {{ number_format(abs($t->running_balance), 2, ',', '.') }} TL
                                     @if($t->running_balance != 0)
                                         <span class="text-xs font-normal">{{ $t->running_balance > 0 ? 'B' : 'A' }}</span>
                                     @endif
                                 </td>
-                                <td class="px-5 py-3.5 text-right whitespace-nowrap space-x-1">
-                                    @if($t->is_imported)
-                                        <span class="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">İçe Aktarıldı</span>
-                                    @endif
-
-                                    @if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->transactionable_id)
-                                        @if($t->allocations->isNotEmpty())
-                                            <button type="button" data-toggle-alloc="alloc-{{ $t->id }}"
-                                                    class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                                Tahsisler
-                                            </button>
-                                        @endif
-                                        <a href="{{ route('payments.show', $t->transactionable_id) }}"
-                                           class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                            Detay
-                                        </a>
-                                    @elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)
-                                        <a href="{{ route('dues.show', $t->transactionable_id) }}"
-                                           class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                            Detay
-                                        </a>
-                                    @elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
-                                        <a href="{{ route('expenses.show', $t->transactionable_id) }}"
-                                           class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                            Detay
-                                        </a>
-                                    @endif
-
-                                    @if($t->is_imported)
-                                        <form method="POST" action="{{ route('accounts.transactions.destroy', [$account->id, $t->id]) }}" class="inline" onsubmit="return confirm('Bu kayıt silinsin mi?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
-                                        </form>
+                                <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                                    @if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->allocations->isNotEmpty())
+                                        <button type="button" data-toggle-alloc="alloc-{{ $t->id }}"
+                                                class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                                            Kapattığı Borçlar
+                                        </button>
                                     @endif
                                 </td>
                             </tr>
@@ -231,10 +212,11 @@
         document.addEventListener('click', function (e) {
             const btn = e.target.closest('[data-toggle-alloc]');
             if (!btn) return;
+            e.stopPropagation();
             const key = btn.getAttribute('data-toggle-alloc');
             document.querySelectorAll('[data-parent="' + key + '"]').forEach(r => r.classList.toggle('hidden'));
             const open = Array.from(document.querySelectorAll('[data-parent="' + key + '"]')).some(r => !r.classList.contains('hidden'));
-            btn.textContent = open ? 'Gizle' : 'Tahsisler';
+            btn.textContent = open ? 'Gizle' : 'Kapattığı Borçlar';
         });
 
     </script>
