@@ -208,6 +208,8 @@
 
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
 
+                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500"></th>
+
                         </tr>
 
                     </thead>
@@ -243,6 +245,14 @@
 
                                     </td>
 
+                                    <td class="px-5 py-4 text-right">
+                                        <form method="POST" action="{{ route('payments.allocations.destroy', [$payment, $allocation]) }}" onsubmit="return confirm('Bu tahsis silinsin mi?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs font-semibold text-red-500 hover:text-red-700">Sil</button>
+                                        </form>
+                                    </td>
+
                                 @elseif ($allocation->expense_id && $allocation->expense)
 
                                     <td class="px-5 py-4 font-medium text-slate-900">#{{ $allocation->expense->id }}</td>
@@ -262,6 +272,14 @@
 
                                         </span>
 
+                                    </td>
+
+                                    <td class="px-5 py-4 text-right">
+                                        <form method="POST" action="{{ route('payments.allocations.destroy', [$payment, $allocation]) }}" onsubmit="return confirm('Bu tahsis silinsin mi?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs font-semibold text-red-500 hover:text-red-700">Sil</button>
+                                        </form>
                                     </td>
 
                                 @endif

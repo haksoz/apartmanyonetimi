@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Due;
 use App\Models\Expense;
 use App\Models\Payment;
+use App\Models\PaymentAllocation;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -418,6 +419,38 @@ class PaymentAllocationController extends Controller
         });
 
         return redirect()->route('accounts.show', $account)->with('status', 'Ödemeler başarıyla aidatlara tahsis edildi.');
+    }
+
+    public function destroy(CurrentApartment $currentApartment, Payment $payment, PaymentAllocation $allocation)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
+        if ($payment->apartment_id !== $apartment->id) abort(404);
+        if ($allocation->payment_id !== $payment->id) abort(404);
+
+        DB::transaction(function () use ($allocation, $payment) {
+            $allocationAmount = (float) $allocation->amount;
+
+            if ($allocation->due_id && $allocation->due) {
+                $allocation->due->increment('remaining_amount', $allocationAmount);
+            }
+
+            if ($allocation->expense_id && $allocation->expense) {
+                $expense = $allocation->expense;
+                $newRemaining = (float) $expense->remaining_amount + $allocationAmount;
+                $expense->update([
+                    'remaining_amount' => $newRemaining,
+                    'paid_amount'      => max(0, (float) $expense->paid_amount - $allocationAmount),
+                    'is_paid'          => false,
+                ]);
+            }
+
+            $payment->increment('unallocated_amount', $allocationAmount);
+            $allocation->delete();
+        });
+
+        return redirect()->route('payments.show', $payment)
+            ->with('status', 'Tahsis silindi.');
     }
 
     private function resolveApartment(CurrentApartment $currentApartment)
