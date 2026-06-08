@@ -12,6 +12,7 @@ use App\Models\TenantAssignment;
 use App\Models\Unit;
 use App\Models\CashBox;
 use App\Models\Payment;
+use App\Models\PaymentAllocation;
 use App\Support\CurrentApartment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -1538,9 +1539,8 @@ class AccountController extends Controller
             $creditRaw = $row[5] ?? 0;
             $debitRaw = $row[6] ?? 0;
 
-            if (empty($accountName)) {
-                $errors[] = 'Satır ' . ($i + 1) . ': Hesap adı zorunludur.';
-                continue;
+            if (empty($accountName) || $accountName === '-' || $accountName === '—') {
+                $accountName = 'Devir Öncesi Tedarikçi';
             }
 
             // Tarih parse
@@ -1999,10 +1999,89 @@ class AccountController extends Controller
             }
         });
 
+        // Otomatik eşleştirme: tedarikçi hesaplarında açıklama+tutar ile gider-ödeme çiftlerini kapat
+        $autoMatchedCount = 0;
+        $supplierAccountIds = Account::where('apartment_id', $apartment->id)
+            ->where('type', 'supplier')
+            ->whereIn('id', array_values($createdAccounts))
+            ->pluck('id');
+
+        foreach ($supplierAccountIds as $suppAccountId) {
+            // Bu hesaba ait import edilmiş, ödenmemiş giderler (kronolojik)
+            $openExpenses = Expense::where('account_id', $suppAccountId)
+                ->where('is_imported', true)
+                ->where('is_paid', false)
+                ->where('remaining_amount', '>', 0)
+                ->orderBy('expense_date')
+                ->orderBy('id')
+                ->get();
+
+            // Bu hesaba ait import edilmiş, tahsis edilmemiş ödemeler (kronolojik)
+            $openPayments = Payment::where('account_id', $suppAccountId)
+                ->where('is_imported', true)
+                ->where('unallocated_amount', '>', 0)
+                ->orderBy('payment_date')
+                ->orderBy('id')
+                ->get();
+
+            if ($openExpenses->isEmpty() || $openPayments->isEmpty()) continue;
+
+            foreach ($openPayments as $payment) {
+                if ($payment->unallocated_amount <= 0) continue;
+
+                $paymentDesc = mb_strtolower(trim($payment->description ?? ''));
+
+                // Bu ödemeyle eşleşebilecek giderleri bul:
+                // gider açıklaması ödeme açıklamasının içinde geçiyor + tutar eşit
+                $matchedExpense = $openExpenses
+                    ->filter(fn($e) => $e->remaining_amount > 0)
+                    ->filter(function ($e) use ($paymentDesc) {
+                        $expenseDesc = mb_strtolower(trim($e->description ?? ''));
+                        return $expenseDesc !== '' && mb_strpos($paymentDesc, $expenseDesc) !== false;
+                    })
+                    ->filter(fn($e) => abs($e->remaining_amount - $payment->unallocated_amount) < 0.01)
+                    ->sortBy('expense_date') // FIFO: en eskiyi seç
+                    ->first();
+
+                if (!$matchedExpense) continue;
+
+                DB::transaction(function () use ($payment, $matchedExpense, &$autoMatchedCount) {
+                    $amount = $matchedExpense->remaining_amount;
+
+                    PaymentAllocation::create([
+                        'payment_id'  => $payment->id,
+                        'expense_id'  => $matchedExpense->id,
+                        'due_id'      => null,
+                        'amount'      => $amount,
+                    ]);
+
+                    $matchedExpense->update([
+                        'paid_amount'      => $matchedExpense->amount,
+                        'remaining_amount' => 0,
+                        'is_paid'          => true,
+                    ]);
+
+                    $payment->update([
+                        'unallocated_amount' => 0,
+                    ]);
+
+                    $autoMatchedCount++;
+                });
+
+                // Koleksiyon içindeki değeri de güncelle (bir sonraki döngü için)
+                $matchedExpense->remaining_amount = 0;
+            }
+        }
+
         // Session temizle
         session()->forget(['bulk_import_transactions', 'bulk_import_accounts', 'bulk_import_apartment_id']);
 
+        $statusMsg = count($createdAccounts) . ' hesap ve ' . $importedCount . ' cari hareket başarıyla import edildi.';
+        if ($autoMatchedCount > 0) {
+            $statusMsg .= ' ' . $autoMatchedCount . ' gider-ödeme çifti otomatik eşleştirildi.';
+        }
+
         return redirect()->route('accounts.index')
-            ->with('status', count($createdAccounts) . ' hesap ve ' . $importedCount . ' cari hareket başarıyla import edildi.');
+            ->with('status', $statusMsg);
     }
 }
