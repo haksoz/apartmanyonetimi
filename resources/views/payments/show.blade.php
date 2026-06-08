@@ -246,10 +246,10 @@
                                     </td>
 
                                     <td class="px-5 py-4 text-right">
-                                        <form method="POST" action="{{ route('payments.allocations.destroy', [$payment, $allocation]) }}" onsubmit="return confirm('Bu tahsis silinsin mi?')">
+                                        <form method="POST" action="{{ route('payments.allocations.destroy', [$payment, $allocation]) }}" onsubmit="return confirm('Bu tahsis geri alınsın mı?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-xs font-semibold text-red-500 hover:text-red-700">Sil</button>
+                                            <button type="submit" class="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Geri Al</button>
                                         </form>
                                     </td>
 
@@ -275,10 +275,10 @@
                                     </td>
 
                                     <td class="px-5 py-4 text-right">
-                                        <form method="POST" action="{{ route('payments.allocations.destroy', [$payment, $allocation]) }}" onsubmit="return confirm('Bu tahsis silinsin mi?')">
+                                        <form method="POST" action="{{ route('payments.allocations.destroy', [$payment, $allocation]) }}" onsubmit="return confirm('Bu tahsis geri alınsın mı?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-xs font-semibold text-red-500 hover:text-red-700">Sil</button>
+                                            <button type="submit" class="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Geri Al</button>
                                         </form>
                                     </td>
 
