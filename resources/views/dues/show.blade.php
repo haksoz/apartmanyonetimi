@@ -10,7 +10,7 @@
 
         <div>
 
-            <h1 class="text-2xl font-bold text-slate-950">Aidat Detayı</h1>
+            <h1 class="text-2xl font-bold text-slate-950">Aidat Detayı <span class="text-slate-400 font-normal text-lg">— Aidatlar</span></h1>
 
             @if ($due->description)
 

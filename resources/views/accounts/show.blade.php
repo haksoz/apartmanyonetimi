@@ -494,6 +494,300 @@
 
 
 
+    @if (!in_array($account->type, [App\Models\Account::TYPE_SUPPLIER]) && ($account->payments->isNotEmpty() || $importedPayments->isNotEmpty()))
+
+        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+
+                <div class="flex items-center gap-3">
+
+                    <h2 class="text-lg font-semibold text-slate-950">Dağıtılmamış Tahsilatlar</h2>
+
+                    @if ($importedPayments->isNotEmpty())
+
+                        <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none">
+
+                            <input type="checkbox" id="show-imported-payments" class="rounded">
+
+                            Devir Öncesini Göster ({{ $importedPayments->count() }})
+
+                        </label>
+
+                    @endif
+
+                </div>
+
+                <form id="multi-allocate-form" method="POST" action="{{ route('accounts.payments.multi-allocate', $account) }}">
+
+                    @csrf
+
+                    <input type="hidden" name="payment_ids" id="multi-allocate-payment-ids">
+
+                    <button type="submit" id="multi-allocate-btn"
+                        class="hidden rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+
+                        Seçilileri Tahsis Et &mdash; <span id="selected-payment-count">0</span> tahsilat / <span id="selected-payment-total">0,00</span> TL
+
+                    </button>
+
+                </form>
+
+            </div>
+
+            <div class="overflow-hidden rounded-2xl border border-slate-200">
+
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+
+                    <thead class="bg-slate-50 text-left text-slate-500">
+
+                        <tr>
+
+                            <th class="px-4 py-3"><input type="checkbox" id="select-all-payments" class="rounded"></th>
+
+                            <th class="px-5 py-3">Tarih</th>
+
+                            <th class="px-5 py-3">Açıklama</th>
+
+                            <th class="px-5 py-3 text-right">Dağıtılabilir Bakiye</th>
+
+                            <th class="px-5 py-3 text-right">İşlem</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody class="divide-y divide-slate-100">
+
+                        @foreach ($account->payments as $payment)
+
+                            <tr class="payment-row" data-imported="0">
+
+                                <td class="px-4 py-4">
+
+                                    <input type="checkbox" class="payment-checkbox rounded"
+
+                                        data-payment-id="{{ $payment->id }}"
+
+                                        data-amount="{{ $payment->unallocated_amount }}">
+
+                                </td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $payment->description ?: 'Ödeme' }}</td>
+
+                                <td class="px-5 py-4 text-right font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
+
+                                <td class="px-5 py-4 text-right space-x-2">
+
+                                    <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+
+                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+
+                                </td>
+
+                            </tr>
+
+                        @endforeach
+
+                        @foreach ($importedPayments as $payment)
+
+                            <tr class="payment-row imported-payment-row hidden bg-blue-50/40" data-imported="1">
+
+                                <td class="px-4 py-4">
+
+                                    <input type="checkbox" class="payment-checkbox rounded"
+
+                                        data-payment-id="{{ $payment->id }}"
+
+                                        data-amount="{{ $payment->unallocated_amount }}">
+
+                                </td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
+
+                                <td class="px-5 py-4 text-slate-700">
+
+                                    {{ $payment->description ?: 'Ödeme' }}
+
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+
+                                </td>
+
+                                <td class="px-5 py-4 text-right font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
+
+                                <td class="px-5 py-4 text-right space-x-2">
+
+                                    <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+
+                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+
+                                </td>
+
+                            </tr>
+
+                        @endforeach
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    @endif
+
+
+
+    @if ($account->type === App\Models\Account::TYPE_SUPPLIER && ($account->payments->isNotEmpty() || $importedPayments->isNotEmpty()))
+
+        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+
+                <div class="flex items-center gap-3">
+
+                    <h2 class="text-lg font-semibold text-slate-950">Dağıtılmamış Ödemeler</h2>
+
+                    @if ($importedPayments->isNotEmpty())
+
+                        <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none">
+
+                            <input type="checkbox" id="show-imported-supplier-payments" class="rounded">
+
+                            Devir Öncesini Göster ({{ $importedPayments->count() }})
+
+                        </label>
+
+                    @endif
+
+                </div>
+
+                <form id="multi-supplier-allocate-form" method="POST" action="{{ route('accounts.payments.multi-supplier-allocate', $account) }}">
+
+                    @csrf
+
+                    <input type="hidden" name="payment_ids" id="multi-supplier-allocate-payment-ids">
+
+                    <button type="submit" id="multi-supplier-allocate-btn"
+                        class="hidden rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+
+                        Seçilileri Tahsis Et &mdash; <span id="selected-supplier-payment-count">0</span> ödeme / <span id="selected-supplier-payment-total">0,00</span> TL
+
+                    </button>
+
+                </form>
+
+            </div>
+
+            <div class="overflow-hidden rounded-2xl border border-slate-200">
+
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+
+                    <thead class="bg-slate-50 text-left text-slate-500">
+
+                        <tr>
+
+                            <th class="px-4 py-3"><input type="checkbox" id="select-all-supplier-payments" class="rounded"></th>
+
+                            <th class="px-5 py-3">Tarih</th>
+
+                            <th class="px-5 py-3">Açıklama</th>
+
+                            <th class="px-5 py-3 text-right">Dağıtılabilir Bakiye</th>
+
+                            <th class="px-5 py-3 text-right">İşlem</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody class="divide-y divide-slate-100">
+
+                        @foreach ($account->payments as $payment)
+
+                            <tr class="supplier-payment-row" data-imported="0">
+
+                                <td class="px-4 py-4">
+
+                                    <input type="checkbox" class="supplier-payment-checkbox rounded"
+
+                                        data-payment-id="{{ $payment->id }}"
+
+                                        data-amount="{{ $payment->unallocated_amount }}">
+
+                                </td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $payment->description ?: 'Ödeme' }}</td>
+
+                                <td class="px-5 py-4 text-right font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
+
+                                <td class="px-5 py-4 text-right space-x-2">
+
+                                    <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+
+                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+
+                                </td>
+
+                            </tr>
+
+                        @endforeach
+
+                        @foreach ($importedPayments as $payment)
+
+                            <tr class="supplier-payment-row imported-supplier-payment-row hidden bg-blue-50/40" data-imported="1">
+
+                                <td class="px-4 py-4">
+
+                                    <input type="checkbox" class="supplier-payment-checkbox rounded"
+
+                                        data-payment-id="{{ $payment->id }}"
+
+                                        data-amount="{{ $payment->unallocated_amount }}">
+
+                                </td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
+
+                                <td class="px-5 py-4 text-slate-700">
+
+                                    {{ $payment->description ?: 'Ödeme' }}
+
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+
+                                </td>
+
+                                <td class="px-5 py-4 text-right font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
+
+                                <td class="px-5 py-4 text-right space-x-2">
+
+                                    <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+
+                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+
+                                </td>
+
+                            </tr>
+
+                        @endforeach
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    @endif
+
+
+
     @if ($account->type === App\Models\Account::TYPE_SUPPLIER && $account->expenses->isNotEmpty())
 
         <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
@@ -718,7 +1012,183 @@
 
             });
 
+
+
+            document.getElementById('show-imported-supplier-payments')?.addEventListener('change', function() {
+
+                document.querySelectorAll('.imported-supplier-payment-row').forEach(r => r.classList.toggle('hidden', !this.checked));
+
+            });
+
         });
+
+
+
+        // Tedarikçi ödeme checkbox & toplu tahsis
+
+        (function(){
+
+            const selectAllPay = document.getElementById('select-all-supplier-payments');
+
+            const multiBtn     = document.getElementById('multi-supplier-allocate-btn');
+
+            const countEl      = document.getElementById('selected-supplier-payment-count');
+
+            const totalEl      = document.getElementById('selected-supplier-payment-total');
+
+            const idsInput     = document.getElementById('multi-supplier-allocate-payment-ids');
+
+
+
+            if (!selectAllPay) return;
+
+
+
+            const updateBtn = () => {
+
+                const checked = document.querySelectorAll('.supplier-payment-checkbox:checked');
+
+                if (checked.length > 0) {
+
+                    let total = 0, ids = [];
+
+                    checked.forEach(cb => { total += parseFloat(cb.dataset.amount); ids.push(cb.dataset.paymentId); });
+
+                    multiBtn.classList.remove('hidden');
+
+                    countEl.textContent = checked.length;
+
+                    totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                    idsInput.value = ids.join(',');
+
+                } else {
+
+                    multiBtn.classList.add('hidden');
+
+                    idsInput.value = '';
+
+                }
+
+            };
+
+
+
+            selectAllPay.addEventListener('change', function() {
+
+                document.querySelectorAll('.supplier-payment-checkbox').forEach(cb => cb.checked = this.checked);
+
+                updateBtn();
+
+            });
+
+
+
+            document.querySelectorAll('.supplier-payment-checkbox').forEach(cb => {
+
+                cb.addEventListener('change', function() {
+
+                    const all = document.querySelectorAll('.supplier-payment-checkbox');
+
+                    selectAllPay.checked = Array.from(all).every(c => c.checked);
+
+                    selectAllPay.indeterminate = !selectAllPay.checked && Array.from(all).some(c => c.checked);
+
+                    updateBtn();
+
+                });
+
+            });
+
+        })();
+
+
+
+        // Kiracı/Kat maliki ödeme checkbox & toplu tahsis
+
+        (function(){
+
+            const selectAllPay = document.getElementById('select-all-payments');
+
+            const multiBtn     = document.getElementById('multi-allocate-btn');
+
+            const countEl      = document.getElementById('selected-payment-count');
+
+            const totalEl      = document.getElementById('selected-payment-total');
+
+            const idsInput     = document.getElementById('multi-allocate-payment-ids');
+
+
+
+            if (!selectAllPay) return;
+
+
+
+            const updatePayBtn = () => {
+
+                const checked = document.querySelectorAll('.payment-checkbox:checked');
+
+                if (checked.length > 0) {
+
+                    let total = 0;
+
+                    let ids = [];
+
+                    checked.forEach(cb => {
+
+                        total += parseFloat(cb.dataset.amount);
+
+                        ids.push(cb.dataset.paymentId);
+
+                    });
+
+                    multiBtn.classList.remove('hidden');
+
+                    countEl.textContent = checked.length;
+
+                    totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                    idsInput.value = ids.join(',');
+
+                } else {
+
+                    multiBtn.classList.add('hidden');
+
+                    idsInput.value = '';
+
+                }
+
+            };
+
+
+
+            selectAllPay.addEventListener('change', function() {
+
+                document.querySelectorAll('.payment-checkbox').forEach(cb => cb.checked = this.checked);
+
+                updatePayBtn();
+
+            });
+
+
+
+            document.querySelectorAll('.payment-checkbox').forEach(cb => {
+
+                cb.addEventListener('change', function() {
+
+                    const all = document.querySelectorAll('.payment-checkbox');
+
+                    selectAllPay.checked = Array.from(all).every(c => c.checked);
+
+                    selectAllPay.indeterminate = !selectAllPay.checked && Array.from(all).some(c => c.checked);
+
+                    updatePayBtn();
+
+                });
+
+            });
+
+        })();
 
 
 
@@ -758,115 +1228,6 @@
 
 
 
-    @if ($account->payments->isNotEmpty() || $importedPayments->isNotEmpty())
-
-        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
-
-            <div class="flex items-center gap-3 mb-4">
-
-                <h2 class="text-lg font-semibold text-slate-950">Dağıtılmamış Ödemeler</h2>
-
-                @if ($importedPayments->isNotEmpty())
-
-                    <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none">
-
-                        <input type="checkbox" id="show-imported-payments" class="rounded">
-
-                        Devir Öncesini Göster ({{ $importedPayments->count() }})
-
-                    </label>
-
-                @endif
-
-            </div>
-
-            <div class="overflow-hidden rounded-2xl border border-slate-200">
-
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
-
-                    <thead class="bg-slate-50 text-left text-slate-500">
-
-                        <tr>
-
-                            <th class="px-5 py-3">#</th>
-
-                            <th class="px-5 py-3">Tarih</th>
-
-                            <th class="px-5 py-3">Açıklama</th>
-
-                            <th class="px-5 py-3 text-right">Kalan</th>
-
-                            <th class="px-5 py-3 text-right">İşlem</th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody class="divide-y divide-slate-100">
-
-                        @foreach ($account->payments as $payment)
-
-                            <tr>
-
-                                <td class="px-5 py-4 text-slate-700">{{ $payment->id }}</td>
-
-                                <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
-
-                                <td class="px-5 py-4 text-slate-700">{{ $payment->description ?: 'Ödeme' }}</td>
-
-                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
-
-                                <td class="px-5 py-4 text-right space-x-2">
-
-                                    <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
-
-                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
-
-                                </td>
-
-                            </tr>
-
-                        @endforeach
-
-                        @foreach ($importedPayments as $payment)
-
-                            <tr class="imported-payment-row hidden bg-blue-50/40">
-
-                                <td class="px-5 py-4 text-slate-700">{{ $payment->id }}</td>
-
-                                <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
-
-                                <td class="px-5 py-4 text-slate-700">
-
-                                    {{ $payment->description ?: 'Ödeme' }}
-
-                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
-
-                                </td>
-
-                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
-
-                                <td class="px-5 py-4 text-right space-x-2">
-
-                                    <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
-
-                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
-
-                                </td>
-
-                            </tr>
-
-                        @endforeach
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </div>
-
-    @endif
 
 
 
@@ -938,7 +1299,11 @@
 
                                         @endif
 
-                                        <a href="{{ $cashUrlMap[$t->id] ?? route('payments.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+                                        <a href="{{ route('payments.show', $t->transactionable_id) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+
+                                        @if(isset($cashUrlMap[$t->id]))
+                                            <a href="{{ $cashUrlMap[$t->id] }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Kasa</a>
+                                        @endif
 
                                     @elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
 
@@ -964,25 +1329,55 @@
 
                                         <td class="px-5 py-2"></td>
 
-                                        <td class="px-5 py-2">Tahsis — Aidat <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-900 hover:text-emerald-600">#{{ $a->due->id }}</a> — {{ $a->due->due_date->format('d.m.Y') }}
+                                        @if ($a->due_id && $a->due)
 
-                                            @php $desc = $a->due->description ?: 'Aidat'; @endphp
+                                            <td class="px-5 py-2">Tahsis — Aidat <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-900 hover:text-emerald-600">#{{ $a->due->id }}</a> — {{ $a->due->due_date->format('d.m.Y') }}
 
-                                            <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
+                                                @php $desc = $a->due->description ?: 'Aidat'; @endphp
 
-                                        </td>
+                                                <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
 
-                                        <td class="px-5 py-2 text-right">—</td>
+                                            </td>
 
-                                        <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount,2,',','.') }} TL</td>
+                                            <td class="px-5 py-2 text-right">—</td>
 
-                                        <td class="px-5 py-2 text-right">—</td>
+                                            <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount,2,',','.') }} TL</td>
 
-                                        <td class="px-5 py-2 text-right">
+                                            <td class="px-5 py-2 text-right">—</td>
 
-                                            <a href="{{ route('dues.show', $a->due) }}" class="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Aidat Detay</a>
+                                            <td class="px-5 py-2 text-right">
 
-                                        </td>
+                                                <a href="{{ route('dues.show', $a->due) }}" class="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Aidat Detay</a>
+
+                                            </td>
+
+                                        @elseif ($a->expense_id && $a->expense)
+
+                                            <td class="px-5 py-2">Tahsis — Gider <a href="{{ route('expenses.show', $a->expense) }}" class="font-medium text-slate-900 hover:text-emerald-600">#{{ $a->expense->id }}</a>
+
+                                                @if ($a->expense->expense_date)
+                                                    — {{ $a->expense->expense_date->format('d.m.Y') }}
+                                                @endif
+
+                                                @php $desc = $a->expense->description ?: ($a->expense->category ?? 'Gider'); @endphp
+
+                                                <div class="text-slate-500 text-xs mt-1" title="{{ $desc }}">{{ \Illuminate\Support\Str::limit($desc, 80) }}</div>
+
+                                            </td>
+
+                                            <td class="px-5 py-2 text-right">—</td>
+
+                                            <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount,2,',','.') }} TL</td>
+
+                                            <td class="px-5 py-2 text-right">—</td>
+
+                                            <td class="px-5 py-2 text-right">
+
+                                                <a href="{{ route('expenses.show', $a->expense) }}" class="rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Gider Detay</a>
+
+                                            </td>
+
+                                        @endif
 
                                     </tr>
 

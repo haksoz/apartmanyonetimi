@@ -1861,15 +1861,17 @@ class AccountController extends Controller
                             : $defaultExpenseCategory;
 
                         $expense = Expense::create([
-                            'apartment_id' => $apartment->id,
-                            'account_id' => $accountId,
-                            'category_id' => $category?->id,
-                            'description' => $t['description'] ?: 'Devir Öncesi',
-                            'amount' => $t['credit'],
-                            'expense_date' => $t['date'],
-                            'period_month' => $t['date'],
-                            'is_paid' => false,
-                            'is_imported' => true,
+                            'apartment_id'     => $apartment->id,
+                            'account_id'       => $accountId,
+                            'category_id'      => $category?->id,
+                            'description'      => $t['description'] ?: 'Devir Öncesi',
+                            'amount'           => $t['credit'],
+                            'paid_amount'      => 0,
+                            'remaining_amount' => $t['credit'],
+                            'expense_date'     => $t['date'],
+                            'period_month'     => $t['date'],
+                            'is_paid'          => false,
+                            'is_imported'      => true,
                         ]);
 
                         AccountTransaction::create([

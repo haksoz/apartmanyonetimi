@@ -28,7 +28,7 @@
 
         <div>
 
-            <h1 class="text-2xl font-bold text-slate-950">Gider Detayı</h1>
+            <h1 class="text-2xl font-bold text-slate-950">Gider Detayı <span class="text-slate-400 font-normal text-lg">— Giderler</span></h1>
 
             <p class="mt-1 text-sm text-slate-500">
 

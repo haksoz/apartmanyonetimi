@@ -53,6 +53,42 @@ class Payment extends Model
             ->withTimestamps();
     }
 
+    public function expenses(): BelongsToMany
+    {
+        return $this->belongsToMany(Expense::class, 'payment_allocations')
+            ->withPivot('amount')
+            ->withTimestamps();
+    }
+
+    public function allocateToExpense(Expense $expense, float $amount): PaymentAllocation
+    {
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('Allocation amount must be greater than zero.');
+        }
+
+        if ($amount > $this->unallocated_amount) {
+            throw new \InvalidArgumentException('Allocation exceeds payment unallocated amount.');
+        }
+
+        if ($amount > $expense->remaining_amount) {
+            throw new \InvalidArgumentException('Allocation exceeds expense remaining amount.');
+        }
+
+        $allocation = $this->allocations()->create([
+            'expense_id' => $expense->id,
+            'amount'     => $amount,
+        ]);
+
+        $this->decrement('unallocated_amount', $amount);
+
+        $expense->paid_amount      = ($expense->paid_amount ?? 0) + $amount;
+        $expense->remaining_amount = max(0, $expense->remaining_amount - $amount);
+        $expense->is_paid          = $expense->remaining_amount <= 0;
+        $expense->save();
+
+        return $allocation;
+    }
+
     public function transactions(): MorphMany
     {
         return $this->morphMany(AccountTransaction::class, 'transactionable');

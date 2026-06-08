@@ -48,7 +48,8 @@
                         <td class="px-5 py-4 text-right space-x-2">
                             <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                             @if ($payment->unallocated_amount > 0)
-                                <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+                                @php $isSupplierPayment = $payment->account && $payment->account->type === App\Models\Account::TYPE_SUPPLIER; @endphp
+                                <a href="{{ $isSupplierPayment ? route('payments.supplier-allocations.create', $payment) : route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
                             @endif
                         </td>
                     </tr>
@@ -116,7 +117,8 @@
                 <div class="flex gap-2">
                     <a href="{{ route('payments.show', $payment) }}" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Detay</a>
                     @if ($payment->unallocated_amount > 0)
-                        <a href="{{ route('payments.allocations.create', $payment) }}" class="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white text-center hover:bg-emerald-700">Tahsis Et</a>
+                        @php $isSupplierPayment = $payment->account && $payment->account->type === App\Models\Account::TYPE_SUPPLIER; @endphp
+                        <a href="{{ $isSupplierPayment ? route('payments.supplier-allocations.create', $payment) : route('payments.allocations.create', $payment) }}" class="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white text-center hover:bg-emerald-700">Tahsis Et</a>
                     @endif
                 </div>
             </div>

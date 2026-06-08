@@ -183,7 +183,7 @@ class PaymentController extends Controller
             abort(404);
         }
 
-        $payment->load(['account', 'allocations.due', 'transactions', 'cashTransactions']);
+        $payment->load(['account', 'allocations.due', 'allocations.expense', 'transactions', 'cashTransactions']);
 
         return view('payments.show', compact('payment'));
     }
