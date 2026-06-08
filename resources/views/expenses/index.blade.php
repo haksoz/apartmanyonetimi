@@ -52,8 +52,8 @@
             </select>
             <select name="category" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
                 <option value="">— Tüm Kategoriler —</option>
-                @foreach ($categories as $cat)
-                    <option value="{{ $cat }}" @selected($filters['filterCategory'] === $cat)>{{ $cat }}</option>
+                @foreach ($categories as $id => $name)
+                    <option value="{{ $id }}" @selected((string)$filters['filterCategory'] === (string)$id)>{{ $name }}</option>
                 @endforeach
             </select>
             <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none whitespace-nowrap">
@@ -73,10 +73,10 @@
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left">
                 <tr>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <a href="{{ route('expenses.index', ['sort_by' => 'expense_date', 'sort_direction' => $sortBy === 'expense_date' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 hover:text-slate-700">Tarih @if ($sortBy === 'expense_date')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
                     </th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <a href="{{ route('expenses.index', ['sort_by' => 'period_month', 'sort_direction' => $sortBy === 'period_month' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 hover:text-slate-700">Dönem @if ($sortBy === 'period_month')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
                     </th>
@@ -102,6 +102,7 @@
                         if ($periodText) { foreach ($months as $en => $tr) { $periodText = str_replace($en, $tr, $periodText); } }
                     @endphp
                     <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('expenses.show', $expense) }}'">
+                        <td class="px-5 py-4 font-semibold text-slate-900 tabular-nums">{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</td>
                         <td class="px-5 py-4">
                             <div class="text-slate-900 font-medium">
                                 {{ $expense->description ?? '-' }}
@@ -113,7 +114,6 @@
                                 <div class="text-xs text-slate-500 mt-1">{{ $expense->account->name }}</div>
                             @endif
                         </td>
-                        <td class="px-5 py-4 font-semibold text-slate-900 tabular-nums">{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</td>
                         <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $periodText ?? '-' }}</td>
                         <td class="px-5 py-4 text-slate-700">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</td>
                         <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
@@ -134,9 +134,8 @@
                         <td class="px-5 py-4 text-right whitespace-nowrap" onclick="event.stopPropagation()">
                             <div class="flex items-center justify-end gap-2">
                                 @unless ($expense->is_paid)
-                                    <a href="{{ route('expenses.payment.create', $expense) }}" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">Ödeme Ekle</a>
+                                    <a href="{{ route('expenses.payment.create', $expense) }}" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">Öde</a>
                                 @endunless
-                                <a href="{{ route('expenses.show', $expense) }}" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Detay</a>
                             </div>
                         </td>
                     </tr>

@@ -112,7 +112,7 @@ class ExpenseController extends Controller
 
             ->when($filterStatus === 'unpaid',  fn ($q) => $q->where('is_paid', false))
 
-            ->when($filterCategory, fn ($q) => $q->where('category', $filterCategory))
+            ->when($filterCategory, fn ($q) => $q->where('category_id', $filterCategory))
 
             ->when(! $showImported, fn ($q) => $q->where('is_imported', false))
 
@@ -122,17 +122,12 @@ class ExpenseController extends Controller
 
 
 
-        $categories = Expense::query()
-
+        $categories = \App\Models\Category::query()
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
-
-            ->whereNotNull('category')
-
-            ->distinct()
-
-            ->orderBy('category')
-
-            ->pluck('category');
+            ->where('is_active', true)
+            ->whereIn('type', [\App\Models\Category::TYPE_EXPENSE, \App\Models\Category::TYPE_ALL])
+            ->orderBy('name')
+            ->pluck('name', 'id');
 
 
 
