@@ -278,7 +278,6 @@ class PaymentController extends Controller
                     'transaction_date' => $validated['payment_date'],
                     'description' => $validated['description'] ?? 'Ödeme alındı',
                     'cash_box_id' => $validated['cash_box_id'],
-                    'account_id' => $validated['account_id'],
                 ]);
             }
         });
