@@ -53,9 +53,9 @@
                                     ? 'bg-white'
                                     : match($account['suggested_type']) {
                                         'owner' => 'bg-blue-100',
-                                        'former_owner' => 'bg-blue-50',
+                                        'former_owner' => 'bg-red-100',
                                         'tenant' => 'bg-emerald-100',
-                                        'former_tenant' => 'bg-purple-100',
+                                        'former_tenant' => 'bg-red-50',
                                         default => 'bg-amber-100'
                                     };
                                 $accountKeyEncoded = e($accountKey);
@@ -362,7 +362,7 @@
         function updateRowColor(accountName, type) {
             const row = document.querySelector('select[name="account_types[' + accountName + ']"]').closest('tr');
             // Önce tüm renk class'larını kaldır
-            row.classList.remove('bg-blue-100', 'bg-blue-50', 'bg-emerald-100', 'bg-amber-100', 'bg-purple-100', 'bg-white');
+            row.classList.remove('bg-blue-100', 'bg-blue-50', 'bg-emerald-100', 'bg-amber-100', 'bg-purple-100', 'bg-red-50', 'bg-red-100', 'bg-white');
             // Boş seçim ise beyaz bırak
             if (!type || type === '') {
                 row.classList.add('bg-white');
@@ -370,9 +370,9 @@
             }
             // Yeni rengi ekle
             const newClass = type === 'owner' ? 'bg-blue-100' :
-                            type === 'former_owner' ? 'bg-blue-50' :
+                            type === 'former_owner' ? 'bg-red-100' :
                             type === 'tenant' ? 'bg-emerald-100' :
-                            type === 'former_tenant' ? 'bg-purple-100' :
+                            type === 'former_tenant' ? 'bg-red-50' :
                             'bg-amber-100';
             row.classList.add(newClass);
         }
