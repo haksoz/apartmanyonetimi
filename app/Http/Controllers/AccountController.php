@@ -1767,8 +1767,12 @@ class AccountController extends Controller
             foreach ($accounts as $accountKey => $accountData) {
                 $accountName = $accountData['name'];
                 $type = $accountTypes[$accountKey] ?? 'supplier';
-                // Eski kiracıyı veritabanında 'tenant' olarak kaydet (former_tenant desteklenmiyor)
-                $dbType = $type === 'former_tenant' ? 'tenant' : $type;
+                // Eski kiracı/eski kat maliki veritabanında orijinal tipte kaydedilir
+                $dbType = match($type) {
+                    'former_tenant' => 'tenant',
+                    'former_owner'  => 'owner',
+                    default         => $type,
+                };
                 $mappedAccountId = $accountMapping[$accountKey] ?? null;
                 $selectedUnitId = $unitMapping[$accountKey] ?? null; // Kullanıcının seçtiği daire
                 $originalUnitId = $accountData['unit_id'] ?? null; // Excel'deki daire
@@ -1802,21 +1806,22 @@ class AccountController extends Controller
                     // Yeni hesap oluştur
                     $firstDate = $accountDateRanges[$accountKey]['first'] ?? null;
                     $lastDate  = $accountDateRanges[$accountKey]['last'] ?? null;
+                    $isFormer = in_array($type, ['former_tenant', 'former_owner']);
                     $newAccountData = [
                         'apartment_id'         => $apartment->id,
                         'type'                 => $dbType,
                         'name'                 => $accountName,
-                        'is_active'            => $type === 'former_tenant' ? false : true,
+                        'is_active'            => $isFormer ? false : true,
                         'unit_id'              => $effectiveUnitId,
                         'account_opening_date' => $firstDate,
-                        'account_end_date'     => ($type === 'former_tenant' && $lastDate) ? $lastDate : null,
+                        'account_end_date'     => ($isFormer && $lastDate) ? $lastDate : null,
                     ];
 
                     $account = Account::create($newAccountData);
                 }
 
                 // Kiracı/Eski Kiracı için TenantAssignment oluştur/güncelle (eğer daire varsa)
-                if (($type === 'tenant' || $type === 'former_tenant') && $effectiveUnitId) {
+                if (in_array($type, ['tenant', 'former_tenant']) && $effectiveUnitId) {
                     $firstDate = $accountDateRanges[$accountKey]['first'] ?? now();
                     $lastDate = $accountDateRanges[$accountKey]['last'] ?? null;
 
@@ -1834,7 +1839,7 @@ class AccountController extends Controller
                         ];
 
                         // Eski kiracı ise çıkış tarihini ekle (son hareket tarihi)
-                        if ($type === 'former_tenant' && $lastDate) {
+                        if (in_array($type, ['former_tenant']) && $lastDate) {
                             $assignmentData['move_out_date'] = $lastDate;
                         }
 
