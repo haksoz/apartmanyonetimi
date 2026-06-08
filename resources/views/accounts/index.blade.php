@@ -132,7 +132,6 @@
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
                         <a href="{{ $sortLink('balance') }}" class="inline-flex items-center gap-0.5 hover:text-slate-700">Bakiye {!! $sortIcon('balance') !!}</a>
                     </th>
-                    <th class="px-5 py-3.5"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -173,12 +172,9 @@
                                 @endif
                             </div>
                         </td>
-                        <td class="px-5 py-4 text-right" onclick="event.stopPropagation()">
-                            <a href="{{ route('accounts.show', $account) }}" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Detay</a>
-                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400">Henüz hesap yok.</td></tr>
+                    <tr><td colspan="6" class="px-5 py-12 text-center text-slate-400">Henüz hesap yok.</td></tr>
                 @endforelse
             </tbody>
         </table>
