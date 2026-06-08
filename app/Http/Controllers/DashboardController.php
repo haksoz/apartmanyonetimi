@@ -86,9 +86,13 @@ class DashboardController extends Controller
             }
         }
 
-        // Gider kategorileri (tüm zamanlar)
-        $expenseByCategory = Expense::where('apartment_id', $id)
-            ->selectRaw("COALESCE(NULLIF(category,''), 'Diğer') as cat, SUM(amount) as total")
+        // Gider kategorileri (tüm zamanlar) — category_id ilişkisi önce, yoksa eski string sütunu
+        $expenseByCategory = Expense::where('expenses.apartment_id', $id)
+            ->leftJoin('categories', function ($join) {
+                $join->on('categories.id', '=', 'expenses.category_id')
+                     ->whereNull('categories.deleted_at');
+            })
+            ->selectRaw("COALESCE(NULLIF(categories.name,''), NULLIF(expenses.category,''), 'Diğer') as cat, SUM(expenses.amount) as total")
             ->groupBy('cat')
             ->orderByDesc('total')
             ->limit(8)
