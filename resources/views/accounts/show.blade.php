@@ -517,7 +517,7 @@
                     <input type="hidden" name="payment_ids" id="multi-allocate-payment-ids">
 
                     <button type="submit" id="multi-allocate-btn"
-                        class="hidden rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
 
                         Seçilileri Tahsis Et &mdash; <span id="selected-payment-count">0</span> tahsilat / <span id="selected-payment-total">0,00</span> TL
 
@@ -664,7 +664,7 @@
                     <input type="hidden" name="payment_ids" id="multi-supplier-allocate-payment-ids">
 
                     <button type="submit" id="multi-supplier-allocate-btn"
-                        class="hidden rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
 
                         Seçilileri Tahsis Et &mdash; <span id="selected-supplier-payment-count">0</span> ödeme / <span id="selected-supplier-payment-total">0,00</span> TL
 
@@ -1048,23 +1048,31 @@
 
                 const checked = document.querySelectorAll('.supplier-payment-checkbox:checked');
 
+                let total = 0, ids = [];
+
+                checked.forEach(cb => { total += parseFloat(cb.dataset.amount); ids.push(cb.dataset.paymentId); });
+
+                countEl.textContent = checked.length;
+
+                totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                idsInput.value = ids.join(',');
+
                 if (checked.length > 0) {
 
-                    let total = 0, ids = [];
+                    multiBtn.disabled = false;
 
-                    checked.forEach(cb => { total += parseFloat(cb.dataset.amount); ids.push(cb.dataset.paymentId); });
+                    multiBtn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
 
-                    multiBtn.classList.remove('hidden');
-
-                    countEl.textContent = checked.length;
-
-                    totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-                    idsInput.value = ids.join(',');
+                    multiBtn.classList.add('bg-slate-950', 'text-white', 'hover:bg-slate-800', 'cursor-pointer');
 
                 } else {
 
-                    multiBtn.classList.add('hidden');
+                    multiBtn.disabled = true;
+
+                    multiBtn.classList.remove('bg-slate-950', 'text-white', 'hover:bg-slate-800', 'cursor-pointer');
+
+                    multiBtn.classList.add('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
 
                     idsInput.value = '';
 
@@ -1128,31 +1136,31 @@
 
                 const checked = document.querySelectorAll('.payment-checkbox:checked');
 
+                let total = 0, ids = [];
+
+                checked.forEach(cb => { total += parseFloat(cb.dataset.amount); ids.push(cb.dataset.paymentId); });
+
+                countEl.textContent = checked.length;
+
+                totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                idsInput.value = ids.join(',');
+
                 if (checked.length > 0) {
 
-                    let total = 0;
+                    multiBtn.disabled = false;
 
-                    let ids = [];
+                    multiBtn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
 
-                    checked.forEach(cb => {
-
-                        total += parseFloat(cb.dataset.amount);
-
-                        ids.push(cb.dataset.paymentId);
-
-                    });
-
-                    multiBtn.classList.remove('hidden');
-
-                    countEl.textContent = checked.length;
-
-                    totalEl.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-                    idsInput.value = ids.join(',');
+                    multiBtn.classList.add('bg-slate-950', 'text-white', 'hover:bg-slate-800', 'cursor-pointer');
 
                 } else {
 
-                    multiBtn.classList.add('hidden');
+                    multiBtn.disabled = true;
+
+                    multiBtn.classList.remove('bg-slate-950', 'text-white', 'hover:bg-slate-800', 'cursor-pointer');
+
+                    multiBtn.classList.add('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
 
                     idsInput.value = '';
 
