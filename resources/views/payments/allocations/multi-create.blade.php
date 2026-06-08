@@ -3,7 +3,7 @@
 @section('content')
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-950">Tahsilatları Aidatlara Tahsis Et</h1>
+            <h1 class="text-2xl font-bold text-slate-950">Tahsilattan Açık Aidat Kapama</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $account->name }} — {{ $payments->count() }} tahsilat seçildi</p>
         </div>
         <a href="{{ route('accounts.show', $account) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri Dön</a>
@@ -52,7 +52,7 @@
         <div class="mb-4 flex items-center justify-between gap-3 flex-wrap">
             <div class="flex items-center gap-3">
                 <button type="button" id="btn-fifo" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                    Eskiden Yeniye Otomatik Dağıt (FIFO)
+                    Eskiden Yeniye Bakiye Dağıt (FIFO)
                 </button>
                 <button type="button" id="btn-clear" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                     Temizle
@@ -68,6 +68,8 @@
             @endif
         </div>
 
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Açık Aidatlar</h3>
+
         <div class="mb-4 overflow-hidden rounded-2xl border border-slate-200">
             <table class="min-w-full divide-y divide-slate-200 text-sm">
                 <thead class="bg-slate-50 text-left text-slate-500">
@@ -75,7 +77,7 @@
                         <th class="px-5 py-3">Tarih</th>
                         <th class="px-5 py-3">Açıklama</th>
                         <th class="px-5 py-3 text-right">Kalan</th>
-                        <th class="px-5 py-3 text-right">Tahsis Et</th>
+                        <th class="px-5 py-3 text-right">Tutar</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -135,7 +137,7 @@
         </div>
 
         <div class="mt-4">
-            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Tahsis Et</button>
+            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Kaydet</button>
         </div>
 
         <script>
