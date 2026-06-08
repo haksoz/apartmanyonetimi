@@ -14,23 +14,18 @@
                 <span class="text-slate-500">{{ $account->type_label }}</span>
             </div>
 
-            <h1 class="text-2xl font-bold text-slate-950">{{ $account->name }}</h1>
-
-            <div class="mt-1 flex items-center gap-3">
+            <h1 class="text-2xl font-bold text-slate-950">
+                {{ $account->name }}
                 @if ($account->unit)
-                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-                        Daire No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                    </span>
+                    <span class="text-slate-400 font-normal"> — Daire No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</span>
                 @endif
-                <span class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-sm font-semibold
-                    {{ $account->type === App\Models\Account::TYPE_OWNER ? 'bg-blue-50 text-blue-700' :
-                       ($account->type === App\Models\Account::TYPE_TENANT ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700') }}">
-                    {{ $account->type_label }}
-                </span>
-                @if (!$account->is_active)
+            </h1>
+
+            @if (!$account->is_active)
+                <div class="mt-1">
                     <span class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
-                @endif
-            </div>
+                </div>
+            @endif
 
         </div>
 
