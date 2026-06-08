@@ -77,169 +77,111 @@
 
 
 
-    <div class="mb-6 grid gap-4 md:grid-cols-3">
-
-        <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Borç</div><div class="mt-2 text-2xl font-bold">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div></div>
-
-        <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Alacak</div><div class="mt-2 text-2xl font-bold">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div></div>
-
-        <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Bakiye</div><div class="mt-2 text-2xl font-bold">{{ number_format($account->ledger_balance, 2, ',', '.') }} TL</div></div>
-
-    </div>
-
-
-
-    {{-- Kullanıcı ve Hesap Bilgileri --}}
-
-    <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
-
-        <h2 class="mb-4 text-lg font-semibold text-slate-950">Bilgiler</h2>
-
-        @if ($account->user)
-
-            <div class="grid gap-4 md:grid-cols-3 text-sm mb-4">
-
-                <div>
-
-                    <div class="text-xs text-slate-500 mb-1">Ad Soyad</div>
-
-                    <div class="font-semibold text-slate-900">{{ $account->user->name }}</div>
-
-                </div>
-
-                <div>
-
-                    <div class="text-xs text-slate-500 mb-1">E-posta</div>
-
-                    <div class="font-semibold text-slate-900">{{ $account->user->email }}</div>
-
-                </div>
-
-                <div>
-
-                    <div class="text-xs text-slate-500 mb-1">Telefon</div>
-
-                    <div class="font-semibold text-slate-900">{{ $account->user->phone ?: '—' }}</div>
-
-                </div>
-
+    {{-- Özet + Bilgiler Birleşik Kart --}}
+    <div class="rounded-2xl bg-white shadow-sm mb-6 overflow-hidden">
+        {{-- Üst: Borç / Alacak / Bakiye --}}
+        <div class="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
+            <div class="p-5">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Borç</div>
+                <div class="mt-1.5 text-xl font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
             </div>
-
-        @endif
-
-        {{-- Daire Bilgileri --}}
-        @if ($account->unit)
-            <div class="grid gap-4 md:grid-cols-4 text-sm mb-4 pb-4 border-b border-slate-100">
-
-                @if ($account->unit->floor)
-                <div>
-                    <div class="text-xs text-slate-500 mb-1">Kat</div>
-                    <div class="font-semibold text-slate-900">{{ $account->unit->floor }}</div>
-                </div>
-                @endif
-
-                @if ($account->unit->block)
-                <div>
-                    <div class="text-xs text-slate-500 mb-1">Blok</div>
-                    <div class="font-semibold text-slate-900">{{ $account->unit->block }}</div>
-                </div>
-                @endif
-
-                @if ($account->unit->square_meters)
-                <div>
-                    <div class="text-xs text-slate-500 mb-1">Alan</div>
-                    <div class="font-semibold text-slate-900">{{ number_format($account->unit->square_meters, 0, ',', '.') }} m²</div>
-                </div>
-                @endif
-
-                @if ($account->unit->share_coefficient)
-                <div>
-                    <div class="text-xs text-slate-500 mb-1">Hisse Katsayısı</div>
-                    <div class="font-semibold text-slate-900">{{ $account->unit->share_coefficient }}</div>
-                </div>
-                @endif
-
+            <div class="p-5">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Alacak</div>
+                <div class="mt-1.5 text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
             </div>
-        @endif
-
-        <div class="grid gap-4 md:grid-cols-2 text-sm mb-4">
-
-            <div>
-
-                <div class="text-xs text-slate-500 mb-1">Portal Erişimi</div>
-
-                <div class="font-semibold text-slate-900">
-
-                    @if ($account->user)
-
-                        Var ({{ $account->user->name }})
-
-                    @else
-
-                        Yok
-
-                    @endif
-
+            <div class="p-5">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bakiye</div>
+                @php $balance = $account->ledger_balance; @endphp
+                <div class="mt-1.5 text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
+                    {{ number_format(abs($balance), 2, ',', '.') }} TL
+                    <span class="text-sm font-normal">{{ $balance < 0 ? '(B)' : ($balance > 0 ? '(A)' : '') }}</span>
                 </div>
-
             </div>
-
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2 text-sm">
+        {{-- Alt: Bilgiler --}}
+        <div class="p-6">
+            <div class="grid gap-x-8 gap-y-4 text-sm" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr))">
 
-            <div>
-
-                <div class="text-xs text-slate-500 mb-1">
-
-                    @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Giriş Tarihi
-
-                    @else Hesap Açılış Tarihi
-
-                    @endif
-
-                </div>
-
-                <div class="font-semibold text-slate-900">
-
-                    @if ($account->type === App\Models\Account::TYPE_TENANT && $account->active_tenant_assignment)
-
-                        {{ $account->active_tenant_assignment->move_in_date->format('d.m.Y') }}
-
-                    @else
-
-                        {{ $account->account_opening_date ? $account->account_opening_date->format('d.m.Y') : '—' }}
-
-                    @endif
-
-                </div>
-
-            </div>
-
-            @if ($account->account_end_date)
-
-                <div>
-
-                    <div class="text-xs text-slate-500 mb-1">
-
-                        @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Çıkış Tarihi
-
-                        @elseif ($account->type === App\Models\Account::TYPE_OWNER) Maliklik Bitiş Tarihi
-
-                        @else Hesap Kapanış Tarihi
-
-                        @endif
-
+                {{-- Daire bilgileri --}}
+                @if ($account->unit)
+                    @if ($account->unit->floor)
+                    <div>
+                        <div class="text-xs text-slate-500 mb-0.5">Kat</div>
+                        <div class="font-semibold text-slate-900">{{ $account->unit->floor }}</div>
                     </div>
+                    @endif
+                    @if ($account->unit->block)
+                    <div>
+                        <div class="text-xs text-slate-500 mb-0.5">Blok</div>
+                        <div class="font-semibold text-slate-900">{{ $account->unit->block }}</div>
+                    </div>
+                    @endif
+                    @if ($account->unit->square_meters)
+                    <div>
+                        <div class="text-xs text-slate-500 mb-0.5">Alan</div>
+                        <div class="font-semibold text-slate-900">{{ number_format($account->unit->square_meters, 0, ',', '.') }} m²</div>
+                    </div>
+                    @endif
+                    @if ($account->unit->share_coefficient)
+                    <div>
+                        <div class="text-xs text-slate-500 mb-0.5">Hisse Katsayısı</div>
+                        <div class="font-semibold text-slate-900">{{ $account->unit->share_coefficient }}</div>
+                    </div>
+                    @endif
+                @endif
 
-                    <div class="font-semibold text-red-600">{{ $account->account_end_date->format('d.m.Y') }}</div>
-
+                {{-- Portal erişimi --}}
+                <div>
+                    <div class="text-xs text-slate-500 mb-0.5">Portal Erişimi</div>
+                    <div class="font-semibold text-slate-900">{{ $account->user ? 'Var' : 'Yok' }}</div>
                 </div>
 
-            @endif
+                {{-- Açılış tarihi --}}
+                <div>
+                    <div class="text-xs text-slate-500 mb-0.5">
+                        @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Girişi
+                        @else Hesap Açılışı
+                        @endif
+                    </div>
+                    <div class="font-semibold text-slate-900">
+                        @if ($account->type === App\Models\Account::TYPE_TENANT && $account->active_tenant_assignment)
+                            {{ $account->active_tenant_assignment->move_in_date->format('d.m.Y') }}
+                        @else
+                            {{ $account->account_opening_date ? $account->account_opening_date->format('d.m.Y') : '—' }}
+                        @endif
+                    </div>
+                </div>
 
+                {{-- Kapanış tarihi --}}
+                @if ($account->account_end_date)
+                <div>
+                    <div class="text-xs text-slate-500 mb-0.5">
+                        @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Çıkışı
+                        @elseif ($account->type === App\Models\Account::TYPE_OWNER) Maliklik Bitişi
+                        @else Hesap Kapanışı
+                        @endif
+                    </div>
+                    <div class="font-semibold text-red-600">{{ $account->account_end_date->format('d.m.Y') }}</div>
+                </div>
+                @endif
+
+                {{-- Kullanıcı bilgileri --}}
+                @if ($account->user)
+                <div>
+                    <div class="text-xs text-slate-500 mb-0.5">E-posta</div>
+                    <div class="font-semibold text-slate-900">{{ $account->user->email }}</div>
+                </div>
+                @if ($account->user->phone)
+                <div>
+                    <div class="text-xs text-slate-500 mb-0.5">Telefon</div>
+                    <div class="font-semibold text-slate-900">{{ $account->user->phone }}</div>
+                </div>
+                @endif
+                @endif
+
+            </div>
         </div>
-
     </div>
 
 
