@@ -115,7 +115,7 @@
                         </td>
                         <td class="px-5 py-4 font-semibold text-slate-900 tabular-nums">{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</td>
                         <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $periodText ?? '-' }}</td>
-                        <td class="px-5 py-4 text-slate-700">{{ $expense->category }}</td>
+                        <td class="px-5 py-4 text-slate-700">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</td>
                         <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-right tabular-nums {{ $expense->is_paid ? 'text-slate-400' : 'text-amber-600 font-semibold' }}">
                             {{ $expense->is_paid ? '—' : number_format($expense->remaining_amount, 2, ',', '.') . ' TL' }}
@@ -170,7 +170,7 @@
                         <span class="mx-1 text-slate-400">•</span>
                         <span>{{ $periodText ?? '-' }}</span>
                         <span class="mx-1 text-slate-400">•</span>
-                        <span>{{ $expense->category }}</span>
+                        <span>{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</span>
                         @if ($expense->account)
                             <span class="mx-1 text-slate-400">•</span>
                             <span>{{ $expense->account->name }}</span>

@@ -1760,7 +1760,7 @@ class AccountController extends Controller
         $defaultCategory = $categories->firstWhere('name', 'Aidat') ?? $categories->first();
         $defaultExpenseCategory = $categories->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])->first();
 
-        DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $cashBox, $categories, $defaultCategory, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
+        DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $cashBox, &$categories, $defaultCategory, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
             // 1. Hesapları oluştur veya eşleştir
             foreach ($accounts as $accountName => $accountData) {
                 $type = $accountTypes[$accountName] ?? 'supplier';
@@ -1856,9 +1856,21 @@ class AccountController extends Controller
 
                     if ($t['credit'] > 0) {
                         // Tedarikçi alacak → Gider (Expense)
-                        $category = $catName
-                            ? ($categories->first(fn($c) => mb_strtolower($c->name) === mb_strtolower($catName) && in_array($c->type, [Category::TYPE_EXPENSE, Category::TYPE_ALL])) ?? $defaultExpenseCategory)
-                            : $defaultExpenseCategory;
+                        if ($catName) {
+                            $normalCatName = mb_strtolower(trim($catName));
+                            $category = $categories->first(fn($c) => mb_strtolower(trim($c->name)) === $normalCatName);
+                            if (!$category) {
+                                $category = Category::firstOrCreate(
+                                    ['apartment_id' => $apartment->id, 'name' => trim($catName)],
+                                    ['type' => Category::TYPE_EXPENSE, 'is_active' => true]
+                                );
+                                if (!$categories->contains('id', $category->id)) {
+                                    $categories->push($category);
+                                }
+                            }
+                        } else {
+                            $category = $defaultExpenseCategory;
+                        }
 
                         $expense = Expense::create([
                             'apartment_id'     => $apartment->id,
@@ -1928,9 +1940,21 @@ class AccountController extends Controller
 
                     if ($t['debit'] > 0) {
                         // Kat maliki/Kiracı borç → Aidat (Due)
-                        $category = $catName
-                            ? ($categories->first(fn($c) => mb_strtolower($c->name) === mb_strtolower($catName)) ?? $defaultCategory)
-                            : $defaultCategory;
+                        if ($catName) {
+                            $normalCatName = mb_strtolower(trim($catName));
+                            $category = $categories->first(fn($c) => mb_strtolower(trim($c->name)) === $normalCatName);
+                            if (!$category) {
+                                $category = Category::firstOrCreate(
+                                    ['apartment_id' => $apartment->id, 'name' => trim($catName)],
+                                    ['type' => Category::TYPE_INCOME, 'is_active' => true]
+                                );
+                                if (!$categories->contains('id', $category->id)) {
+                                    $categories->push($category);
+                                }
+                            }
+                        } else {
+                            $category = $defaultCategory;
+                        }
 
                         $due = Due::create([
                             'apartment_id' => $apartment->id,

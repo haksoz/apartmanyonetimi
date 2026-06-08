@@ -244,7 +244,7 @@
 
                 <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kategori</div>
 
-                <div class="mt-2 text-sm font-medium text-slate-900">{{ $expense->category }}</div>
+                <div class="mt-2 text-sm font-medium text-slate-900">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</div>
 
             </div>
 
