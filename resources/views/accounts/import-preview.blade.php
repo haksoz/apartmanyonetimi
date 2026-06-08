@@ -46,7 +46,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @foreach ($accounts as $accountName => $account)
+                        @foreach ($accounts as $accountKey => $account)
                             @php
                                 // Yeni hesaplarda (existing_account_id yok) tip seçilmemişse beyaz/boş renk
                                 $rowBgClass = !$account['existing_account_id']
@@ -57,18 +57,19 @@
                                         'former_tenant' => 'bg-purple-100',
                                         default => 'bg-amber-100'
                                     };
+                                $accountKeyEncoded = e($accountKey);
                             @endphp
                             <tr class="{{ $rowBgClass }}">
                                 <td class="px-4 py-3">
-                                    <div class="font-medium text-slate-900">{{ $accountName }}</div>
+                                    <div class="font-medium text-slate-900">{{ $account['name'] }}</div>
                                     @if ($account['unit_no'])
                                         <div class="text-xs text-slate-500">Daire: {{ $account['unit_no'] }}</div>
                                     @endif
                                 </td>
                                 <td class="px-4 py-3">
-                                    <select name="account_mapping[{{ $accountName }}]"
+                                    <select name="account_mapping[{{ $accountKey }}]"
                                             class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                            onchange="toggleRenameCheckbox('{{ $accountName }}', this.value); updateUnitFromAccount('{{ $accountName }}', this.value)">
+                                            onchange="toggleRenameCheckbox('{{ $accountKeyEncoded }}', this.value); updateUnitFromAccount('{{ $accountKeyEncoded }}', this.value)">
                                         <option value="">-- Yeni Hesap Oluştur --</option>
                                         @foreach ($allAccounts as $sysAccount)
                                             @php
@@ -85,18 +86,18 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <label class="flex items-center gap-2 mt-2 text-xs cursor-pointer {{ $account['existing_account_id'] ? '' : 'opacity-50' }}" id="rename-label-{{ $accountName }}">
-                                        <input type="checkbox" name="rename_accounts[{{ $accountName }}]" value="1"
+                                    <label class="flex items-center gap-2 mt-2 text-xs cursor-pointer {{ $account['existing_account_id'] ? '' : 'opacity-50' }}" id="rename-label-{{ $accountKeyEncoded }}">
+                                        <input type="checkbox" name="rename_accounts[{{ $accountKey }}]" value="1"
                                                class="rounded text-emerald-600 focus:ring-emerald-500"
                                                {{ $account['existing_account_id'] ? '' : 'disabled' }}
-                                               id="rename-check-{{ $accountName }}"
-                                               onchange="handleRenameCheck('{{ $accountName }}', this)">
-                                        <span class="text-slate-600">Hesap adını güncelle: <strong>"{{ $accountName }}"</strong></span>
+                                               id="rename-check-{{ $accountKeyEncoded }}"
+                                               onchange="handleRenameCheck('{{ $accountKeyEncoded }}', this)">
+                                        <span class="text-slate-600">Hesap adını güncelle: <strong>"{{ $account['name'] }}"</strong></span>
                                     </label>
                                 </td>
                                 <td class="px-4 py-3">
                                     {{-- Sistemdeki eşleşen hesabın daire bilgisi --}}
-                                    <div id="system-unit-display-{{ $accountName }}" class="text-xs mb-1">
+                                    <div id="system-unit-display-{{ $accountKeyEncoded }}" class="text-xs mb-1">
                                         @php
                                             $sysUnitNo = $allAccounts[$account['existing_account_id']]['unit_no'] ?? null;
                                         @endphp
@@ -107,8 +108,8 @@
                                         @endif
                                     </div>
 
-                                    <div id="unit-select-wrapper-{{ $accountName }}" class="{{ $account['suggested_type'] == 'supplier' ? 'hidden' : '' }}">
-                                        <select name="unit_mapping[{{ $accountName }}]"
+                                    <div id="unit-select-wrapper-{{ $accountKeyEncoded }}" class="{{ $account['suggested_type'] == 'supplier' ? 'hidden' : '' }}">
+                                        <select name="unit_mapping[{{ $accountKey }}]"
                                                 class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
                                             <option value="">-- Daire Seç --</option>
                                             @foreach ($allUnits as $unitId => $unitNo)
@@ -121,7 +122,7 @@
                                             <div class="text-xs text-slate-500 mt-1">Excel: Daire {{ $account['unit_no'] ?? '-' }}</div>
                                         @endif
                                     </div>
-                                    <div id="unit-supplier-msg-{{ $accountName }}" class="text-xs text-slate-400 {{ $account['suggested_type'] == 'supplier' ? '' : 'hidden' }}">
+                                    <div id="unit-supplier-msg-{{ $accountKeyEncoded }}" class="text-xs text-slate-400 {{ $account['suggested_type'] == 'supplier' ? '' : 'hidden' }}">
                                         Tedarikçi için daire seçilmez
                                     </div>
                                 </td>
@@ -132,9 +133,9 @@
                                     {{ $account['transaction_count'] }}
                                 </td>
                                 <td class="px-4 py-3">
-                                    <select name="account_types[{{ $accountName }}]"
+                                    <select name="account_types[{{ $accountKey }}]"
                                             class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                            onchange="toggleUnitSelect('{{ $accountName }}', this.value); updateRowColor('{{ $accountName }}', this.value)"
+                                            onchange="toggleUnitSelect('{{ $accountKeyEncoded }}', this.value); updateRowColor('{{ $accountKeyEncoded }}', this.value)"
                                             required>
                                         <option value="" {{ !$account['existing_account_id'] ? 'selected' : '' }}>-- Tip Seçin --</option>
                                         <option value="supplier" {{ $account['existing_account_id'] && $account['suggested_type'] == 'supplier' ? 'selected' : '' }}>Tedarikçi</option>

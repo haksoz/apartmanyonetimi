@@ -1563,9 +1563,13 @@ class AccountController extends Controller
                 continue;
             }
 
+            // Hesap anahtarı: ad + daire no kombinasyonu (aynı ad farklı daire = farklı hesap)
+            $accountKey = $accountName . '|' . $unitNo;
+
             $transactions[] = [
                 'date' => $parsedDate->format('Y-m-d'),
                 'display_date' => $parsedDate->format('d.m.Y'),
+                'account_key' => $accountKey,
                 'account_name' => $accountName,
                 'unit_no' => $unitNo,
                 'category_name' => $categoryName,
@@ -1576,8 +1580,8 @@ class AccountController extends Controller
             ];
 
             // Hesap istatistiklerini güncelle
-            if (!isset($uniqueAccounts[$accountName])) {
-                $uniqueAccounts[$accountName] = [
+            if (!isset($uniqueAccounts[$accountKey])) {
+                $uniqueAccounts[$accountKey] = [
                     'name' => $accountName,
                     'min_date' => $parsedDate,
                     'max_date' => $parsedDate,
@@ -1585,17 +1589,14 @@ class AccountController extends Controller
                     'transaction_count' => 0,
                 ];
             } else {
-                if ($parsedDate->lt($uniqueAccounts[$accountName]['min_date'])) {
-                    $uniqueAccounts[$accountName]['min_date'] = $parsedDate;
+                if ($parsedDate->lt($uniqueAccounts[$accountKey]['min_date'])) {
+                    $uniqueAccounts[$accountKey]['min_date'] = $parsedDate;
                 }
-                if ($parsedDate->gt($uniqueAccounts[$accountName]['max_date'])) {
-                    $uniqueAccounts[$accountName]['max_date'] = $parsedDate;
-                }
-                if (empty($uniqueAccounts[$accountName]['unit_no']) && !empty($unitNo)) {
-                    $uniqueAccounts[$accountName]['unit_no'] = $unitNo;
+                if ($parsedDate->gt($uniqueAccounts[$accountKey]['max_date'])) {
+                    $uniqueAccounts[$accountKey]['max_date'] = $parsedDate;
                 }
             }
-            $uniqueAccounts[$accountName]['transaction_count']++;
+            $uniqueAccounts[$accountKey]['transaction_count']++;
         }
 
         if (empty($transactions) && empty($errors)) {
@@ -1619,7 +1620,8 @@ class AccountController extends Controller
             ->toArray();
 
         // Her hesap için varsayılan tip belirle
-        foreach ($uniqueAccounts as $name => &$account) {
+        foreach ($uniqueAccounts as $key => &$account) {
+            $name = $account['name'];
             // Mevcut hesap varsa onun tipini kullan, yoksa daire no'ya göre belirle
             if (isset($existingAccountsWithType[$name])) {
                 $account['suggested_type'] = $existingAccountsWithType[$name]['type'];
@@ -1722,9 +1724,9 @@ class AccountController extends Controller
 
         // Tüm hesaplar için tip seçimi yapılmış mı kontrol et
         $missingTypes = [];
-        foreach ($accounts as $accountName => $accountData) {
-            if (empty($accountTypes[$accountName])) {
-                $missingTypes[] = $accountName;
+        foreach ($accounts as $accountKey => $accountData) {
+            if (empty($accountTypes[$accountKey])) {
+                $missingTypes[] = $accountData['name'] . ($accountData['unit_no'] ? ' (Daire ' . $accountData['unit_no'] . ')' : '');
             }
         }
         if (!empty($missingTypes)) {
@@ -1738,9 +1740,9 @@ class AccountController extends Controller
 
         // Her hesap için tarih aralığını hesapla (tenant end date için)
         $accountDateRanges = [];
-        foreach ($accounts as $accountName => $accountData) {
-            $accountTransactions = collect($transactions)->where('account_name', $accountName);
-            $accountDateRanges[$accountName] = [
+        foreach ($accounts as $accountKey => $accountData) {
+            $accountTransactions = collect($transactions)->where('account_key', $accountKey);
+            $accountDateRanges[$accountKey] = [
                 'first' => $accountTransactions->min('date'),
                 'last' => $accountTransactions->max('date'),
             ];
@@ -1762,12 +1764,13 @@ class AccountController extends Controller
 
         DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $cashBox, &$categories, $defaultCategory, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
             // 1. Hesapları oluştur veya eşleştir
-            foreach ($accounts as $accountName => $accountData) {
-                $type = $accountTypes[$accountName] ?? 'supplier';
+            foreach ($accounts as $accountKey => $accountData) {
+                $accountName = $accountData['name'];
+                $type = $accountTypes[$accountKey] ?? 'supplier';
                 // Eski kiracıyı veritabanında 'tenant' olarak kaydet (former_tenant desteklenmiyor)
                 $dbType = $type === 'former_tenant' ? 'tenant' : $type;
-                $mappedAccountId = $accountMapping[$accountName] ?? null;
-                $selectedUnitId = $unitMapping[$accountName] ?? null; // Kullanıcının seçtiği daire
+                $mappedAccountId = $accountMapping[$accountKey] ?? null;
+                $selectedUnitId = $unitMapping[$accountKey] ?? null; // Kullanıcının seçtiği daire
                 $originalUnitId = $accountData['unit_id'] ?? null; // Excel'deki daire
                 $effectiveUnitId = $selectedUnitId ?: $originalUnitId; // Sonuçta kullanılacak daire
 
@@ -1778,13 +1781,13 @@ class AccountController extends Controller
                         ->first();
 
                     // Hesap adı güncellenmek isteniyorsa güncelle
-                    if ($account && !empty($renameAccounts[$accountName])) {
+                    if ($account && !empty($renameAccounts[$accountKey])) {
                         $account->update(['name' => $accountName]);
                     }
 
                     // Daire değişiyorsa ve bu bir kiracıysa, eski dairenin kiracısına end_date ver
                     if ($account && $type === 'tenant' && $selectedUnitId && $account->unit_id && $selectedUnitId != $account->unit_id) {
-                        $lastDate = $accountDateRanges[$accountName]['last'] ?? now();
+                        $lastDate = $accountDateRanges[$accountKey]['last'] ?? now();
                         TenantAssignment::where('account_id', $account->id)
                             ->where('unit_id', $account->unit_id)
                             ->whereNull('end_date')
@@ -1810,8 +1813,8 @@ class AccountController extends Controller
 
                 // Kiracı/Eski Kiracı için TenantAssignment oluştur/güncelle (eğer daire varsa)
                 if (($type === 'tenant' || $type === 'former_tenant') && $effectiveUnitId) {
-                    $firstDate = $accountDateRanges[$accountName]['first'] ?? now();
-                    $lastDate = $accountDateRanges[$accountName]['last'] ?? null;
+                    $firstDate = $accountDateRanges[$accountKey]['first'] ?? now();
+                    $lastDate = $accountDateRanges[$accountKey]['last'] ?? null;
 
                     // Bu hesap-daire kombinasyonu için mevcut assignment var mı kontrol et
                     $existingAssignment = TenantAssignment::where('account_id', $account->id)
@@ -1835,12 +1838,12 @@ class AccountController extends Controller
                     }
                 }
 
-                $createdAccounts[$accountName] = $account->id;
+                $createdAccounts[$accountKey] = $account->id;
             }
 
             // 2. Cari hareketleri oluştur
             foreach ($transactions as $t) {
-                $accountId = $createdAccounts[$t['account_name']] ?? null;
+                $accountId = $createdAccounts[$t['account_key']] ?? null;
                 if (!$accountId) continue;
 
                 // Hesabı bul
