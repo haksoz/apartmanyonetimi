@@ -15,20 +15,6 @@
                class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
                 Excel'e Aktar
             </a>
-            <a href="{{ route('accounts.statement.import-sample') }}"
-               class="rounded-xl bg-slate-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700">
-                Şablon İndir
-            </a>
-            <button type="button" onclick="document.getElementById('import-modal').classList.remove('hidden')"
-                    class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-                Excel'den İçe Aktar
-            </button>
-            @if($importedCount > 0)
-                <button type="button" onclick="document.getElementById('delete-import-modal').classList.remove('hidden')"
-                        class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">
-                    İçe Aktarılmışları Sil
-                </button>
-            @endif
             <a href="{{ route('accounts.show', $account) }}"
                class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 Hesaba Dön
@@ -240,78 +226,6 @@
         @endif
     </div>
 
-    {{-- Import Modal --}}
-    <div id="import-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
-            <h3 class="text-lg font-semibold text-slate-900 mb-1">Excel'den İçe Aktar</h3>
-            <p class="text-sm text-slate-500 mb-3">Hesap hareketlerini Excel dosyasından içeri aktarın.</p>
-
-            <div class="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 space-y-1">
-                <p class="font-semibold">İçe aktarmadan önce dikkat edin:</p>
-                <ul class="list-disc list-inside space-y-0.5">
-                    <li>Borç satırları <strong>Devir Öncesi Aidat</strong>, alacak satırları <strong>Devir Öncesi Ödeme</strong> olarak kaydedilir.</li>
-                    <li>Alacaklar otomatik olarak <strong>Devir Öncesi Kasası</strong>'na işlenir.</li>
-                    <li>İçe aktarılan kayıtları hatalı bulursanız <strong>tahsis yapmadan önce</strong> toplu silme butonu ile tümünü kaldırabilirsiniz. Tahsis yapıldıktan sonra o kayıtlar silinemez.</li>
-                </ul>
-            </div>
-
-            <form method="POST" action="{{ route('accounts.statement.import', $account->id) }}" enctype="multipart/form-data">
-                @csrf
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs font-medium text-slate-600">Excel Dosyası (.xlsx)</label>
-                        <input type="file" name="file" accept=".xlsx,.xls" required
-                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                    </div>
-                    <p class="text-xs text-slate-400">
-                        Henüz şablonunuz yok mu? <a href="{{ route('accounts.statement.import-sample') }}" class="text-blue-600 hover:underline">Şablon indir</a>
-                    </p>
-                </div>
-
-                <div class="flex gap-3 mt-5">
-                    <button type="submit" class="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-                        İçe Aktar
-                    </button>
-                    <button type="button" onclick="document.getElementById('import-modal').classList.add('hidden')"
-                        class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50">
-                        İptal
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    {{-- Devir Öncesi Sil Onay Modal --}}
-    @if($importedCount > 0)
-    <div id="delete-import-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
-            <h3 class="text-lg font-semibold text-slate-900 mb-1">İçe Aktarılmışları Sil</h3>
-
-            <div class="my-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-800 space-y-1">
-                <p class="font-semibold">Silmeden önce dikkat edin:</p>
-                <ul class="list-disc list-inside space-y-0.5">
-                    <li>Bu hesaba ait <strong>{{ $importedCount }} adet</strong> Devir Öncesi kayıt silinecek.</li>
-                    <li>Her kayıtla ilişkili <strong>AccountTransaction</strong> ve kasa hareketi de kaldırılır.</li>
-                    <li><strong>Tahsis yapılmış</strong> aidat veya ödemeler korunur, silinemez.</li>
-                    <li>Bu işlem geri alınamaz.</li>
-                </ul>
-            </div>
-
-            <div class="flex gap-3">
-                <form method="POST" action="{{ route('accounts.statement.delete-last-import', $account->id) }}" class="flex-1">
-                    @csrf
-                    <button type="submit" class="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">
-                        Evet, Sil
-                    </button>
-                </form>
-                <button type="button" onclick="document.getElementById('delete-import-modal').classList.add('hidden')"
-                    class="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50">
-                    Vazgeç
-                </button>
-            </div>
-        </div>
-    </div>
-    @endif
 
     <script>
         document.addEventListener('click', function (e) {
@@ -323,13 +237,5 @@
             btn.textContent = open ? 'Gizle' : 'Tahsisler';
         });
 
-        // Modal dışına tıklayınca kapat
-        document.getElementById('import-modal').addEventListener('click', function(e) {
-            if (e.target === this) this.classList.add('hidden');
-        });
-
-        document.getElementById('delete-import-modal')?.addEventListener('click', function(e) {
-            if (e.target === this) this.classList.add('hidden');
-        });
     </script>
 @endsection

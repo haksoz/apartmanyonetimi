@@ -9,14 +9,6 @@
         </div>
         @if($isOwner)
         <div class="flex gap-2 flex-wrap">
-            @if($hasImported)
-            <form method="POST" action="{{ route('expenses.imported.destroy-all') }}" onsubmit="return confirm('Tedarikçiye bağlanmamış tüm devir öncesi giderler ve bağlı kayıtları silinecek. Tedarikçiye bağlı olanlar korunacak. Emin misiniz?')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="flex-1 md:flex-none rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Devir Öncesi Giderleri Sil</button>
-            </form>
-            @endif
-            <a href="{{ route('expenses.import') }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Gider İçe Aktar</a>
             <a href="{{ route('expenses.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Gider Ekle</a>
         </div>
         @endif
