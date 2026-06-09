@@ -184,7 +184,7 @@
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 
-        <h2 class="text-lg font-semibold text-slate-950 mb-4">Kapatılan Borçlar</h2>
+        <h2 class="text-lg font-semibold text-slate-950 mb-4">{{ $isTahsilat ? 'Kapatılan Borçlar' : 'Kapatılan Giderler' }}</h2>
 
         @if ($payment->allocations->isEmpty())
 
@@ -202,7 +202,7 @@
 
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Ref / No</th>
 
-                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Tür / Açıklama</th>
+                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $isTahsilat ? 'Borç / Açıklama' : 'Gider / Açıklama' }}</th>
 
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Kapatılan</th>
 
