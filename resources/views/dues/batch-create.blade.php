@@ -298,7 +298,33 @@
                     calcSummary.classList.add('hidden');
                 }
 
-                updateDistributionPreview(selectedSource === 'fixed' ? (parseFloat(fixedAmount?.value) || 0) : total);
+                if (selectedSource === 'fixed') {
+                    updateFixedPreview(parseFloat(fixedAmount?.value) || 0);
+                } else {
+                    updateDistributionPreview(total);
+                }
+            };
+
+            const updateFixedPreview = (perUnit) => {
+                const previewEl = document.getElementById('distribution-preview');
+                const groupsEl = document.getElementById('preview-groups');
+                const warningEl = document.getElementById('preview-warning');
+                const totalLbl = document.getElementById('preview-total-label');
+
+                if (!perUnit || perUnit <= 0 || !units) {
+                    previewEl.classList.add('hidden');
+                    return;
+                }
+
+                warningEl.classList.add('hidden');
+                const total = perUnit * units;
+
+                groupsEl.innerHTML = `<div class="flex items-center justify-between px-4 py-3 text-sm">
+                    <div class="text-slate-700"><span class="font-medium">${formatMoney(perUnit)} / daire</span> &times; <span class="text-slate-500">${units} daire</span></div>
+                    <div class="font-bold text-slate-900 tabular-nums">Toplam ${formatMoney(total)}</div>
+                </div>`;
+                totalLbl.textContent = formatMoney(total) + ' · ' + units + ' daire';
+                previewEl.classList.remove('hidden');
             };
 
             const updateDistributionPreview = (total) => {
