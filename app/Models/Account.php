@@ -31,12 +31,14 @@ class Account extends Model
         'account_opening_date',
         'account_end_date',
         'is_active',
+        'is_hidden',
         'default_category_id',
     ];
 
     protected $casts = [
         'account_opening_date' => 'date',
         'account_end_date' => 'date',
+        'is_hidden' => 'boolean',
     ];
 
     public function apartment(): BelongsTo

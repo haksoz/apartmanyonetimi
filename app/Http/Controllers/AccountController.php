@@ -77,6 +77,7 @@ class AccountController extends Controller
                 $sub->where('accounts.name', 'like', '%' . $filterSearch . '%')
                     ->orWhere('units.unit_no', 'like', '%' . $filterSearch . '%');
             }))
+            ->where('accounts.is_hidden', false)
             ->when($filterType,   fn ($q) => $q->where('accounts.type', $filterType))
             ->when($filterStatus === 'active', fn ($q) => $q->where('accounts.is_active', true))
             ->when($filterStatus === 'inactive', fn ($q) => $q->where('accounts.is_active', false))
