@@ -64,25 +64,43 @@ class Apartment extends Model
     }
 
     /**
-     * Get or create the special "Hesapsız" (orphan) account for this apartment.
+     * Create a new "Hesapsız" (orphan) account with TDR code for this apartment.
      * This account is used for expenses and payments without a specific account.
+     * Each call creates a new account with a unique TDR code.
      */
     public function getOrphanAccount(): Account
     {
-        $account = $this->accounts()
-            ->where('type', Account::TYPE_SUPPLIER)
-            ->where('name', 'Hesapsız')
-            ->first();
+        $accountCode = $this->generateTdrCode();
 
-        if (!$account) {
-            $account = $this->accounts()->create([
-                'type' => Account::TYPE_SUPPLIER,
-                'name' => 'Hesapsız',
-                'is_active' => true,
-            ]);
+        return $this->accounts()->create([
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => $accountCode,
+            'is_active' => true,
+            'is_hidden' => true,
+        ]);
+    }
+
+    private function generateTdrCode(): string
+    {
+        $apartmentCode = $this->code ?? 'XXXX';
+        $year = \Carbon\Carbon::now()->format('y');
+
+        $pattern = 'TDR-' . $apartmentCode . '-' . $year . '-%';
+
+        $lastRef = $this->accounts()
+            ->where('name', 'like', $pattern)
+            ->withTrashed()
+            ->orderByRaw('CAST(SUBSTRING_INDEX(name, "-", -1) AS UNSIGNED) DESC')
+            ->value('name');
+
+        if ($lastRef) {
+            $lastNum = (int) substr($lastRef, strrpos($lastRef, '-') + 1);
+            $nextNum = $lastNum + 1;
+        } else {
+            $nextNum = 1;
         }
 
-        return $account;
+        return sprintf('TDR-%s-%s-%05d', $apartmentCode, $year, $nextNum);
     }
 
     public function members(): BelongsToMany
