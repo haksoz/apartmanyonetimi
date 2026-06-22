@@ -300,6 +300,7 @@
                             @else
                                 <span class="text-slate-400">-</span>
                             @endif
+                            <div class="text-xs text-slate-500 mt-1">{{ $due->category?->name ?? '-' }}</div>
                         </td>
                         <td class="px-5 py-4 text-right">
                             <div class="font-semibold text-slate-900 tabular-nums">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
@@ -366,7 +367,7 @@
                         <span>{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
                     </div>
                     @if ($due->due_date)
-                        <div class="text-xs mt-1 {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500' }}">Son Ödeme: {{ $due->due_date->format('d.m.Y') }}</div>
+                        <div class="text-xs mt-1 {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500' }}">Son Ödeme: {{ $due->due_date->format('d.m.Y') }} · {{ $due->category?->name ?? '-' }}</div>
                     @endif
                     @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
                         <div class="text-xs text-amber-600 mt-1">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
