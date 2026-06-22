@@ -65,7 +65,7 @@
                 Tahsis Etmeden Kaydet
             </button>
             <button type="submit" name="action" value="allocate" class="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700">
-                Kaydet ve Tahsis Et
+                Kaydet ve Aidat Kapat
             </button>
         </div>
     </form>
