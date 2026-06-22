@@ -317,19 +317,19 @@
                         <td class="px-5 py-4">
                             @if ($due->computed_status === 'overdue')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-                                    {{ $due->category?->name ?? '-' }} Gecikti
+                                    Gecikti
                                 </span>
                             @elseif ($due->computed_status === 'paid')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                    {{ $due->category?->name ?? '-' }} Ödendi
+                                    Ödendi
                                 </span>
                             @elseif ($due->computed_status === 'partial')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                                    {{ $due->category?->name ?? '-' }} Kısmi
+                                    Kısmi
                                 </span>
                             @else
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                                    {{ $due->category?->name ?? '-' }} Bekliyor
+                                    Bekliyor
                                 </span>
                             @endif
                         </td>
