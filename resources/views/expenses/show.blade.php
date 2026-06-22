@@ -6,7 +6,19 @@
 
     @php
 
-        $paymentTx = $expense->transactions->firstWhere('type', 'debit');
+        $expensePayment = $expense->paymentAllocations->first()?->payment;
+
+        $paymentTx = $expensePayment
+
+            ? \App\Models\AccountTransaction::where('transactionable_type', \App\Models\Payment::class)
+
+                ->where('transactionable_id', $expensePayment->id)
+
+                ->where('type', 'debit')
+
+                ->first()
+
+            : $expense->transactions->firstWhere('type', 'debit');
 
         $cashTx = $expense->cashTransactions->first();
 
@@ -179,6 +191,22 @@
                 <div class="mt-2 text-sm text-slate-900">{{ $paymentTx?->description ?? '-' }}</div>
 
             </div>
+
+            @if ($expensePayment)
+
+            <div>
+
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ödeme Referans No</div>
+
+                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">
+
+                    <a href="{{ route('payments.show', $expensePayment) }}" class="text-blue-700 hover:text-blue-800 hover:underline">{{ $expensePayment->reference_number }}</a>
+
+                </div>
+
+            </div>
+
+            @endif
 
             @if ($cashTx)
 
