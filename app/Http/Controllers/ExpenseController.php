@@ -18,6 +18,8 @@ use App\Models\Category;
 
 use App\Models\Expense;
 
+use App\Models\Payment;
+
 use App\Support\CurrentApartment;
 
 use Illuminate\Http\Request;
@@ -392,9 +394,21 @@ class ExpenseController extends Controller
 
                 $paymentDescription = ($validated['description'] ?? 'Gider').' Ödemesi';
 
+                $payment = Payment::create([
 
+                    'apartment_id' => $apartment->id,
 
-                // Gider ödendiyse: Kasadan çıkış kaydet
+                    'account_id' => $validated['account_id'] ?? null,
+
+                    'amount' => $validated['amount'],
+
+                    'unallocated_amount' => 0,
+
+                    'payment_date' => $validated['payment_date'],
+
+                    'description' => $paymentDescription,
+
+                ]);
 
                 CashTransaction::create([
 
@@ -403,6 +417,10 @@ class ExpenseController extends Controller
                     'cash_box_id' => $validated['cash_box_id'],
 
                     'account_id' => $validated['account_id'] ?? null,
+
+                    'expense_id' => $expense->id,
+
+                    'payment_id' => $payment->id,
 
                     'category_id' => $category->id,
 
@@ -418,10 +436,6 @@ class ExpenseController extends Controller
 
                 ]);
 
-
-
-                // Tedarikçi varsa ödeme kaydı: alacak kapandı (debit)
-
                 if ($validated['account_id']) {
 
                     AccountTransaction::create([
@@ -430,9 +444,9 @@ class ExpenseController extends Controller
 
                         'account_id' => $validated['account_id'],
 
-                        'transactionable_type' => Expense::class,
+                        'transactionable_type' => Payment::class,
 
-                        'transactionable_id' => $expense->id,
+                        'transactionable_id' => $payment->id,
 
                         'type' => 'debit',
 
@@ -445,6 +459,22 @@ class ExpenseController extends Controller
                     ]);
 
                 }
+
+                $payment->allocations()->create([
+
+                    'expense_id' => $expense->id,
+
+                    'amount' => $validated['amount'],
+
+                ]);
+
+                $expense->update([
+
+                    'paid_amount' => $validated['amount'],
+
+                    'remaining_amount' => 0,
+
+                ]);
 
             }
 
@@ -666,6 +696,24 @@ class ExpenseController extends Controller
 
         DB::transaction(function () use ($expense, $validated) {
 
+            $paymentDescription = $validated['description'] ?? ($expense->description ? $expense->description.' ödemesi' : 'Gider ödemesi');
+
+            $payment = Payment::create([
+
+                'apartment_id' => $expense->apartment_id,
+
+                'account_id' => $expense->account_id,
+
+                'amount' => $validated['amount'],
+
+                'unallocated_amount' => 0,
+
+                'payment_date' => $validated['payment_date'],
+
+                'description' => $paymentDescription,
+
+            ]);
+
             CashTransaction::create([
 
                 'apartment_id' => $expense->apartment_id,
@@ -676,11 +724,13 @@ class ExpenseController extends Controller
 
                 'expense_id' => $expense->id,
 
+                'payment_id' => $payment->id,
+
                 'category_id' => $validated['category_id'],
 
                 'type' => 'expense',
 
-                'description' => $validated['description'] ?? $expense->category.' gider ödemesi',
+                'description' => $paymentDescription,
 
                 'amount' => $validated['amount'],
 
@@ -690,10 +740,6 @@ class ExpenseController extends Controller
 
             ]);
 
-
-
-            // Gider tedarikçi hesapla bağlıysa, ödeme muhasebe hareketi oluştur (debit - alacak kapanıyor)
-
             if ($expense->account_id) {
 
                 AccountTransaction::create([
@@ -702,13 +748,13 @@ class ExpenseController extends Controller
 
                     'account_id' => $expense->account_id,
 
-                    'transactionable_type' => Expense::class,
+                    'transactionable_type' => Payment::class,
 
-                    'transactionable_id' => $expense->id,
+                    'transactionable_id' => $payment->id,
 
                     'type' => 'debit',
 
-                    'description' => ($expense->description ? $expense->description.' ödemesi' : 'Gider ödemesi'),
+                    'description' => $paymentDescription,
 
                     'amount' => $validated['amount'],
 
@@ -718,9 +764,23 @@ class ExpenseController extends Controller
 
             }
 
+            $payment->allocations()->create([
 
+                'expense_id' => $expense->id,
 
-            $expense->update(['is_paid' => true]);
+                'amount' => $validated['amount'],
+
+            ]);
+
+            $expense->update([
+
+                'is_paid' => true,
+
+                'paid_amount' => $validated['amount'],
+
+                'remaining_amount' => max(0, ($expense->remaining_amount ?? $expense->amount) - $validated['amount']),
+
+            ]);
 
         });
 
@@ -750,31 +810,45 @@ class ExpenseController extends Controller
 
         DB::transaction(function () use ($expense) {
 
+            $paymentIds = $expense->paymentAllocations()->pluck('payment_id')->unique();
+
+            if ($paymentIds->isNotEmpty()) {
+
+                AccountTransaction::where('transactionable_type', Payment::class)
+
+                    ->whereIn('transactionable_id', $paymentIds)
+
+                    ->delete();
+
+                CashTransaction::whereIn('payment_id', $paymentIds)->delete();
+
+                Payment::whereIn('id', $paymentIds)->delete();
+
+            }
+
             $expense->transactions()
 
                 ->where('type', 'debit')
 
                 ->delete();
 
-
-
             CashTransaction::where('apartment_id', $expense->apartment_id)
+
+                ->where('expense_id', $expense->id)
 
                 ->where('type', 'expense')
 
-                ->where('amount', $expense->amount)
-
-                ->when($expense->account_id, fn ($q) => $q->where('account_id', $expense->account_id))
-
-                ->latest()
-
-                ->limit(1)
-
                 ->delete();
 
+            $expense->update([
 
+                'is_paid' => false,
 
-            $expense->update(['is_paid' => false]);
+                'paid_amount' => 0,
+
+                'remaining_amount' => $expense->amount,
+
+            ]);
 
         });
 
@@ -804,7 +878,7 @@ class ExpenseController extends Controller
 
         return Expense::query()
 
-            ->with(['account', 'categoryRelation', 'transactions', 'cashTransactions'])
+            ->with(['account', 'categoryRelation', 'transactions', 'cashTransactions', 'paymentAllocations.payment'])
 
             ->where('apartment_id', $apartment->id)
 

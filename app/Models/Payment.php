@@ -134,6 +134,14 @@ class Payment extends Model
 
     protected function getReferencePrefix(): string
     {
-        return 'ODE';
+        if ($this->account_id) {
+            $accountType = Account::where('id', $this->account_id)->value('type');
+
+            if ($accountType === Account::TYPE_SUPPLIER) {
+                return 'ODE';
+            }
+        }
+
+        return 'THZ';
     }
 }
