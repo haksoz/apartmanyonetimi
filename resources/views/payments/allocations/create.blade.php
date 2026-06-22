@@ -129,7 +129,7 @@
         </div>
 
         <div class="mt-4">
-            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Tahsis Et</button>
+            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Aidata Bağla</button>
         </div>
 
         <script>

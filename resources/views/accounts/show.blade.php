@@ -519,7 +519,7 @@
                     <button type="submit" id="multi-allocate-btn"
                         class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
 
-                        Seçilileri Kapat &mdash; <span id="selected-payment-count">0</span> tahsilat / <span id="selected-payment-total">0,00</span> TL
+                        Seçilenleri Aidata Bağla &mdash; <span id="selected-payment-count">0</span> tahsilat / <span id="selected-payment-total">0,00</span> TL
 
                     </button>
 
@@ -575,7 +575,7 @@
 
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
 
-                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Aidata Kapat</a>
+                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Aidata Bağla</a>
 
                                 </td>
 
@@ -613,7 +613,7 @@
 
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
 
-                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Aidata Kapat</a>
+                                    <a href="{{ route('payments.allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Aidata Bağla</a>
 
                                 </td>
 

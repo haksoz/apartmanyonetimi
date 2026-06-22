@@ -65,10 +65,10 @@
                 Tahsis Etmeden Kaydet
             </button>
             <button type="submit" name="action" value="allocate" class="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700">
-                Kaydet ve Aidat Kapat
+                Kaydet ve Aidata Bağla
             </button>
             <button type="submit" name="action" value="auto_allocate" class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-700">
-                Kaydet ve Aidat Otomatik Kapat
+                Kaydet ve Aidata Otomatik Bağla
             </button>
         </div>
     </form>
