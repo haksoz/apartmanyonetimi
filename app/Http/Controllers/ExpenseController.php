@@ -336,11 +336,11 @@ class ExpenseController extends Controller
 
         // Hesap seçilmediyse otomatik gizli tedarikçi hesabı oluştur
         if (empty($validated['account_id'])) {
-            $accountName = $validated['description'] ?? $category->name;
+            $accountCode = $this->generateTdrCode($apartment);
             $validated['account_id'] = Account::create([
                 'apartment_id' => $apartment->id,
                 'type' => Account::TYPE_SUPPLIER,
-                'name' => $accountName,
+                'name' => $accountCode,
                 'is_active' => true,
                 'is_hidden' => true,
                 'account_opening_date' => $validated['expense_date'],
@@ -983,6 +983,29 @@ class ExpenseController extends Controller
 
             ->get();
 
+    }
+
+    private function generateTdrCode($apartment): string
+    {
+        $apartmentCode = $apartment->code ?? 'XXXX';
+        $year = \Carbon\Carbon::now()->format('y');
+
+        $pattern = 'TDR-' . $apartmentCode . '-' . $year . '-%';
+
+        $lastRef = \App\Models\Account::where('apartment_id', $apartment->id)
+            ->where('name', 'like', $pattern)
+            ->withTrashed()
+            ->orderByRaw('CAST(SUBSTRING_INDEX(name, "-", -1) AS UNSIGNED) DESC')
+            ->value('name');
+
+        if ($lastRef) {
+            $lastNum = (int) substr($lastRef, strrpos($lastRef, '-') + 1);
+            $nextNum = $lastNum + 1;
+        } else {
+            $nextNum = 1;
+        }
+
+        return sprintf('TDR-%s-%s-%05d', $apartmentCode, $year, $nextNum);
     }
 
 }
