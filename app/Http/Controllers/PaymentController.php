@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AccountTransaction;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
+use App\Models\Due;
 use App\Models\Payment;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
@@ -80,7 +81,7 @@ class PaymentController extends Controller
                     ->where('is_active', true),
             ],
             'description' => ['nullable', 'string', 'max:255'],
-            'action' => ['required', Rule::in(['save', 'allocate'])],
+            'action' => ['required', Rule::in(['save', 'allocate', 'auto_allocate'])],
         ]);
 
         // If no account specified, use the orphan (Hesapsız) account
@@ -131,6 +132,13 @@ class PaymentController extends Controller
 
         $redirectTo = $request->input('redirect_to');
 
+        if ($validated['action'] === 'auto_allocate' && ! $isSupplier) {
+            $closed = $this->autoAllocateFifo($payment, $account, $apartment);
+
+            return redirect()->route('accounts.show', $account)
+                ->with('status', $this->buildAutoAllocateMessage($payment, $closed));
+        }
+
         if ($validated['action'] === 'allocate') {
             return redirect()->route('payments.allocations.create', [
                 'payment' => $payment,
@@ -143,6 +151,74 @@ class PaymentController extends Controller
         }
 
         return redirect()->route('accounts.show', $account)->with('status', 'Ödeme kaydedildi.');
+    }
+
+    /**
+     * Açık aidatları eskiden yeniye (FIFO) otomatik olarak kapatır.
+     *
+     * @return array<int, array{label: string, amount: float, fully: bool}>
+     */
+    private function autoAllocateFifo(Payment $payment, Account $account, $apartment): array
+    {
+        $closed = [];
+
+        DB::transaction(function () use ($payment, $account, $apartment, &$closed) {
+            $dues = Due::query()
+                ->where('apartment_id', $apartment->id)
+                ->where('account_id', $account->id)
+                ->where('remaining_amount', '>', 0)
+                ->orderBy('due_date')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($dues as $due) {
+                $available = round((float) $payment->unallocated_amount, 2);
+                if ($available <= 0) {
+                    break;
+                }
+
+                $amount = min($available, round((float) $due->remaining_amount, 2));
+                if ($amount <= 0) {
+                    continue;
+                }
+
+                $payment->allocateToDue($due, $amount);
+
+                $closed[] = [
+                    'label' => trim(($due->description ?: 'Aidat')
+                        . ($due->due_date ? ' (' . $due->due_date->format('d.m.Y') . ')' : '')),
+                    'amount' => $amount,
+                    'fully' => round((float) $due->remaining_amount, 2) <= 0,
+                ];
+            }
+        });
+
+        return $closed;
+    }
+
+    /**
+     * @param array<int, array{label: string, amount: float, fully: bool}> $closed
+     */
+    private function buildAutoAllocateMessage(Payment $payment, array $closed): string
+    {
+        if (empty($closed)) {
+            return 'Ödeme kaydedildi ancak kapatılacak açık aidat bulunamadı.';
+        }
+
+        $lines = array_map(function ($item) {
+            return $item['label'] . ' — ' . number_format($item['amount'], 2, ',', '.') . ' TL'
+                . ($item['fully'] ? ' (tam kapandı)' : ' (kısmi)');
+        }, $closed);
+
+        $message = 'Ödeme kaydedildi. Otomatik kapatılan aidatlar: ' . implode('; ', $lines) . '.';
+
+        $leftover = round((float) $payment->unallocated_amount, 2);
+        if ($leftover > 0) {
+            $message .= ' Kalan tahsis edilmemiş tutar: ' . number_format($leftover, 2, ',', '.') . ' TL.';
+        }
+
+        return $message;
     }
 
     public function index(Request $request, CurrentApartment $currentApartment)
