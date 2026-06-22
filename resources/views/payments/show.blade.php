@@ -255,7 +255,11 @@
 
                                 @elseif ($allocation->expense_id && $allocation->expense)
 
-                                    <td class="px-5 py-4 font-medium text-slate-900">#{{ $allocation->expense->id }}</td>
+                                    <td class="px-5 py-4">
+
+                                        <a href="{{ route('expenses.show', $allocation->expense) }}" class="font-medium text-slate-900 hover:text-emerald-600">{{ $allocation->expense->reference_number ?? '#'.$allocation->expense->id }}</a>
+
+                                    </td>
 
                                     <td class="px-5 py-4 text-slate-700">
                                         <span class="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 mr-1">Gider</span>
@@ -268,7 +272,7 @@
 
                                         <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $allocation->expense->is_paid ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700' }}">
 
-                                            {{ $allocation->expense->is_paid ? 'Kapandı' : 'Açık' }}
+                                            {{ $allocation->expense->is_paid ? 'Ödendi' : 'Açık' }}
 
                                         </span>
 
