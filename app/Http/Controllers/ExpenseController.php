@@ -182,6 +182,8 @@ class ExpenseController extends Controller
 
             ->where('type', Account::TYPE_SUPPLIER)
 
+            ->where('is_hidden', false)
+
             ->orderBy('type')
 
             ->orderBy('name')
@@ -332,6 +334,19 @@ class ExpenseController extends Controller
 
         $category = Category::findOrFail($validated['category_id']);
 
+        // Hesap seçilmediyse otomatik gizli tedarikçi hesabı oluştur
+        if (empty($validated['account_id'])) {
+            $accountName = $validated['description'] ?? $category->name;
+            $validated['account_id'] = Account::create([
+                'apartment_id' => $apartment->id,
+                'type' => Account::TYPE_SUPPLIER,
+                'name' => $accountName,
+                'is_active' => true,
+                'is_hidden' => true,
+                'account_opening_date' => $validated['expense_date'],
+            ])->id;
+        }
+
 
 
         DB::transaction(function () use ($apartment, $validated, $category, $request, $isPaid) {
@@ -340,7 +355,7 @@ class ExpenseController extends Controller
 
                 'apartment_id' => $apartment->id,
 
-                'account_id' => $validated['account_id'] ?? null,
+                'account_id' => $validated['account_id'],
 
                 'category_id' => $category->id,
 
@@ -362,31 +377,27 @@ class ExpenseController extends Controller
 
 
 
-            if ($validated['account_id']) {
+            // Gider kaydı: tedarikçi alacaklı oldu (credit)
 
-                // Gider kaydı: tedarikçi alacaklı oldu (credit)
+            AccountTransaction::create([
 
-                AccountTransaction::create([
+                'apartment_id' => $apartment->id,
 
-                    'apartment_id' => $apartment->id,
+                'account_id' => $validated['account_id'],
 
-                    'account_id' => $validated['account_id'],
+                'transactionable_type' => Expense::class,
 
-                    'transactionable_type' => Expense::class,
+                'transactionable_id' => $expense->id,
 
-                    'transactionable_id' => $expense->id,
+                'type' => 'credit',
 
-                    'type' => 'credit',
+                'description' => $validated['description'] ?? 'Gider kaydı',
 
-                    'description' => $validated['description'] ?? 'Gider kaydı',
+                'amount' => $validated['amount'],
 
-                    'amount' => $validated['amount'],
+                'transaction_date' => $validated['expense_date'],
 
-                    'transaction_date' => $validated['expense_date'],
-
-                ]);
-
-            }
+            ]);
 
 
 
@@ -398,7 +409,7 @@ class ExpenseController extends Controller
 
                     'apartment_id' => $apartment->id,
 
-                    'account_id' => $validated['account_id'] ?? null,
+                    'account_id' => $validated['account_id'],
 
                     'amount' => $validated['amount'],
 
@@ -416,7 +427,7 @@ class ExpenseController extends Controller
 
                     'cash_box_id' => $validated['cash_box_id'],
 
-                    'account_id' => $validated['account_id'] ?? null,
+                    'account_id' => $validated['account_id'],
 
                     'expense_id' => $expense->id,
 
@@ -436,29 +447,25 @@ class ExpenseController extends Controller
 
                 ]);
 
-                if ($validated['account_id']) {
+                AccountTransaction::create([
 
-                    AccountTransaction::create([
+                    'apartment_id' => $apartment->id,
 
-                        'apartment_id' => $apartment->id,
+                    'account_id' => $validated['account_id'],
 
-                        'account_id' => $validated['account_id'],
+                    'transactionable_type' => Payment::class,
 
-                        'transactionable_type' => Payment::class,
+                    'transactionable_id' => $payment->id,
 
-                        'transactionable_id' => $payment->id,
+                    'type' => 'debit',
 
-                        'type' => 'debit',
+                    'description' => $paymentDescription,
 
-                        'description' => $paymentDescription,
+                    'amount' => $validated['amount'],
 
-                        'amount' => $validated['amount'],
+                    'transaction_date' => $validated['payment_date'],
 
-                        'transaction_date' => $validated['payment_date'],
-
-                    ]);
-
-                }
+                ]);
 
                 $payment->allocations()->create([
 

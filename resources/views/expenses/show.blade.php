@@ -48,7 +48,7 @@
 
                 @if ($expense->account)
 
-                    <span class="mx-1 text-slate-300">&bull;</span>{{ $expense->account->name }}
+                    <span class="mx-1 text-slate-300">&bull;</span><a href="{{ route('accounts.show', $expense->account) }}" class="hover:text-emerald-600">{{ $expense->account->name }}</a>
 
                 @endif
 
