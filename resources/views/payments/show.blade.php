@@ -80,7 +80,7 @@
 
         <div class="rounded-2xl bg-white p-5 shadow-sm">
 
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kapatılan</div>
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bağlanan Tutar</div>
 
             <div class="mt-2 text-xl font-bold text-emerald-600">{{ number_format($payment->allocated_amount, 2, ',', '.') }} TL</div>
 
@@ -88,7 +88,7 @@
 
         <div class="rounded-2xl bg-white p-5 shadow-sm">
 
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kalan (Dağıtılmamış)</div>
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kalan</div>
 
             <div class="mt-2 text-xl font-bold {{ $payment->unallocated_amount > 0 ? 'text-amber-600' : 'text-slate-400' }}">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
 
@@ -184,7 +184,7 @@
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 
-        <h2 class="text-lg font-semibold text-slate-950 mb-4">{{ $isTahsilat ? 'Kapatılan Borçlar' : 'Kapatılan Giderler' }}</h2>
+        <h2 class="text-lg font-semibold text-slate-950 mb-4">{{ $isTahsilat ? 'Bağlı Borçlar' : 'Bağlı Giderler' }}</h2>
 
         @if ($payment->allocations->isEmpty())
 
@@ -204,7 +204,7 @@
 
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $isTahsilat ? 'Borç / Açıklama' : 'Gider / Açıklama' }}</th>
 
-                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Kapatılan</th>
+                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Bağlanan Tutar</th>
 
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
 
@@ -255,7 +255,11 @@
 
                                 @elseif ($allocation->expense_id && $allocation->expense)
 
-                                    <td class="px-5 py-4 font-medium text-slate-900">#{{ $allocation->expense->id }}</td>
+                                    <td class="px-5 py-4">
+
+                                        <a href="{{ route('expenses.show', $allocation->expense) }}" class="font-medium text-slate-900 hover:text-emerald-600">{{ $allocation->expense->reference_number ?? '#'.$allocation->expense->id }}</a>
+
+                                    </td>
 
                                     <td class="px-5 py-4 text-slate-700">
                                         <span class="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 mr-1">Gider</span>
@@ -268,7 +272,7 @@
 
                                         <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $allocation->expense->is_paid ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700' }}">
 
-                                            {{ $allocation->expense->is_paid ? 'Kapandı' : 'Açık' }}
+                                            {{ $allocation->expense->is_paid ? 'Ödendi' : 'Açık' }}
 
                                         </span>
 

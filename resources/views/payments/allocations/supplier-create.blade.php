@@ -8,7 +8,7 @@
                 <span>/</span>
                 <span>{{ $payment->account?->type_label ?? '' }}</span>
             </div>
-            <h1 class="text-2xl font-bold text-slate-950">Ödemeyle Açık Giderleri Kapama</h1>
+            <h1 class="text-2xl font-bold text-slate-950">Ödemeyi Açık Giderlere Bağla</h1>
             <p class="mt-1 text-sm text-slate-500">
                 {{ $payment->account?->name ?? '-' }}
                 @if ($payment->account?->unit)
@@ -16,22 +16,30 @@
                 @endif
             </p>
         </div>
-        <a href="{{ route('accounts.show', $payment->account_id) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri Dön</a>
+        @if ($payment->account)
+            <a href="{{ route('accounts.show', $payment->account) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri Dön</a>
+        @endif
     </div>
 
     {{-- Ödeme Özeti --}}
-    <div class="mb-6 grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-sm text-slate-500">Ödeme Tutarı</div>
-            <div class="mt-2 text-xl font-bold text-slate-900">{{ number_format($payment->amount, 2, ',', '.') }} TL</div>
-        </div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-sm text-slate-500">Tahsis Edilmiş</div>
-            <div class="mt-2 text-xl font-bold text-slate-900">{{ number_format($payment->amount - $payment->unallocated_amount, 2, ',', '.') }} TL</div>
-        </div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-sm text-slate-500">Dağıtılabilir Bakiye</div>
-            <div class="mt-2 text-xl font-bold text-emerald-600">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
+    <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+        <div class="grid gap-4 lg:grid-cols-2">
+            <div>
+                <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ödeme</h2>
+                <p class="mt-2 text-sm text-slate-900">#{{ $payment->id }} - {{ $payment->description ?: 'Ödeme' }}</p>
+            </div>
+            <div>
+                <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bağlanacak Bakiye</h2>
+                <p class="mt-2 text-sm font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</p>
+            </div>
+            <div>
+                <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Hesap</h2>
+                <p class="mt-2 text-sm text-slate-900">{{ $payment->account?->name ?? '-' }}</p>
+            </div>
+            <div>
+                <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ödeme Tarihi</h2>
+                <p class="mt-2 text-sm text-slate-900">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</p>
+            </div>
         </div>
     </div>
 
@@ -68,7 +76,7 @@
                         <th class="px-5 py-3">Tarih</th>
                         <th class="px-5 py-3">Açıklama</th>
                         <th class="px-5 py-3 text-right">Kalan</th>
-                        <th class="px-5 py-3 text-right">Tahsis Et</th>
+                        <th class="px-5 py-3 text-right">Gidere Bağla</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -128,7 +136,7 @@
         </div>
 
         <div class="mt-4">
-            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Tahsis Et</button>
+            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Gidere Bağla</button>
         </div>
 
         <script>

@@ -8,7 +8,7 @@
                 <span>/</span>
                 <span>{{ $account->type_label }}</span>
             </div>
-            <h1 class="text-2xl font-bold text-slate-950">Ödemelerden Açık Giderleri Kapama</h1>
+            <h1 class="text-2xl font-bold text-slate-950">Ödemeleri Açık Giderlere Bağla</h1>
             <p class="mt-1 text-sm text-slate-500">
                 {{ $account->name }}
                 @if ($account->unit)
