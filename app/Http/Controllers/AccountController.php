@@ -2180,37 +2180,60 @@ class AccountController extends Controller
             return redirect()->route('accounts.show', $account)->with('error', 'Geçerli gider bulunamadı.');
         }
 
-        DB::transaction(function () use ($account, $expenses, $validated) {
+        $totalAmount = $expenses->sum('amount');
+        $paymentDescription = $validated['description'] ?? ($expenses->count() . ' gider toplu ödemesi');
+
+        $payment = null;
+
+        DB::transaction(function () use ($account, $expenses, $validated, $totalAmount, $paymentDescription, &$payment) {
+            $payment = Payment::create([
+                'apartment_id'      => $account->apartment_id,
+                'account_id'        => $account->id,
+                'amount'            => $totalAmount,
+                'unallocated_amount' => 0,
+                'payment_date'      => $validated['payment_date'],
+                'description'       => $paymentDescription,
+            ]);
+
+            CashTransaction::create([
+                'apartment_id'     => $account->apartment_id,
+                'cash_box_id'      => $validated['cash_box_id'],
+                'account_id'       => $account->id,
+                'payment_id'       => $payment->id,
+                'category_id'      => $validated['category_id'],
+                'type'             => 'expense',
+                'description'      => $paymentDescription,
+                'amount'           => $totalAmount,
+                'transaction_date' => $validated['payment_date'],
+                'is_active'        => true,
+            ]);
+
+            AccountTransaction::create([
+                'apartment_id'         => $account->apartment_id,
+                'account_id'           => $account->id,
+                'transactionable_type' => Payment::class,
+                'transactionable_id'   => $payment->id,
+                'type'                 => 'debit',
+                'description'          => $paymentDescription,
+                'amount'               => $totalAmount,
+                'transaction_date'     => $validated['payment_date'],
+            ]);
+
             foreach ($expenses as $expense) {
-                CashTransaction::create([
-                    'apartment_id'     => $account->apartment_id,
-                    'cash_box_id'      => $validated['cash_box_id'],
-                    'account_id'       => $account->id,
-                    'expense_id'       => $expense->id,
-                    'category_id'      => $validated['category_id'],
-                    'type'             => 'expense',
-                    'description'      => $validated['description'] ?? ($expense->description ?: 'Gider ödemesi'),
-                    'amount'           => $expense->amount,
-                    'transaction_date' => $validated['payment_date'],
-                    'is_active'        => true,
+                $payment->allocations()->create([
+                    'expense_id' => $expense->id,
+                    'amount'     => $expense->amount,
                 ]);
 
-                AccountTransaction::create([
-                    'apartment_id'         => $account->apartment_id,
-                    'account_id'           => $account->id,
-                    'transactionable_type' => Expense::class,
-                    'transactionable_id'   => $expense->id,
-                    'type'                 => 'debit',
-                    'description'          => ($expense->description ? $expense->description . ' ödemesi' : 'Gider ödemesi'),
-                    'amount'               => $expense->amount,
-                    'transaction_date'     => $validated['payment_date'],
+                $expense->update([
+                    'is_paid'          => true,
+                    'paid_amount'      => $expense->amount,
+                    'remaining_amount' => 0,
                 ]);
-
-                $expense->update(['is_paid' => true]);
             }
         });
 
-        return redirect()->route('accounts.show', $account)
+        return redirect()->route('payments.show', $payment)
             ->with('status', $expenses->count() . ' gider ödemesi başarıyla kaydedildi.');
     }
 }
