@@ -111,6 +111,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('accounts/{account}/payments/multi-allocate/store', [PaymentAllocationController::class, 'multiStore'])->name('accounts.payments.multi-allocate.store');
         Route::post('accounts/{account}/payments/multi-supplier-allocate', [PaymentAllocationController::class, 'multiSupplierCreate'])->name('accounts.payments.multi-supplier-allocate');
         Route::post('accounts/{account}/payments/multi-supplier-allocate/store', [PaymentAllocationController::class, 'multiSupplierStore'])->name('accounts.payments.multi-supplier-allocate.store');
+        Route::get('accounts/{account}/payment/create', [AccountController::class, 'createSupplierPayment'])->name('accounts.supplier-payment.create');
+        Route::post('accounts/{account}/payment', [AccountController::class, 'storeSupplierPayment'])->name('accounts.supplier-payment.store');
         Route::post('accounts/{account}/expenses/multi-pay', [AccountController::class, 'multiPayExpenses'])->name('accounts.expenses.multi-pay');
         Route::post('accounts/{account}/expenses/multi-pay/store', [AccountController::class, 'storeMultiPayExpenses'])->name('accounts.expenses.multi-pay.store');
         Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');

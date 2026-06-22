@@ -49,7 +49,7 @@
 
                 <a href="{{ route('expenses.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">+ Gider Ekle</a>
 
-                <a href="{{ route('payments.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Ödeme Ekle</a>
+                <a href="{{ route('accounts.supplier-payment.create', $account) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Ödeme Ekle</a>
 
             @else
 
