@@ -199,10 +199,12 @@
                 <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
                 <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
             </select>
-            <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none whitespace-nowrap">
-                <input type="checkbox" name="show_imported" value="1" class="rounded" {{ $showImported ? 'checked' : '' }}>
-                Devir Öncesini Göster
-            </label>
+            @if ($hasImported)
+                <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none whitespace-nowrap">
+                    <input type="checkbox" name="show_imported" value="1" class="rounded" {{ $showImported ? 'checked' : '' }}>
+                    Devir Öncesini Göster
+                </label>
+            @endif
             <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
             @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'] || $filters['filterUnitId'] || $filters['filterAccountType'] || $showImported)
                 <a href="{{ route('dues.index', array_filter(['search' => $filters['filterSearch']])) }}"

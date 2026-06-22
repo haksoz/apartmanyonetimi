@@ -56,10 +56,12 @@
                     <option value="{{ $id }}" @selected((string)$filters['filterCategory'] === (string)$id)>{{ $name }}</option>
                 @endforeach
             </select>
-            <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none whitespace-nowrap">
-                <input type="checkbox" name="show_imported" value="1" class="rounded" {{ $showImported ? 'checked' : '' }}>
-                Devir Öncesini Göster
-            </label>
+            @if ($hasImported)
+                <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none whitespace-nowrap">
+                    <input type="checkbox" name="show_imported" value="1" class="rounded" {{ $showImported ? 'checked' : '' }}>
+                    Devir Öncesini Göster
+                </label>
+            @endif
             <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
             @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterCategory'] || $showImported)
                 <a href="{{ route('expenses.index', array_filter(['search' => $filters['filterSearch']])) }}"
