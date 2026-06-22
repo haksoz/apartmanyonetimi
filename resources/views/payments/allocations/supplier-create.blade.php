@@ -76,7 +76,7 @@
                         <th class="px-5 py-3">Tarih</th>
                         <th class="px-5 py-3">Açıklama</th>
                         <th class="px-5 py-3 text-right">Kalan</th>
-                        <th class="px-5 py-3 text-right">Tahsis Et</th>
+                        <th class="px-5 py-3 text-right">Gidere Bağla</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -136,7 +136,7 @@
         </div>
 
         <div class="mt-4">
-            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Tahsis Et</button>
+            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Gidere Bağla</button>
         </div>
 
         <script>
