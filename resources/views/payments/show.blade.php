@@ -80,7 +80,7 @@
 
         <div class="rounded-2xl bg-white p-5 shadow-sm">
 
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kapatılan</div>
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bağlanan Tutar</div>
 
             <div class="mt-2 text-xl font-bold text-emerald-600">{{ number_format($payment->allocated_amount, 2, ',', '.') }} TL</div>
 
@@ -88,7 +88,7 @@
 
         <div class="rounded-2xl bg-white p-5 shadow-sm">
 
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kalan (Dağıtılmamış)</div>
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kalan</div>
 
             <div class="mt-2 text-xl font-bold {{ $payment->unallocated_amount > 0 ? 'text-amber-600' : 'text-slate-400' }}">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
 
@@ -184,7 +184,7 @@
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 
-        <h2 class="text-lg font-semibold text-slate-950 mb-4">{{ $isTahsilat ? 'Kapatılan Borçlar' : 'Kapatılan Giderler' }}</h2>
+        <h2 class="text-lg font-semibold text-slate-950 mb-4">{{ $isTahsilat ? 'Bağlı Borçlar' : 'Bağlı Giderler' }}</h2>
 
         @if ($payment->allocations->isEmpty())
 
@@ -204,7 +204,7 @@
 
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $isTahsilat ? 'Borç / Açıklama' : 'Gider / Açıklama' }}</th>
 
-                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Kapatılan</th>
+                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Bağlanan Tutar</th>
 
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
 
