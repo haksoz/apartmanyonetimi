@@ -141,7 +141,7 @@
                                     @if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->allocations->isNotEmpty())
                                         <button type="button" data-toggle-alloc="alloc-{{ $t->id }}"
                                                 class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                            {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Kapattığı Giderler' : 'Bağlı Aidatlar' }}
+                                            {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Kapattığı Giderler' : 'Bağlı Borçlar' }}
                                         </button>
                                     @endif
                                 </td>
@@ -203,7 +203,7 @@
             document.querySelectorAll('[data-parent="' + key + '"]').forEach(r => r.classList.toggle('hidden'));
             const open = Array.from(document.querySelectorAll('[data-parent="' + key + '"]')).some(r => !r.classList.contains('hidden'));
             const isSupplier = btn.closest('table')?.closest('[data-account-type]')?.getAttribute('data-account-type') === 'supplier';
-            btn.textContent = open ? 'Gizle' : (isSupplier ? 'Kapattığı Giderler' : 'Bağlı Aidatlar');
+            btn.textContent = open ? 'Gizle' : (isSupplier ? 'Kapattığı Giderler' : 'Bağlı Borçlar');
         });
 
     </script>
