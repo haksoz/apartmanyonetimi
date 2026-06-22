@@ -120,7 +120,7 @@
                         <td class="px-5 py-4 text-slate-700">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</td>
                         <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
                         <td class="px-5 py-4 text-right tabular-nums {{ $expense->is_paid ? 'text-slate-400' : 'text-amber-600 font-semibold' }}">
-                            {{ $expense->is_paid ? '—' : number_format($expense->remaining_amount, 2, ',', '.') . ' TL' }}
+                            {{ $expense->is_paid ? '—' : number_format($expense->remaining_amount ?? $expense->amount, 2, ',', '.') . ' TL' }}
                         </td>
                         <td class="px-5 py-4">
                             @if ($expense->is_paid)
@@ -181,7 +181,7 @@
                 <div class="ml-3 text-right">
                     <div class="font-bold text-slate-900">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
                     @if (!$expense->is_paid)
-                        <div class="text-xs text-amber-600 font-semibold mt-0.5">Kalan: {{ number_format($expense->remaining_amount, 2, ',', '.') }} TL</div>
+                        <div class="text-xs text-amber-600 font-semibold mt-0.5">Kalan: {{ number_format($expense->remaining_amount ?? $expense->amount, 2, ',', '.') }} TL</div>
                     @endif
                     @if ($expense->is_imported)
                         <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 mt-1">Devir Öncesi</span>
