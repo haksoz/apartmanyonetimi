@@ -242,6 +242,7 @@
                     </th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Oluşturulma</th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Son Ödeme</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
                         <a href="{{ route('dues.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
                     </th>
@@ -293,6 +294,14 @@
                                 @endif
                             </div>
                         </td>
+                        <td class="px-5 py-4">
+                            @if ($due->due_date)
+                                <div class="tabular-nums {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-700' }}">{{ $due->due_date->format('d.m.Y') }}</div>
+                            @else
+                                <span class="text-slate-400">-</span>
+                            @endif
+                            <div class="text-xs text-slate-500 mt-1">{{ $due->category?->name ?? '-' }}</div>
+                        </td>
                         <td class="px-5 py-4 text-right">
                             <div class="font-semibold text-slate-900 tabular-nums">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
                         </td>
@@ -308,19 +317,19 @@
                         <td class="px-5 py-4">
                             @if ($due->computed_status === 'overdue')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-                                    {{ $due->category?->name ?? '-' }} Gecikti
+                                    Gecikti
                                 </span>
                             @elseif ($due->computed_status === 'paid')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                    {{ $due->category?->name ?? '-' }} Ödendi
+                                    Ödendi
                                 </span>
                             @elseif ($due->computed_status === 'partial')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                                    {{ $due->category?->name ?? '-' }} Kısmi
+                                    Kısmi
                                 </span>
                             @else
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                                    {{ $due->category?->name ?? '-' }} Bekliyor
+                                    Bekliyor
                                 </span>
                             @endif
                         </td>
@@ -333,7 +342,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400">Henüz aidat kaydı yok.</td></tr>
+                    <tr><td colspan="8" class="px-5 py-12 text-center text-slate-400">Henüz aidat kaydı yok.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -357,6 +366,9 @@
                         <span class="mx-1 text-slate-400">•</span>
                         <span>{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
                     </div>
+                    @if ($due->due_date)
+                        <div class="text-xs mt-1 {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500' }}">Son Ödeme: {{ $due->due_date->format('d.m.Y') }} · {{ $due->category?->name ?? '-' }}</div>
+                    @endif
                     @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
                         <div class="text-xs text-amber-600 mt-1">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
                     @endif

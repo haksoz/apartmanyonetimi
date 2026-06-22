@@ -8,7 +8,7 @@
                 <span>/</span>
                 <span>{{ $payment->account?->type_label ?? '' }}</span>
             </div>
-            <h1 class="text-2xl font-bold text-slate-950">Tahsilattan Açık Aidat Kapama</h1>
+            <h1 class="text-2xl font-bold text-slate-950">Tahsilatı Açık Aidata Bağlama</h1>
             <p class="mt-1 text-sm text-slate-500">
                 {{ $payment->account?->name ?? '-' }}
                 @if ($payment->account?->unit)
@@ -28,7 +28,7 @@
                 <p class="mt-2 text-sm text-slate-900">#{{ $payment->id }} - {{ $payment->description ?: 'Ödeme' }}</p>
             </div>
             <div>
-                <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tahsis Edilebilir Bakiye</h2>
+                <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bağlanacak Bakiye</h2>
                 <p class="mt-2 text-sm font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</p>
             </div>
             <div>
@@ -75,7 +75,7 @@
                         <th class="px-5 py-3">Aidat</th>
                         <th class="px-5 py-3">Açıklama</th>
                         <th class="px-5 py-3 text-right">Kalan</th>
-                        <th class="px-5 py-3 text-right">Tahsis Et</th>
+                        <th class="px-5 py-3 text-right">İşlem</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -118,7 +118,7 @@
                     <span id="sum-allocated" class="ml-1 font-bold text-slate-900">0,00 TL</span>
                 </div>
                 <div>
-                    <span class="text-slate-500">Tahsis Edilebilir Bakiye:</span>
+                    <span class="text-slate-500">Bağlanacak Bakiye:</span>
                     <span class="ml-1 font-bold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</span>
                 </div>
                 <div>
@@ -129,7 +129,7 @@
         </div>
 
         <div class="mt-4">
-            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Tahsis Et</button>
+            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Aidata Bağla</button>
         </div>
 
         <script>

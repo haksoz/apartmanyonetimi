@@ -31,7 +31,9 @@
 
             <div>
                 <label for="amount" class="mb-2 block text-sm font-semibold text-slate-700">Tutar</label>
-                <input id="amount" name="amount" type="number" min="0.01" step="0.01" value="{{ old('amount') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                @php $suggestedDebt = $selectedAccountId ? ($accountDebts[$selectedAccountId] ?? null) : null; @endphp
+                <input id="amount" name="amount" type="number" min="0.01" step="0.01" value="{{ old('amount', $suggestedDebt && $suggestedDebt > 0 ? $suggestedDebt : '') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <p id="debt-hint" class="mt-1.5 text-xs text-slate-400 {{ $suggestedDebt && $suggestedDebt > 0 ? '' : 'hidden' }}">Kalan borç önerildi: <span id="debt-hint-amount">{{ $suggestedDebt ? number_format($suggestedDebt, 2, ',', '.') : '0,00' }}</span> TL</p>
                 @error('amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
@@ -63,8 +65,38 @@
                 Tahsis Etmeden Kaydet
             </button>
             <button type="submit" name="action" value="allocate" class="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700">
-                Kaydet ve Tahsis Et
+                Kaydet ve Aidata Bağla
+            </button>
+            <button type="submit" name="action" value="auto_allocate" class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-700">
+                Kaydet ve Aidata Otomatik Bağla
             </button>
         </div>
     </form>
+
+    <script>
+        (() => {
+            const accountDebts = @json($accountDebts);
+            const accountSelect = document.getElementById('account_id');
+            const amountInput = document.getElementById('amount');
+            const debtHint = document.getElementById('debt-hint');
+            const debtHintAmount = document.getElementById('debt-hint-amount');
+
+            const formatMoney = (amount) =>
+                new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+
+            if (!accountSelect || accountSelect.disabled) return;
+
+            accountSelect.addEventListener('change', () => {
+                const debt = parseFloat(accountDebts[accountSelect.value]) || 0;
+                if (debt > 0) {
+                    amountInput.value = debt.toFixed(2);
+                    debtHintAmount.textContent = formatMoney(debt);
+                    debtHint.classList.remove('hidden');
+                } else {
+                    amountInput.value = '';
+                    debtHint.classList.add('hidden');
+                }
+            });
+        })();
+    </script>
 @endsection
