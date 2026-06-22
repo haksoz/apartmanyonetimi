@@ -41,7 +41,14 @@ class PaymentController extends Controller
 
         $selectedAccountId = $request->query('account_id');
 
-        return view('payments.create', compact('accounts', 'cashBoxes', 'selectedAccountId'));
+        $accountDebts = AccountTransaction::query()
+            ->selectRaw('account_id, SUM(CASE WHEN type = ? THEN amount ELSE -amount END) as debt', ['debit'])
+            ->whereIn('account_id', $accounts->pluck('id'))
+            ->groupBy('account_id')
+            ->pluck('debt', 'account_id')
+            ->map(fn ($debt) => max(0, round((float) $debt, 2)));
+
+        return view('payments.create', compact('accounts', 'cashBoxes', 'selectedAccountId', 'accountDebts'));
     }
 
     public function store(Request $request, CurrentApartment $currentApartment)
