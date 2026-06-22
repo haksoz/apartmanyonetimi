@@ -141,7 +141,7 @@
                                     @if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->allocations->isNotEmpty())
                                         <button type="button" data-toggle-alloc="alloc-{{ $t->id }}"
                                                 class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                            {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Kapattığı Giderler' : 'Bağlı Borçlar' }}
+                                            {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Bağlı Giderler' : 'Bağlı Borçlar' }}
                                         </button>
                                     @endif
                                 </td>
@@ -153,7 +153,7 @@
                                         <td class="px-5 py-2"></td>
                                         @if($a->due)
                                             <td class="px-5 py-2 text-slate-500">
-                                                {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Kapatılan Gider' : 'Kapatılan Borç' }}
+                                                {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Bağlı Gider' : 'Bağlı Borç' }}
                                                 <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-700 hover:text-emerald-600">{{ $a->due->description ?: 'Aidat' }}</a>
                                             </td>
                                             <td class="px-5 py-2 text-right">—</td>
@@ -164,7 +164,7 @@
                                             </td>
                                         @elseif($a->expense)
                                             <td class="px-5 py-2 text-slate-500">
-                                                {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Kapatılan Gider' : 'Kapatılan Borç' }}
+                                                {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Bağlı Gider' : 'Bağlı Borç' }}
                                                 <a href="{{ route('expenses.show', $a->expense) }}" class="font-medium text-slate-700 hover:text-emerald-600">{{ $a->expense->description ?: ($a->expense->category ?: 'Gider') }}</a>
                                             </td>
                                             <td class="px-5 py-2 text-right">—</td>
@@ -203,7 +203,7 @@
             document.querySelectorAll('[data-parent="' + key + '"]').forEach(r => r.classList.toggle('hidden'));
             const open = Array.from(document.querySelectorAll('[data-parent="' + key + '"]')).some(r => !r.classList.contains('hidden'));
             const isSupplier = btn.closest('table')?.closest('[data-account-type]')?.getAttribute('data-account-type') === 'supplier';
-            btn.textContent = open ? 'Gizle' : (isSupplier ? 'Kapattığı Giderler' : 'Bağlı Borçlar');
+            btn.textContent = open ? 'Gizle' : (isSupplier ? 'Bağlı Giderler' : 'Bağlı Borçlar');
         });
 
     </script>
