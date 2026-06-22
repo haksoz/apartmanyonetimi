@@ -101,7 +101,13 @@ class DueController extends Controller
 
         $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'showImported');
 
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters', 'isOwner', 'units', 'showImported'));
+        $hasImported = Due::query()
+            ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
+            ->when($memberAccountIds, fn ($q) => $q->whereIn('account_id', $memberAccountIds))
+            ->where('is_imported', true)
+            ->exists();
+
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters', 'isOwner', 'units', 'showImported', 'hasImported'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)
