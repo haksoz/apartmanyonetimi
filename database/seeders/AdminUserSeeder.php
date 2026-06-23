@@ -15,7 +15,7 @@ class AdminUserSeeder extends Seeder
             [
                 'name' => 'AidatCep Admin',
                 'password' => Hash::make('password'),
-                'role' => 'admin',
+                'role' => User::ROLE_SUPER_ADMIN,
             ]
         );
     }

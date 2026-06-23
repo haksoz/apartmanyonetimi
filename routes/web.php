@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminImpersonateController;
 use App\Http\Controllers\Admin\AdminManagerController;
 use App\Http\Controllers\Admin\AdminPackageController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CashBoxController;
 use App\Http\Controllers\CashController;
@@ -152,6 +153,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     Route::resource('packages', AdminPackageController::class);
     Route::patch('packages/{package}/features', [AdminPackageController::class, 'updateFeatures'])->name('packages.features.update');
+
+    Route::resource('admin-users', AdminUserController::class)
+        ->except(['show'])
+        ->middleware('super_admin');
 
     Route::post('impersonate/{manager}', [AdminImpersonateController::class, 'start'])->name('impersonate.start');
 });

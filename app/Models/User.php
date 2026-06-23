@@ -21,6 +21,18 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const ROLE_SUPER_ADMIN = 'super_admin';
+
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_ACCOUNTANT = 'accountant';
+
+    public const ROLE_SUPPORT = 'support';
+
+    public const ROLE_MANAGER = 'manager';
+
+    public const ROLE_RESIDENT = 'resident';
+
     /**
      * Get the attributes that should be cast.
      *
@@ -58,9 +70,29 @@ class User extends Authenticatable
         return $this->hasOne(UserQuotaOverride::class);
     }
 
+    public static function adminRoles(): array
+    {
+        return [
+            self::ROLE_SUPER_ADMIN,
+            self::ROLE_ADMIN,
+            self::ROLE_ACCOUNTANT,
+            self::ROLE_SUPPORT,
+        ];
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return in_array($this->role, [self::ROLE_SUPER_ADMIN, self::ROLE_ADMIN], true);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === self::ROLE_SUPER_ADMIN;
+    }
+
+    public function isAdminPanelUser(): bool
+    {
+        return in_array($this->role, self::adminRoles(), true);
     }
 
     public function hasFeature(string $key): bool
