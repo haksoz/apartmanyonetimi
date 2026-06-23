@@ -553,31 +553,44 @@ class ExpenseController extends Controller
 
         $validated = $this->validateExpense($request, $expense->apartment_id);
 
+        $newAccountId = $validated['account_id'] ?? null;
 
+        DB::transaction(function () use ($expense, $validated, $request, $newAccountId) {
 
-        $expense->update([
+            $expense->update([
 
-            'account_id' => $validated['account_id'] ?? null,
+                'account_id' => $newAccountId,
 
-            'category_id' => $validated['category_id'],
+                'category_id' => $validated['category_id'],
 
-            'category' => Category::findOrFail($validated['category_id'])->name,
+                'category' => Category::findOrFail($validated['category_id'])->name,
 
-            'description' => $validated['description'] ?? null,
+                'description' => $validated['description'] ?? null,
 
-            'amount' => $validated['amount'],
+                'amount' => $validated['amount'],
 
-            'expense_date' => $validated['expense_date'],
+                'expense_date' => $validated['expense_date'],
 
-            'due_date' => $validated['due_date'] ?? null,
+                'due_date' => $validated['due_date'] ?? null,
 
-            'period_month' => $validated['period_month'].'-01',
+                'period_month' => $validated['period_month'].'-01',
 
-            'is_paid' => $request->boolean('is_paid'),
+                'is_paid' => $request->boolean('is_paid'),
 
-        ]);
+            ]);
 
+            // Gider (credit) muhasebe kaydını yeni hesap/tutar/tarih ile güncelle
+            $expense->transactions()
+                ->where('transactionable_type', Expense::class)
+                ->where('type', 'credit')
+                ->update([
+                    'account_id' => $newAccountId,
+                    'amount' => $validated['amount'],
+                    'description' => $validated['description'] ?? 'Gider kaydı',
+                    'transaction_date' => $validated['expense_date'],
+                ]);
 
+        });
 
         return redirect()->route('expenses.index')->with('status', 'Gider kaydı güncellendi.');
 
