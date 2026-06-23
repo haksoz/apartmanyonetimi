@@ -37,7 +37,9 @@
                         <div class="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500 cursor-not-allowed">{{ $expense->account?->name ?? 'Hesap seçilmedi' }}</div>
                     @else
                         <select id="account_id" name="account_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                            <option value="">Hesap seçmeden kaydet</option>
+                            @if (!$expense->account_id)
+                                <option value="">Hesap seçmeden kaydet</option>
+                            @endif
                             @foreach ($accounts as $account)
                                 <option value="{{ $account->id }}" @selected((string) old('account_id', $expense->account_id) === (string) $account->id)>{{ $account->name }} ({{ $account->type_label }})</option>
                             @endforeach

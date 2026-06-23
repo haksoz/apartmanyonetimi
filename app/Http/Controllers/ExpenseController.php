@@ -525,7 +525,7 @@ class ExpenseController extends Controller
 
         $expense = $this->findExpense($id);
 
-        $accounts = $this->supplierAccounts($expense->apartment_id);
+        $accounts = $this->supplierAccounts($expense->apartment_id, $expense->account_id);
 
         $categories = $this->categories($expense->apartment_id, Category::TYPE_EXPENSE, $expense->category_id);
 
@@ -906,7 +906,7 @@ class ExpenseController extends Controller
 
 
 
-    private function supplierAccounts(int $apartmentId)
+    private function supplierAccounts(int $apartmentId, ?int $selectedAccountId = null)
 
     {
 
@@ -915,6 +915,8 @@ class ExpenseController extends Controller
             ->where('apartment_id', $apartmentId)
 
             ->where('type', Account::TYPE_SUPPLIER)
+
+            ->where(fn ($q) => $q->where('is_hidden', false)->orWhere('id', $selectedAccountId))
 
             ->orderBy('type')
 
