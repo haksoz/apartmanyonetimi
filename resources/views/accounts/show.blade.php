@@ -258,7 +258,7 @@
 
                             @foreach ($account->dues as $due)
 
-                                <tr>
+                                <tr class="cursor-pointer hover:bg-slate-50" data-href="{{ route('dues.show', $due) }}">
 
                                     <td class="px-5 py-4">
 
@@ -322,7 +322,7 @@
 
                             @foreach ($importedDues as $due)
 
-                                <tr class="imported-due-row hidden bg-blue-50/40">
+                                <tr class="imported-due-row hidden bg-blue-50/40 cursor-pointer hover:bg-blue-100/40" data-href="{{ route('dues.show', $due) }}">
 
                                     <td class="px-5 py-4">
 
@@ -684,7 +684,7 @@
 
                         @foreach ($account->expenses as $expense)
 
-                            <tr>
+                            <tr class="cursor-pointer hover:bg-slate-50" data-href="{{ route('expenses.show', $expense) }}">
 
                                 <td class="px-4 py-4">
                                     <input type="checkbox" class="expense-checkbox rounded"
@@ -1015,6 +1015,20 @@
         // Devir Öncesi toggle — DOMContentLoaded ile bağla (ödemeler bölümü bu script'ten sonra render edilir)
 
         document.addEventListener('DOMContentLoaded', function() {
+
+            document.querySelectorAll('tr[data-href]').forEach(function(row) {
+
+                row.addEventListener('click', function(e) {
+
+                    if (e.target.closest('td:first-child') || e.target.closest('td:last-child')) return;
+
+                    window.location.href = row.dataset.href;
+
+                });
+
+            });
+
+
 
             document.getElementById('show-imported-dues')?.addEventListener('change', function() {
 
