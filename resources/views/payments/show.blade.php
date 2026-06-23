@@ -48,15 +48,23 @@
 
             <a href="{{ route('payments.edit', $payment) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">{{ $labelAccusative }} Düzenle</a>
 
-            <form method="POST" action="{{ route('payments.destroy', $payment) }}" onsubmit="return confirm('{{ $label }} kaydı ve tüm tahsisler silinsin mi? Bu işlem geri alınamaz.')">
+            @if ($payment->allocations->isNotEmpty())
 
-                @csrf
+                <button type="button" onclick="alert('{{ $isTahsilat ? 'Bu tahsilata bağlı borçlar var. Silmek için önce tüm bağlı borçları geri alın.' : 'Bu ödemeye bağlı giderler var. Silmek için önce tüm bağlı giderleri geri alın.' }}')" class="flex-1 md:flex-none rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">{{ $labelAccusative }} Sil</button>
 
-                @method('DELETE')
+            @else
 
-                <button type="submit" class="flex-1 md:flex-none rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">{{ $labelAccusative }} Sil</button>
+                <form method="POST" action="{{ route('payments.destroy', $payment) }}" onsubmit="return confirm('{{ $label }} kaydı silinsin mi? Bu işlem geri alınamaz.')">
 
-            </form>
+                    @csrf
+
+                    @method('DELETE')
+
+                    <button type="submit" class="flex-1 md:flex-none rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">{{ $labelAccusative }} Sil</button>
+
+                </form>
+
+            @endif
 
             <a href="{{ route('accounts.show', $payment->account) }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Hesaba Dön</a>
 

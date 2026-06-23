@@ -399,12 +399,15 @@ class PaymentController extends Controller
 
             $payment->transactions()->delete();
 
-            CashTransaction::where('apartment_id', $payment->apartment_id)
-                ->where('account_id', $payment->account_id)
-                ->where('amount', $payment->amount)
-                ->where('transaction_date', $payment->payment_date)
-                ->where('type', 'income')
-                ->delete();
+            $deletedCash = CashTransaction::where('payment_id', $payment->id)->delete();
+
+            if (! $deletedCash) {
+                CashTransaction::where('apartment_id', $payment->apartment_id)
+                    ->where('account_id', $payment->account_id)
+                    ->where('amount', $payment->amount)
+                    ->where('transaction_date', $payment->payment_date)
+                    ->delete();
+            }
 
             $payment->delete();
         });

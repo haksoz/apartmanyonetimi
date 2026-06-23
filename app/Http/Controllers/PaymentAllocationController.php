@@ -434,7 +434,11 @@ class PaymentAllocationController extends Controller
             $allocationAmount = (float) $allocation->amount;
 
             if ($allocation->due_id && $allocation->due) {
-                $allocation->due->increment('remaining_amount', $allocationAmount);
+                $due = $allocation->due;
+                $newRemaining = min($due->amount, (float) $due->remaining_amount + $allocationAmount);
+                $due->remaining_amount = $newRemaining;
+                $due->status = $newRemaining >= $due->amount ? 'unpaid' : 'partial';
+                $due->save();
             }
 
             if ($allocation->expense_id && $allocation->expense) {
