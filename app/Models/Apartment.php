@@ -90,7 +90,7 @@ class Apartment extends Model
         $lastRef = $this->accounts()
             ->where('name', 'like', $pattern)
             ->withTrashed()
-            ->orderByRaw('CAST(SUBSTRING_INDEX(name, "-", -1) AS UNSIGNED) DESC')
+            ->orderBy('name', 'desc')
             ->value('name');
 
         if ($lastRef) {

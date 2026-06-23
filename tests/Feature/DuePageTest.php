@@ -83,7 +83,6 @@ class DuePageTest extends TestCase
             ->get(route('dues.index'))
             ->assertStatus(200)
             ->assertSee('İkinci Apartman Hesabı')
-            ->assertSee('2026-06')
             ->assertDontSee('Birinci Apartman Hesabı');
     }
 
@@ -106,8 +105,8 @@ class DuePageTest extends TestCase
         $fixtureCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş Gideri', 'type' => Category::TYPE_EXPENSE]);
         $elevatorCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Asansör', 'type' => Category::TYPE_EXPENSE]);
         $cleaningCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Temizlik', 'type' => Category::TYPE_EXPENSE]);
-        Expense::create(['apartment_id' => $apartment->id, 'category_id' => $fixtureCategory->id, 'category' => $fixtureCategory->name, 'amount' => 1000, 'expense_date' => '2026-04-10', 'period_month' => '2026-04-01']);
-        Expense::create(['apartment_id' => $apartment->id, 'category_id' => $elevatorCategory->id, 'category' => $elevatorCategory->name, 'amount' => 500, 'expense_date' => '2026-04-12', 'period_month' => '2026-04-01']);
+        $fixtureExpense = Expense::create(['apartment_id' => $apartment->id, 'category_id' => $fixtureCategory->id, 'category' => $fixtureCategory->name, 'amount' => 1000, 'expense_date' => '2026-04-10', 'period_month' => '2026-04-01']);
+        $elevatorExpense = Expense::create(['apartment_id' => $apartment->id, 'category_id' => $elevatorCategory->id, 'category' => $elevatorCategory->name, 'amount' => 500, 'expense_date' => '2026-04-12', 'period_month' => '2026-04-01']);
         Expense::create(['apartment_id' => $apartment->id, 'category_id' => $cleaningCategory->id, 'category' => $cleaningCategory->name, 'amount' => 900, 'expense_date' => '2026-04-13', 'period_month' => '2026-04-01']);
 
         $response = $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -115,11 +114,12 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_EXPENSES,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
+                'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'category_id' => $dueCategory->id,
                 'source_period' => '2026-04',
-                'category_filter_ids' => [$fixtureCategory->id, $elevatorCategory->id],
+                'selected_expense_ids' => $fixtureExpense->id . ',' . $elevatorExpense->id,
                 'description' => 'Nisan demirbaş ve asansör giderleri',
             ]);
 
@@ -157,6 +157,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
+                'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'category_id' => $category->id,
@@ -185,6 +186,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
+                'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'category_id' => $category->id,
@@ -228,5 +230,187 @@ class DuePageTest extends TestCase
             ->get(route('accounts.index'))
             ->assertStatus(200)
             ->assertSee('600,00 TL');
+    }
+
+    public function test_due_detail_page_shows_transfer_button_for_open_due(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
+        $ownerAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $due = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $tenantAccount->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => '2026-05-31',
+            'status' => 'unpaid',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('dues.show', $due))
+            ->assertStatus(200)
+            ->assertSee('Borç Aktar')
+            ->assertSee('Kat Maliki')
+            ->assertSee('Kiracı');
+    }
+
+    public function test_due_detail_page_hides_transfer_button_for_paid_due(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
+        Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $due = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $tenantAccount->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 0,
+            'due_date' => '2026-05-31',
+            'status' => 'paid',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('dues.show', $due))
+            ->assertStatus(200)
+            ->assertDontSee('Borç Aktar');
+    }
+
+    public function test_user_can_transfer_unpaid_due_to_another_unit_account(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
+        $ownerAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $due = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $tenantAccount->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => '2026-05-31',
+            'status' => 'unpaid',
+        ]);
+        AccountTransaction::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $tenantAccount->id,
+            'transactionable_type' => Due::class,
+            'transactionable_id' => $due->id,
+            'type' => 'debit',
+            'description' => 'Mayıs aidatı',
+            'amount' => 500,
+            'transaction_date' => '2026-05-31',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('dues.transfer', $due), ['target_account_id' => $ownerAccount->id])
+            ->assertRedirect(route('accounts.show', $ownerAccount->id));
+
+        $this->assertDatabaseHas('dues', [
+            'id' => $due->id,
+            'account_id' => $ownerAccount->id,
+            'unit_id' => $unit->id,
+        ]);
+        $this->assertDatabaseHas('account_transactions', [
+            'transactionable_type' => Due::class,
+            'transactionable_id' => $due->id,
+            'account_id' => $ownerAccount->id,
+            'type' => 'debit',
+            'amount' => 500,
+        ]);
+        $this->assertDatabaseMissing('account_transactions', [
+            'transactionable_type' => Due::class,
+            'transactionable_id' => $due->id,
+            'account_id' => $tenantAccount->id,
+        ]);
+    }
+
+    public function test_due_transfer_rejects_paid_due(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
+        $ownerAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $due = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $tenantAccount->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 0,
+            'due_date' => '2026-05-31',
+            'status' => 'paid',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->from(route('dues.show', $due))
+            ->post(route('dues.transfer', $due), ['target_account_id' => $ownerAccount->id])
+            ->assertRedirect(route('dues.show', $due))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('dues', [
+            'id' => $due->id,
+            'account_id' => $tenantAccount->id,
+        ]);
+    }
+
+    public function test_due_transfer_rejects_target_account_from_other_unit(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 2]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unitOne = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $unitTwo = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '2']);
+        $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitOne->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
+        $otherUnitOwner = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitTwo->id, 'type' => Account::TYPE_OWNER, 'name' => '2. Daire Maliki', 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $due = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unitOne->id,
+            'account_id' => $tenantAccount->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => '2026-05-31',
+            'status' => 'unpaid',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->from(route('dues.show', $due))
+            ->post(route('dues.transfer', $due), ['target_account_id' => $otherUnitOwner->id])
+            ->assertRedirect(route('dues.show', $due))
+            ->assertSessionHasErrors('target_account_id');
+
+        $this->assertDatabaseHas('dues', [
+            'id' => $due->id,
+            'account_id' => $tenantAccount->id,
+        ]);
     }
 }

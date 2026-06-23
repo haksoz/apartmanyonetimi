@@ -1008,7 +1008,7 @@ class ExpenseController extends Controller
         $lastRef = \App\Models\Account::where('apartment_id', $apartment->id)
             ->where('name', 'like', $pattern)
             ->withTrashed()
-            ->orderByRaw('CAST(SUBSTRING_INDEX(name, "-", -1) AS UNSIGNED) DESC')
+            ->orderBy('name', 'desc')
             ->value('name');
 
         if ($lastRef) {

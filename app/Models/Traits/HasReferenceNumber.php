@@ -34,7 +34,7 @@ trait HasReferenceNumber
         }
 
         $lastRef = $query
-            ->orderByRaw('CAST(SUBSTRING_INDEX(reference_number, "-", -1) AS UNSIGNED) DESC')
+            ->orderBy('reference_number', 'desc')
             ->value('reference_number');
 
         if ($lastRef) {

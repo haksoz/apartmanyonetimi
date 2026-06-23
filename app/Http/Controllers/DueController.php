@@ -422,7 +422,17 @@ class DueController extends Controller
 
         $due->load(['allocations.payment', 'transactions', 'batch.plan']);
 
-        return view('dues.show', compact('due'));
+        $transferableAccounts = $due->account && $due->account->unit_id
+            ? Account::query()
+                ->where('apartment_id', $due->apartment_id)
+                ->where('unit_id', $due->account->unit_id)
+                ->where('id', '!=', $due->account_id)
+                ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+                ->orderBy('name')
+                ->get(['id', 'name', 'type'])
+            : collect();
+
+        return view('dues.show', compact('due', 'transferableAccounts'));
     }
 
     public function edit(CurrentApartment $currentApartment, Due $due)
@@ -838,23 +848,33 @@ class DueController extends Controller
             return back()->with('error', 'Ödenmiş veya kısmen ödenmiş aidat devredilemez.');
         }
 
+        if (! $due->account || ! $due->account->unit_id) {
+            return back()->with('error', 'Bu aidatın devri için bağlı ünite bilgisi bulunamadı.');
+        }
+
         $validated = $request->validate([
-            'target_account_id' => ['required', 'integer'],
+            'target_account_id' => [
+                'required',
+                'integer',
+                Rule::exists('accounts', 'id')
+                    ->where('apartment_id', $due->apartment_id)
+                    ->where('unit_id', $due->account->unit_id)
+                    ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+                    ->where('id', '!=', $due->account_id),
+            ],
         ]);
 
-        $apartment = $currentApartment->getFor(auth()->user());
-
         $targetAccount = Account::query()
-            ->where('apartment_id', $apartment->id)
-            ->where('id', '!=', $due->account_id)
-            ->findOrFail($validated['target_account_id']);
+            ->where('apartment_id', $due->apartment_id)
+            ->where('id', $validated['target_account_id'])
+            ->firstOrFail();
 
-        $fromAccountName = $due->account?->name ?? 'Bilinmeyen';
+        $fromAccountName = $due->account->name;
 
         DB::transaction(function () use ($due, $targetAccount, $fromAccountName) {
             $due->update([
                 'account_id'  => $targetAccount->id,
-                'unit_id'     => $targetAccount->unit_id ?? $due->unit_id,
+                'unit_id'     => $targetAccount->unit_id,
                 'description' => ($due->description ? $due->description . ' ' : '') . '[Devir: ' . $fromAccountName . ']',
             ]);
 
