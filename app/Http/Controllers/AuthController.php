@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Package;
 use App\Models\User;
 use App\Models\UserSubscription;
-use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -35,8 +34,8 @@ class AuthController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        if (app(CurrentApartment::class)->hasAvailableFor($request->user())) {
-            return redirect()->route('current-apartment.select');
+        if ($request->user()->isSubscriber()) {
+            return redirect()->route('subscriber.dashboard');
         }
 
         return redirect()->route('onboarding.show');
@@ -82,7 +81,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->route('onboarding.show');
+        return redirect()->route('subscriber.dashboard');
     }
 
     public function logout(Request $request)

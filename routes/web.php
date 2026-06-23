@@ -11,6 +11,8 @@ use App\Http\Controllers\Admin\AdminImpersonateController;
 use App\Http\Controllers\Admin\AdminManagerController;
 use App\Http\Controllers\Admin\AdminPackageController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Subscriber\SubscriberApartmentController;
+use App\Http\Controllers\Subscriber\SubscriberDashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CashBoxController;
 use App\Http\Controllers\CashController;
@@ -159,4 +161,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         ->middleware('super_admin');
 
     Route::post('impersonate/{manager}', [AdminImpersonateController::class, 'start'])->name('impersonate.start');
+});
+
+Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscriber'])->group(function () {
+    Route::get('/', SubscriberDashboardController::class)->name('dashboard');
+
+    Route::get('apartments', [SubscriberApartmentController::class, 'index'])->name('apartments.index');
+    Route::post('apartment', [SubscriberApartmentController::class, 'update'])->name('apartment.update');
 });

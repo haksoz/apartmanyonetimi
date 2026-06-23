@@ -95,6 +95,11 @@ class User extends Authenticatable
         return in_array($this->role, self::adminRoles(), true);
     }
 
+    public function isSubscriber(): bool
+    {
+        return $this->role === self::ROLE_MANAGER;
+    }
+
     public function hasFeature(string $key): bool
     {
         $subscription = $this->subscription;

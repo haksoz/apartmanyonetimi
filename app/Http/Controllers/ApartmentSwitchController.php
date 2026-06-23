@@ -15,6 +15,8 @@ class ApartmentSwitchController extends Controller
 
         $apartment = $currentApartment->setFor($request->user(), (int) $validated['apartment_id']);
 
-        return redirect()->route('dashboard')->with('status', $apartment->name.' seçildi.');
+        $route = $request->user()->isSubscriber() ? 'subscriber.dashboard' : 'dashboard';
+
+        return redirect()->route($route)->with('status', $apartment->name.' seçildi.');
     }
 }
