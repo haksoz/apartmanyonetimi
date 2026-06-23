@@ -379,13 +379,21 @@ class PaymentController extends Controller
         $accountId = $payment->account_id;
 
         DB::transaction(function () use ($payment) {
-            $payment->load('allocations.due');
+            $payment->load('allocations.due', 'allocations.expense');
 
             foreach ($payment->allocations as $allocation) {
-                $due = $allocation->due;
-                $due->remaining_amount = min($due->amount, $due->remaining_amount + $allocation->amount);
-                $due->status = $due->remaining_amount >= $due->amount ? 'unpaid' : 'partial';
-                $due->save();
+                if ($allocation->due) {
+                    $due = $allocation->due;
+                    $due->remaining_amount = min($due->amount, $due->remaining_amount + $allocation->amount);
+                    $due->status = $due->remaining_amount >= $due->amount ? 'unpaid' : 'partial';
+                    $due->save();
+                } elseif ($allocation->expense) {
+                    $expense = $allocation->expense;
+                    $expense->paid_amount = max(0, $expense->paid_amount - $allocation->amount);
+                    $expense->remaining_amount = min($expense->amount, $expense->amount - $expense->paid_amount);
+                    $expense->is_paid = $expense->remaining_amount <= 0;
+                    $expense->save();
+                }
                 $allocation->delete();
             }
 

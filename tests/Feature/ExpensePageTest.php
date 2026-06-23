@@ -8,6 +8,8 @@ use App\Models\CashBox;
 use App\Models\CashTransaction;
 use App\Models\Category;
 use App\Models\Expense;
+use App\Models\Payment;
+use App\Models\PaymentAllocation;
 use App\Models\User;
 use App\Support\CurrentApartment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -402,6 +404,118 @@ class ExpensePageTest extends TestCase
             'id' => $expense->id,
             'is_paid' => true,
         ]);
+    }
+
+    public function test_paid_expense_cannot_be_deleted_without_removing_payment_first(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $supplier = Account::create(['apartment_id' => $apartment->id, 'type' => Account::TYPE_SUPPLIER, 'name' => 'Tedarikçi']);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Bakım', 'type' => Category::TYPE_EXPENSE]);
+        $expense = Expense::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $supplier->id,
+            'category_id' => $category->id,
+            'category' => 'Bakım',
+            'description' => 'Haziran bakımı',
+            'amount' => 888,
+            'paid_amount' => 888,
+            'remaining_amount' => 0,
+            'expense_date' => '2026-06-22',
+            'is_paid' => true,
+        ]);
+        $payment = Payment::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $supplier->id,
+            'amount' => 888,
+            'unallocated_amount' => 0,
+            'payment_date' => '2026-06-22',
+            'description' => 'Haziran ödemesi',
+        ]);
+        PaymentAllocation::create([
+            'payment_id' => $payment->id,
+            'expense_id' => $expense->id,
+            'amount' => 888,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->delete(route('expenses.destroy', $expense))
+            ->assertRedirect(route('expenses.show', $expense))
+            ->assertSessionHas('error', 'Bu giderin ödeme kaydı var. Önce ödemeyi iptal edin.');
+
+        $this->assertDatabaseHas('expenses', ['id' => $expense->id]);
+    }
+
+    public function test_unpaid_expense_without_payment_allocation_can_be_deleted(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $supplier = Account::create(['apartment_id' => $apartment->id, 'type' => Account::TYPE_SUPPLIER, 'name' => 'Tedarikçi']);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Bakım', 'type' => Category::TYPE_EXPENSE]);
+        $expense = Expense::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $supplier->id,
+            'category_id' => $category->id,
+            'category' => 'Bakım',
+            'description' => 'Haziran bakımı',
+            'amount' => 888,
+            'paid_amount' => 0,
+            'remaining_amount' => 888,
+            'expense_date' => '2026-06-22',
+            'is_paid' => false,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->delete(route('expenses.destroy', $expense))
+            ->assertRedirect(route('expenses.index'));
+
+        $this->assertSoftDeleted('expenses', ['id' => $expense->id]);
+    }
+
+    public function test_partially_paid_expense_cannot_be_deleted(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $supplier = Account::create(['apartment_id' => $apartment->id, 'type' => Account::TYPE_SUPPLIER, 'name' => 'Tedarikçi']);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Bakım', 'type' => Category::TYPE_EXPENSE]);
+        $expense = Expense::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $supplier->id,
+            'category_id' => $category->id,
+            'category' => 'Bakım',
+            'description' => 'Haziran bakımı',
+            'amount' => 1000,
+            'paid_amount' => 400,
+            'remaining_amount' => 600,
+            'expense_date' => '2026-06-22',
+            'is_paid' => false,
+        ]);
+        $payment = Payment::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $supplier->id,
+            'amount' => 400,
+            'unallocated_amount' => 0,
+            'payment_date' => '2026-06-22',
+            'description' => 'Kısmi ödeme',
+        ]);
+        PaymentAllocation::create([
+            'payment_id' => $payment->id,
+            'expense_id' => $expense->id,
+            'amount' => 400,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->delete(route('expenses.destroy', $expense))
+            ->assertRedirect(route('expenses.show', $expense))
+            ->assertSessionHas('error', 'Bu giderin ödeme kaydı var. Önce ödemeyi iptal edin.');
+
+        $this->assertDatabaseHas('expenses', ['id' => $expense->id]);
     }
 }
 

@@ -612,9 +612,9 @@ class ExpenseController extends Controller
 
 
 
-        if ($expense->is_paid) {
+        if ($expense->paymentAllocations()->exists()) {
 
-            return redirect()->route('expenses.show', $expense)->with('error', 'Ödenmiş gider silinemez. Önce ödemeyi iptal edin.');
+            return redirect()->route('expenses.show', $expense)->with('error', 'Bu giderin ödeme kaydı var. Önce ödemeyi iptal edin.');
 
         }
 

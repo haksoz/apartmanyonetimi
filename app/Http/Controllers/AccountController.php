@@ -379,14 +379,32 @@ class AccountController extends Controller
             ->orderByDesc('payment_date')
             ->get();
 
-        $transferableAccounts = $account->unit_id
+        $unitIds = collect([$account->unit_id])
+            ->merge($account->dues->pluck('unit_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $transferableAccounts = $unitIds->isNotEmpty()
             ? \App\Models\Account::query()
-                ->where('unit_id', $account->unit_id)
-                ->where('id', '!=', $account->id)
                 ->where('apartment_id', $account->apartment_id)
+                ->whereIn('unit_id', $unitIds)
+                ->where('id', '!=', $account->id)
+                ->whereIn('type', [\App\Models\Account::TYPE_OWNER, \App\Models\Account::TYPE_TENANT])
                 ->orderBy('name')
                 ->get(['id', 'name', 'type'])
             : collect();
+
+        \Illuminate\Support\Facades\Log::info('Account transfer diagnostics', [
+            'account_id' => $account->id,
+            'account_type' => $account->type,
+            'account_unit_id' => $account->unit_id,
+            'account_is_active' => $account->is_active,
+            'dues_count' => $account->dues->count(),
+            'imported_dues_count' => $importedDues->count(),
+            'unit_ids' => $unitIds->toArray(),
+            'transferable_accounts_count' => $transferableAccounts->count(),
+        ]);
 
         return view('accounts.show', compact('account', 'transactions', 'cashBoxes', 'importedDues', 'importedPayments', 'transferableAccounts', 'cashUrlMap'));
     }

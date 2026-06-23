@@ -57,7 +57,7 @@
 
             @endif
 
-            @if (in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && $account->dues->isNotEmpty() && $transferableAccounts->isNotEmpty())
+            @if (in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && ($account->dues->isNotEmpty() || $importedDues->isNotEmpty()) && $transferableAccounts->isNotEmpty())
 
                 <button type="button" onclick="document.getElementById('transfer-dues-modal').classList.remove('hidden')"
 
@@ -1459,7 +1459,7 @@
 
     {{-- Borç Devri Modal --}}
 
-    @if (in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && $account->dues->isNotEmpty() && $transferableAccounts->isNotEmpty())
+    @if (in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && ($account->dues->isNotEmpty() || $importedDues->isNotEmpty()) && $transferableAccounts->isNotEmpty())
 
     <div id="transfer-dues-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
 
@@ -1484,18 +1484,21 @@
                     <div class="rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-48 overflow-y-auto">
 
                         @foreach ($account->dues as $due)
+                            @php
+                                $isPartial = $due->remaining_amount < $due->amount && $due->remaining_amount > 0;
+                            @endphp
 
-                            <label class="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50">
+                            <label class="flex items-center gap-3 px-4 py-3 {{ $isPartial ? 'cursor-not-allowed bg-slate-50 text-slate-400' : 'cursor-pointer hover:bg-slate-50' }}">
 
                                 <input type="radio" name="due_id" value="{{ $due->id }}"
 
-                                       data-action="{{ route('dues.transfer', $due) }}"
+                                       data-action="{{ $isPartial ? '' : route('dues.transfer', $due) }}"
 
-                                       class="due-radio" required>
+                                       class="due-radio" {{ $isPartial ? 'disabled' : 'required' }}>
 
                                 <div class="flex-1 text-sm">
 
-                                    <span class="font-medium text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</span>
+                                    <span class="font-medium {{ $isPartial ? 'text-slate-500' : 'text-slate-900' }}">{{ number_format($due->amount, 2, ',', '.') }} TL</span>
 
                                     <span class="ml-2 text-slate-500">{{ $due->due_date?->format('d.m.Y') }}</span>
 
@@ -1507,7 +1510,54 @@
 
                                 </div>
 
-                                @if($due->remaining_amount < $due->amount)
+                                @if($isPartial)
+
+                                    <span class="text-xs text-amber-600">Kısmen ödenmiş aidat devredilemez</span>
+
+                                @elseif($due->remaining_amount < $due->amount)
+
+                                    <span class="text-xs text-amber-600">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</span>
+
+                                @endif
+
+                            </label>
+
+                        @endforeach
+
+                        @foreach ($importedDues as $due)
+                            @php
+                                $isPartial = $due->remaining_amount < $due->amount && $due->remaining_amount > 0;
+                            @endphp
+
+                            <label class="flex items-center gap-3 px-4 py-3 {{ $isPartial ? 'cursor-not-allowed bg-slate-50 text-slate-400' : 'cursor-pointer hover:bg-slate-50 bg-blue-50/40' }}">
+
+                                <input type="radio" name="due_id" value="{{ $due->id }}"
+
+                                       data-action="{{ $isPartial ? '' : route('dues.transfer', $due) }}"
+
+                                       class="due-radio" {{ $isPartial ? 'disabled' : 'required' }}>
+
+                                <div class="flex-1 text-sm">
+
+                                    <span class="font-medium {{ $isPartial ? 'text-slate-500' : 'text-slate-900' }}">{{ number_format($due->amount, 2, ',', '.') }} TL</span>
+
+                                    <span class="ml-2 text-slate-500">{{ $due->due_date?->format('d.m.Y') }}</span>
+
+                                    @if($due->description)
+
+                                        <div class="text-xs text-slate-400 mt-0.5">{{ $due->description }}</div>
+
+                                    @endif
+
+                                    <div class="text-xs {{ $isPartial ? 'text-blue-500' : 'text-blue-700' }}">Devir Öncesi</div>
+
+                                </div>
+
+                                @if($isPartial)
+
+                                    <span class="text-xs text-amber-600">Kısmen ödenmiş aidat devredilemez</span>
+
+                                @elseif($due->remaining_amount < $due->amount)
 
                                     <span class="text-xs text-amber-600">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</span>
 

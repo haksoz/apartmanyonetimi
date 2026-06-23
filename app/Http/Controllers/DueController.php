@@ -422,10 +422,12 @@ class DueController extends Controller
 
         $due->load(['allocations.payment', 'transactions', 'batch.plan']);
 
-        $transferableAccounts = $due->account && $due->account->unit_id
+        $unitId = $due->unit_id ?: $due->account?->unit_id;
+
+        $transferableAccounts = $unitId
             ? Account::query()
                 ->where('apartment_id', $due->apartment_id)
-                ->where('unit_id', $due->account->unit_id)
+                ->where('unit_id', $unitId)
                 ->where('id', '!=', $due->account_id)
                 ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
                 ->orderBy('name')
@@ -848,7 +850,7 @@ class DueController extends Controller
             return back()->with('error', 'Ödenmiş veya kısmen ödenmiş aidat devredilemez.');
         }
 
-        if (! $due->account || ! $due->account->unit_id) {
+        if (! $due->unit_id) {
             return back()->with('error', 'Bu aidatın devri için bağlı ünite bilgisi bulunamadı.');
         }
 
@@ -858,7 +860,7 @@ class DueController extends Controller
                 'integer',
                 Rule::exists('accounts', 'id')
                     ->where('apartment_id', $due->apartment_id)
-                    ->where('unit_id', $due->account->unit_id)
+                    ->where('unit_id', $due->unit_id)
                     ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
                     ->where('id', '!=', $due->account_id),
             ],
@@ -869,7 +871,8 @@ class DueController extends Controller
             ->where('id', $validated['target_account_id'])
             ->firstOrFail();
 
-        $fromAccountName = $due->account->name;
+        $sourceAccount = $due->account;
+        $fromAccountName = $sourceAccount->name;
 
         DB::transaction(function () use ($due, $targetAccount, $fromAccountName) {
             $due->update([
@@ -883,7 +886,7 @@ class DueController extends Controller
                 ->update(['account_id' => $targetAccount->id]);
         });
 
-        return redirect()->route('accounts.show', $targetAccount->id)
+        return redirect()->route('accounts.show', $sourceAccount->id)
             ->with('status', 'Aidat "' . $targetAccount->name . '" hesabına devredildi.');
     }
 

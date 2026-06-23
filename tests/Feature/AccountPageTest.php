@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Account;
 use App\Models\Apartment;
+use App\Models\Category;
+use App\Models\Due;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
 use App\Models\User;
@@ -374,5 +376,215 @@ class AccountPageTest extends TestCase
             'name' => 'Yeni Malik',
         ]);
         $this->assertSame($owner->id, $unit->fresh()->owner_account_id);
+    }
+
+    public function test_passive_account_detail_shows_transfer_button_for_open_dues(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $inactiveTenant = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT,
+            'name' => 'Eski Kiracı',
+            'is_active' => false,
+        ]);
+        Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Kat Maliki',
+            'is_active' => true,
+        ]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $inactiveTenant->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => '2026-05-31',
+            'status' => 'unpaid',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('accounts.show', $inactiveTenant))
+            ->assertStatus(200)
+            ->assertSee('Borç Devri')
+            ->assertSee('Kat Maliki');
+    }
+
+    public function test_account_detail_shows_transfer_button_for_imported_dues(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $tenant = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT,
+            'name' => 'Kiracı',
+            'is_active' => true,
+        ]);
+        Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Kat Maliki',
+            'is_active' => true,
+        ]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $tenant->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => '2026-05-31',
+            'status' => 'unpaid',
+            'is_imported' => true,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('accounts.show', $tenant))
+            ->assertStatus(200)
+            ->assertSee('Borç Devri')
+            ->assertSee('Devir Öncesi');
+    }
+
+    public function test_partial_due_is_shown_but_disabled_in_transfer_modal(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $tenant = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT,
+            'name' => 'Kiracı',
+            'is_active' => true,
+        ]);
+        Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Kat Maliki',
+            'is_active' => true,
+        ]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $partialDue = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $tenant->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 200,
+            'due_date' => '2026-05-31',
+            'status' => 'partial',
+        ]);
+        $unpaidDue = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $tenant->id,
+            'category_id' => $category->id,
+            'period' => '2026-06',
+            'amount' => 300,
+            'remaining_amount' => 300,
+            'due_date' => '2026-06-30',
+            'status' => 'unpaid',
+        ]);
+
+        $response = $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('accounts.show', $tenant));
+
+        $response->assertStatus(200)
+            ->assertSee('Borç Devri')
+            ->assertSee('Kısmen ödenmiş aidat devredilemez')
+            ->assertSee('disabled');
+    }
+
+    public function test_passive_account_detail_with_mismatched_unit_id_shows_transfer_button(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 2,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unitOne = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $unitTwo = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '2',
+        ]);
+        $inactiveTenant = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unitTwo->id,
+            'type' => Account::TYPE_TENANT,
+            'name' => 'Eski Kiracı',
+            'is_active' => false,
+        ]);
+        Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unitOne->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Kat Maliki',
+            'is_active' => true,
+        ]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unitOne->id,
+            'account_id' => $inactiveTenant->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => '2026-05-31',
+            'status' => 'unpaid',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('accounts.show', $inactiveTenant))
+            ->assertStatus(200)
+            ->assertSee('Borç Devri')
+            ->assertSee('Kat Maliki');
     }
 }
