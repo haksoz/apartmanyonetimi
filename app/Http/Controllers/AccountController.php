@@ -1096,7 +1096,7 @@ class AccountController extends Controller
 
         $msg = !empty($parts) ? implode(', ', $parts) . ' silindi.' : 'Silinecek kayıt bulunamadı.';
 
-        return redirect()->route('accounts.index')->with('status', $msg);
+        return redirect()->back()->with('status', $msg);
     }
 
     /**

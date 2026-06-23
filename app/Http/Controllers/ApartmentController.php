@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\AccountTransaction;
 use App\Models\Apartment;
 use App\Models\Category;
 use App\Models\Unit;
@@ -107,7 +108,13 @@ class ApartmentController extends Controller
             })
             ->findOrFail($id);
 
-        return view('apartments.show', compact('apartment'));
+        $isOwner = $this->isOwnerOf($apartment);
+
+        $hasImported = AccountTransaction::where('apartment_id', $apartment->id)
+            ->where('is_imported', true)
+            ->exists();
+
+        return view('apartments.show', compact('apartment', 'isOwner', 'hasImported'));
     }
 
     /**

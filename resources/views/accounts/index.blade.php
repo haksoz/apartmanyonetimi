@@ -8,15 +8,6 @@
             <p class="mt-1 text-sm text-slate-500">Daire sakinleri, tedarikçiler ve apartmanla ilişkili tüm hesaplar.</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            @if($isOwner && $hasImported)
-            <form method="POST" action="/accounts/imported-transactions" onsubmit="return confirm('Tüm içe aktarılmış cari hareketler ve bağlı giderler silinecek. Emin misiniz?')">
-                @csrf
-                <button type="submit" class="flex-1 md:flex-none rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">İçe Aktarılanları Sil</button>
-            </form>
-            @endif
-            @if($isOwner)
-            <a href="{{ route('accounts.bulk-import') }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Genel Hesap İçe Aktar</a>
-            @endif
             <a href="{{ route('accounts.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Hesap Ekle</a>
         </div>
     </div>
