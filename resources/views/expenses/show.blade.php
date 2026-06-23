@@ -146,7 +146,7 @@
 
     {{-- Payment Info Card --}}
 
-    @if ($expense->is_paid)
+    @if ($expense->paymentAllocations->isNotEmpty())
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 

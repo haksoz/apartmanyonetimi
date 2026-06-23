@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Account;
 use App\Models\Apartment;
+use App\Models\AccountTransaction;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
 use App\Models\Category;
@@ -474,6 +475,58 @@ class ExpensePageTest extends TestCase
             ->assertRedirect(route('expenses.index'));
 
         $this->assertSoftDeleted('expenses', ['id' => $expense->id]);
+    }
+
+    public function test_expense_detail_page_shows_linked_payment_info(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $supplier = Account::create(['apartment_id' => $apartment->id, 'type' => Account::TYPE_SUPPLIER, 'name' => 'Tedarikçi']);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Bakım', 'type' => Category::TYPE_EXPENSE]);
+        $expense = Expense::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $supplier->id,
+            'category_id' => $category->id,
+            'category' => 'Bakım',
+            'description' => 'Haziran bakımı',
+            'amount' => 1000,
+            'paid_amount' => 500,
+            'remaining_amount' => 500,
+            'expense_date' => '2026-06-22',
+            'is_paid' => false,
+        ]);
+        $payment = Payment::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $supplier->id,
+            'amount' => 500,
+            'unallocated_amount' => 0,
+            'payment_date' => '2026-06-22',
+            'description' => 'Kısmi ödeme',
+        ]);
+        PaymentAllocation::create([
+            'payment_id' => $payment->id,
+            'expense_id' => $expense->id,
+            'amount' => 500,
+        ]);
+        AccountTransaction::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $supplier->id,
+            'transactionable_type' => Payment::class,
+            'transactionable_id' => $payment->id,
+            'type' => 'debit',
+            'description' => 'Kısmi ödeme',
+            'amount' => 500,
+            'transaction_date' => '2026-06-22',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('expenses.show', $expense))
+            ->assertStatus(200)
+            ->assertSee('Ödeme Bilgisi')
+            ->assertSee('Kısmi ödeme')
+            ->assertSee('500,00');
     }
 
     public function test_partially_paid_expense_cannot_be_deleted(): void
