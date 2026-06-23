@@ -507,9 +507,17 @@ class ExpenseController extends Controller
 
         $expense = $this->findExpense($id);
 
+        $unallocatedPayments = collect();
 
+        if ($expense->account_id) {
+            $unallocatedPayments = Payment::where('apartment_id', $expense->apartment_id)
+                ->where('account_id', $expense->account_id)
+                ->where('unallocated_amount', '>', 0)
+                ->orderBy('payment_date')
+                ->get();
+        }
 
-        return view('expenses.show', compact('expense'));
+        return view('expenses.show', compact('expense', 'unallocatedPayments'));
 
     }
 

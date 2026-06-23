@@ -62,6 +62,10 @@
 
                 <a href="{{ route('expenses.payment.create', $expense) }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Ödeme Ekle</a>
 
+                @if ($unallocatedPayments->isNotEmpty())
+                    <a href="{{ route('payments.supplier-allocations.create', $unallocatedPayments->first()) }}" class="flex-1 md:flex-none rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-blue-700">Ödemeye Bağla</a>
+                @endif
+
             @endunless
 
             <a href="{{ route('expenses.edit', $expense) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Düzenle</a>
@@ -144,101 +148,121 @@
 
 
 
-    {{-- Payment Info Card --}}
-
-    @if ($expense->paymentAllocations->isNotEmpty())
+    {{-- Payment Allocations Card --}}
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 
         <div class="flex items-center justify-between mb-4">
 
-            <h2 class="text-base font-semibold text-slate-950">Ödeme Bilgisi</h2>
+            <h2 class="text-base font-semibold text-slate-950">Gideri Kapatan Ödemeler</h2>
 
-            <form method="POST" action="{{ route('expenses.payment.destroy', $expense) }}" onsubmit="return confirm('Gider ödemesi silinsin mi? Gider tekrar ödenmemiş durumuna döner.')">
+            @if ($expense->is_paid)
 
-                @csrf
+                <form method="POST" action="{{ route('expenses.payment.destroy', $expense) }}" onsubmit="return confirm('Gider ödemesi silinsin mi? Gider tekrar ödenmemiş durumuna döner.')">
 
-                @method('DELETE')
+                    @csrf
 
-                <button type="submit" class="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Ödemeyi İptal Et</button>
+                    @method('DELETE')
 
-            </form>
+                    <button type="submit" class="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Tümünü İptal Et</button>
 
-        </div>
-
-        <div class="grid gap-6 md:grid-cols-3">
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ödeme Tarihi</div>
-
-                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $paymentTx?->transaction_date->format('d.m.Y') ?? '-' }}</div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Tutar</div>
-
-                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $paymentTx ? number_format($paymentTx->amount, 2, ',', '.') . ' TL' : '-' }}</div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</div>
-
-                <div class="mt-2 text-sm text-slate-900">{{ $paymentTx?->description ?? '-' }}</div>
-
-            </div>
-
-            @if ($expensePayment)
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ödeme Referans No</div>
-
-                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">
-
-                    <a href="{{ route('payments.show', $expensePayment) }}" class="text-blue-700 hover:text-blue-800 hover:underline">{{ $expensePayment->reference_number }}</a>
-
-                </div>
-
-            </div>
-
-            @endif
-
-            @if ($cashTx)
-
-            <div class="md:col-span-3">
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kasa Hareketi</div>
-
-                <div class="mt-2">
-
-                    <a href="{{ route('cash.show', $cashTx) }}" class="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800">
-
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-
-                        </svg>
-
-                        {{ $cashTx->reference_number }} — {{ $cashTx->cashBox?->name }} — {{ number_format($cashTx->amount, 2, ',', '.') }} TL
-
-                    </a>
-
-                </div>
-
-            </div>
+                </form>
 
             @endif
 
         </div>
+
+        @if ($expense->paymentAllocations->isEmpty())
+
+            <div class="py-6 text-sm text-slate-500">Bu gidere henüz herhangi bir ödeme tahsis edilmedi.</div>
+
+        @else
+
+            <div class="overflow-hidden rounded-xl border border-slate-200">
+
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+
+                    <thead class="bg-slate-50 text-left text-slate-500">
+
+                        <tr>
+
+                            <th class="px-5 py-3">Ref No</th>
+
+                            <th class="px-5 py-3">Açıklama</th>
+
+                            <th class="px-5 py-3 text-right">Ödeme Tutarı</th>
+
+                            <th class="px-5 py-3 text-right">Bağlanan</th>
+
+                            <th class="px-5 py-3">Ödeme Tarihi</th>
+
+                            <th class="px-5 py-3"></th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody class="divide-y divide-slate-100">
+
+                        @foreach ($expense->paymentAllocations as $allocation)
+
+                            <tr>
+
+                                <td class="px-5 py-4">
+
+                                    <a href="{{ route('payments.show', $allocation->payment) }}" class="font-medium text-slate-900 hover:text-emerald-600">{{ $allocation->payment->reference_number ?? '#'.$allocation->payment->id }}</a>
+
+                                </td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $allocation->payment->description ?: 'Ödeme' }}</td>
+
+                                <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->payment->amount, 2, ',', '.') }} TL</td>
+
+                                <td class="px-5 py-4 text-right font-semibold text-emerald-600 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</td>
+
+                                <td class="px-5 py-4 text-slate-700">{{ $allocation->payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
+
+                                <td class="px-5 py-4 text-right">
+
+                                    <a href="{{ route('payments.show', $allocation->payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+
+                                </td>
+
+                            </tr>
+
+                        @endforeach
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        @endif
+
+        @if ($cashTx)
+
+            <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-5 py-3">
+
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Kasa Hareketi</div>
+
+                <a href="{{ route('cash.show', $cashTx) }}" class="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800">
+
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+
+                    </svg>
+
+                    {{ $cashTx->reference_number }} — {{ $cashTx->cashBox?->name }} — {{ number_format($cashTx->amount, 2, ',', '.') }} TL
+
+                </a>
+
+            </div>
+
+        @endif
 
     </div>
-
-    @endif
 
 
 
