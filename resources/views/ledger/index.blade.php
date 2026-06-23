@@ -38,6 +38,9 @@
                         if ($related && class_basename($transaction->transactionable_type) === 'Due') {
                             $relatedUrl = route('dues.show', $related);
                         }
+                        if ($related && class_basename($transaction->transactionable_type) === 'Expense') {
+                            $relatedUrl = route('expenses.show', $related);
+                        }
                     @endphp
                     <tr>
                         <td class="px-5 py-4 text-slate-700">{{ $transaction->transaction_date?->format('d.m.Y') ?? '-' }}</td>
@@ -81,6 +84,9 @@
                 }
                 if ($related && class_basename($transaction->transactionable_type) === 'Due') {
                     $relatedUrl = route('dues.show', $related);
+                }
+                if ($related && class_basename($transaction->transactionable_type) === 'Expense') {
+                    $relatedUrl = route('expenses.show', $related);
                 }
             @endphp
             <div class="rounded-xl bg-white p-4 shadow-sm border border-slate-200">

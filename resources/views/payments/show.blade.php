@@ -66,111 +66,120 @@
 
 
 
-    {{-- Summary Cards --}}
-
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $label }} Tutarı</div>
-
-            <div class="mt-2 text-xl font-bold text-slate-900">{{ number_format($payment->amount, 2, ',', '.') }} TL</div>
-
-        </div>
-
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bağlanan Tutar</div>
-
-            <div class="mt-2 text-xl font-bold text-emerald-600">{{ number_format($payment->allocated_amount, 2, ',', '.') }} TL</div>
-
-        </div>
-
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kalan</div>
-
-            <div class="mt-2 text-xl font-bold {{ $payment->unallocated_amount > 0 ? 'text-amber-600' : 'text-slate-400' }}">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
-
-        </div>
-
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $label }} Tarihi</div>
-
-            <div class="mt-2 text-xl font-bold text-slate-900">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</div>
-
-        </div>
-
-    </div>
-
-
-
     {{-- Info Card --}}
+
+    @php $cashTx = $payment->cashTransactions->first(); @endphp
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 
-        <div class="grid gap-6 md:grid-cols-3">
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+
+            @if ($payment->account)
 
             <div>
 
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Hesap</div>
+                <div class="text-xs text-slate-400 mb-1">HESAP</div>
 
-                <div class="mt-2 text-sm font-medium text-slate-900">
+                @php
+                    $accountTypeLabel = match($payment->account->type) {
+                        App\Models\Account::TYPE_OWNER    => 'Kat Maliki',
+                        App\Models\Account::TYPE_TENANT   => 'Kiracı',
+                        App\Models\Account::TYPE_SUPPLIER => 'Tedarikçi',
+                        default => '',
+                    };
+                @endphp
 
-                    @if ($payment->account)
-
-                        <a href="{{ route('accounts.show', $payment->account) }}" class="hover:text-emerald-600 hover:underline">{{ $payment->account->name }}</a>
-
-                    @else
-
-                        -
-
+                <div class="text-sm font-medium text-slate-900">
+                    @if ($accountTypeLabel){{ $accountTypeLabel }} @endif
+                    <a href="{{ route('accounts.show', $payment->account) }}" class="hover:text-emerald-600 hover:underline">{{ $payment->account->name }}</a>
+                    @if ($payment->account->unit)
+                         - Daire {{ str_pad($payment->account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
                     @endif
-
-                </div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Referans No</div>
-
-                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $payment->reference_number ?? '-' }}</div>
-
-            </div>
-
-            @php
-
-                $cashTx = $payment->cashTransactions->first();
-
-            @endphp
-
-            @if ($cashTx)
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kasa Hareketi</div>
-
-                <div class="mt-2">
-
-                    <a href="{{ route('cash.show', $cashTx) }}" class="text-sm font-medium text-blue-700 hover:text-blue-800 hover:underline">
-
-                        {{ $cashTx->reference_number }} — {{ $cashTx->cashBox?->name }}
-
-                    </a>
-
                 </div>
 
             </div>
 
             @endif
 
-            <div class="{{ $cashTx ? 'md:col-span-2' : 'md:col-span-3' }}">
+            <div>
 
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</div>
+                <div class="text-xs text-slate-400 mb-1">TUTAR</div>
 
-                <div class="mt-2 text-sm text-slate-900">{{ $payment->description ?: '-' }}</div>
+                <div class="text-sm font-bold text-slate-900">{{ number_format($payment->amount, 2, ',', '.') }} TL</div>
+
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">BAĞLANAN</div>
+
+                <div class="text-sm font-bold text-emerald-600">{{ number_format($payment->allocated_amount, 2, ',', '.') }} TL</div>
+
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">KALAN BAKİYE</div>
+
+                <div class="text-sm font-bold {{ $payment->unallocated_amount > 0 ? 'text-amber-600' : 'text-slate-400' }}">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
+
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">{{ strtoupper($label) }} TARİHİ</div>
+
+                <div class="text-sm font-medium text-slate-900">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</div>
+
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">DURUM</div>
+
+                @if ($payment->unallocated_amount <= 0)
+                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">Tam Tahsis</span>
+                @elseif ($payment->allocated_amount > 0)
+                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200">Kısmen Tahsis</span>
+                @else
+                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">Tahsis Bekliyor</span>
+                @endif
+
+            </div>
+
+            @if ($payment->reference_number)
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">REFERANS</div>
+
+                <div class="text-sm font-medium text-slate-900">{{ $payment->reference_number }}</div>
+
+            </div>
+
+            @endif
+
+            @if ($cashTx)
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">KASA HAREKETİ</div>
+
+                <div class="text-sm font-medium text-slate-900">
+                    <a href="{{ route('cash.show', $cashTx) }}" class="text-blue-700 hover:text-blue-800 hover:underline">
+                        {{ $cashTx->reference_number }} — {{ $cashTx->cashBox?->name }}
+                    </a>
+                </div>
+
+            </div>
+
+            @endif
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">AÇIKLAMA</div>
+
+                <div class="text-sm font-medium text-slate-900">{{ $payment->description ?: '-' }}</div>
 
             </div>
 

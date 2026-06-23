@@ -62,10 +62,6 @@
 
                 <a href="{{ route('expenses.payment.create', $expense) }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Ödeme Ekle</a>
 
-                @if ($unallocatedPayments->isNotEmpty())
-                    <a href="{{ route('payments.supplier-allocations.create', $unallocatedPayments->first()) }}" class="flex-1 md:flex-none rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-blue-700">Ödemeye Bağla</a>
-                @endif
-
             @endunless
 
             <a href="{{ route('expenses.edit', $expense) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Düzenle</a>
@@ -96,49 +92,131 @@
 
 
 
-    {{-- Summary Cards --}}
+    {{-- Info Card --}}
 
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+    <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
 
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gider Tutarı</div>
+            @if ($expense->account)
 
-            <div class="mt-2 text-xl font-bold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
+            <div>
 
-        </div>
+                <div class="text-xs text-slate-400 mb-1">HESAP / TEDARİKÇİ</div>
 
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+                <div class="text-sm font-medium text-slate-900">
+                    <a href="{{ route('accounts.show', $expense->account) }}" class="hover:text-emerald-600 hover:underline">{{ $expense->account->name }}</a>
+                </div>
 
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gider Tarihi</div>
+            </div>
 
-            <div class="mt-2 text-xl font-bold text-slate-900 tabular-nums">{{ $expense->expense_date->format('d.m.Y') }}</div>
+            @endif
 
-        </div>
+            <div>
 
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+                <div class="text-xs text-slate-400 mb-1">TUTAR</div>
 
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Son Ödeme Tarihi</div>
+                <div class="text-sm font-bold text-slate-900">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
 
-            <div class="mt-2 text-xl font-bold text-slate-900 tabular-nums">{{ $expense->due_date?->format('d.m.Y') ?? '-' }}</div>
+            </div>
 
-        </div>
+            <div>
 
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+                <div class="text-xs text-slate-400 mb-1">ÖDENEN</div>
 
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</div>
+                <div class="text-sm font-bold text-emerald-600">{{ number_format($expense->paid_amount ?? 0, 2, ',', '.') }} TL</div>
 
-            <div class="mt-2">
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">KALAN</div>
+
+                @php $remaining = $expense->remaining_amount ?? $expense->amount; @endphp
+
+                <div class="text-sm font-bold {{ $remaining > 0 ? 'text-amber-600' : 'text-slate-400' }}">{{ number_format($remaining, 2, ',', '.') }} TL</div>
+
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">GİDER TARİHİ</div>
+
+                <div class="text-sm font-medium text-slate-900">{{ $expense->expense_date->format('d.m.Y') }}</div>
+
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">SON ÖDEME TARİHİ</div>
+
+                <div class="text-sm font-medium text-slate-900">{{ $expense->due_date?->format('d.m.Y') ?? '-' }}</div>
+
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">DURUM</div>
 
                 @if ($expense->is_paid)
-
-                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">Ödendi</span>
-
+                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">Ödendi</span>
+                @elseif (($expense->paid_amount ?? 0) > 0)
+                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200">Kısmen Ödendi</span>
                 @else
-
-                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-700">Bekliyor</span>
-
+                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">Bekliyor</span>
                 @endif
+
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">KATEGORİ</div>
+
+                <div class="text-sm font-medium text-slate-900">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</div>
+
+            </div>
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">DÖNEM</div>
+
+                <div class="text-sm font-medium text-slate-900">{{ $periodText ?? '-' }}</div>
+
+            </div>
+
+            @if ($expense->reference_number)
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">REFERANS</div>
+
+                <div class="text-sm font-medium text-slate-900">{{ $expense->reference_number }}</div>
+
+            </div>
+
+            @endif
+
+            @if ($cashTx)
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">KASA HAREKETİ</div>
+
+                <div class="text-sm font-medium text-slate-900">
+                    <a href="{{ route('cash.show', $cashTx) }}" class="text-blue-700 hover:text-blue-800 hover:underline">
+                        {{ $cashTx->reference_number }} — {{ $cashTx->cashBox?->name }}
+                    </a>
+                </div>
+
+            </div>
+
+            @endif
+
+            <div>
+
+                <div class="text-xs text-slate-400 mb-1">AÇIKLAMA</div>
+
+                <div class="text-sm font-medium text-slate-900">{{ $expense->description ?: '-' }}</div>
 
             </div>
 
@@ -265,100 +343,6 @@
     </div>
 
 
-
-    {{-- Info Card --}}
-
-    <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
-
-        <div class="grid gap-6 md:grid-cols-3">
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Hesap / Tedarikçi</div>
-
-                <div class="mt-2 text-sm font-medium text-slate-900">
-
-                    @if ($expense->account)
-
-                        <a href="{{ route('accounts.show', $expense->account) }}" class="hover:text-emerald-600 hover:underline">{{ $expense->account->name }}</a>
-
-                    @else
-
-                        -
-
-                    @endif
-
-                </div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kategori</div>
-
-                <div class="mt-2 text-sm font-medium text-slate-900">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dönem</div>
-
-                <div class="mt-2 text-sm font-medium text-slate-900">{{ $periodText ?? '-' }}</div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Referans No</div>
-
-                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $expense->reference_number ?? '-' }}</div>
-
-            </div>
-
-            @if ($expense->is_paid && $paymentTx)
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ödeme Tarihi</div>
-
-                <div class="mt-2 text-sm font-medium text-slate-900 tabular-nums">{{ $paymentTx->transaction_date->format('d.m.Y') }}</div>
-
-            </div>
-
-            @endif
-
-            @if ($cashTx)
-
-            <div>
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kasa Hareketi</div>
-
-                <div class="mt-2">
-
-                    <a href="{{ route('cash.show', $cashTx) }}" class="text-sm font-medium text-blue-700 hover:text-blue-800 hover:underline">
-
-                        {{ $cashTx->reference_number }}
-
-                    </a>
-
-                </div>
-
-            </div>
-
-            @endif
-
-            <div class="{{ $expense->is_paid && $paymentTx && !$cashTx ? '' : ($cashTx ? '' : 'md:col-span-2') }} {{ $cashTx ? 'md:col-span-2' : 'md:col-span-3' }}">
-
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</div>
-
-                <div class="mt-2 text-sm text-slate-900">{{ $expense->description ?: '-' }}</div>
-
-            </div>
-
-        </div>
-
-    </div>
 
 @endsection
 
