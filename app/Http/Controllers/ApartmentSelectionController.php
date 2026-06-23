@@ -8,7 +8,10 @@ class ApartmentSelectionController extends Controller
 {
     public function __invoke(CurrentApartment $currentApartment)
     {
-        $apartments = $currentApartment->availableFor(auth()->user());
+        $apartments = $currentApartment->queryFor(auth()->user())
+            ->with('user')
+            ->orderBy('name')
+            ->get();
 
         if ($apartments->isEmpty()) {
             return redirect()->route('apartments.create');

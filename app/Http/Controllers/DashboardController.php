@@ -14,13 +14,18 @@ class DashboardController extends Controller
 {
     public function __invoke(CurrentApartment $currentApartment)
     {
-        $apartment = $currentApartment->getFor(auth()->user());
+        $user = auth()->user();
+        $apartment = $currentApartment->getFor($user);
 
-        if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
+        if (! $apartment && $currentApartment->hasAvailableFor($user)) {
             return redirect()->route('current-apartment.select');
         }
 
         if (! $apartment) {
+            if ($user->isAdmin()) {
+                return redirect()->route('admin.dashboard');
+            }
+
             return redirect()->route('onboarding.show');
         }
 

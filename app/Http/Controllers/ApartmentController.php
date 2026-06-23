@@ -7,6 +7,7 @@ use App\Models\AccountTransaction;
 use App\Models\Apartment;
 use App\Models\Category;
 use App\Models\Unit;
+use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -52,6 +53,12 @@ class ApartmentController extends Controller
         ]);
 
         $user = auth()->user();
+
+        if (! app(UserApartmentQuota::class)->canCreate($user)) {
+            return back()->withErrors([
+                'quota' => 'Mevcut paketinizin apartman limitine ulaştınız. Daha fazla apartman eklemek için paketinizi yükseltin veya yönetici ile iletişime geçin.',
+            ])->withInput();
+        }
 
         DB::transaction(function () use ($validated, $user) {
             $apartment = Apartment::create([
@@ -182,6 +189,11 @@ class ApartmentController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        abort_unless(auth()->user()->isAdmin(), 403);
+
+        $apartment = Apartment::findOrFail($id);
+        $apartment->delete();
+
+        return redirect()->route('apartments.index')->with('status', 'Apartman silindi.');
     }
 }

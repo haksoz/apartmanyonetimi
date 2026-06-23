@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Apartment extends Model
 {
+    use HasFactory;
+    use SoftDeletes;
     protected $fillable = [
         'user_id',
         'name',
@@ -34,7 +38,7 @@ class Apartment extends Model
     {
         do {
             $code = strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 4));
-        } while (static::where('code', $code)->exists());
+        } while (static::withTrashed()->where('code', $code)->exists());
 
         return $code;
     }

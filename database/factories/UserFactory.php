@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\Package;
 use App\Models\User;
+use App\Models\UserSubscription;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -30,6 +32,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'role' => 'manager',
         ];
     }
 
@@ -41,5 +44,33 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+        ]);
+    }
+
+    public function withSubscription(?Package $package = null, string $period = 'monthly'): static
+    {
+        return $this->afterCreating(function (User $user) use ($package, $period) {
+            $package ??= Package::factory()->create();
+
+            UserSubscription::factory()->create([
+                'user_id' => $user->id,
+                'package_id' => $package->id,
+                'period' => $period,
+                'price' => $period === 'yearly' ? $package->yearly_price : $package->monthly_price,
+            ]);
+        });
+    }
+
+    public function withApartmentQuota(int $max): static
+    {
+        return $this->afterCreating(function (User $user) use ($max) {
+            $user->quotaOverride()->create(['max_apartments' => $max]);
+        });
     }
 }

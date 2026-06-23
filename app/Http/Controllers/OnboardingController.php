@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\Unit;
 use App\Support\CurrentApartment;
+use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -39,6 +40,12 @@ class OnboardingController extends Controller
         ]);
 
         $user = auth()->user();
+
+        if (! app(UserApartmentQuota::class)->canCreate($user)) {
+            return back()->withErrors([
+                'quota' => 'Mevcut paketinizin apartman limitine ulaştınız. Daha fazla apartman eklemek için paketinizi yükseltin veya yönetici ile iletişime geçin.',
+            ])->withInput();
+        }
 
         DB::transaction(function () use ($validated, $user, $currentApartment) {
             $apartment = \App\Models\Apartment::create([

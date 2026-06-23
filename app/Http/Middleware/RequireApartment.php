@@ -19,9 +19,11 @@ class RequireApartment
             return $next($request);
         }
 
-        // Apartmanı yoksa onboarding'e yönlendir
+        // Apartmanı yoksa onboarding'e yönlendir (admin için admin paneline)
         if (! $currentApartment->hasAvailableFor($user)) {
-            return redirect()->route('onboarding.show');
+            return $user->isAdmin()
+                ? redirect()->route('admin.dashboard')
+                : redirect()->route('onboarding.show');
         }
 
         $apartment = $currentApartment->getFor($user);

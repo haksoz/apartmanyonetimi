@@ -153,13 +153,50 @@
 
                 {{-- Navigation --}}
                 <nav class="space-y-1">
-                    <a href="{{ route('dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
-                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/>
-                        </svg>
-                        <span class="sidebar-text">Dashboard</span>
-                    </a>
+                    @if(!request()->routeIs('admin.*'))
+                        @if(auth()->user()->isAdmin())
+                            <a href="{{ route('admin.dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-2.496M11.42 15.17l-2.496-2.496m2.496 2.496l-2.496-2.496m0 0l2.496-2.496M13.916 12.674l2.496-2.496M7.502 6.697l2.496-2.496M7.502 6.697l-2.496 2.496m2.496-2.496l-2.496 2.496"/>
+                                </svg>
+                                <span class="sidebar-text">Admin Paneli</span>
+                            </a>
+                        @else
+                            <a href="{{ route('dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/>
+                                </svg>
+                                <span class="sidebar-text">Dashboard</span>
+                            </a>
+                        @endif
+                    @endif
+
+                    @if(request()->routeIs('admin.*'))
+                        @if(auth()->user()->isAdmin())
+                            <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Yönetim</div>
+                            <a href="{{ route('admin.dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-2.496M11.42 15.17l-2.496-2.496m2.496 2.496l-2.496-2.496m0 0l2.496-2.496M13.916 12.674l2.496-2.496M7.502 6.697l2.496-2.496M7.502 6.697l-2.496 2.496m2.496-2.496l-2.496 2.496"/>
+                                </svg>
+                                <span class="sidebar-text">Admin Paneli</span>
+                            </a>
+                            <a href="{{ route('admin.managers.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.managers.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.592-2.641m-3.958-5.599c.351.351.645.748.876 1.185M9 13.5V9.75a6 6 0 0112 0v3"/>
+                                </svg>
+                                <span class="sidebar-text">Abonelikler</span>
+                            </a>
+
+                            <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Paket Yönetimi</div>
+                            <a href="{{ route('admin.packages.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.packages.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                </svg>
+                                <span class="sidebar-text">Paketler</span>
+                            </a>
+                        @endif
+                    @else
 
                     @if($navIsOwner && $currentApartment)
                     <a href="{{ route('accounts.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('accounts.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
@@ -266,6 +303,7 @@
                         <span class="sidebar-text">Kullanıcılar</span>
                     </a>
                     @endif
+                    @endif
                 </nav>
 
                 {{-- Mobile Logout --}}
@@ -324,6 +362,18 @@
         {{-- Main Content --}}
         <main class="pt-16 lg:pl-72 sidebar-transition min-h-screen flex flex-col">
             <div class="mx-auto max-w-7xl w-full px-4 py-8 sm:px-6 lg:px-8 flex-1">
+                @if (session('impersonate_admin_id'))
+                    <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center justify-between">
+                        <div>
+                            <strong>Admin modu aktif.</strong> Şu anda başka bir yönetici olarak görüntülüyorsunuz.
+                        </div>
+                        <form method="POST" action="{{ route('admin.impersonate.leave') }}">
+                            @csrf
+                            <button type="submit" class="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-200">Admin Olarak Geri Dön</button>
+                        </form>
+                    </div>
+                @endif
+
                 @if (session('status'))
                     <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('status') }}</div>
                 @endif

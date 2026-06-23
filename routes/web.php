@@ -6,6 +6,10 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ApartmentController;
 use App\Http\Controllers\ApartmentSelectionController;
 use App\Http\Controllers\ApartmentSwitchController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminImpersonateController;
+use App\Http\Controllers\Admin\AdminManagerController;
+use App\Http\Controllers\Admin\AdminPackageController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CashBoxController;
 use App\Http\Controllers\CashController;
@@ -132,4 +136,22 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::resource('cash-boxes', CashBoxController::class)->except(['index']);
         Route::resource('cash', CashController::class);
     });
+});
+
+Route::post('admin/impersonate/leave', [AdminImpersonateController::class, 'leave'])
+    ->name('admin.impersonate.leave')
+    ->middleware('auth');
+
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('/', AdminDashboardController::class)->name('dashboard');
+
+    Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
+    Route::get('managers/{manager}', [AdminManagerController::class, 'show'])->name('managers.show');
+    Route::patch('managers/{manager}/subscription', [AdminManagerController::class, 'updateSubscription'])->name('managers.subscription.update');
+    Route::patch('managers/{manager}/quota', [AdminManagerController::class, 'updateQuota'])->name('managers.quota.update');
+
+    Route::resource('packages', AdminPackageController::class);
+    Route::patch('packages/{package}/features', [AdminPackageController::class, 'updateFeatures'])->name('packages.features.update');
+
+    Route::post('impersonate/{manager}', [AdminImpersonateController::class, 'start'])->name('impersonate.start');
 });

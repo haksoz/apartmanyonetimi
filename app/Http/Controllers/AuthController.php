@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Package;
 use App\Models\User;
+use App\Models\UserSubscription;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +31,10 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
+        if ($request->user()->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         if (app(CurrentApartment::class)->hasAvailableFor($request->user())) {
             return redirect()->route('current-apartment.select');
         }
@@ -38,7 +44,9 @@ class AuthController extends Controller
 
     public function showRegister()
     {
-        return view('auth.register');
+        $packages = Package::where('is_active', true)->orderBy('sort_order')->get();
+
+        return view('auth.register', compact('packages'));
     }
 
     public function register(Request $request)
@@ -47,13 +55,27 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'package_id' => ['required', 'exists:packages,id'],
+            'period' => ['required', 'in:monthly,yearly'],
         ]);
+
+        $package = Package::findOrFail($validated['package_id']);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role' => 'manager',
+        ]);
+
+        UserSubscription::create([
+            'user_id' => $user->id,
+            'package_id' => $package->id,
+            'period' => $validated['period'],
+            'price' => $validated['period'] === 'yearly' ? $package->yearly_price : $package->monthly_price,
+            'started_at' => now(),
+            'expires_at' => $validated['period'] === 'yearly' ? now()->addYear() : now()->addMonth(),
+            'is_active' => true,
         ]);
 
         Auth::login($user);

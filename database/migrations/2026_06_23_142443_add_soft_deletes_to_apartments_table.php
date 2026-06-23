@@ -12,11 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('apartments', function (Blueprint $table) {
-            $table->string('code', 6)->nullable()->unique()->after('id');
-        });
-
-        \App\Models\Apartment::withTrashed()->whereNull('code')->each(function ($apartment) {
-            $apartment->update(['code' => \App\Models\Apartment::generateCode()]);
+            $table->softDeletes();
         });
     }
 
@@ -26,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('apartments', function (Blueprint $table) {
-            $table->dropColumn('code');
+            $table->dropSoftDeletes();
         });
     }
 };

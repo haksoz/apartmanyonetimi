@@ -23,7 +23,16 @@
                         <td class="px-5 py-4 font-medium text-slate-950">{{ $apartment->name }}</td>
                         <td class="px-5 py-4">{{ $apartment->units_count }}</td>
                         <td class="px-5 py-4">{{ $apartment->accounts_count }}</td>
-                        <td class="px-5 py-4 text-right"><a href="{{ route('apartments.show', $apartment) }}" class="font-semibold text-slate-700 hover:text-slate-950">Detay</a></td>
+                        <td class="px-5 py-4 text-right flex items-center justify-end gap-4">
+                            <a href="{{ route('apartments.show', $apartment) }}" class="font-semibold text-slate-700 hover:text-slate-950">Detay</a>
+                            @if(auth()->user()->isAdmin())
+                                <form action="{{ route('apartments.destroy', $apartment) }}" method="POST" onsubmit="return confirm('{{ $apartment->name }} apartmanını silmek istediğinize emin misiniz?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="font-semibold text-red-600 hover:text-red-800">Sil</button>
+                                </form>
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="4" class="px-5 py-8 text-center text-slate-500">Henüz apartman yok.</td></tr>

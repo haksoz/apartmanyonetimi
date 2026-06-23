@@ -14,6 +14,9 @@
                     <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
                     <div class="text-lg font-semibold text-slate-950">{{ $apartment->name }}</div>
                     <div class="mt-1 text-sm text-slate-500">{{ $apartment->address ?: 'Adres girilmedi' }}</div>
+                    <div class="mt-2 text-sm text-slate-600">
+                        Yönetici: <span class="font-medium">{{ $apartment->user?->name ?? 'Belirtilmemiş' }}</span>
+                    </div>
                     <div class="mt-4 text-sm text-slate-500">{{ $apartment->unit_count }} daire</div>
                     <button type="submit" class="mt-5 w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Bu Apartmanla Devam Et</button>
                 </form>
