@@ -18,17 +18,25 @@ class ApartmentController extends Controller
      */
     public function index()
     {
-        $apartments = Apartment::query()
-            ->withCount(['units', 'accounts'])
-            ->when(! auth()->user()->isAdmin(), function ($query) {
-                $query->whereHas('members', function ($query) {
-                    $query->whereKey(auth()->id());
-                });
-            })
-            ->latest()
-            ->get();
+        $currentApartment = session('current_apartment_id')
+            ? Apartment::with(['units', 'accounts.unit'])->findOrFail(session('current_apartment_id'))
+            : null;
 
-        return view('apartments.index', compact('apartments'));
+        if (! $currentApartment) {
+            return redirect()->route('current-apartment.select');
+        }
+
+        $isOwner = $this->isOwnerOf($currentApartment);
+
+        $hasImported = AccountTransaction::where('apartment_id', $currentApartment->id)
+            ->where('is_imported', true)
+            ->exists();
+
+        return view('apartments.show', [
+            'apartment' => $currentApartment,
+            'isOwner' => $isOwner,
+            'hasImported' => $hasImported,
+        ]);
     }
 
     /**
@@ -46,9 +54,8 @@ class ApartmentController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'address' => ['nullable', 'string'],
+            'address' => ['required', 'string'],
             'unit_count' => ['required', 'integer', 'min:1', 'max:500'],
-            'manager_unit_no' => ['nullable', 'integer', 'min:1'],
             'account_opening_date' => ['required', 'date'],
         ]);
 
@@ -91,14 +98,11 @@ class ApartmentController extends Controller
                     'owner_account_id' => $ownerAccount->id,
                     'occupant_account_id' => $ownerAccount->id,
                 ]);
-
-                if ((int) ($validated['manager_unit_no'] ?? 0) === $i) {
-                    $apartment->update(['manager_unit_id' => $unit->id]);
-                }
             }
         });
 
-        return redirect()->route('apartments.index')->with('status', 'Apartman ve daire hesapları oluşturuldu.');
+        $redirectRoute = auth()->user()->isSubscriber() ? 'subscriber.apartments.index' : 'apartments.index';
+        return redirect()->route($redirectRoute)->with('status', 'Apartman ve daire hesapları oluşturuldu.');
     }
 
     /**
@@ -130,7 +134,6 @@ class ApartmentController extends Controller
     public function edit(string $id)
     {
         $apartment = Apartment::query()
-            ->with(['units.accounts'])
             ->when(! auth()->user()->isAdmin(), function ($query) {
                 $query->whereHas('members', function ($query) {
                     $query->whereKey(auth()->id());
@@ -138,15 +141,7 @@ class ApartmentController extends Controller
             })
             ->findOrFail($id);
 
-        $accounts = Account::query()
-            ->with('unit')
-            ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
-            ->orderByRaw('unit_id IS NULL, unit_id')
-            ->orderBy('name')
-            ->get();
-
-        return view('apartments.edit', compact('apartment', 'accounts'));
+        return view('apartments.edit', compact('apartment'));
     }
 
     /**
@@ -163,25 +158,17 @@ class ApartmentController extends Controller
             ->findOrFail($id);
 
         $validated = $request->validate([
-            'name'               => ['required', 'string', 'max:255'],
-            'address'            => ['nullable', 'string'],
-            'manager_account_id' => ['nullable', 'integer', 'exists:accounts,id'],
+            'name'    => ['required', 'string', 'max:255'],
+            'address' => ['required', 'string'],
         ]);
-
-        $managerUnitId = null;
-        if (! empty($validated['manager_account_id'])) {
-            $managerAccount = Account::where('apartment_id', $apartment->id)
-                ->findOrFail($validated['manager_account_id']);
-            $managerUnitId = $managerAccount->unit_id;
-        }
 
         $apartment->update([
-            'name'             => $validated['name'],
-            'address'          => $validated['address'] ?? null,
-            'manager_unit_id'  => $managerUnitId,
+            'name'    => $validated['name'],
+            'address' => $validated['address'],
         ]);
 
-        return redirect()->route('apartments.show', $apartment)->with('status', 'Apartman bilgileri güncellendi.');
+        $redirectRoute = auth()->user()->isSubscriber() ? 'subscriber.apartments.index' : 'apartments.show';
+        return redirect()->route($redirectRoute, $apartment)->with('status', 'Apartman bilgileri güncellendi.');
     }
 
     /**

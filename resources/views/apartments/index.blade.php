@@ -7,9 +7,6 @@
             <h1 class="text-2xl font-bold text-slate-950">Apartman</h1>
             <p class="mt-1 text-sm text-slate-500">Yönetilen apartman ve daire hesapları.</p>
         </div>
-        <div class="flex gap-2">
-            <a href="{{ route('apartments.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Yeni Apartman</a>
-        </div>
     </div>
 
     <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
@@ -24,7 +21,6 @@
                         <td class="px-5 py-4">{{ $apartment->units_count }}</td>
                         <td class="px-5 py-4">{{ $apartment->accounts_count }}</td>
                         <td class="px-5 py-4 text-right flex items-center justify-end gap-4">
-                            <a href="{{ route('apartments.show', $apartment) }}" class="font-semibold text-slate-700 hover:text-slate-950">Detay</a>
                             @if(auth()->user()->isAdmin())
                                 <form action="{{ route('apartments.destroy', $apartment) }}" method="POST" onsubmit="return confirm('{{ $apartment->name }} apartmanını silmek istediğinize emin misiniz?')">
                                     @csrf

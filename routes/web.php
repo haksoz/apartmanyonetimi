@@ -168,4 +168,12 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
 
     Route::get('apartments', [SubscriberApartmentController::class, 'index'])->name('apartments.index');
     Route::post('apartment', [SubscriberApartmentController::class, 'update'])->name('apartment.update');
+
+    // Apartment creation for subscribers
+    Route::get('apartments/create', [ApartmentController::class, 'create'])->name('apartments.create');
+    Route::post('apartments', [ApartmentController::class, 'store'])->name('apartments.store');
+
+    // Apartment editing for subscribers
+    Route::get('apartments/{apartment}/edit', [ApartmentController::class, 'edit'])->name('apartments.edit');
+    Route::put('apartments/{apartment}', [ApartmentController::class, 'update'])->name('apartments.update');
 });

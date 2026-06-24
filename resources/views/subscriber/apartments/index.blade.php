@@ -11,21 +11,26 @@
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         @foreach ($apartments as $apartment)
-            <form method="POST" action="{{ route('subscriber.apartment.update') }}" class="rounded-xl border border-slate-200 bg-white p-5">
-                @csrf
-                <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
+            <div class="rounded-xl border border-slate-200 bg-white p-5">
                 <div class="text-lg font-semibold text-slate-900">{{ $apartment->name }}</div>
                 <div class="mt-1 text-sm text-slate-500">{{ $apartment->address ?: 'Adres girilmedi' }}</div>
                 <div class="mt-2 text-sm text-slate-600">
                     Yönetici: <span class="font-medium">{{ $apartment->user?->name ?? 'Belirtilmemiş' }}</span>
                 </div>
                 <div class="mt-4 text-sm text-slate-500">{{ $apartment->unit_count }} daire</div>
-                <button type="submit" class="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Bu Apartmanla Devam Et</button>
-            </form>
+                <div class="mt-5 flex gap-2">
+                    <form method="POST" action="{{ route('subscriber.apartment.update') }}" class="flex-1">
+                        @csrf
+                        <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
+                        <button type="submit" class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Seç</button>
+                    </form>
+                    <a href="{{ route('subscriber.apartments.edit', $apartment) }}" class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+                </div>
+            </div>
         @endforeach
     </div>
 
     <div class="mt-6">
-        <a href="{{ route('apartments.create') }}" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Yeni Apartman Oluştur</a>
+        <a href="{{ route('subscriber.apartments.create') }}" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Yeni Apartman Oluştur</a>
     </div>
 @endsection

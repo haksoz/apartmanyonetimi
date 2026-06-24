@@ -108,34 +108,52 @@
                         </div>
                     @endif
 
-                    <div class="flex items-center gap-3">
-                        <div class="text-right hidden sm:block">
-                            <div class="text-sm font-medium text-slate-900">{{ auth()->user()->name }}</div>
-                            <div class="text-xs text-slate-500">
-                                @if(auth()->user()->isAdmin())
-                                    Süper Yönetici
-                                @elseif(isset($navIsOwner) && $navIsOwner)
-                                    Apartman Yöneticisi
-                                @elseif(isset($currentApartment) && $currentApartment)
-                                    Apartman Üyesi
-                                @else
-                                    Kullanıcı
-                                @endif
+                    <div class="relative" id="user-menu-container">
+                        <button type="button" onclick="document.getElementById('user-dropdown').classList.toggle('hidden')" class="flex items-center gap-3 hover:bg-slate-100 rounded-lg px-2 py-1.5 transition-colors">
+                            <div class="text-right hidden sm:block">
+                                <div class="text-sm font-medium text-slate-900">{{ auth()->user()->name }}</div>
+                                <div class="text-xs text-slate-500">
+                                    @if(auth()->user()->isAdmin())
+                                        Süper Yönetici
+                                    @elseif(isset($navIsOwner) && $navIsOwner)
+                                        Apartman Yöneticisi
+                                    @elseif(isset($currentApartment) && $currentApartment)
+                                        Apartman Üyesi
+                                    @else
+                                        Kullanıcı
+                                    @endif
+                                </div>
                             </div>
-                        </div>
-                        <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-                            </svg>
-                        </div>
-                        <form method="POST" action="{{ route('logout') }}" class="hidden sm:block">
-                            @csrf
-                            <button type="submit" class="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-red-600 transition-colors" title="Çıkış Yap">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
+                            <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                                 </svg>
-                            </button>
-                        </form>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+                            </svg>
+                        </button>
+
+                        <div id="user-dropdown" class="hidden absolute right-0 top-full mt-1 w-56 rounded-xl bg-white shadow-lg border border-slate-200 py-1 z-50">
+                            @if(auth()->user()->isSubscriber())
+                                <a href="{{ route('subscriber.dashboard', ['reset' => 1]) }}" class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700">
+                                    <svg class="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/>
+                                    </svg>
+                                    <span>Abone Paneli</span>
+                                </a>
+                            @endif
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700">
+                                    <svg class="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
+                                    </svg>
+                                    <span>Çıkış Yap</span>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -163,15 +181,6 @@
                             </a>
                         @endif
 
-                        @if(auth()->user()->isSubscriber())
-                            <a href="{{ route('subscriber.dashboard', ['reset' => 1]) }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('subscriber.dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
-                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/>
-                                </svg>
-                                <span class="sidebar-text">Abone Paneli</span>
-                            </a>
-                        @endif
 
                         @if(!auth()->user()->isAdmin() && !auth()->user()->isSubscriber())
                             <a href="{{ route('dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
@@ -233,6 +242,16 @@
                             </svg>
                             <span class="sidebar-text">Apartmanlarım</span>
                         </a>
+                    @endif
+
+                    @if($currentApartment)
+                    <a href="{{ route('dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/>
+                        </svg>
+                        <span class="sidebar-text">Dashboard</span>
+                    </a>
                     @endif
 
                     @if($navIsOwner && $currentApartment)
