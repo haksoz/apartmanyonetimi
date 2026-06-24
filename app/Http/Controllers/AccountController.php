@@ -1713,7 +1713,7 @@ class AccountController extends Controller
             
             // Sayısal değilse string olarak sırala ama yine en üstte
             return [0, $unitNo];
-        })->values()->toArray();
+        })->toArray();
 
         // Tüm hesapları yükle (eşleştirme için)
         $allAccounts = Account::where('apartment_id', $apartment->id)

@@ -235,6 +235,98 @@
             accountTypeMap[{{ $account['id'] }}] = '{{ $account['type'] ?? 'supplier' }}';
         @endforeach
 
+        // localStorage anahtarı
+        const STORAGE_KEY = 'bulk_import_selections';
+
+        // Seçimleri localStorage'a kaydet
+        function saveSelections() {
+            const selections = {
+                account_mapping: {},
+                account_types: {},
+                unit_mapping: {},
+                rename_accounts: {}
+            };
+
+            document.querySelectorAll('select[name^="account_mapping["]').forEach(select => {
+                const accountName = select.name.match(/\[(.+?)\]$/)[1];
+                selections.account_mapping[accountName] = select.value;
+            });
+
+            document.querySelectorAll('select[name^="account_types["]').forEach(select => {
+                const accountName = select.name.match(/\[(.+?)\]$/)[1];
+                selections.account_types[accountName] = select.value;
+            });
+
+            document.querySelectorAll('select[name^="unit_mapping["]').forEach(select => {
+                const accountName = select.name.match(/\[(.+?)\]$/)[1];
+                selections.unit_mapping[accountName] = select.value;
+            });
+
+            document.querySelectorAll('input[name^="rename_accounts["]').forEach(checkbox => {
+                const accountName = checkbox.name.match(/\[(.+?)\]$/)[1];
+                selections.rename_accounts[accountName] = checkbox.checked;
+            });
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(selections));
+        }
+
+        // Seçimleri localStorage'dan geri yükle
+        function loadSelections() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (!saved) return;
+
+            try {
+                const selections = JSON.parse(saved);
+
+                // account_mapping geri yükle
+                Object.entries(selections.account_mapping || {}).forEach(([accountName, value]) => {
+                    const select = document.querySelector('select[name="account_mapping[' + accountName + ']"]');
+                    if (select) {
+                        select.value = value;
+                        toggleRenameCheckbox(accountName, value);
+                        updateUnitFromAccount(accountName, value);
+                        updateTypeFromAccount(accountName, value);
+                    }
+                });
+
+                // account_types geri yükle
+                Object.entries(selections.account_types || {}).forEach(([accountName, value]) => {
+                    const select = document.querySelector('select[name="account_types[' + accountName + ']"]');
+                    if (select) {
+                        select.value = value;
+                        toggleUnitSelect(accountName, value);
+                        updateRowColor(accountName, value);
+                    }
+                });
+
+                // unit_mapping geri yükle
+                Object.entries(selections.unit_mapping || {}).forEach(([accountName, value]) => {
+                    const select = document.querySelector('select[name="unit_mapping[' + accountName + ']"]');
+                    if (select) {
+                        select.value = value;
+                    }
+                });
+
+                // rename_accounts geri yükle
+                Object.entries(selections.rename_accounts || {}).forEach(([accountName, checked]) => {
+                    const checkbox = document.getElementById('rename-check-' + accountName);
+                    if (checkbox && !checkbox.disabled) {
+                        checkbox.checked = checked;
+                        if (checked) {
+                            handleRenameCheck(accountName, checkbox);
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Seçimler yüklenirken hata:', e);
+            }
+        }
+
+        // localStorage'ı temizle
+        function clearSelections() {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+
         function toggleRenameCheckbox(accountName, value) {
             const checkbox = document.getElementById('rename-check-' + accountName);
             const label = document.getElementById('rename-label-' + accountName);
@@ -250,6 +342,7 @@
             // Eşleşme değiştiğinde daireyi ve tipi güncelle
             updateUnitFromAccount(accountName, value);
             updateTypeFromAccount(accountName, value);
+            saveSelections();
         }
 
         function updateTypeFromAccount(accountName, accountId) {
@@ -308,10 +401,14 @@
                     }
                 }
             });
+            saveSelections();
         }
 
         // Sayfa yüklendiğinde checkbox'lara event listener ekle
         document.addEventListener('DOMContentLoaded', function() {
+            // Kaydedilmiş seçimleri geri yükle
+            loadSelections();
+
             // Başlangıçta mevcut hesaplar için checkbox'ları aktif et
             document.querySelectorAll('select[name^="account_mapping["]').forEach(select => {
                 const accountName = select.name.match(/\[(.+?)\]$/)[1];
@@ -325,6 +422,21 @@
                     handleRenameCheck(accountName, this);
                 });
             });
+
+            // Tüm select'lara change event listener ekle
+            document.querySelectorAll('select[name^="account_mapping["], select[name^="account_types["], select[name^="unit_mapping["]').forEach(select => {
+                select.addEventListener('change', function() {
+                    saveSelections();
+                });
+            });
+
+            // Form submit edildiğinde localStorage'ı temizle
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    clearSelections();
+                });
+            }
         });
 
         // Hesap değiştiğinde daire bilgisini güncelle
