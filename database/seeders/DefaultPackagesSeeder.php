@@ -13,37 +13,101 @@ class DefaultPackagesSeeder extends Seeder
             [
                 'name' => 'Başlangıç',
                 'slug' => 'baslangic',
-                'description' => 'Tek apartman için temel yönetim paketi.',
+                'description' => 'Küçük apartmanlar için ücretsiz başlangıç.',
                 'apartment_limit' => 1,
+                'multi_apartment_limit' => 0,
                 'monthly_price' => 0,
                 'yearly_price' => 0,
                 'is_active' => true,
                 'sort_order' => 1,
+                'features' => [
+                    '1 apartman',
+                    'En fazla 12 daire',
+                    'Aidat takibi',
+                    'Tahsilat yönetimi',
+                    'Gider ve kasa yönetimi',
+                    'Hesap ekstresi ve raporlar',
+                    'Otomatik aidat planlama',
+                    'Kullanıcı portalı erişimi',
+                    'Çoklu apartman yönetimi',
+                ],
+                'disabled_features' => [
+                    'Otomatik aidat planlama',
+                    'Kullanıcı portalı erişimi',
+                    'Çoklu apartman yönetimi',
+                ],
             ],
             [
                 'name' => 'Standart',
                 'slug' => 'standart',
-                'description' => 'Profesyonel yöneticiler için 5 apartman.',
-                'apartment_limit' => 5,
-                'monthly_price' => 199,
-                'yearly_price' => 1990,
+                'description' => 'Tek apartmanınız için tüm özellikler.',
+                'apartment_limit' => 1,
+                'multi_apartment_limit' => 0,
+                'monthly_price' => 300,
+                'yearly_price' => 3000,
                 'is_active' => true,
                 'sort_order' => 2,
+                'features' => [
+                    '1 apartman',
+                    '24 daire ve kullanıcı',
+                    'Aidat takibi',
+                    'Otomatik aidat planlama',
+                    'Tahsilat yönetimi',
+                    'Gider ve kasa yönetimi',
+                    'Kullanıcı portalı erişimi',
+                    'Hesap ekstresi ve raporlar',
+                    'Çoklu apartman yönetimi',
+                ],
+                'disabled_features' => [
+                    'Çoklu apartman yönetimi',
+                ],
             ],
             [
-                'name' => 'Profesyonel',
-                'slug' => 'profesyonel',
-                'description' => 'Büyük ölçekli yönetim şirketleri için 20 apartman.',
-                'apartment_limit' => 20,
-                'monthly_price' => 499,
-                'yearly_price' => 4990,
+                'name' => 'Pro',
+                'slug' => 'pro',
+                'description' => 'Birden fazla apartman yönetenler için.',
+                'apartment_limit' => 999,
+                'multi_apartment_limit' => 999,
+                'monthly_price' => 900,
+                'yearly_price' => 9000,
                 'is_active' => true,
                 'sort_order' => 3,
+                'features' => [
+                    'Sınırsız apartman',
+                    'Sınırsız daire ve kullanıcı',
+                    'Aidat takibi',
+                    'Otomatik aidat planlama',
+                    'Tahsilat yönetimi',
+                    'Gider ve kasa yönetimi',
+                    'Kullanıcı portalı erişimi',
+                    'Hesap ekstresi ve raporlar',
+                    'Çoklu apartman yönetimi',
+                ],
+                'disabled_features' => [],
             ],
         ];
 
-        foreach ($packages as $package) {
-            Package::firstOrCreate(['slug' => $package['slug']], $package);
+        foreach ($packages as $packageData) {
+            $features = $packageData['features'];
+            $disabledFeatures = $packageData['disabled_features'] ?? [];
+            unset($packageData['features'], $packageData['disabled_features']);
+
+            $package = Package::updateOrCreate(
+                ['slug' => $packageData['slug']],
+                $packageData
+            );
+
+            // Sync features
+            foreach ($features as $feature) {
+                $isEnabled = !in_array($feature, $disabledFeatures);
+                $package->features()->updateOrCreate(
+                    ['feature_key' => $feature],
+                    ['is_enabled' => $isEnabled]
+                );
+            }
+
+            // Remove features that are no longer in the list
+            $package->features()->whereNotIn('feature_key', $features)->delete();
         }
     }
 }

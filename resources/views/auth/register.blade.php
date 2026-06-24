@@ -36,8 +36,11 @@
                 <label class="text-sm font-medium text-slate-700">Paket</label>
                 <div class="mt-2 space-y-2">
                     @foreach ($packages as $package)
-                        <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50 {{ old('package_id') == $package->id ? 'border-emerald-300 bg-emerald-50' : '' }}">
-                            <input type="radio" name="package_id" value="{{ $package->id }}" {{ old('package_id') == $package->id ? 'checked' : ($loop->first ? 'checked' : '') }} required class="mt-1 rounded-full border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                        @php
+                            $isSelected = old('package_id') == $package->id || ($selectedPackage && $selectedPackage->id == $package->id);
+                        @endphp
+                        <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50 {{ $isSelected ? 'border-emerald-300 bg-emerald-50' : '' }}">
+                            <input type="radio" name="package_id" value="{{ $package->id }}" {{ $isSelected ? 'checked' : '' }} required class="mt-1 rounded-full border-slate-300 text-emerald-600 focus:ring-emerald-500">
                             <div>
                                 <div class="font-semibold text-slate-900">{{ $package->name }}</div>
                                 <div class="text-xs text-slate-500">{{ $package->description }}</div>

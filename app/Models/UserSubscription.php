@@ -22,6 +22,11 @@ class UserSubscription extends Model
         'started_at',
         'expires_at',
         'is_active',
+        'feature_auto_dues',
+        'feature_user_portal',
+        'feature_reports',
+        'feature_multi_apartment',
+        'multi_apartment_limit_override',
     ];
 
     protected $casts = [
@@ -29,6 +34,11 @@ class UserSubscription extends Model
         'started_at' => 'datetime',
         'expires_at' => 'datetime',
         'is_active' => 'boolean',
+        'feature_auto_dues' => 'boolean',
+        'feature_user_portal' => 'boolean',
+        'feature_reports' => 'boolean',
+        'feature_multi_apartment' => 'boolean',
+        'multi_apartment_limit_override' => 'integer',
     ];
 
     public function user(): BelongsTo

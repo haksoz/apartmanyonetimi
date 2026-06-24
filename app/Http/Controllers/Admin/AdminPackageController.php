@@ -28,17 +28,39 @@ class AdminPackageController extends Controller
             'slug' => ['required', 'string', 'max:255', 'unique:packages,slug'],
             'description' => ['nullable', 'string'],
             'apartment_limit' => ['required', 'integer', 'min:0'],
+            'multi_apartment_limit' => ['nullable', 'integer', 'min:0'],
             'monthly_price' => ['required', 'numeric', 'min:0'],
             'yearly_price' => ['required', 'numeric', 'min:0'],
-            'is_active' => ['boolean'],
+            'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
+            'features' => ['nullable', 'array'],
         ]);
 
         $validated['slug'] = \Illuminate\Support\Str::slug($validated['slug']);
-        $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['is_active'] = $request->input('is_active') == '1';
+        $validated['multi_apartment_limit'] = $validated['multi_apartment_limit'] ?? 0;
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
 
-        Package::create($validated);
+        $features = $validated['features'] ?? [];
+        unset($validated['features']);
+
+        $package = Package::create($validated);
+
+        // Sync features
+        $allFeatures = [
+            'Otomatik aidat planlama',
+            'Kullanıcı portalı erişimi',
+            'Hesap ekstresi ve raporlar',
+            'Çoklu apartman yönetimi',
+        ];
+
+        foreach ($allFeatures as $feature) {
+            $isEnabled = in_array($feature, $features);
+            $package->features()->updateOrCreate(
+                ['feature_key' => $feature],
+                ['is_enabled' => $isEnabled]
+            );
+        }
 
         return redirect()->route('admin.packages.index')->with('status', 'Paket oluşturuldu.');
     }
@@ -57,17 +79,39 @@ class AdminPackageController extends Controller
             'slug' => ['required', 'string', 'max:255', Rule::unique('packages')->ignore($package->id)],
             'description' => ['nullable', 'string'],
             'apartment_limit' => ['required', 'integer', 'min:0'],
+            'multi_apartment_limit' => ['nullable', 'integer', 'min:0'],
             'monthly_price' => ['required', 'numeric', 'min:0'],
             'yearly_price' => ['required', 'numeric', 'min:0'],
-            'is_active' => ['boolean'],
+            'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
+            'features' => ['nullable', 'array'],
         ]);
 
         $validated['slug'] = \Illuminate\Support\Str::slug($validated['slug']);
-        $validated['is_active'] = $request->boolean('is_active', $package->is_active);
+        $validated['is_active'] = $request->input('is_active') == '1';
+        $validated['multi_apartment_limit'] = $validated['multi_apartment_limit'] ?? 0;
         $validated['sort_order'] = $validated['sort_order'] ?? $package->sort_order;
 
+        $features = $validated['features'] ?? [];
+        unset($validated['features']);
+
         $package->update($validated);
+
+        // Sync features
+        $allFeatures = [
+            'Otomatik aidat planlama',
+            'Kullanıcı portalı erişimi',
+            'Hesap ekstresi ve raporlar',
+            'Çoklu apartman yönetimi',
+        ];
+
+        foreach ($allFeatures as $feature) {
+            $isEnabled = in_array($feature, $features);
+            $package->features()->updateOrCreate(
+                ['feature_key' => $feature],
+                ['is_enabled' => $isEnabled]
+            );
+        }
 
         return redirect()->route('admin.packages.index')->with('status', 'Paket güncellendi.');
     }

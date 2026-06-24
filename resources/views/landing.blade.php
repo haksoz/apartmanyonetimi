@@ -169,173 +169,47 @@
         </div>
 
         <div class="grid md:grid-cols-3 gap-6 items-start">
+            @foreach($packages as $package)
+                @php
+                    $isRecommended = $package->sort_order === 2;
+                    $borderClass = $isRecommended ? 'border-emerald-500 shadow-xl shadow-emerald-50' : 'border-slate-200';
+                    $buttonClass = $isRecommended ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'border-2 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50';
+                    $priceDisplay = $package->monthly_price > 0 ? number_format($package->monthly_price, 0, ',', '.') . ' TL' : 'Ücretsiz';
+                    $priceSuffix = $package->monthly_price > 0 ? ' / ay' : '';
+                @endphp
 
-            {{-- Başlangıç --}}
-            <div class="rounded-3xl border-2 border-slate-200 bg-white p-8 text-center">
-                <h3 class="text-xl font-bold text-slate-950 mb-2">Başlangıç</h3>
-                <p class="text-slate-500 text-sm mb-6">Küçük apartmanlar için ücretsiz başlangıç.</p>
+                <div class="rounded-3xl border-2 {{ $borderClass }} bg-white p-8 text-center relative">
+                    @if($isRecommended)
+                        <span class="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-bold px-4 py-1.5 rounded-full">Tavsiye Edilen</span>
+                    @endif
 
-                <div class="mb-8">
-                    <span class="text-5xl font-extrabold text-slate-950">Ücretsiz</span>
+                    <h3 class="text-xl font-bold text-slate-950 mb-2">{{ $package->name }}</h3>
+                    <p class="text-slate-500 text-sm mb-6">{{ $package->description }}</p>
+
+                    <div class="mb-8">
+                        <span class="text-5xl font-extrabold text-slate-950">{{ $priceDisplay }}</span>
+                        <span class="text-slate-400 text-base">{{ $priceSuffix }}</span>
+                    </div>
+
+                    <ul class="text-sm text-slate-600 space-y-3 mb-8 text-left">
+                        @foreach($package->features as $feature)
+                            <li class="flex items-center gap-2.5 {{ !$feature->is_enabled ? 'opacity-40' : '' }}">
+                                @if($feature->is_enabled)
+                                    <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                @else
+                                    <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                @endif
+                                {{ $feature->feature_key }}
+                            </li>
+                        @endforeach
+                    </ul>
+
+                    <a href="{{ route('register', ['package' => $package->slug]) }}"
+                       class="block w-full rounded-2xl {{ $buttonClass }} py-3.5 text-base font-bold transition-colors">
+                        {{ $package->monthly_price > 0 ? 'Başla' : 'Ücretsiz Başla' }}
+                    </a>
                 </div>
-
-                <ul class="text-sm text-slate-600 space-y-3 mb-8 text-left">
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        1 apartman
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        En fazla 12 daire
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Aidat takibi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Tahsilat yönetimi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Gider ve kasa yönetimi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Hesap ekstresi ve raporlar
-                    </li>
-                    <li class="flex items-center gap-2.5 opacity-40">
-                        <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                        Otomatik aidat planlama
-                    </li>
-                    <li class="flex items-center gap-2.5 opacity-40">
-                        <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                        Kullanıcı portalı erişimi
-                    </li>
-                    <li class="flex items-center gap-2.5 opacity-40">
-                        <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                        Çoklu apartman yönetimi
-                    </li>
-                </ul>
-
-                <a href="{{ route('register') }}"
-                   class="block w-full rounded-2xl border-2 border-slate-200 py-3.5 text-base font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-colors">
-                    Ücretsiz Başla
-                </a>
-            </div>
-
-            {{-- Standart --}}
-            <div class="rounded-3xl border-2 border-emerald-500 bg-white p-8 text-center relative shadow-xl shadow-emerald-50">
-                <span class="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-bold px-4 py-1.5 rounded-full">Tavsiye Edilen</span>
-
-                <h3 class="text-xl font-bold text-slate-950 mb-2">Standart</h3>
-                <p class="text-slate-500 text-sm mb-6">Tek apartmanınız için tüm özellikler.</p>
-
-                <div class="mb-8">
-                    <span class="text-5xl font-extrabold text-slate-950">300 TL</span>
-                    <span class="text-slate-400 text-base">&nbsp;/ ay</span>
-                </div>
-
-                <ul class="text-sm text-slate-600 space-y-3 mb-8 text-left">
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        1 apartman
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        24 daire ve kullanıcı
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Aidat takibi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Otomatik aidat planlama
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Tahsilat yönetimi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Gider ve kasa yönetimi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Kullanıcı portalı erişimi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Hesap ekstresi ve raporlar
-                    </li>
-                    <li class="flex items-center gap-2.5 opacity-40">
-                        <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                        Çoklu apartman yönetimi
-                    </li>
-                </ul>
-
-                <a href="{{ route('register') }}"
-                   class="block w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white hover:bg-emerald-700 transition-colors">
-                    Başla
-                </a>
-            </div>
-
-            {{-- Pro --}}
-            <div class="rounded-3xl border-2 border-slate-200 bg-white p-8 text-center">
-                <h3 class="text-xl font-bold text-slate-950 mb-2">Pro</h3>
-                <p class="text-slate-500 text-sm mb-6">Birden fazla apartman yönetenler için.</p>
-
-                <div class="mb-8">
-                    <span class="text-5xl font-extrabold text-slate-950">900 TL</span>
-                    <span class="text-slate-400 text-base">&nbsp;/ ay</span>
-                </div>
-
-                <ul class="text-sm text-slate-600 space-y-3 mb-8 text-left">
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        <strong>Sınırsız apartman</strong>
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Sınırsız daire ve kullanıcı
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Aidat takibi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Otomatik aidat planlama
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Tahsilat yönetimi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Gider ve kasa yönetimi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Kullanıcı portalı erişimi
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Hesap ekstresi ve raporlar
-                    </li>
-                    <li class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        <strong>Çoklu apartman yönetimi</strong>
-                    </li>
-                </ul>
-
-                <a href="{{ route('register') }}"
-                   class="block w-full rounded-2xl border-2 border-slate-200 py-3.5 text-base font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-colors">
-                    Başla
-                </a>
-            </div>
-
+            @endforeach
         </div>
     </div>
 </section>

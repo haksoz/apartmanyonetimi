@@ -41,11 +41,12 @@ class AuthController extends Controller
         return redirect()->route('onboarding.show');
     }
 
-    public function showRegister()
+    public function showRegister($package = null)
     {
         $packages = Package::where('is_active', true)->orderBy('sort_order')->get();
+        $selectedPackage = $package ? Package::where('slug', $package)->first() : null;
 
-        return view('auth.register', compact('packages'));
+        return view('auth.register', compact('packages', 'selectedPackage'));
     }
 
     public function register(Request $request)
@@ -58,7 +59,7 @@ class AuthController extends Controller
             'period' => ['required', 'in:monthly,yearly'],
         ]);
 
-        $package = Package::findOrFail($validated['package_id']);
+        $package = Package::with('features')->findOrFail($validated['package_id']);
 
         $user = User::create([
             'name' => $validated['name'],
@@ -66,6 +67,12 @@ class AuthController extends Controller
             'password' => $validated['password'],
             'role' => 'manager',
         ]);
+
+        // Get package features
+        $featureAutoDues = $package->features->where('feature_key', 'Otomatik aidat planlama')->first()?->is_enabled ?? false;
+        $featureUserPortal = $package->features->where('feature_key', 'Kullanıcı portalı erişimi')->first()?->is_enabled ?? false;
+        $featureReports = $package->features->where('feature_key', 'Hesap ekstresi ve raporlar')->first()?->is_enabled ?? false;
+        $featureMultiApartment = $package->features->where('feature_key', 'Çoklu apartman yönetimi')->first()?->is_enabled ?? false;
 
         UserSubscription::create([
             'user_id' => $user->id,
@@ -75,6 +82,11 @@ class AuthController extends Controller
             'started_at' => now(),
             'expires_at' => $validated['period'] === 'yearly' ? now()->addYear() : now()->addMonth(),
             'is_active' => true,
+            'feature_auto_dues' => $featureAutoDues,
+            'feature_user_portal' => $featureUserPortal,
+            'feature_reports' => $featureReports,
+            'feature_multi_apartment' => $featureMultiApartment,
+            'multi_apartment_limit_override' => $featureMultiApartment ? $package->multi_apartment_limit : null,
         ]);
 
         Auth::login($user);

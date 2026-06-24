@@ -15,6 +15,7 @@ class Package extends Model
         'slug',
         'description',
         'apartment_limit',
+        'multi_apartment_limit',
         'monthly_price',
         'yearly_price',
         'is_active',
@@ -23,6 +24,7 @@ class Package extends Model
 
     protected $casts = [
         'apartment_limit' => 'integer',
+        'multi_apartment_limit' => 'integer',
         'monthly_price' => 'decimal:2',
         'yearly_price' => 'decimal:2',
         'is_active' => 'boolean',
