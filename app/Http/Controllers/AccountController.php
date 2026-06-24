@@ -1696,6 +1696,25 @@ class AccountController extends Controller
                 ->with('error', 'Önizleme verisi bulunamadı. Lütfen dosyayı tekrar yükleyin.');
         }
 
+        // Hesapları daire numarasına göre küçükten büyüğe sırala
+        // Daire numarası belirlenebilenler en üstte, olmayanlar (tedarikçiler) en sonda
+        $accounts = collect($accounts)->sortBy(function ($account) {
+            $unitNo = $account['unit_no'] ?? '';
+            
+            // Daire numarası boş, null veya geçersizse en sona at
+            if (empty($unitNo) || $unitNo === '-' || $unitNo === '—') {
+                return [1, '']; // [has_unit_no, sort_key]
+            }
+            
+            // Daire numarası varsa en üste al ve sayısal olarak sırala
+            if (is_numeric($unitNo)) {
+                return [0, (int) $unitNo];
+            }
+            
+            // Sayısal değilse string olarak sırala ama yine en üstte
+            return [0, $unitNo];
+        })->values()->toArray();
+
         // Tüm hesapları yükle (eşleştirme için)
         $allAccounts = Account::where('apartment_id', $apartment->id)
             ->with('unit')
