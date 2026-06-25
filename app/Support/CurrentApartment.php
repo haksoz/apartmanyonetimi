@@ -68,6 +68,7 @@ class CurrentApartment
     public function queryFor(User $user): Builder
     {
         return Apartment::query()
+            ->where('is_active', true)
             ->when(! $user->isAdmin(), function ($query) use ($user) {
                 $query->whereHas('members', function ($query) use ($user) {
                     $query->whereKey($user->id)->where('apartment_user.is_active', true);

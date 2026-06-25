@@ -45,6 +45,10 @@ Route::middleware('auth')->group(function () {
     // Onboarding routes - no apartment required
     Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
     Route::post('onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
+
+    // Apartment creation - no apartment required
+    Route::get('apartments/create', [ApartmentController::class, 'create'])->name('apartments.create');
+    Route::post('apartments', [ApartmentController::class, 'store'])->name('apartments.store');
 });
 
 Route::middleware(['auth', 'apartment'])->group(function () {
@@ -72,6 +76,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::middleware('owner')->group(function () {
 
         Route::resource('apartments', ApartmentController::class);
+        Route::post('apartments/{apartment}/destroy-all', [ApartmentController::class, 'destroyAll'])->name('apartments.destroy-all');
+        Route::post('apartments/{apartment}/reset-and-renew', [ApartmentController::class, 'resetAndRenew'])->name('apartments.reset-and-renew');
         Route::resource('units', UnitController::class);
 
         // Bulk account import from Excel - MUST be before resource route
@@ -174,7 +180,7 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
     Route::get('apartments', [SubscriberApartmentController::class, 'index'])->name('apartments.index');
     Route::post('apartment', [SubscriberApartmentController::class, 'update'])->name('apartment.update');
 
-    // Apartment creation for subscribers
+    // Apartment creation for subscribers - no apartment required
     Route::get('apartments/create', [SubscriberApartmentCreateController::class, 'create'])->name('apartments.create');
     Route::post('apartments', [SubscriberApartmentCreateController::class, 'store'])->name('apartments.store');
 

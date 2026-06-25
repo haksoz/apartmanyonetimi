@@ -250,7 +250,7 @@ class AccountController extends Controller
                     'apartment_id' => $apartment->id,
                     'unit_id' => $account->unit_id,
                     'account_id' => $account->id,
-                    'move_in_date' => $validated['account_opening_date'],
+                    'move_in_date' => $validated['account_opening_date'] ?? now()->toDateString(),
                 ]);
 
                 Unit::whereKey($account->unit_id)->update(['occupant_account_id' => $account->id]);

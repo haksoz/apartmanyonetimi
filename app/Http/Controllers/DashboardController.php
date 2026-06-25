@@ -33,7 +33,7 @@ class DashboardController extends Controller
 
         // --- Özet rakamlar ---
         $totalUnits    = Unit::where('apartment_id', $id)->count();
-        $totalAccounts = Account::where('apartment_id', $id)->where('is_active', true)->count();
+        $totalAccounts = Account::where('apartment_id', $id)->where('is_active', true)->where('is_hidden', false)->count();
 
         // Aidat durumu — tüm kategoriler (tüm zamanlar) — remaining_amount ve due_date'e göre
         $allDues = Due::where('apartment_id', $id)
@@ -143,6 +143,7 @@ class DashboardController extends Controller
         // Hesap tipi dağılımı
         $accountTypes = Account::where('apartment_id', $id)
             ->where('is_active', true)
+            ->where('is_hidden', false)
             ->selectRaw("type, COUNT(*) as cnt")
             ->groupBy('type')
             ->pluck('cnt', 'type');
