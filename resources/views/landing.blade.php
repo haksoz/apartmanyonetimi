@@ -206,7 +206,7 @@
 
                     <a href="{{ route('register', ['package' => $package->slug]) }}"
                        class="block w-full rounded-2xl {{ $buttonClass }} py-3.5 text-base font-bold transition-colors">
-                        {{ $package->monthly_price > 0 ? 'Başla' : 'Ücretsiz Başla' }}
+                        Ücretsiz Başla
                     </a>
                 </div>
             @endforeach

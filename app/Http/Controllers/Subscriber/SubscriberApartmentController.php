@@ -16,7 +16,7 @@ class SubscriberApartmentController extends Controller
             ->values();
 
         if ($apartments->isEmpty()) {
-            return redirect()->route('apartments.create');
+            return redirect()->route('subscriber.apartments.create');
         }
 
         return view('subscriber.apartments.index', compact('apartments'));

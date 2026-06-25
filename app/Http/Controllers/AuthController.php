@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Package;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserSubscription;
 use Illuminate\Http\Request;
@@ -43,10 +44,7 @@ class AuthController extends Controller
 
     public function showRegister($package = null)
     {
-        $packages = Package::where('is_active', true)->orderBy('sort_order')->get();
-        $selectedPackage = $package ? Package::where('slug', $package)->first() : null;
-
-        return view('auth.register', compact('packages', 'selectedPackage'));
+        return view('auth.register');
     }
 
     public function register(Request $request)
@@ -55,11 +53,11 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'package_id' => ['required', 'exists:packages,id'],
-            'period' => ['required', 'in:monthly,yearly'],
         ]);
 
-        $package = Package::with('features')->findOrFail($validated['package_id']);
+        // Get trial package from system settings
+        $package = SystemSetting::getTrialPackage();
+        $trialDuration = SystemSetting::getTrialDuration();
 
         $user = User::create([
             'name' => $validated['name'],
@@ -74,13 +72,14 @@ class AuthController extends Controller
         $featureReports = $package->features->where('feature_key', 'Hesap ekstresi ve raporlar')->first()?->is_enabled ?? false;
         $featureMultiApartment = $package->features->where('feature_key', 'Çoklu apartman yönetimi')->first()?->is_enabled ?? false;
 
+        // Free trial for configured duration
         UserSubscription::create([
             'user_id' => $user->id,
             'package_id' => $package->id,
-            'period' => $validated['period'],
-            'price' => $validated['period'] === 'yearly' ? $package->yearly_price : $package->monthly_price,
+            'period' => 'monthly',
+            'price' => 0,
             'started_at' => now(),
-            'expires_at' => $validated['period'] === 'yearly' ? now()->addYear() : now()->addMonth(),
+            'expires_at' => now()->addMonths($trialDuration),
             'is_active' => true,
             'feature_auto_dues' => $featureAutoDues,
             'feature_user_portal' => $featureUserPortal,

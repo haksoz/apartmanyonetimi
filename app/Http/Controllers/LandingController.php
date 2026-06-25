@@ -10,6 +10,7 @@ class LandingController extends Controller
     public function __invoke(Request $request)
     {
         $packages = Package::where('is_active', true)
+            ->where('show_on_website', true)
             ->orderBy('sort_order')
             ->with('features')
             ->get();

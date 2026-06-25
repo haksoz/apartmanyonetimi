@@ -10,8 +10,10 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminImpersonateController;
 use App\Http\Controllers\Admin\AdminManagerController;
 use App\Http\Controllers\Admin\AdminPackageController;
+use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Subscriber\SubscriberApartmentController;
+use App\Http\Controllers\Subscriber\SubscriberApartmentCreateController;
 use App\Http\Controllers\Subscriber\SubscriberDashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CashBoxController;
@@ -156,6 +158,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('packages', AdminPackageController::class);
     Route::patch('packages/{package}/features', [AdminPackageController::class, 'updateFeatures'])->name('packages.features.update');
 
+    Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');
+    Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
+
     Route::resource('admin-users', AdminUserController::class)
         ->except(['show'])
         ->middleware('super_admin');
@@ -170,8 +175,8 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
     Route::post('apartment', [SubscriberApartmentController::class, 'update'])->name('apartment.update');
 
     // Apartment creation for subscribers
-    Route::get('apartments/create', [ApartmentController::class, 'create'])->name('apartments.create');
-    Route::post('apartments', [ApartmentController::class, 'store'])->name('apartments.store');
+    Route::get('apartments/create', [SubscriberApartmentCreateController::class, 'create'])->name('apartments.create');
+    Route::post('apartments', [SubscriberApartmentCreateController::class, 'store'])->name('apartments.store');
 
     // Apartment editing for subscribers
     Route::get('apartments/{apartment}/edit', [ApartmentController::class, 'edit'])->name('apartments.edit');

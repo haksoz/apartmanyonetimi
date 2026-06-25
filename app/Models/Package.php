@@ -19,6 +19,7 @@ class Package extends Model
         'monthly_price',
         'yearly_price',
         'is_active',
+        'show_on_website',
         'sort_order',
     ];
 
@@ -28,6 +29,7 @@ class Package extends Model
         'monthly_price' => 'decimal:2',
         'yearly_price' => 'decimal:2',
         'is_active' => 'boolean',
+        'show_on_website' => 'boolean',
         'sort_order' => 'integer',
     ];
 

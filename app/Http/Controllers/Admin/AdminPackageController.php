@@ -25,19 +25,21 @@ class AdminPackageController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'unique:packages,slug'],
+            'slug' => ['nullable', 'string', 'max:255', 'unique:packages,slug'],
             'description' => ['nullable', 'string'],
             'apartment_limit' => ['required', 'integer', 'min:0'],
             'multi_apartment_limit' => ['nullable', 'integer', 'min:0'],
             'monthly_price' => ['required', 'numeric', 'min:0'],
             'yearly_price' => ['required', 'numeric', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
+            'show_on_website' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'features' => ['nullable', 'array'],
         ]);
 
-        $validated['slug'] = \Illuminate\Support\Str::slug($validated['slug']);
+        $validated['slug'] = $validated['slug'] ? \Illuminate\Support\Str::slug($validated['slug']) : \Illuminate\Support\Str::slug($validated['name']);
         $validated['is_active'] = $request->input('is_active') == '1';
+        $validated['show_on_website'] = $request->input('show_on_website') == '1';
         $validated['multi_apartment_limit'] = $validated['multi_apartment_limit'] ?? 0;
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
 
@@ -83,12 +85,14 @@ class AdminPackageController extends Controller
             'monthly_price' => ['required', 'numeric', 'min:0'],
             'yearly_price' => ['required', 'numeric', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
+            'show_on_website' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'features' => ['nullable', 'array'],
         ]);
 
         $validated['slug'] = \Illuminate\Support\Str::slug($validated['slug']);
         $validated['is_active'] = $request->input('is_active') == '1';
+        $validated['show_on_website'] = $request->input('show_on_website') == '1';
         $validated['multi_apartment_limit'] = $validated['multi_apartment_limit'] ?? 0;
         $validated['sort_order'] = $validated['sort_order'] ?? $package->sort_order;
 

@@ -59,10 +59,17 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <input type="hidden" name="is_active" value="0">
-                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', $package->is_active) ? 'checked' : '' }} id="is_active" class="rounded border-slate-300">
-                    <label for="is_active" class="text-sm font-medium text-slate-700">Aktif</label>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <input type="hidden" name="is_active" value="0">
+                        <input type="checkbox" name="is_active" value="1" {{ old('is_active', $package->is_active) ? 'checked' : '' }} id="is_active" class="rounded border-slate-300">
+                        <label for="is_active" class="text-sm font-medium text-slate-700">Aktif</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="hidden" name="show_on_website" value="0">
+                        <input type="checkbox" name="show_on_website" value="1" {{ old('show_on_website', $package->show_on_website ?? true) ? 'checked' : '' }} id="show_on_website" class="rounded border-slate-300">
+                        <label for="show_on_website" class="text-sm font-medium text-slate-700">Webde göster</label>
+                    </div>
                 </div>
 
                 <div>

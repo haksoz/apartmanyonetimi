@@ -20,7 +20,8 @@
 
             <div>
                 <label class="block text-sm font-medium text-slate-700">Slug</label>
-                <input type="text" name="slug" value="{{ old('slug') }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
+                <input type="text" name="slug" value="{{ old('slug') }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
+                <p class="mt-1 text-xs text-slate-500">Boş bırakılırsa otomatik oluşturulur.</p>
                 @error('slug')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
@@ -57,10 +58,17 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
-                <input type="hidden" name="is_active" value="0">
-                <input type="checkbox" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }} id="is_active" class="rounded border-slate-300">
-                <label for="is_active" class="text-sm font-medium text-slate-700">Aktif</label>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <input type="hidden" name="is_active" value="0">
+                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }} id="is_active" class="rounded border-slate-300">
+                    <label for="is_active" class="text-sm font-medium text-slate-700">Aktif</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="hidden" name="show_on_website" value="0">
+                    <input type="checkbox" name="show_on_website" value="1" {{ old('show_on_website', true) ? 'checked' : '' }} id="show_on_website" class="rounded border-slate-300">
+                    <label for="show_on_website" class="text-sm font-medium text-slate-700">Webde göster</label>
+                </div>
             </div>
 
             <div>

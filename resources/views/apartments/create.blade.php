@@ -31,7 +31,7 @@
             </div>
         </div>
         <div class="mt-6 flex justify-end gap-3">
-            <a href="{{ request()->routeIs('subscriber.*') ? route('subscriber.apartments.index') : route('apartments.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Vazgeç</a>
+            <a href="{{ request()->routeIs('subscriber.*') ? route('subscriber.dashboard') : route('apartments.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Vazgeç</a>
             <button class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Oluştur</button>
         </div>
     </form>

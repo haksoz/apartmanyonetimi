@@ -44,6 +44,14 @@ class ApartmentController extends Controller
      */
     public function create()
     {
+        $user = auth()->user();
+        $subscription = $user->subscription;
+
+        // Check if user has an active subscription
+        if (!$subscription || $subscription->isExpired()) {
+            return redirect()->route('landing')->with('error', 'Apartman oluşturmak için aktif bir aboneliğiniz olmalıdır.');
+        }
+
         return view('apartments.create');
     }
 
@@ -75,7 +83,7 @@ class ApartmentController extends Controller
                 'unit_count' => $validated['unit_count'],
             ]);
 
-            $apartment->members()->attach($user->id, ['role' => 'owner']);
+            $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
             Category::createDefaultsFor($apartment->id);
 
             for ($i = 1; $i <= $validated['unit_count']; $i++) {
@@ -101,7 +109,7 @@ class ApartmentController extends Controller
             }
         });
 
-        $redirectRoute = auth()->user()->isSubscriber() ? 'subscriber.apartments.index' : 'apartments.index';
+        $redirectRoute = auth()->user()->isSubscriber() ? 'subscriber.dashboard' : 'apartments.index';
         return redirect()->route($redirectRoute)->with('status', 'Apartman ve daire hesapları oluşturuldu.');
     }
 
