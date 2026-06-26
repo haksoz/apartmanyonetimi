@@ -20,7 +20,7 @@ class LedgerController extends Controller
             ->when($apartment, fn ($query) => $query->whereHas('account', fn ($query) => $query->where('apartment_id', $apartment->id)))
             ->orderByDesc('transaction_date')
             ->orderByDesc('id')
-            ->get();
+            ->paginate(25)->withQueryString();
 
         return view('ledger.index', compact('transactions'));
     }

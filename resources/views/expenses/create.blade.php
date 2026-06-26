@@ -286,7 +286,7 @@
                     submitBtn.disabled = true;
                     submitBtn.textContent = 'Kaydediliyor...';
 
-                    const response = await fetch('{{ route('accounts.store') }}', {
+                    const response = await fetch('{{ route('accounts.store', [], false) }}', {
                         method: 'POST',
                         body: formData,
                         headers: {

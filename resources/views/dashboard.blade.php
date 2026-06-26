@@ -12,7 +12,7 @@
     </div>
 
     {{-- Özet Kartlar --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <div class="rounded-2xl bg-white p-5 shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Daire</div>
             <div class="mt-2 text-3xl font-bold text-slate-950">{{ $totalUnits }}</div>
@@ -30,6 +30,14 @@
         <div class="rounded-2xl bg-white p-5 shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Toplam Gider</div>
             <div class="mt-2 text-2xl font-bold text-slate-950">{{ number_format($totalExpenses, 2, ',', '.') }} TL</div>
+        </div>
+        <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ödenmemiş Gider</div>
+            <div class="mt-2 text-2xl font-bold text-red-600">{{ number_format($expenseUnpaid, 2, ',', '.') }} TL</div>
+        </div>
+        <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Tahsil Edilmemiş Aidat</div>
+            <div class="mt-2 text-2xl font-bold text-amber-600">{{ number_format($uncollectedDues, 2, ',', '.') }} TL</div>
         </div>
     </div>
 

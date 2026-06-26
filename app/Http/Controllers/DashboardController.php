@@ -91,6 +91,9 @@ class DashboardController extends Controller
             }
         }
 
+        // Toplam gider (tüm zamanlar)
+        $totalExpenses = (float) Expense::where('apartment_id', $id)->sum('amount');
+
         // Gider kategorileri (tüm zamanlar) — category_id ilişkisi önce, yoksa eski string sütunu
         $expenseByCategory = Expense::where('expenses.apartment_id', $id)
             ->leftJoin('categories', function ($join) {
@@ -103,11 +106,9 @@ class DashboardController extends Controller
             ->limit(8)
             ->pluck('total', 'cat');
 
-        $totalExpenses = $expenseByCategory->sum();
-
         // Gider ödeme durumu (tüm zamanlar)
         $expensePaid   = (float) Expense::where('apartment_id', $id)->where('is_paid', true)->sum('amount');
-        $expenseUnpaid = (float) Expense::where('apartment_id', $id)->where('is_paid', false)->sum('amount');
+        $expenseUnpaid = (float) Expense::where('apartment_id', $id)->where('is_paid', false)->sum('remaining_amount');
 
         // Kasa
         $cashIncome  = (float) CashTransaction::where('apartment_id', $id)->where('type', 'income')->sum('amount');
@@ -148,6 +149,9 @@ class DashboardController extends Controller
             ->groupBy('type')
             ->pluck('cnt', 'type');
 
+        // Tahsil edilmemiş toplam aidat (bekleyen + gecikmiş + kısmi ödenmiş kalan)
+        $uncollectedDues = $dueUnpaid + $dueOverdue + $duePartial;
+
         return view('dashboard', compact(
             'apartment',
             'totalUnits', 'totalAccounts',
@@ -157,7 +161,8 @@ class DashboardController extends Controller
             'expensePaid', 'expenseUnpaid',
             'cashBalance', 'cashIncome', 'cashExpense',
             'monthLabels', 'monthDueData', 'monthExpData',
-            'accountTypes'
+            'accountTypes',
+            'uncollectedDues'
         ));
     }
 }
