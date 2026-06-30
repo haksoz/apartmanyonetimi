@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DueType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -27,6 +28,7 @@ class DueBatch extends Model
     protected $fillable = [
         'apartment_id',
         'due_plan_id',
+        'due_type',
         'category_id',
         'source_type',
         'distribution_type',
@@ -43,6 +45,7 @@ class DueBatch extends Model
         'source_period' => 'date',
         'category_filter_ids' => 'array',
         'source_amount' => 'decimal:2',
+        'due_type' => DueType::class,
     ];
 
     public function apartment(): BelongsTo
@@ -53,6 +56,11 @@ class DueBatch extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function getDueTypeLabelAttribute(): string
+    {
+        return $this->due_type?->label() ?? '-';
     }
 
     public function dues(): HasMany

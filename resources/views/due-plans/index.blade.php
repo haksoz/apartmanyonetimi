@@ -36,8 +36,8 @@
                         </div>
                     </div>
 
-                    @if ($plan->category)
-                        <div class="text-xs text-slate-500">Kategori: <span class="font-medium text-slate-700">{{ $plan->category->name }}</span></div>
+                    @if ($plan->due_type)
+                        <div class="text-xs text-slate-500">Tür: <span class="font-medium text-slate-700">{{ $plan->due_type_label }}</span>@if($plan->category) · {{ $plan->category->name }}@endif</div>
                     @endif
 
                     <div class="flex gap-2 pt-1">

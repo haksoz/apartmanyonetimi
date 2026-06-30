@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DueType;
+use App\Models\Category;
 use App\Models\Account;
 use App\Models\AccountTransaction;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
-use App\Models\Category;
 use App\Models\Due;
 use App\Models\DueBatch;
 use App\Models\Expense;
@@ -87,12 +88,12 @@ class DueController extends Controller
 
         $activePlans = $apartment
             ? \App\Models\DuePlan::query()
-                ->with('category:id,name')
+                ->withCount('batches')
                 ->where('apartment_id', $apartment->id)
                 ->where('is_active', true)
                 ->orderBy('year')
                 ->orderBy('name')
-                ->get(['id', 'name', 'year', 'category_id'])
+                ->get(['id', 'name', 'year', 'due_type'])
             : collect();
 
         $units = $apartment
@@ -122,15 +123,16 @@ class DueController extends Controller
             abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
         }
 
+        $dueTypes = DueType::options();
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
-            ->where(fn ($query) => $query->where('type', Category::TYPE_INCOME)->orWhere('type', Category::TYPE_ALL))
+            ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
         $expenseCategories = Category::query()
             ->where('apartment_id', $apartment->id)
-            ->where(fn ($query) => $query->where('type', Category::TYPE_EXPENSE)->orWhere('type', Category::TYPE_ALL))
+            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -146,7 +148,7 @@ class DueController extends Controller
 
         $selectedAccountId = $request->query('account_id');
 
-        return view('dues.create', compact('apartment', 'categories', 'expenseCategories', 'accounts', 'selectedAccountId'));
+        return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'expenseCategories', 'accounts', 'selectedAccountId'));
     }
 
     public function createBatch(CurrentApartment $currentApartment)
@@ -157,15 +159,16 @@ class DueController extends Controller
             return $apartment;
         }
 
+        $dueTypes = DueType::options();
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
-            ->where(fn ($query) => $query->where('type', Category::TYPE_INCOME)->orWhere('type', Category::TYPE_ALL))
+            ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
         $expenseCategories = Category::query()
             ->where('apartment_id', $apartment->id)
-            ->where(fn ($query) => $query->where('type', Category::TYPE_EXPENSE)->orWhere('type', Category::TYPE_ALL))
+            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -204,7 +207,7 @@ class DueController extends Controller
             $expensesByCategory[$category->id] = $categoryExpenses;
         }
 
-        return view('dues.batch-create', compact('apartment', 'categories', 'expenseCategories', 'units', 'unitsData', 'expensesByPeriod', 'expensesByCategory'));
+        return view('dues.batch-create', compact('apartment', 'dueTypes', 'categories', 'expenseCategories', 'units', 'unitsData', 'expensesByPeriod', 'expensesByCategory'));
     }
 
     public function getExpensesForPeriod(Request $request, CurrentApartment $currentApartment)
@@ -260,11 +263,8 @@ class DueController extends Controller
             'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'period' => ['required', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
-            'category_id' => [
-                'required',
-                'integer',
-                Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true),
-            ],
+            'due_type' => ['required', Rule::in(DueType::values())],
+            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
             'description' => ['nullable', 'string', 'max:255'],
             'created_at_manual' => ['nullable', 'date'],
             'source_period' => ['required_if:source_type,'.DueBatch::SOURCE_EXPENSES, 'nullable', 'date_format:Y-m'],
@@ -306,7 +306,8 @@ class DueController extends Controller
         DB::transaction(function () use ($apartment, $validated, $selectedExpenseIds, $sourceAmount) {
             $batch = DueBatch::create([
                 'apartment_id' => $apartment->id,
-                'category_id' => $validated['category_id'],
+                'due_type' => $validated['due_type'],
+                'category_id' => $validated['category_id'] ?? null,
                 'source_type' => $validated['source_type'],
                 'distribution_type' => $validated['distribution_type'],
                 'target_audience' => $validated['target_audience'],
@@ -445,7 +446,8 @@ class DueController extends Controller
 
         $due->load('allocations');
         $units = Unit::where('apartment_id', $due->apartment_id)->orderBy('unit_no')->get();
-        $categories = Category::where('apartment_id', $due->apartment_id)->where('is_active', true)->orderBy('name')->get();
+        $dueTypes = DueType::options();
+        $categories = Category::where('apartment_id', $due->apartment_id)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->where('is_active', true)->orderBy('name')->get();
         $accounts = Account::where('accounts.apartment_id', $due->apartment_id)
             ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
             ->with('unit')
@@ -455,7 +457,7 @@ class DueController extends Controller
             ->select('accounts.*')
             ->get();
 
-        return view('dues.edit', compact('due', 'units', 'categories', 'accounts'));
+        return view('dues.edit', compact('due', 'units', 'dueTypes', 'categories', 'accounts'));
     }
 
     public function update(Request $request, CurrentApartment $currentApartment, Due $due)
@@ -467,7 +469,8 @@ class DueController extends Controller
         $validated = $request->validate([
             'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('apartment_id', $due->apartment_id)],
             'unit_id'    => ['nullable', 'integer', Rule::exists('units', 'id')->where('apartment_id', $due->apartment_id)],
-            'category_id'=> ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $due->apartment_id)],
+            'due_type' => ['nullable', Rule::in(DueType::values())],
+            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $due->apartment_id)->where('is_active', true)],
             'period' => ['required', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -795,6 +798,7 @@ class DueController extends Controller
             'due_batch_id' => $batch->id,
             'unit_id' => $unit?->id ?? $account->unit_id,
             'account_id' => $account->id,
+            'due_type' => $batch->due_type,
             'category_id' => $batch->category_id,
             'period' => $validated['period'],
             'amount' => $amount,
@@ -811,7 +815,7 @@ class DueController extends Controller
             'transactionable_type' => Due::class,
             'transactionable_id' => $due->id,
             'type' => 'debit',
-            'description' => $validated['description'] ?? $batch->category?->name.' borçlandırması',
+            'description' => $validated['description'] ?? $batch->due_type_label.' borçlandırması',
             'amount' => $amount,
             'transaction_date' => $validated['created_at_manual'] ?? $validated['due_date'],
         ]);

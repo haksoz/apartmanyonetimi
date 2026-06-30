@@ -36,6 +36,11 @@ class Category extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function dues(): HasMany
+    {
+        return $this->hasMany(Due::class);
+    }
+
     public function cashTransactions(): HasMany
     {
         return $this->hasMany(CashTransaction::class);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DueType;
 use App\Models\Traits\HasReferenceNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -18,6 +19,7 @@ class Due extends Model
         'due_batch_id',
         'unit_id',
         'account_id',
+        'due_type',
         'category_id',
         'reference_number',
         'period',
@@ -36,6 +38,7 @@ class Due extends Model
         'due_date' => 'date',
         'created_at_manual' => 'date',
         'is_imported' => 'boolean',
+        'due_type' => DueType::class,
     ];
 
     public function apartment(): BelongsTo
@@ -61,6 +64,11 @@ class Due extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function getDueTypeLabelAttribute(): string
+    {
+        return $this->due_type?->label() ?? '-';
     }
 
     public function allocations(): HasMany

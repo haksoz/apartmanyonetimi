@@ -235,7 +235,17 @@
 </div>
 
 <div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Borç Türü</label>
+    <select name="due_type" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
+        <option value="">— Tür seçin —</option>
+        @foreach ($dueTypes as $t)
+            <option value="{{ $t['value'] }}" {{ old('due_type', $plan?->due_type?->value) == $t['value'] ? 'selected' : '' }}>{{ $t['label'] }}</option>
+        @endforeach
+    </select>
+</div>
+
+<div>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Konu / Kategori <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
     <select name="category_id" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
         <option value="">— Kategori seçin —</option>
         @foreach ($categories as $cat)

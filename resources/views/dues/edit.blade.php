@@ -69,11 +69,22 @@
                 </div>
 
                 <div>
-                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Borç Kategorisi</label>
+                    <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü</label>
+                    <select id="due_type" name="due_type" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        <option value="">Tür seçin</option>
+                        @foreach ($dueTypes as $t)
+                            <option value="{{ $t['value'] }}" @selected(old('due_type', $due->due_type?->value) === $t['value'])>{{ $t['label'] }}</option>
+                        @endforeach
+                    </select>
+                    @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Konu / Kategori <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
                     <select id="category_id" name="category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Kategori seçin</option>
-                        @foreach ($categories as $category)
-                            <option value="{{ $category->id }}" @selected((string) old('category_id', $due->category_id) === (string) $category->id)>{{ $category->name }}</option>
+                        @foreach ($categories as $cat)
+                            <option value="{{ $cat->id }}" @selected((string) old('category_id', $due->category_id) === (string) $cat->id)>{{ $cat->name }}</option>
                         @endforeach
                     </select>
                     @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror

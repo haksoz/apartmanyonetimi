@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AccountTransaction;
+use App\Enums\DueType;
 use App\Models\Category;
+use App\Models\AccountTransaction;
 use App\Models\Due;
 use App\Models\DueBatch;
 use App\Models\DuePlan;
@@ -23,7 +24,7 @@ class DuePlanController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
         $plans = DuePlan::query()
-            ->with(['category', 'batches' => fn ($q) => $q->withCount('dues')->orderBy('period')])
+            ->with(['batches' => fn ($q) => $q->withCount('dues')->orderBy('period')])
             ->where('apartment_id', $apartment->id)
             ->orderByDesc('year')
             ->orderBy('name')
@@ -37,19 +38,15 @@ class DuePlanController extends Controller
         $apartment = $this->resolveApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
-        $categories = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->where('is_active', true)
-            ->whereIn('type', ['income', 'all'])
-            ->orderBy('name')
-            ->get();
+        $dueTypes = DueType::options();
+        $categories = Category::where('apartment_id', $apartment->id)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->where('is_active', true)->orderBy('name')->get();
 
         $units = Unit::query()
             ->where('apartment_id', $apartment->id)
             ->orderBy('unit_no')
             ->get(['id', 'unit_no', 'block', 'square_meters', 'share_coefficient']);
 
-        return view('due-plans.create', compact('apartment', 'categories', 'units'));
+        return view('due-plans.create', compact('apartment', 'dueTypes', 'categories', 'units'));
     }
 
     public function store(Request $request, CurrentApartment $currentApartment)
@@ -66,7 +63,8 @@ class DuePlanController extends Controller
             'per_unit_amount'   => ['required_if:amount_type,per_unit', 'nullable', 'numeric', 'min:0.01'],
             'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
             'target_audience'   => ['required', Rule::in(['tenant_priority', 'owner_only'])],
-            'category_id'       => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)],
+            'due_type'          => ['nullable', Rule::in(DueType::values())],
+            'category_id'       => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
             'due_day'           => ['required', 'integer', 'min:1', 'max:28'],
             'description'       => ['nullable', 'string', 'max:255'],
             'is_active'         => ['boolean'],
@@ -90,19 +88,15 @@ class DuePlanController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
         if ($duePlan->apartment_id !== $apartment->id) abort(404);
 
-        $categories = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->where('is_active', true)
-            ->whereIn('type', ['income', 'all'])
-            ->orderBy('name')
-            ->get();
+        $dueTypes = DueType::options();
+        $categories = Category::where('apartment_id', $apartment->id)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->where('is_active', true)->orderBy('name')->get();
 
         $units = Unit::query()
             ->where('apartment_id', $apartment->id)
             ->orderBy('unit_no')
             ->get(['id', 'unit_no', 'block', 'square_meters', 'share_coefficient']);
 
-        return view('due-plans.edit', compact('duePlan', 'categories', 'units'));
+        return view('due-plans.edit', compact('duePlan', 'dueTypes', 'categories', 'units'));
     }
 
     public function update(Request $request, CurrentApartment $currentApartment, DuePlan $duePlan)
@@ -120,7 +114,8 @@ class DuePlanController extends Controller
             'per_unit_amount'   => ['required_if:amount_type,per_unit', 'nullable', 'numeric', 'min:0.01'],
             'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
             'target_audience'   => ['required', Rule::in(['tenant_priority', 'owner_only'])],
-            'category_id'       => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)],
+            'due_type'          => ['nullable', Rule::in(DueType::values())],
+            'category_id'       => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
             'due_day'           => ['required', 'integer', 'min:1', 'max:28'],
             'description'       => ['nullable', 'string', 'max:255'],
         ]);
@@ -215,6 +210,7 @@ class DuePlanController extends Controller
             $batch = DueBatch::create([
                 'apartment_id'      => $apartment->id,
                 'due_plan_id'       => $duePlan->id,
+                'due_type'          => $duePlan->due_type,
                 'category_id'       => $duePlan->category_id,
                 'source_type'       => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => $duePlan->distribution_type,
@@ -252,6 +248,7 @@ class DuePlanController extends Controller
                     'due_batch_id'     => $batch->id,
                     'unit_id'          => $item['unit']->id,
                     'account_id'       => $item['account']->id,
+                    'due_type'         => $duePlan->due_type,
                     'category_id'      => $duePlan->category_id,
                     'period'           => $period,
                     'amount'           => $amount,

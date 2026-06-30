@@ -113,9 +113,12 @@
 
             <div>
 
-                <div class="text-xs text-slate-400 mb-1">KATEGORİ</div>
+                <div class="text-xs text-slate-400 mb-1">TÜR / KATEGORİ</div>
 
-                <div class="text-sm font-medium text-slate-900">{{ $due->category?->name ?? '-' }}</div>
+                <div class="text-sm font-medium text-slate-900">{{ $due->due_type_label }}</div>
+                @if ($due->category)
+                    <div class="text-xs text-slate-500 mt-0.5">{{ $due->category->name }}</div>
+                @endif
 
             </div>
 

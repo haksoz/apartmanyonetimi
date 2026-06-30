@@ -36,26 +36,37 @@
                 </div>
 
                 <div>
-                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Borç Kategorisi</label>
-                    <select id="category_id" name="category_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
+                    <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        <option value="">Tür seçin</option>
+                        @foreach ($dueTypes as $t)
+                            <option value="{{ $t['value'] }}" @selected(old('due_type', 'aidat') === $t['value'])>{{ $t['label'] }}</option>
+                        @endforeach
+                    </select>
+                    @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Konu / Kategori <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
+                    <select id="category_id" name="category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Kategori seçin</option>
-                        @foreach ($categories as $category)
-                            <option value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
+                        @foreach ($categories as $cat)
+                            <option value="{{ $cat->id }}" @selected((string) old('category_id') === (string) $cat->id)>{{ $cat->name }}</option>
                         @endforeach
                     </select>
                     @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
                 <div>
-                    <label for="individual_amount" class="mb-2 block text-sm font-medium text-slate-600">Borç Tutarı</label>
-                    <input id="individual_amount" name="individual_amount" type="number" min="0.01" step="0.01" value="{{ old('individual_amount') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('individual_amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <div>
                     <label for="period" class="mb-2 block text-sm font-medium text-slate-600">Borç Dönemi</label>
                     <input id="period" name="period" type="month" value="{{ old('period', now()->format('Y-m')) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                     @error('period')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                    <label for="individual_amount" class="mb-2 block text-sm font-medium text-slate-600">Borç Tutarı</label>
+                    <input id="individual_amount" name="individual_amount" type="number" min="0.01" step="0.01" value="{{ old('individual_amount') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('individual_amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="md:col-span-2">
@@ -91,7 +102,8 @@
 
     <script>
         (() => {
-            const categorySelect = document.getElementById('category_id');
+            const typeSelect = document.getElementById('due_type');
+            const topicSelect = document.getElementById('category_id');
             const periodInput = document.getElementById('period');
             const descriptionInput = document.getElementById('description');
 
@@ -104,12 +116,15 @@
             const updateDescription = () => {
                 if (descriptionInput.value && descriptionInput.dataset.userEdited) return;
                 const period = periodInput.value;
-                const categoryOption = categorySelect.options[categorySelect.selectedIndex];
-                const categoryName = categoryOption?.value ? categoryOption.text : '';
+                const typeOption = typeSelect.options[typeSelect.selectedIndex];
+                const typeName = typeOption?.value ? typeOption.text : '';
+                const topicOption = topicSelect?.options[topicSelect.selectedIndex];
+                const topicName = topicOption?.value ? topicOption.text : '';
 
-                if (period && categoryName) {
+                if (period && typeName) {
                     const [year, month] = period.split('-');
-                    descriptionInput.value = `${months[month] || month} ${year} - ${categoryName}`;
+                    const suffix = topicName ? ` / ${topicName}` : '';
+                    descriptionInput.value = `${months[month] || month} ${year} - ${typeName}${suffix}`;
                 }
             };
 
@@ -117,7 +132,11 @@
                 descriptionInput.dataset.userEdited = '1';
             });
 
-            categorySelect.addEventListener('change', () => {
+            typeSelect.addEventListener('change', () => {
+                descriptionInput.dataset.userEdited = '';
+                updateDescription();
+            });
+            topicSelect?.addEventListener('change', () => {
                 descriptionInput.dataset.userEdited = '';
                 updateDescription();
             });
