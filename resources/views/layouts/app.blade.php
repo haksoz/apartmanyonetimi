@@ -327,6 +327,15 @@
                     </a>
                     @endif
 
+                    @if($currentApartment)
+                    <a href="{{ route('reports.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('reports.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span class="sidebar-text">Raporlar</span>
+                    </a>
+                    @endif
+
                     @if($navIsOwner && $currentApartment)
                     {{-- Ayarlar Grubu --}}
                     <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Ayarlar</div>

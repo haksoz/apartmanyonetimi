@@ -27,6 +27,7 @@ use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\PaymentAllocationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
@@ -57,6 +58,29 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
     // Üye + Yönetici erişimi
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+    // Raporlar - Tüm kullanıcılar
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('income-expense', [ReportController::class, 'incomeExpense'])->name('income-expense');
+        Route::get('income-expense/export/{type}', [ReportController::class, 'incomeExpenseExport'])->name('income-expense.export');
+        Route::get('debt-list', [ReportController::class, 'debtList'])->name('debt-list');
+        Route::get('debt-list/export/{type}', [ReportController::class, 'debtListExport'])->name('debt-list.export');
+        Route::get('receivable-list', [ReportController::class, 'receivableList'])->name('receivable-list');
+        Route::get('receivable-list/export/{type}', [ReportController::class, 'receivableListExport'])->name('receivable-list.export');
+        Route::get('account-statement', [ReportController::class, 'accountStatement'])->name('account-statement');
+        Route::get('account-statement/export/{type}', [ReportController::class, 'accountStatementExport'])->name('account-statement.export');
+        Route::get('due-collection', [ReportController::class, 'dueCollection'])->name('due-collection');
+        Route::get('due-collection/export/{type}', [ReportController::class, 'dueCollectionExport'])->name('due-collection.export');
+        Route::get('overdue', [ReportController::class, 'overdue'])->name('overdue');
+        Route::get('overdue/export/{type}', [ReportController::class, 'overdueExport'])->name('overdue.export');
+        Route::get('annual-activity', [ReportController::class, 'annualActivity'])->name('annual-activity');
+        Route::get('annual-activity/export/{type}', [ReportController::class, 'annualActivityExport'])->name('annual-activity.export');
+        Route::get('budget', [ReportController::class, 'budget'])->name('budget');
+        Route::get('budget/export/{type}', [ReportController::class, 'budgetExport'])->name('budget.export');
+        Route::get('monthly-board', [ReportController::class, 'monthlyBoard'])->name('monthly-board');
+        Route::get('monthly-board/export/{type}', [ReportController::class, 'monthlyBoardExport'])->name('monthly-board.export');
+    });
 
     // Giderler - Üye ve Yönetici erişimi (tüm resource actions)
     Route::resource('expenses', ExpenseController::class);
