@@ -495,30 +495,41 @@ class ReportController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
         $year     = (int)$request->input('year', now()->year);
-        $units    = Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get();
         $months   = range(1, 12);
 
-        // Her unit × ay için aidat durumunu çek
+        $accounts = Account::where('accounts.apartment_id', $apartment->id)
+            ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+            ->with('unit')
+            ->whereHas('unit')
+            ->join('units', 'units.id', '=', 'accounts.unit_id')
+            ->orderByRaw('LENGTH(units.unit_no), units.unit_no')
+            ->orderByRaw("CASE WHEN accounts.type = 'owner' THEN 0 WHEN accounts.type = 'tenant' THEN 1 ELSE 2 END")
+            ->select('accounts.*')
+            ->get();
+
+        // Her hesap × ay için borç durumunu çek (tüm due_type'lar dahil)
         $dues = Due::where('apartment_id', $apartment->id)
-            ->whereYear('period', $year)
-            ->orWhereRaw("YEAR(due_date) = ?", [$year])
+            ->where(function ($q) use ($year) {
+                $q->whereYear('period', $year)
+                  ->orWhereRaw("YEAR(due_date) = ?", [$year]);
+            })
             ->with(['unit', 'account'])
             ->get();
 
-        // [unit_id][month] = status
+        // [account_id][month] = status
         $matrix = [];
         foreach ($dues as $due) {
-            $unitId = $due->unit_id;
-            $month  = optional($due->period ? Carbon::parse($due->period) : $due->due_date)->month;
-            if (!$unitId || !$month) continue;
+            $accountId = $due->account_id;
+            $month     = optional($due->period ? Carbon::parse($due->period) : $due->due_date)->month;
+            if (!$accountId || !$month) continue;
 
-            $existing = $matrix[$unitId][$month] ?? null;
+            $existing = $matrix[$accountId][$month] ?? null;
             $status   = $due->computed_status;
 
             // paid > partial > overdue > pending
             $priority = ['paid' => 4, 'partial' => 3, 'overdue' => 2, 'pending' => 1];
             if (!$existing || ($priority[$status] ?? 0) > ($priority[$existing] ?? 0)) {
-                $matrix[$unitId][$month] = $status;
+                $matrix[$accountId][$month] = $status;
             }
         }
 
@@ -526,7 +537,7 @@ class ReportController extends Controller
 
         $availableYears = range(now()->year, max(now()->year - 5, 2020), -1);
 
-        return view('reports.due-collection', compact('apartment', 'units', 'months', 'matrix', 'monthNames', 'year', 'availableYears'));
+        return view('reports.due-collection', compact('apartment', 'accounts', 'months', 'matrix', 'monthNames', 'year', 'availableYears'));
     }
 
     public function dueCollectionExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -534,30 +545,43 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
-        $year   = (int)$request->input('year', now()->year);
-        $units  = Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get();
-        $months = range(1, 12);
-        $dues   = Due::where('apartment_id', $apartment->id)
-            ->whereYear('period', $year)
-            ->with(['unit'])->get();
+        $year     = (int)$request->input('year', now()->year);
+        $months   = range(1, 12);
+
+        $accounts = Account::where('accounts.apartment_id', $apartment->id)
+            ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+            ->with('unit')
+            ->whereHas('unit')
+            ->join('units', 'units.id', '=', 'accounts.unit_id')
+            ->orderByRaw('LENGTH(units.unit_no), units.unit_no')
+            ->orderByRaw("CASE WHEN accounts.type = 'owner' THEN 0 WHEN accounts.type = 'tenant' THEN 1 ELSE 2 END")
+            ->select('accounts.*')
+            ->get();
+
+        $dues = Due::where('apartment_id', $apartment->id)
+            ->where(function ($q) use ($year) {
+                $q->whereYear('period', $year)
+                  ->orWhereRaw("YEAR(due_date) = ?", [$year]);
+            })
+            ->with(['unit', 'account'])->get();
 
         $matrix = [];
         foreach ($dues as $due) {
-            $unitId = $due->unit_id;
-            $month  = optional($due->period ? Carbon::parse($due->period) : $due->due_date)->month;
-            if (!$unitId || !$month) continue;
+            $accountId = $due->account_id;
+            $month     = optional($due->period ? Carbon::parse($due->period) : $due->due_date)->month;
+            if (!$accountId || !$month) continue;
             $status   = $due->computed_status;
             $priority = ['paid' => 4, 'partial' => 3, 'overdue' => 2, 'pending' => 1];
-            $existing = $matrix[$unitId][$month] ?? null;
+            $existing = $matrix[$accountId][$month] ?? null;
             if (!$existing || ($priority[$status] ?? 0) > ($priority[$existing] ?? 0)) {
-                $matrix[$unitId][$month] = $status;
+                $matrix[$accountId][$month] = $status;
             }
         }
 
         $monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.due-collection', compact('apartment', 'units', 'months', 'matrix', 'monthNames', 'year', 'availableYears'), 'aidat-tahsilat-raporu');
+            return $this->pdfResponse('reports.due-collection', compact('apartment', 'accounts', 'months', 'matrix', 'monthNames', 'year', 'availableYears'), 'aidat-tahsilat-raporu');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -567,16 +591,16 @@ class ReportController extends Controller
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        $header = ['Daire'];
+        $header = ['Daire / Hesap'];
         foreach ($monthNames as $mn) $header[] = $mn;
         $sheet->fromArray($header, null, 'A3');
         $this->applyHeaderStyle($sheet, 'A3:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(13) . '3');
 
         $row = 4;
-        foreach ($units as $unit) {
-            $rowData = [$unit->unit_no];
+        foreach ($accounts as $account) {
+            $rowData = [$account->unit?->unit_no . ' - ' . $account->name];
             foreach ($months as $m) {
-                $status = $matrix[$unit->id][$m] ?? '-';
+                $status = $matrix[$account->id][$m] ?? '-';
                 $labels = ['paid' => 'Ödendi', 'partial' => 'Kısmi', 'overdue' => 'Gecikmeli', 'pending' => 'Bekliyor', '-' => '-'];
                 $rowData[] = $labels[$status] ?? $status;
             }
@@ -584,7 +608,7 @@ class ReportController extends Controller
             $row++;
         }
 
-        $sheet->getColumnDimension('A')->setWidth(10);
+        $sheet->getColumnDimension('A')->setWidth(30);
         for ($i = 2; $i <= 13; $i++) {
             $sheet->getColumnDimensionByColumn($i)->setWidth(9);
         }

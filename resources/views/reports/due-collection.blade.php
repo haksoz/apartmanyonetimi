@@ -45,7 +45,8 @@
         <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Ödendi</span>
         <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-400 inline-block"></span> Kısmi</span>
         <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Gecikmeli</span>
-        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-slate-200 inline-block"></span> Bekliyor / Yok</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-blue-500 inline-block"></span> Bekliyor</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-slate-200 inline-block"></span> Yok</span>
     </div>
 
     {{-- Matris Tablosu --}}
@@ -54,18 +55,21 @@
             <table class="text-xs w-full">
                 <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider">
                     <tr>
-                        <th class="px-3 py-3 text-left font-semibold sticky left-0 bg-slate-50 z-10 min-w-20">Daire</th>
+                        <th class="px-3 py-3 text-left font-semibold sticky left-0 bg-slate-50 z-10 min-w-32">Daire / Hesap</th>
                         @foreach($monthNames as $mn)
                             <th class="px-2 py-3 text-center font-semibold min-w-14">{{ $mn }}</th>
                         @endforeach
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                    @forelse($units as $unit)
+                    @forelse($accounts as $account)
                         <tr class="hover:bg-slate-50">
-                            <td class="px-3 py-2.5 font-medium text-slate-700 sticky left-0 bg-white">{{ $unit->unit_no }}</td>
+                            <td class="px-3 py-2.5 font-medium text-slate-700 sticky left-0 bg-white">
+                                <div>{{ $account->unit?->unit_no }} - {{ $account->name }}</div>
+                                <div class="text-[10px] text-slate-400">{{ $account->type_label }}</div>
+                            </td>
                             @foreach($months as $m)
-                                @php $status = $matrix[$unit->id][$m] ?? null; @endphp
+                                @php $status = $matrix[$account->id][$m] ?? null; @endphp
                                 <td class="px-1 py-2.5 text-center">
                                     @if($status === 'paid')
                                         <span class="inline-flex items-center justify-center w-full">
@@ -81,11 +85,11 @@
                                         </span>
                                     @elseif($status === 'pending')
                                         <span class="inline-flex items-center justify-center w-full">
-                                            <span class="w-8 h-6 rounded bg-slate-100 text-slate-400 flex items-center justify-center" title="Bekliyor">–</span>
+                                            <span class="w-8 h-6 rounded bg-blue-100 text-blue-700 font-semibold flex items-center justify-center" title="Bekliyor">–</span>
                                         </span>
                                     @else
                                         <span class="inline-flex items-center justify-center w-full">
-                                            <span class="w-8 h-6 rounded bg-slate-50 text-slate-300 flex items-center justify-center">·</span>
+                                            <span class="w-8 h-6 rounded bg-slate-100 text-slate-400 flex items-center justify-center" title="Yok">·</span>
                                         </span>
                                     @endif
                                 </td>
