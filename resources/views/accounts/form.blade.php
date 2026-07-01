@@ -170,5 +170,13 @@
 
         type.addEventListener('change', refresh);
         refresh();
+
+        form.addEventListener('submit', () => {
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Kaydediliyor...';
+            }
+        });
     })();
 </script>

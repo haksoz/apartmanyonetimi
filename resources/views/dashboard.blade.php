@@ -48,22 +48,22 @@
         <div class="rounded-2xl bg-white p-6 shadow-sm">
             <h3 class="text-sm font-semibold text-slate-700 mb-1">Aidat Durumu</h3>
 
-            {{-- Kategori filtre butonları --}}
+            {{-- Tür filtre butonları --}}
             <div class="flex flex-wrap gap-1 mb-4">
-                <button onclick="selectDueCat('all')" id="due-btn-all"
-                    class="due-cat-btn rounded-lg px-2.5 py-1 text-xs font-semibold bg-slate-950 text-white">
+                <button onclick="selectDueType('all')" id="due-btn-all"
+                    class="due-type-btn rounded-lg px-2.5 py-1 text-xs font-semibold bg-slate-950 text-white">
                     Tümü
                 </button>
-                @foreach ($dueByCat as $catId => $cat)
-                    <button onclick="selectDueCat({{ $catId }})" id="due-btn-{{ $catId }}"
-                        class="due-cat-btn rounded-lg px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">
-                        {{ $cat['name'] }}
+                @foreach ($dueByType as $typeValue => $type)
+                    <button onclick="selectDueType('{{ $typeValue }}')" id="due-btn-{{ $typeValue }}"
+                        class="due-type-btn rounded-lg px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">
+                        {{ $type['name'] }}
                     </button>
                 @endforeach
             </div>
 
             @php $dueTotal = $duePaid + $dueUnpaid + $duePartial + $dueOverdue; @endphp
-            @if ($dueTotal > 0 || count($dueByCat) > 0)
+            @if ($dueTotal > 0 || count($dueByType) > 0)
                 <div class="relative flex justify-center">
                     <canvas id="duePieChart" width="180" height="180"></canvas>
                 </div>
@@ -157,13 +157,13 @@
             cutout: '65%',
         };
 
-        // Aidat kategori verisi — obje olarak (key = kategori id)
-        const dueByCatMap = {!! json_encode(collect($dueByCat)->mapWithKeys(fn($v, $k) => [(string)$k => $v])) !!};
+        // Aidat tür verisi — obje olarak (key = tür değeri)
+        const dueByTypeMap = {!! json_encode($dueByType) !!};
         const dueAll = { paid: {{ $duePaid }}, partial: {{ $duePartial }}, overdue: {{ $dueOverdue }}, unpaid: {{ $dueUnpaid }} };
 
         const fmt = (n) => Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
 
-        @if ($duePaid + $dueUnpaid + $duePartial + $dueOverdue > 0 || count($dueByCat) > 0)
+        @if ($duePaid + $dueUnpaid + $duePartial + $dueOverdue > 0 || count($dueByType) > 0)
         const duePieChart = new Chart(document.getElementById('duePieChart'), {
             type: 'doughnut',
             data: {
@@ -178,13 +178,13 @@
             options: { ...chartDefaults, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ' ' + fmt(c.raw) } } } }
         });
 
-        function selectDueCat(catId) {
+        function selectDueType(typeValue) {
             let paid, partial, overdue, unpaid;
-            if (catId === 'all') {
+            if (typeValue === 'all') {
                 paid = dueAll.paid; partial = dueAll.partial; overdue = dueAll.overdue; unpaid = dueAll.unpaid;
             } else {
-                const cat = dueByCatMap[String(catId)] || { paid: 0, partial: 0, overdue: 0, unpaid: 0 };
-                paid = cat.paid || 0; partial = cat.partial || 0; overdue = cat.overdue || 0; unpaid = cat.unpaid || 0;
+                const type = dueByTypeMap[typeValue] || { paid: 0, partial: 0, overdue: 0, unpaid: 0 };
+                paid = type.paid || 0; partial = type.partial || 0; overdue = type.overdue || 0; unpaid = type.unpaid || 0;
             }
             duePieChart.data.datasets[0].data = [paid, partial, overdue, unpaid];
             duePieChart.update();
@@ -193,11 +193,11 @@
             document.getElementById('due-label-overdue').textContent  = fmt(overdue);
             document.getElementById('due-label-unpaid').textContent   = fmt(unpaid);
 
-            document.querySelectorAll('.due-cat-btn').forEach(b => {
+            document.querySelectorAll('.due-type-btn').forEach(b => {
                 b.classList.remove('bg-slate-950', 'text-white');
                 b.classList.add('bg-slate-100', 'text-slate-600');
             });
-            const activeBtn = document.getElementById('due-btn-' + catId);
+            const activeBtn = document.getElementById('due-btn-' + typeValue);
             if (activeBtn) {
                 activeBtn.classList.add('bg-slate-950', 'text-white');
                 activeBtn.classList.remove('bg-slate-100', 'text-slate-600');

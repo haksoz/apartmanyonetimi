@@ -165,7 +165,12 @@ class AccountController extends Controller
                 'integer',
                 Rule::exists('units', 'id')->where('apartment_id', $apartment->id),
             ],
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('accounts', 'name')->where('apartment_id', $apartment->id),
+            ],
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'balance' => ['nullable', 'numeric'],
@@ -176,6 +181,7 @@ class AccountController extends Controller
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
+            'name.unique'          => 'Bu isimde bir hesap zaten mevcut.',
         ]);
 
         if ($validator->fails()) {

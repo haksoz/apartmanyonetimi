@@ -116,6 +116,8 @@
             const descriptionInput = document.getElementById('description');
             const isPaidCheckbox = document.getElementById('is_paid');
             const paymentFields = document.getElementById('payment-fields');
+            const dueDateInput = document.getElementById('due_date');
+            let isDueDateManuallySet = !!dueDateInput?.value;
 
             // Auto-fill category from selected account's default
             const fillCategoryFromAccount = () => {
@@ -160,6 +162,18 @@
                 }
             };
 
+            const syncDueDate = () => {
+                const dateVal = expenseDateInput?.value;
+                if (dateVal && !isDueDateManuallySet) {
+                    const dueDate = new Date(dateVal);
+                    dueDate.setDate(dueDate.getDate() + 15);
+                    const year = dueDate.getFullYear();
+                    const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(dueDate.getDate()).padStart(2, '0');
+                    dueDateInput.value = `${year}-${month}-${day}`;
+                }
+            };
+
             const updateDescription = () => {
                 const period = periodInput.value;
                 const categoryOption = categorySelect.options[categorySelect.selectedIndex];
@@ -174,13 +188,19 @@
 
             expenseDateInput?.addEventListener('change', () => {
                 syncPeriodFromDate();
+                syncDueDate();
                 updateDescription();
+            });
+
+            dueDateInput?.addEventListener('input', () => {
+                isDueDateManuallySet = dueDateInput.value !== '';
             });
 
             categorySelect?.addEventListener('change', updateDescription);
 
             // Init
             syncPeriodFromDate();
+            syncDueDate();
 
             // On page load: if account is pre-selected, fill category
             if (accountSelect?.value) fillCategoryFromAccount();

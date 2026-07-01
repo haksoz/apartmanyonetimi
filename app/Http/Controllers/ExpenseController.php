@@ -654,11 +654,7 @@ class ExpenseController extends Controller
 
             ->get();
 
-        $categories = $this->categories($expense->apartment_id, Category::TYPE_EXPENSE, $expense->category_id);
-
-
-
-        return view('expenses.payment', compact('expense', 'cashBoxes', 'categories'));
+        return view('expenses.payment', compact('expense', 'cashBoxes'));
 
     }
 
@@ -681,20 +677,6 @@ class ExpenseController extends Controller
                 'integer',
 
                 Rule::exists('cash_boxes', 'id')
-
-                    ->where('apartment_id', $expense->apartment_id)
-
-                    ->where('is_active', true),
-
-            ],
-
-            'category_id' => [
-
-                'required',
-
-                'integer',
-
-                Rule::exists('categories', 'id')
 
                     ->where('apartment_id', $expense->apartment_id)
 
@@ -744,7 +726,7 @@ class ExpenseController extends Controller
 
                 'payment_id' => $payment->id,
 
-                'category_id' => $validated['category_id'],
+                'category_id' => $expense->category_id,
 
                 'type' => 'expense',
 

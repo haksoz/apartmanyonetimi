@@ -206,15 +206,15 @@
                 </div>
 
                 <div>
-                    <label for="period" class="mb-2 block text-sm font-medium text-slate-600">Borç Dönemi</label>
-                    <input id="period" name="period" type="month" value="{{ old('period', now()->format('Y-m')) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                    @error('period')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <div>
                     <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
                     <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
                     @error('created_at_manual')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                    <label for="period" class="mb-2 block text-sm font-medium text-slate-600">Borç Dönemi</label>
+                    <input id="period" name="period" type="month" value="{{ old('period', now()->format('Y-m')) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                    @error('period')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
                 <div>
@@ -250,6 +250,8 @@
             const sourceAmount = document.getElementById('source_amount');
             const expenseTotalDisplay = document.getElementById('expense-total-display');
             const expenseTotalAmount = document.getElementById('expense-total-amount');
+            const dueDateInput = document.getElementById('due_date');
+            let isDueDateManuallySet = !!dueDateInput?.value;
 
             const calcSummary = document.getElementById('calc-summary');
             const calcBtn = document.getElementById('calc-btn');
@@ -542,6 +544,15 @@
                 }
             };
 
+            const syncDueDateFromCreatedAt = () => {
+                const dateVal = createdAtInput?.value;
+                if (dateVal && !isDueDateManuallySet) {
+                    const [year, month] = dateVal.split('-');
+                    const lastDay = new Date(year, month, 0).getDate();
+                    dueDateInput.value = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+                }
+            };
+
             const updateDescription = () => {
                 const period = periodInput.value;
                 const typeOption = typeSelect.options[typeSelect.selectedIndex];
@@ -557,13 +568,20 @@
                 }
             };
 
-            createdAtInput?.addEventListener('change', syncPeriodFromDate);
+            createdAtInput?.addEventListener('change', () => {
+                syncPeriodFromDate();
+                syncDueDateFromCreatedAt();
+            });
+            dueDateInput?.addEventListener('input', () => {
+                isDueDateManuallySet = dueDateInput.value !== '';
+            });
             typeSelect?.addEventListener('change', updateDescription);
             topicSelect?.addEventListener('change', updateDescription);
             periodInput?.addEventListener('change', updateDescription);
 
             // Init
             syncPeriodFromDate();
+            syncDueDateFromCreatedAt();
         })();
     </script>
 @endsection

@@ -59,35 +59,34 @@ class DashboardController extends Controller
             }
         }
 
-        // Aidat durumu — kategori bazında (tüm zamanlar) — remaining_amount ve due_date'e göre
-        $duesWithCategories = Due::where('dues.apartment_id', $id)
-            ->with('category')
-            ->select('id', 'category_id', 'amount', 'remaining_amount', 'due_date')
+        // Aidat durumu — tür (due_type) bazında (tüm zamanlar) — remaining_amount ve due_date'e göre
+        $duesWithTypes = Due::where('dues.apartment_id', $id)
+            ->select('id', 'due_type', 'amount', 'remaining_amount', 'due_date')
             ->get();
 
-        // [cat_id => ['name'=>..., 'paid'=>..., 'unpaid'=>..., 'partial'=>..., 'overdue'=>...]]
-        $dueByCat = [];
-        foreach ($duesWithCategories as $due) {
-            if (!$due->category) continue;
+        // [type_value => ['name'=>..., 'paid'=>..., 'unpaid'=>..., 'partial'=>..., 'overdue'=>...]]
+        $dueByType = [];
+        foreach ($duesWithTypes as $due) {
+            if (!$due->due_type) continue;
 
-            $catId = $due->category_id;
-            $catName = $due->category->name;
+            $typeValue = $due->due_type->value;
+            $typeName = $due->due_type->label();
             $amount = (float) $due->amount;
             $remaining = (float) $due->remaining_amount;
             $isPastDue = $due->due_date && $due->due_date->startOfDay()->lt($today);
 
-            if (!isset($dueByCat[$catId])) {
-                $dueByCat[$catId] = ['name' => $catName, 'paid' => 0, 'unpaid' => 0, 'partial' => 0, 'overdue' => 0];
+            if (!isset($dueByType[$typeValue])) {
+                $dueByType[$typeValue] = ['name' => $typeName, 'paid' => 0, 'unpaid' => 0, 'partial' => 0, 'overdue' => 0];
             }
 
             if ($remaining == 0) {
-                $dueByCat[$catId]['paid'] += $amount;
+                $dueByType[$typeValue]['paid'] += $amount;
             } elseif ($isPastDue && $remaining > 0) {
-                $dueByCat[$catId]['overdue'] += $remaining;
+                $dueByType[$typeValue]['overdue'] += $remaining;
             } elseif ($remaining >= $amount) {
-                $dueByCat[$catId]['unpaid'] += $amount;
+                $dueByType[$typeValue]['unpaid'] += $amount;
             } else {
-                $dueByCat[$catId]['partial'] += $remaining;
+                $dueByType[$typeValue]['partial'] += $remaining;
             }
         }
 
@@ -156,7 +155,7 @@ class DashboardController extends Controller
             'apartment',
             'totalUnits', 'totalAccounts',
             'dueUnpaid', 'duePaid', 'duePartial', 'dueOverdue',
-            'dueByCat',
+            'dueByType',
             'expenseByCategory', 'totalExpenses',
             'expensePaid', 'expenseUnpaid',
             'cashBalance', 'cashIncome', 'cashExpense',

@@ -14,7 +14,8 @@
 
         <div class="space-y-5">
             <div class="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-                <div class="font-semibold text-slate-950">{{ $expense->category }}</div>
+                <div class="font-semibold text-slate-950">{{ $expense->description ?? '-' }}</div>
+                <div class="mt-1">Kategori: {{ $expense->category }}</div>
                 <div class="mt-1">Tutar: {{ number_format($expense->amount, 2, ',', '.') }} TL</div>
                 <div class="mt-1">Tedarikçi: {{ $expense->account?->name ?? '-' }}</div>
             </div>
@@ -28,17 +29,6 @@
                     @endforeach
                 </select>
                 @error('cash_box_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-            </div>
-
-            <div>
-                <label for="category_id" class="mb-2 block text-sm font-semibold text-slate-700">Kategori</label>
-                <select id="category_id" name="category_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    <option value="">Kategori seçin</option>
-                    @foreach ($categories as $category)
-                        <option value="{{ $category->id }}" @selected((string) old('category_id', $expense->category_id) === (string) $category->id)>{{ $category->name }}</option>
-                    @endforeach
-                </select>
-                @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
             <div class="grid gap-5 md:grid-cols-2">
