@@ -13,15 +13,16 @@ use App\Models\Unit;
 use App\Support\CurrentApartment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Font;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use Spatie\Browsershot\Browsershot;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class ReportController extends Controller
 {
@@ -61,6 +62,7 @@ class ReportController extends Controller
     private function excelResponse(Spreadsheet $spreadsheet, string $filename): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $writer = new Xlsx($spreadsheet);
+        $filename .= '-' . now()->format('Ymd-Hi');
 
         return response()->stream(function () use ($writer) {
             $writer->save('php://output');
@@ -71,20 +73,20 @@ class ReportController extends Controller
         ]);
     }
 
-    private function pdfResponse(string $viewName, array $data, string $filename): \Illuminate\Http\Response
+    private function pdfResponse(string $viewName, array $data, string $filename): Response
     {
-        $html = view($viewName, array_merge($data, ['pdfMode' => true]))->render();
+        $tempPath = sys_get_temp_dir() . '/' . uniqid('pdf_', true) . '.pdf';
+        $filename .= '-' . now()->format('Ymd-Hi');
 
-        $pdf = Browsershot::html($html)
-            ->setOption('landscape', false)
+        Pdf::view($viewName, array_merge($data, ['pdfMode' => true]))
+            ->format('a4')
             ->margins(10, 10, 10, 10)
-            ->format('A4')
-            ->pdf();
+            ->save($tempPath);
 
-        return response($pdf, 200, [
+        return response()->file($tempPath, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="' . $filename . '.pdf"',
-        ]);
+        ])->deleteFileAfterSend();
     }
 
     // -------------------------------------------------------------------------
@@ -927,11 +929,44 @@ class ReportController extends Controller
 
         $month = $request->input('month', now()->format('Y-m'));
         $id    = $apartment->id;
+        $typeFilter   = $request->input('type_filter', 'resident');
+        $statusFilter = $request->input('status_filter', 'active');
+        $showAccountType = $request->boolean('show_account_type', false);
 
-        $units = Unit::with(['accounts' => fn($q) => $q->where('is_active', true)->where('is_hidden', false)])
-            ->where('apartment_id', $id)
-            ->orderBy('unit_no')
-            ->get();
+        $accountsQuery = Account::where('accounts.apartment_id', $id)
+            ->with('unit')
+            ->whereHas('unit')
+            ->join('units', 'units.id', '=', 'accounts.unit_id')
+            ->orderByRaw('LENGTH(units.unit_no), units.unit_no')
+            ->orderByRaw("CASE WHEN accounts.type = 'owner' THEN 0 WHEN accounts.type = 'tenant' THEN 1 ELSE 2 END")
+            ->select('accounts.*');
+
+        if ($typeFilter === 'owner') {
+            $accountsQuery->where('accounts.type', Account::TYPE_OWNER);
+        } elseif ($typeFilter === 'tenant') {
+            $accountsQuery->where('accounts.type', Account::TYPE_TENANT);
+        } else {
+            $accountsQuery->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT]);
+        }
+
+        if ($statusFilter === 'active') {
+            $accountsQuery->where('accounts.is_active', true)->whereNull('accounts.deleted_at');
+        } elseif ($statusFilter === 'inactive') {
+            $accountsQuery->where(function ($q) {
+                $q->where('accounts.is_active', false)->orWhereNotNull('accounts.deleted_at');
+            });
+        } else {
+            $accountsQuery->withTrashed();
+        }
+
+        $accounts = $accountsQuery->get();
+
+        if ($typeFilter === 'resident') {
+            $accounts = $accounts->groupBy('unit_id')->map(function ($group) {
+                return $group->firstWhere('type', Account::TYPE_TENANT)
+                    ?? $group->firstWhere('type', Account::TYPE_OWNER);
+            })->values();
+        }
 
         // Parse month
         try {
@@ -939,19 +974,51 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             $parsedMonth = now();
         }
+        $selectedMonthStr = $parsedMonth->format('Y-m');
 
-        $dues = Due::with(['account', 'unit'])
+        // Seçili ay due'ları + tüm açık geçmiş due'ları
+        $allDues = Due::with(['account', 'unit', 'allocations'])
             ->where('apartment_id', $id)
-            ->where(function ($q) use ($month, $parsedMonth) {
-                $q->where('period', 'like', $month . '%')
+            ->where(function ($q) use ($selectedMonthStr, $parsedMonth) {
+                $q->where('period', 'like', $selectedMonthStr . '%')
                   ->orWhere(function ($q2) use ($parsedMonth) {
                       $q2->whereNull('period')
                          ->whereYear('due_date', $parsedMonth->year)
                          ->whereMonth('due_date', $parsedMonth->month);
                   });
             })
-            ->get()
-            ->groupBy('unit_id');
+            ->orWhere(function ($q) {
+                $q->where('remaining_amount', '>', 0);
+            })
+            ->get();
+
+        $getDueMonth = fn($due) => $due->period
+            ? Carbon::parse($due->period)->format('Y-m')
+            : $due->due_date?->format('Y-m');
+
+        $selectedDues = $allDues->filter(fn($due) => $getDueMonth($due) === $selectedMonthStr);
+        $pastDues     = $allDues->filter(fn($due) => $getDueMonth($due) < $selectedMonthStr);
+
+        $selectedByAccount = $selectedDues->groupBy('account_id');
+        $pastByAccount     = $pastDues->groupBy('account_id');
+
+        $accountData = [];
+        foreach ($accounts as $account) {
+            $sel = $selectedByAccount[$account->id] ?? collect();
+            $past = $pastByAccount[$account->id] ?? collect();
+
+            $pastRemaining    = (float) $past->sum('remaining_amount');
+            $selectedAmount   = (float) $sel->sum('amount');
+            $selectedRemaining = (float) $sel->sum('remaining_amount');
+            $paid             = (float) $sel->sum('allocated_amount');
+
+            $accountData[$account->id] = [
+                'pastRemaining'    => $pastRemaining,
+                'selectedAmount'   => $selectedAmount,
+                'paid'             => $paid,
+                'remaining'        => $pastRemaining + $selectedRemaining,
+            ];
+        }
 
         $categoryList = Category::where('apartment_id', $id)->where('is_active', true)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->get();
 
@@ -961,7 +1028,10 @@ class ReportController extends Controller
             $monthOptions->push(now()->subMonths($i)->format('Y-m'));
         }
 
-        return view('reports.monthly-board', compact('apartment', 'units', 'dues', 'month', 'parsedMonth', 'categoryList', 'monthOptions'));
+        return view('reports.monthly-board', compact(
+            'apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
+            'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'showAccountType'
+        ));
     }
 
     public function monthlyBoardExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -971,50 +1041,136 @@ class ReportController extends Controller
 
         $month = $request->input('month', now()->format('Y-m'));
         $id    = $apartment->id;
+        $typeFilter   = $request->input('type_filter', 'resident');
+        $statusFilter = $request->input('status_filter', 'active');
+        $showAccountType = $request->boolean('show_account_type', false);
         try { $parsedMonth = Carbon::createFromFormat('Y-m', $month); } catch (\Exception $e) { $parsedMonth = now(); }
+        $selectedMonthStr = $parsedMonth->format('Y-m');
 
-        $units = Unit::with(['accounts' => fn($q) => $q->where('is_active', true)])
-            ->where('apartment_id', $id)->orderBy('unit_no')->get();
+        $accountsQuery = Account::where('accounts.apartment_id', $id)
+            ->with('unit')
+            ->whereHas('unit')
+            ->join('units', 'units.id', '=', 'accounts.unit_id')
+            ->orderByRaw('LENGTH(units.unit_no), units.unit_no')
+            ->orderByRaw("CASE WHEN accounts.type = 'owner' THEN 0 WHEN accounts.type = 'tenant' THEN 1 ELSE 2 END")
+            ->select('accounts.*');
 
-        $dues = Due::with(['account', 'unit'])
+        if ($typeFilter === 'owner') {
+            $accountsQuery->where('accounts.type', Account::TYPE_OWNER);
+        } elseif ($typeFilter === 'tenant') {
+            $accountsQuery->where('accounts.type', Account::TYPE_TENANT);
+        } else {
+            $accountsQuery->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT]);
+        }
+
+        if ($statusFilter === 'active') {
+            $accountsQuery->where('accounts.is_active', true)->whereNull('accounts.deleted_at');
+        } elseif ($statusFilter === 'inactive') {
+            $accountsQuery->where(function ($q) {
+                $q->where('accounts.is_active', false)->orWhereNotNull('accounts.deleted_at');
+            });
+        } else {
+            $accountsQuery->withTrashed();
+        }
+
+        $accounts = $accountsQuery->get();
+
+        if ($typeFilter === 'resident') {
+            $accounts = $accounts->groupBy('unit_id')->map(function ($group) {
+                return $group->firstWhere('type', Account::TYPE_TENANT)
+                    ?? $group->firstWhere('type', Account::TYPE_OWNER);
+            })->values();
+        }
+
+        $allDues = Due::with(['account', 'unit', 'allocations'])
             ->where('apartment_id', $id)
-            ->where(function ($q) use ($month, $parsedMonth) {
-                $q->where('period', 'like', $month . '%')
+            ->where(function ($q) use ($selectedMonthStr, $parsedMonth) {
+                $q->where('period', 'like', $selectedMonthStr . '%')
                   ->orWhere(function ($q2) use ($parsedMonth) {
                       $q2->whereNull('period')
                          ->whereYear('due_date', $parsedMonth->year)
                          ->whereMonth('due_date', $parsedMonth->month);
                   });
             })
-            ->get()->groupBy('unit_id');
+            ->orWhere(function ($q) {
+                $q->where('remaining_amount', '>', 0);
+            })
+            ->get();
+
+        $getDueMonth = fn($due) => $due->period
+            ? Carbon::parse($due->period)->format('Y-m')
+            : $due->due_date?->format('Y-m');
+
+        $selectedDues = $allDues->filter(fn($due) => $getDueMonth($due) === $selectedMonthStr);
+        $pastDues     = $allDues->filter(fn($due) => $getDueMonth($due) < $selectedMonthStr);
+
+        $selectedByAccount = $selectedDues->groupBy('account_id');
+        $pastByAccount     = $pastDues->groupBy('account_id');
+
+        $accountData = [];
+        foreach ($accounts as $account) {
+            $sel = $selectedByAccount[$account->id] ?? collect();
+            $past = $pastByAccount[$account->id] ?? collect();
+
+            $pastRemaining    = (float) $past->sum('remaining_amount');
+            $selectedAmount   = (float) $sel->sum('amount');
+            $selectedRemaining = (float) $sel->sum('remaining_amount');
+            $paid             = (float) $sel->sum('allocated_amount');
+
+            $accountData[$account->id] = [
+                'pastRemaining'    => $pastRemaining,
+                'selectedAmount'   => $selectedAmount,
+                'paid'             => $paid,
+                'remaining'        => $pastRemaining + $selectedRemaining,
+            ];
+        }
 
         $categoryList = Category::where('apartment_id', $id)->where('is_active', true)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->get();
         $monthOptions = collect();
+        $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
+
+        $title = $typeFilter === 'resident'
+            ? 'AYLIK AİDAT TABLOSU — ' . $apartment->name . ' Daire Sakinleri — ' . $trMonths[$parsedMonth->month] . ' ' . $parsedMonth->year
+            : 'AYLIK AİDAT PANO TABLOSU — ' . $apartment->name . ' — ' . $trMonths[$parsedMonth->month] . ' ' . $parsedMonth->year;
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.monthly-board', compact('apartment', 'units', 'dues', 'month', 'parsedMonth', 'categoryList', 'monthOptions'), 'aylik-aidat-pano-tablosu');
+            return $this->pdfResponse('reports.monthly-board-pdf', compact(
+                'apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
+                'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'title', 'trMonths', 'showAccountType'
+            ), 'aylik-aidat-pano-tablosu');
         }
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet()->setTitle('Aidat Pano');
-        $sheet->mergeCells('A1:E1');
-        $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
-        $sheet->setCellValue('A1', 'AYLIK AİDAT PANO TABLOSU — ' . $apartment->name . ' — ' . $trMonths[$parsedMonth->month] . ' ' . $parsedMonth->year);
+        $sheet->mergeCells('A1:F1');
+        $sheet->setCellValue('A1', $title);
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->fromArray(['Daire No', 'Hesap Adı', 'Toplam Borç (₺)', 'Ödenen (₺)', 'Durum'], null, 'A3');
-        $this->applyHeaderStyle($sheet, 'A3:E3');
+        $header = ['Daire No', 'Hesap Adı', 'Geçmiş Borç (₺)', $trMonths[$parsedMonth->month] . ' Borç (₺)', 'Ödenen (₺)', 'Kalan (₺)'];
+        $sheet->fromArray($header, null, 'A3');
+        $this->applyHeaderStyle($sheet, 'A3:F3');
         $row = 4;
-        foreach ($units as $unit) {
-            $unitDues = $dues[$unit->id] ?? collect();
-            $total    = $unitDues->sum('amount');
-            $remaining= $unitDues->sum('remaining_amount');
-            $paid     = $total - $remaining;
-            $status   = $remaining == 0 ? 'Ödendi' : ($paid > 0 ? 'Kısmi' : ($unitDues->count() ? 'Bekliyor' : '-'));
-            $account  = $unit->accounts->first();
-            $sheet->fromArray([$unit->unit_no, $account?->name ?? '-', $total, $paid, $status], null, 'A' . $row++);
+        foreach ($accounts as $account) {
+            $data = $accountData[$account->id];
+            $rowData = [
+                $account->unit?->unit_no,
+                $account->name . ($showAccountType && $account->type === 'owner' ? ' (Kat Maliki)' : ''),
+                $data['pastRemaining'],
+                $data['selectedAmount'],
+                $data['paid'],
+                $data['remaining'],
+            ];
+            $sheet->fromArray($rowData, null, 'A' . $row++);
         }
-        foreach (['A' => 12, 'B' => 24, 'C' => 16, 'D' => 14, 'E' => 12] as $col => $width) {
+        if ($row > 4) {
+            $sheet->getStyle('C4:F' . ($row - 1))
+                ->getNumberFormat()
+                ->setFormatCode('#,##0.00 "₺"');
+            $sheet->getStyle('A4:A' . ($row - 1))
+                ->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+        foreach (['A' => 10, 'B' => 24, 'C' => 16, 'D' => 16, 'E' => 16, 'F' => 16] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
