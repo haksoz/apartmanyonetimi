@@ -586,7 +586,7 @@ class DueController extends Controller
                 'integer',
                 Rule::exists('cash_boxes', 'id')->where('apartment_id', $due->apartment_id)->where('is_active', true),
             ],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:' . ($due->remaining_amount ?: $due->amount)],
             'payment_date' => ['required', 'date'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
