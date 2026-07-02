@@ -135,6 +135,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::delete('accounts/{account}/user', [AccountUserController::class, 'destroy'])->name('accounts.user.destroy');
         Route::resource('categories', CategoryController::class)->except(['show']);
         Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
+        Route::get('payments/preview-allocations', [PaymentController::class, 'previewAllocations'])->name('payments.preview-allocations');
         Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('ledger', [LedgerController::class, 'index'])->name('ledger.index');
@@ -151,6 +152,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::match(['get', 'post'], 'accounts/{account}/payments/multi-supplier-allocate', [PaymentAllocationController::class, 'multiSupplierCreate'])->name('accounts.payments.multi-supplier-allocate');
         Route::post('accounts/{account}/payments/multi-supplier-allocate/store', [PaymentAllocationController::class, 'multiSupplierStore'])->name('accounts.payments.multi-supplier-allocate.store');
         Route::get('accounts/{account}/payment/create', [AccountController::class, 'createSupplierPayment'])->name('accounts.supplier-payment.create');
+        Route::get('accounts/{account}/payment/preview-allocations', [AccountController::class, 'previewSupplierAllocations'])->name('accounts.supplier-payment.preview-allocations');
         Route::post('accounts/{account}/payment', [AccountController::class, 'storeSupplierPayment'])->name('accounts.supplier-payment.store');
         Route::post('accounts/{account}/expenses/multi-pay', [AccountController::class, 'multiPayExpenses'])->name('accounts.expenses.multi-pay');
         Route::post('accounts/{account}/expenses/multi-pay/store', [AccountController::class, 'storeMultiPayExpenses'])->name('accounts.expenses.multi-pay.store');

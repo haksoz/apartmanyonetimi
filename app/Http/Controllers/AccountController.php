@@ -2187,6 +2187,58 @@ class AccountController extends Controller
         return view('accounts.supplier-payment', compact('account', 'cashBoxes'));
     }
 
+    public function previewSupplierAllocations(Request $request, Account $account)
+    {
+        if ($account->type !== Account::TYPE_SUPPLIER) {
+            abort(404);
+        }
+
+        $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        $expenses = Expense::query()
+            ->where('apartment_id', $account->apartment_id)
+            ->where('account_id', $account->id)
+            ->where('is_paid', false)
+            ->where(fn ($q) => $q->whereNull('remaining_amount')->orWhere('remaining_amount', '>', 0))
+            ->orderBy('expense_date')
+            ->orderBy('id')
+            ->get()
+            ->each(fn ($e) => $e->remaining_amount ??= $e->amount);
+
+        if ($expenses->isEmpty()) {
+            return response()->json([
+                'has_expenses' => false,
+                'expenses'     => [],
+                'leftover'     => (float) $request->query('amount'),
+            ]);
+        }
+
+        $budget    = round((float) $request->query('amount'), 2);
+        $remaining = $budget;
+        $result    = [];
+
+        foreach ($expenses as $expense) {
+            $suggested = min($remaining, round((float) $expense->remaining_amount, 2));
+            $result[]  = [
+                'id'               => $expense->id,
+                'description'      => $expense->description ?: ($expense->category ?: 'Gider'),
+                'expense_date'     => $expense->expense_date?->format('d.m.Y') ?? ($expense->period_month?->format('d.m.Y') ?? '-'),
+                'remaining_amount' => round((float) $expense->remaining_amount, 2),
+                'suggested_amount' => $suggested > 0 ? $suggested : 0,
+                'is_imported'      => (bool) $expense->is_imported,
+            ];
+            $remaining = round($remaining - $suggested, 2);
+        }
+
+        return response()->json([
+            'has_expenses' => true,
+            'expenses'     => $result,
+            'leftover'     => max(0, $remaining),
+        ]);
+    }
+
     public function storeSupplierPayment(Request $request, Account $account)
     {
         if ($account->type !== Account::TYPE_SUPPLIER) {
@@ -2194,10 +2246,14 @@ class AccountController extends Controller
         }
 
         $validated = $request->validate([
-            'amount'       => ['required', 'numeric', 'min:0.01'],
-            'cash_box_id'  => ['required', 'integer', Rule::exists('cash_boxes', 'id')->where('apartment_id', $account->apartment_id)->where('is_active', true)],
-            'payment_date' => ['required', 'date'],
-            'description'  => ['nullable', 'string', 'max:255'],
+            'amount'                   => ['required', 'numeric', 'min:0.01'],
+            'cash_box_id'              => ['required', 'integer', Rule::exists('cash_boxes', 'id')->where('apartment_id', $account->apartment_id)->where('is_active', true)],
+            'payment_date'             => ['required', 'date'],
+            'description'              => ['nullable', 'string', 'max:255'],
+            'action'                   => ['nullable', 'string', Rule::in(['save', 'fifo_popup'])],
+            'allocations'              => ['nullable', 'array'],
+            'allocations.*.expense_id' => ['nullable', 'integer', Rule::exists('expenses', 'id')->where('account_id', $account->id)],
+            'allocations.*.amount'     => ['nullable', 'numeric', 'min:0.01'],
         ]);
 
         $paymentDescription = $validated['description'] ?? 'Tedarikçi ödemesi';
@@ -2236,6 +2292,55 @@ class AccountController extends Controller
                 'transaction_date'     => $validated['payment_date'],
             ]);
         });
+
+        if (($validated['action'] ?? 'save') === 'fifo_popup') {
+            $allocations = collect($validated['allocations'] ?? [])
+                ->filter(fn ($a) => isset($a['expense_id']) && isset($a['amount']) && (float) $a['amount'] > 0)
+                ->map(fn ($a) => ['expense_id' => (int) $a['expense_id'], 'amount' => (float) $a['amount']])
+                ->values();
+
+            if ($allocations->isNotEmpty()) {
+                $totalAlloc = $allocations->sum('amount');
+
+                if (round($totalAlloc, 2) > round((float) $payment->unallocated_amount, 2)) {
+                    return back()->withErrors(['allocations' => 'Tahsis toplamı ödeme tutarını aşıyor.'])->withInput();
+                }
+
+                DB::transaction(function () use ($allocations, $payment, $account) {
+                    foreach ($allocations as $alloc) {
+                        $expense = Expense::query()
+                            ->where('id', $alloc['expense_id'])
+                            ->where('apartment_id', $account->apartment_id)
+                            ->where('account_id', $account->id)
+                            ->lockForUpdate()
+                            ->firstOrFail();
+
+                        $amount = round($alloc['amount'], 2);
+
+                        $expenseRemaining = round((float) ($expense->remaining_amount ?? $expense->amount), 2);
+
+                        if ($amount > $expenseRemaining) {
+                            abort(400, 'Tahsis edilen tutar giderin kalan tutarından büyük olamaz.');
+                        }
+
+                        $payment->allocations()->create([
+                            'expense_id' => $expense->id,
+                            'amount'     => $amount,
+                        ]);
+
+                        $expense->paid_amount      = round(((float) ($expense->paid_amount ?? 0)) + $amount, 2);
+                        $expense->remaining_amount = max(0, round($expenseRemaining - $amount, 2));
+                        $expense->is_paid          = $expense->remaining_amount <= 0;
+                        $expense->save();
+
+                        $payment->decrement('unallocated_amount', $amount);
+                    }
+                });
+            }
+
+            return redirect()->route('accounts.show', $account)
+                ->with('status', 'Tedarikçi ödemesi kaydedildi ve giderlere tahsis edildi.');
+        }
 
         return redirect()->route('payments.show', $payment)
             ->with('status', 'Tedarikçi ödemesi kaydedildi.');

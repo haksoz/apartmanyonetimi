@@ -81,7 +81,14 @@ class PaymentController extends Controller
                     ->where('is_active', true),
             ],
             'description' => ['nullable', 'string', 'max:255'],
-            'action' => ['required', Rule::in(['save', 'allocate', 'auto_allocate'])],
+            'action' => ['required', Rule::in(['save', 'allocate', 'auto_allocate', 'fifo_popup'])],
+            'allocations' => ['nullable', 'array'],
+            'allocations.*.due_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('dues', 'id')->where('apartment_id', $apartment->id),
+            ],
+            'allocations.*.amount' => ['nullable', 'numeric', 'min:0.01'],
         ]);
 
         // If no account specified, use the orphan (Hesapsız) account
@@ -131,6 +138,52 @@ class PaymentController extends Controller
         });
 
         $redirectTo = $request->input('redirect_to');
+
+        if ($validated['action'] === 'fifo_popup' && ! $isSupplier) {
+            $allocations = collect($validated['allocations'] ?? [])
+                ->filter(fn ($a) => isset($a['amount']) && (float) $a['amount'] > 0)
+                ->map(fn ($a) => ['due_id' => (int) $a['due_id'], 'amount' => (float) $a['amount']])
+                ->values();
+
+            if ($allocations->isNotEmpty()) {
+                $totalAlloc = $allocations->sum('amount');
+
+                if (round($totalAlloc, 2) > round((float) $payment->unallocated_amount, 2)) {
+                    return back()->withErrors(['allocations' => 'Tahsis toplamı ödeme tutarını aşıyor.'])->withInput();
+                }
+
+                DB::transaction(function () use ($allocations, $payment, $apartment) {
+                    foreach ($allocations as $alloc) {
+                        $due = Due::query()
+                            ->where('id', $alloc['due_id'])
+                            ->where('apartment_id', $apartment->id)
+                            ->where('account_id', $payment->account_id)
+                            ->lockForUpdate()
+                            ->firstOrFail();
+
+                        $amount = round($alloc['amount'], 2);
+
+                        if ($amount > round((float) $due->remaining_amount, 2)) {
+                            abort(400, 'Tahsis edilen tutar borcun kalan tutarından büyük olamaz.');
+                        }
+
+                        $payment->allocations()->create([
+                            'due_id' => $due->id,
+                            'amount' => $amount,
+                        ]);
+
+                        $due->remaining_amount = max(0, $due->remaining_amount - $amount);
+                        $due->status = $due->remaining_amount <= 0 ? 'paid' : 'partial';
+                        $due->save();
+
+                        $payment->decrement('unallocated_amount', $amount);
+                    }
+                });
+            }
+
+            return redirect()->route('accounts.show', $account)
+                ->with('status', 'Ödeme kaydedildi ve aidatlara tahsis edildi.');
+        }
 
         if ($validated['action'] === 'auto_allocate' && ! $isSupplier) {
             $closed = $this->autoAllocateFifo($payment, $account, $apartment);
@@ -448,6 +501,66 @@ class PaymentController extends Controller
         $selectedAccountId = $request->query('account_id');
 
         return view('supplier-refunds.create', compact('accounts', 'cashBoxes', 'selectedAccountId', 'apartment'));
+    }
+
+    public function previewAllocations(Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        if (! $apartment) {
+            return response()->json(['error' => 'Apartman bulunamadı.'], 403);
+        }
+
+        $request->validate([
+            'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('apartment_id', $apartment->id)],
+            'amount'     => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        $accountId = $request->query('account_id');
+        if (! $accountId) {
+            return response()->json(['has_dues' => false, 'dues' => [], 'leftover' => (float) $request->query('amount')]);
+        }
+
+        $account = Account::where('id', $accountId)->where('apartment_id', $apartment->id)->firstOrFail();
+
+        if ($account->type === Account::TYPE_SUPPLIER) {
+            return response()->json(['has_dues' => false, 'dues' => [], 'leftover' => (float) $request->query('amount')]);
+        }
+
+        $dues = Due::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('account_id', $account->id)
+            ->where('remaining_amount', '>', 0)
+            ->orderBy('due_date')
+            ->orderBy('id')
+            ->get();
+
+        if ($dues->isEmpty()) {
+            return response()->json(['has_dues' => false, 'dues' => [], 'leftover' => (float) $request->query('amount')]);
+        }
+
+        $budget    = round((float) $request->query('amount'), 2);
+        $remaining = $budget;
+        $result    = [];
+
+        foreach ($dues as $due) {
+            $suggested = min($remaining, round((float) $due->remaining_amount, 2));
+            $result[]  = [
+                'id'               => $due->id,
+                'description'      => $due->description ?: 'Aidat',
+                'due_date'         => $due->due_date?->format('d.m.Y') ?? '-',
+                'remaining_amount' => round((float) $due->remaining_amount, 2),
+                'suggested_amount' => $suggested > 0 ? $suggested : 0,
+                'is_imported'      => (bool) $due->is_imported,
+            ];
+            $remaining = round($remaining - $suggested, 2);
+        }
+
+        return response()->json([
+            'has_dues' => true,
+            'dues'     => $result,
+            'leftover' => max(0, $remaining),
+        ]);
     }
 
     public function storeSupplierRefund(Request $request, CurrentApartment $currentApartment)
