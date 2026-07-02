@@ -218,15 +218,7 @@
 
             @if ($expense->is_paid)
 
-                <form method="POST" action="{{ route('expenses.payment.destroy', $expense) }}" onsubmit="return confirm('Gider ödemesi silinsin mi? Gider tekrar ödenmemiş durumuna döner.')">
-
-                    @csrf
-
-                    @method('DELETE')
-
-                    <button type="submit" class="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Tümünü İptal Et</button>
-
-                </form>
+                <button type="button" disabled class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-400 cursor-not-allowed">Tümünü İptal Et</button>
 
             @endif
 
@@ -306,7 +298,7 @@
 
                 <div id="revert-allocation-modal-{{ $allocation->id }}" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
                     <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-xl">
-                        <h3 class="text-lg font-semibold text-slate-900 mb-1">Tahsisatı Geri Al</h3>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-1">Gider Kapamayı Geri Al</h3>
                         <p class="text-sm text-slate-500 mb-4">
                             {{ $allocation->payment->reference_number ?? '#'.$allocation->payment->id }} —
                             {{ number_format($allocation->payment->amount, 2, ',', '.') }} TL
@@ -323,7 +315,7 @@
                                 @method('DELETE')
                                 <input type="hidden" name="redirect_to" value="{{ route('expenses.show', $expense) }}">
                                 <button type="submit" class="w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
-                                    Sadece Geri Al (Tahsilat Hesapta Kalır)
+                                    Sadece Geri Al (Ödeme Hesapta Kalır)
                                 </button>
                             </form>
 
@@ -333,12 +325,12 @@
                                 <input type="hidden" name="redirect_to" value="{{ route('expenses.show', $expense) }}">
                                 <button type="submit" @disabled($hasMultipleAllocations)
                                         class="w-full rounded-xl px-4 py-2.5 text-sm font-semibold {{ $hasMultipleAllocations ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700' }}">
-                                    Tahsilatı da Sil
+                                    Ödemeyi de Sil
                                 </button>
                             </form>
 
                             @if ($hasMultipleAllocations)
-                                <p class="text-xs text-amber-600">Bu tahsilat başka aidatlara/giderlere de tahsis edilmiş; sadece geri alabilirsiniz.</p>
+                                <p class="text-xs text-amber-600">Bu ödeme başka giderleri de kapatmıştır; sadece geri alabilirsiniz.</p>
                             @endif
 
                             <button type="button" onclick="document.getElementById('revert-allocation-modal-{{ $allocation->id }}').classList.add('hidden')"
