@@ -423,7 +423,7 @@ class PaymentAllocationController extends Controller
         return redirect()->route('accounts.show', $account)->with('status', 'Ödemeler başarıyla aidatlara tahsis edildi.');
     }
 
-    public function destroy(CurrentApartment $currentApartment, Payment $payment, PaymentAllocation $allocation)
+    public function destroy(Request $request, CurrentApartment $currentApartment, Payment $payment, PaymentAllocation $allocation)
     {
         $apartment = $this->resolveApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
@@ -454,6 +454,12 @@ class PaymentAllocationController extends Controller
             $payment->increment('unallocated_amount', $allocationAmount);
             $allocation->delete();
         });
+
+        $redirectTo = $request->input('redirect_to');
+
+        if ($redirectTo && str_starts_with($redirectTo, url('/'))) {
+            return redirect($redirectTo)->with('status', 'Tahsis silindi.');
+        }
 
         return redirect()->route('payments.show', $payment)
             ->with('status', 'Tahsis silindi.');

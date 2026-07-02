@@ -421,7 +421,11 @@ class DueController extends Controller
             return $response;
         }
 
-        $due->load(['allocations.payment', 'transactions', 'batch.plan']);
+        $due->load([
+            'allocations.payment' => fn ($q) => $q->withCount('allocations'),
+            'transactions',
+            'batch.plan',
+        ]);
 
         $unitId = $due->unit_id ?: $due->account?->unit_id;
 

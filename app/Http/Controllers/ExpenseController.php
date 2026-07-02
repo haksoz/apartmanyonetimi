@@ -507,6 +507,10 @@ class ExpenseController extends Controller
 
         $expense = $this->findExpense($id);
 
+        $expense->load([
+            'paymentAllocations.payment' => fn ($q) => $q->withCount('allocations'),
+        ]);
+
         return view('expenses.show', compact('expense'));
 
     }

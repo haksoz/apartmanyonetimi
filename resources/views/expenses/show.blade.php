@@ -284,11 +284,8 @@
 
                                 <td class="px-5 py-4 text-right">
 
-                                    <form method="POST" action="{{ route('payments.allocations.destroy', [$allocation->payment, $allocation]) }}" onsubmit="return confirm('Bu tahsis geri alınsın mı?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Geri Al</button>
-                                    </form>
+                                    <button type="button" onclick="document.getElementById('revert-allocation-modal-{{ $allocation->id }}').classList.remove('hidden')"
+                                            class="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Geri Al</button>
 
                                 </td>
 
@@ -301,6 +298,63 @@
                 </table>
 
             </div>
+
+            @foreach ($expense->paymentAllocations as $allocation)
+                @php
+                    $hasMultipleAllocations = $allocation->payment->allocations_count > 1;
+                @endphp
+
+                <div id="revert-allocation-modal-{{ $allocation->id }}" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+                    <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-xl">
+                        <h3 class="text-lg font-semibold text-slate-900 mb-1">Tahsisatı Geri Al</h3>
+                        <p class="text-sm text-slate-500 mb-4">
+                            {{ $allocation->payment->reference_number ?? '#'.$allocation->payment->id }} —
+                            {{ number_format($allocation->payment->amount, 2, ',', '.') }} TL
+                        </p>
+
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 mb-4">
+                            <div class="text-xs text-slate-500 mb-1">BU GİDERE TAHŞİS EDİLEN</div>
+                            <div class="text-sm font-semibold text-slate-900">{{ number_format($allocation->amount, 2, ',', '.') }} TL</div>
+                        </div>
+
+                        <div class="flex flex-col gap-3">
+                            <form method="POST" action="{{ route('payments.allocations.destroy', [$allocation->payment, $allocation]) }}">
+                                @csrf
+                                @method('DELETE')
+                                <input type="hidden" name="redirect_to" value="{{ route('expenses.show', $expense) }}">
+                                <button type="submit" class="w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
+                                    Sadece Geri Al (Tahsilat Hesapta Kalır)
+                                </button>
+                            </form>
+
+                            <form method="POST" action="{{ route('payments.destroy', $allocation->payment) }}">
+                                @csrf
+                                @method('DELETE')
+                                <input type="hidden" name="redirect_to" value="{{ route('expenses.show', $expense) }}">
+                                <button type="submit" @disabled($hasMultipleAllocations)
+                                        class="w-full rounded-xl px-4 py-2.5 text-sm font-semibold {{ $hasMultipleAllocations ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700' }}">
+                                    Tahsilatı da Sil
+                                </button>
+                            </form>
+
+                            @if ($hasMultipleAllocations)
+                                <p class="text-xs text-amber-600">Bu tahsilat başka aidatlara/giderlere de tahsis edilmiş; sadece geri alabilirsiniz.</p>
+                            @endif
+
+                            <button type="button" onclick="document.getElementById('revert-allocation-modal-{{ $allocation->id }}').classList.add('hidden')"
+                                    class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                Vazgeç
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    document.getElementById('revert-allocation-modal-{{ $allocation->id }}')?.addEventListener('click', function(e) {
+                        if (e.target === this) this.classList.add('hidden');
+                    });
+                </script>
+            @endforeach
 
         @endif
 

@@ -421,7 +421,7 @@ class PaymentController extends Controller
         return redirect()->route('payments.show', $payment)->with('status', 'Ödeme kaydı güncellendi.');
     }
 
-    public function destroy(CurrentApartment $currentApartment, Payment $payment)
+    public function destroy(Request $request, CurrentApartment $currentApartment, Payment $payment)
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
@@ -464,6 +464,12 @@ class PaymentController extends Controller
 
             $payment->delete();
         });
+
+        $redirectTo = $request->input('redirect_to');
+
+        if ($redirectTo && str_starts_with($redirectTo, url('/'))) {
+            return redirect($redirectTo)->with('status', 'Ödeme kaydı ve tüm tahsisler silindi.');
+        }
 
         // Hesaba dön veya ödemeler listesine git
         if ($accountId) {
