@@ -35,7 +35,9 @@
             <select name="account_id" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
                 <option value="">— Hesap Seçin —</option>
                 @foreach($accounts as $acc)
-                    <option value="{{ $acc->id }}" @selected($accountId == $acc->id)>{{ $acc->name }} ({{ $acc->type_label }})</option>
+                    <option value="{{ $acc->id }}" @selected($accountId == $acc->id)>
+                        {{-- --}}{{ $acc->unit ? 'D' . str_pad($acc->unit->unit_no, 2, '0', STR_PAD_LEFT) . ' — ' : '' }}{{ $acc->name }} ({{ $acc->type_label }})
+                    </option>
                 @endforeach
             </select>
         </div>
@@ -53,10 +55,13 @@
 
     @if($accountId && $account)
     {{-- Özet Kartlar --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
         <div class="bg-white rounded-2xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500 mb-1">Hesap</p>
-            <p class="text-base font-bold text-slate-800">{{ $account->name }}</p>
+            <p class="text-base font-bold text-slate-800">
+                @if($account->unit)<span class="text-slate-500 font-normal">Daire {{ $account->unit->unit_no }} — </span>@endif{{ $account->name }}
+            </p>
+            <p class="text-xs text-slate-400 mt-0.5">{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }} – {{ \Carbon\Carbon::parse($dateTo)->format('d.m.Y') }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500 mb-1">Toplam Borç</p>
@@ -66,12 +71,19 @@
             <p class="text-xs text-slate-500 mb-1">Toplam Alacak</p>
             <p class="text-xl font-bold text-emerald-600">{{ number_format($totalCredit, 2, ',', '.') }} ₺</p>
         </div>
-        <div class="bg-white rounded-2xl border border-slate-200 p-4">
-            <p class="text-xs text-slate-500 mb-1">Bakiye</p>
-            <p class="text-xl font-bold {{ $runningBalance >= 0 ? 'text-emerald-600' : 'text-red-500' }}">
-                {{ number_format($runningBalance, 2, ',', '.') }} ₺
-            </p>
-        </div>
+    </div>
+    @php
+        if (!isset($summaryText)) {
+            $summaryText = $runningBalance < 0
+                ? 'Hesabın toplam ' . number_format(abs($runningBalance), 2, ',', '.') . ' TL borcu vardır.'
+                : ($runningBalance > 0
+                    ? 'Hesabın toplam ' . number_format($runningBalance, 2, ',', '.') . ' TL alacağı vardır.'
+                    : 'Hesabın borcu yoktur.');
+            $summaryColor = $runningBalance < 0 ? 'bg-red-50 border-red-200 text-red-700' : ($runningBalance > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600');
+        }
+    @endphp
+    <div class="rounded-2xl border {{ $summaryColor }} px-6 py-5 mb-6 text-base font-bold">
+        {{ $summaryText }}
     </div>
 
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -88,6 +100,23 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
+                    @if($dateFrom && isset($openingBalance))
+                        <tr class="bg-slate-50">
+                            <td class="px-4 py-3 text-slate-500 font-medium">{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }}</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">Açılış</span>
+                            </td>
+                            <td class="px-4 py-3 text-slate-500 font-medium">Dönem Açılış Bakiyesi</td>
+                            <td class="px-4 py-3 text-right text-red-500">{{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' ₺' : '' }}</td>
+                            <td class="px-4 py-3 text-right text-emerald-600">{{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' ₺' : '' }}</td>
+                            <td class="px-4 py-3 text-right font-medium {{ $openingBalance > 0 ? 'text-red-500' : ($openingBalance < 0 ? 'text-emerald-600' : 'text-slate-400') }}">
+                                {{ number_format(abs($openingBalance), 2, ',', '.') }} ₺
+                                @if($openingBalance != 0)
+                                    <span class="text-xs font-normal">{{ $openingBalance > 0 ? 'B' : 'A' }}</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endif
                     @forelse($transactions as $tx)
                         <tr class="hover:bg-slate-50">
                             <td class="px-4 py-3 text-slate-600">{{ $tx->transaction_date?->format('d.m.Y') ?? '-' }}</td>
@@ -106,6 +135,19 @@
                     @empty
                         <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Bu dönemde hareket bulunamadı.</td></tr>
                     @endforelse
+                    @if($transactions->isNotEmpty())
+                        <tr class="bg-slate-100 font-bold text-sm border-t-2 border-slate-300">
+                            <td class="px-4 py-3 text-slate-700" colspan="3">TOPLAM</td>
+                            <td class="px-4 py-3 text-right text-red-600">{{ number_format($totalDebit, 2, ',', '.') }} ₺</td>
+                            <td class="px-4 py-3 text-right text-emerald-600">{{ number_format($totalCredit, 2, ',', '.') }} ₺</td>
+                            <td class="px-4 py-3 text-right {{ $runningBalance < 0 ? 'text-red-600' : ($runningBalance > 0 ? 'text-emerald-600' : 'text-slate-500') }}">
+                                {{ number_format(abs($runningBalance), 2, ',', '.') }} ₺
+                                @if($runningBalance != 0)
+                                    <span class="text-xs font-normal">{{ $runningBalance < 0 ? 'B' : 'A' }}</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endif
                 </tbody>
             </table>
         </div>

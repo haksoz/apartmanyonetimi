@@ -47,15 +47,15 @@
         <div>
             <label class="block text-xs text-slate-500 mb-1">Hesap Türü</label>
             <select name="type_filter" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="resident" @selected($typeFilter === 'resident')>Varsa Kiracı, Yoksa Kat Maliki</option>
+                <option value="resident" @selected($typeFilter === 'resident')>Daire Sakinleri</option>
                 <option value="all" @selected($typeFilter === 'all')>Tümü</option>
                 <option value="owner" @selected($typeFilter === 'owner')>Sadece Kat Maliki</option>
                 <option value="tenant" @selected($typeFilter === 'tenant')>Sadece Kiracı</option>
             </select>
         </div>
-        <div>
+        <div id="status-filter-wrap">
             <label class="block text-xs text-slate-500 mb-1">Durum</label>
-            <select name="status_filter" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <select name="status_filter" id="status_filter" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
                 <option value="active" @selected($statusFilter === 'active')>Aktif</option>
                 <option value="inactive" @selected($statusFilter === 'inactive')>Pasif / Silinmiş</option>
                 <option value="all" @selected($statusFilter === 'all')>Her İkisi</option>
@@ -67,6 +67,25 @@
         </div>
         <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Görüntüle</button>
     </form>
+    <script>
+        (function () {
+            const typeSelect = document.querySelector('select[name="type_filter"]');
+            const statusWrap = document.getElementById('status-filter-wrap');
+            const statusSelect = document.getElementById('status_filter');
+            function toggleStatus() {
+                if (typeSelect.value === 'resident') {
+                    statusWrap.style.display = 'none';
+                    statusSelect.disabled = true;
+                    statusSelect.value = 'active';
+                } else {
+                    statusWrap.style.display = '';
+                    statusSelect.disabled = false;
+                }
+            }
+            typeSelect.addEventListener('change', toggleStatus);
+            toggleStatus();
+        })();
+    </script>
 
     @php
         $totalBorç = 0;
@@ -154,6 +173,8 @@
                                 {{ $account->name }}
                                 @if($showAccountType && $account->type === 'owner')
                                     <span class="ml-1 text-[10px] text-slate-400">(Kat Maliki)</span>
+                                @elseif($showAccountType && $account->type === 'tenant')
+                                    <span class="ml-1 text-[10px] text-slate-400">(Kiracı)</span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-right text-slate-700">{{ $data['pastRemaining'] > 0 ? number_format($data['pastRemaining'], 2, ',', '.') . ' ₺' : '—' }}</td>

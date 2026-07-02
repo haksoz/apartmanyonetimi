@@ -395,7 +395,15 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
-        $accounts  = Account::where('apartment_id', $apartment->id)->where('is_active', true)->orderBy('name')->get();
+        $accounts  = Account::with('unit')
+            ->where('accounts.apartment_id', $apartment->id)
+            ->where('accounts.is_active', true)
+            ->leftJoin('units', 'units.id', '=', 'accounts.unit_id')
+            ->orderByRaw("CASE WHEN accounts.type = 'supplier' THEN 1 ELSE 0 END")
+            ->orderByRaw('LENGTH(units.unit_no), units.unit_no')
+            ->orderBy('accounts.name')
+            ->select('accounts.*')
+            ->get();
         $accountId = $request->input('account_id');
         $dateFrom  = $request->input('date_from', now()->startOfYear()->format('Y-m-d'));
         $dateTo    = $request->input('date_to', now()->format('Y-m-d'));
@@ -403,11 +411,22 @@ class ReportController extends Controller
         $transactions = collect();
         $account = null;
         $runningBalance = 0;
+        $openingBalance = 0;
         $totalDebit = 0;
         $totalCredit = 0;
 
         if ($accountId) {
             $account = Account::find($accountId);
+
+            $openingTxs = AccountTransaction::where('account_id', $accountId)
+                ->where('transaction_date', '<', $dateFrom)
+                ->orderBy('transaction_date')->orderBy('id')
+                ->get();
+            foreach ($openingTxs as $t) {
+                $openingBalance += $t->type === 'debit' ? -(float)$t->amount : (float)$t->amount;
+            }
+
+            $runningBalance = $openingBalance;
             $transactions = AccountTransaction::with('transactionable')
                 ->where('account_id', $accountId)
                 ->whereBetween('transaction_date', [$dateFrom, $dateTo])
@@ -428,7 +447,7 @@ class ReportController extends Controller
             $totalCredit = $transactions->where('type', 'credit')->sum('amount');
         }
 
-        return view('reports.account-statement', compact('apartment', 'accounts', 'account', 'transactions', 'accountId', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'runningBalance'));
+        return view('reports.account-statement', compact('apartment', 'accounts', 'account', 'transactions', 'accountId', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'runningBalance', 'openingBalance'));
     }
 
     public function accountStatementExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -439,9 +458,18 @@ class ReportController extends Controller
         $accountId = $request->input('account_id');
         $dateFrom  = $request->input('date_from', now()->startOfYear()->format('Y-m-d'));
         $dateTo    = $request->input('date_to', now()->format('Y-m-d'));
-        $account   = Account::find($accountId);
+        $account   = Account::with('unit')->find($accountId);
 
-        $runningBalance = 0;
+        $openingBalance = 0;
+        $openingTxs = AccountTransaction::where('account_id', $accountId)
+            ->where('transaction_date', '<', $dateFrom)
+            ->orderBy('transaction_date')->orderBy('id')
+            ->get();
+        foreach ($openingTxs as $t) {
+            $openingBalance += $t->type === 'debit' ? -(float)$t->amount : (float)$t->amount;
+        }
+
+        $runningBalance = $openingBalance;
         $transactions = AccountTransaction::with('transactionable')
             ->where('account_id', $accountId)
             ->whereBetween('transaction_date', [$dateFrom, $dateTo])
@@ -456,20 +484,63 @@ class ReportController extends Controller
 
         $totalDebit  = $transactions->where('type', 'debit')->sum('amount');
         $totalCredit = $transactions->where('type', 'credit')->sum('amount');
+        $accounts    = collect();
+        $pdfMode     = true;
+
+        $summaryText = $runningBalance < 0
+            ? 'Hesabın toplam ' . number_format(abs($runningBalance), 2, ',', '.') . ' TL borcu vardır.'
+            : ($runningBalance > 0
+                ? 'Hesabın toplam ' . number_format($runningBalance, 2, ',', '.') . ' TL alacağı vardır.'
+                : 'Hesabın borcu yoktur.');
+        $summaryColor = $runningBalance < 0 ? 'bg-red-50 border-red-200 text-red-700' : ($runningBalance > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600');
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.account-statement', compact('apartment', 'account', 'accounts', 'transactions', 'accountId', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'runningBalance'), 'cari-ekstre');
+            $pdfSlug = $account ? preg_replace('/[^a-z0-9]+/', '-', mb_strtolower(str_replace(
+                ['ç','ğ','ı','ö','ş','ü','Ç','Ğ','İ','Ö','Ş','Ü'],
+                ['c','g','i','o','s','u','c','g','i','o','s','u'],
+                $account->name
+            ))) : 'hesap';
+            return $this->pdfResponse('reports.account-statement-pdf', compact('apartment', 'account', 'transactions', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'runningBalance', 'openingBalance', 'summaryText'), 'cari-ekstre-' . $pdfSlug);
         }
+
+        $unitNo   = $account?->unit?->unit_no ? 'Daire ' . $account->unit->unit_no . ' — ' : '';
+        $tlFormat = '#,##0.00 "TL"';
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet()->setTitle('Cari Ekstre');
         $sheet->mergeCells('A1:F1');
-        $sheet->setCellValue('A1', 'CARİ EKSTRE — ' . ($account?->name ?? '-') . ' — ' . $apartment->name);
+        $sheet->setCellValue('A1', 'CARİ EKSTRE — ' . $unitNo . ($account?->name ?? '-') . ' — ' . $apartment->name);
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->fromArray(['Tarih', 'Tür', 'Açıklama', 'Borç (₺)', 'Alacak (₺)', 'Bakiye (₺)'], null, 'A3');
-        $this->applyHeaderStyle($sheet, 'A3:F3');
-        $row = 4;
+        $sheet->mergeCells('A2:F2');
+        $sheet->setCellValue('A2', 'Dönem: ' . \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') . ' – ' . \Carbon\Carbon::parse($dateTo)->format('d.m.Y'));
+        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $summaryText = $runningBalance < 0
+            ? 'Hesabın toplam ' . number_format(abs($runningBalance), 2, ',', '.') . ' TL borcu vardır.'
+            : ($runningBalance > 0
+                ? 'Hesabın toplam ' . number_format($runningBalance, 2, ',', '.') . ' TL alacağı vardır.'
+                : 'Hesabın borcu yoktur.');
+        $sheet->mergeCells('A3:F3');
+        $sheet->setCellValue('A3', $summaryText);
+        $sheet->getStyle('A3')->getFont()->setBold(true);
+        $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $summaryRgb = $runningBalance < 0 ? 'FEE2E2' : ($runningBalance > 0 ? 'D1FAE5' : 'F1F5F9');
+        $sheet->getStyle('A3')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($summaryRgb);
+        $sheet->fromArray(['Tarih', 'Tür', 'Açıklama', 'Borç (TL)', 'Alacak (TL)', 'Bakiye (TL)'], null, 'A4');
+        $this->applyHeaderStyle($sheet, 'A4:F4');
+        $row = 5;
+        // Açılış bakiyesi satırı
+        $sheet->fromArray([
+            \Carbon\Carbon::parse($dateFrom)->format('d.m.Y'),
+            'Açılış',
+            'Dönem Açılış Bakiyesi',
+            $openingBalance > 0 ? $openingBalance : 0,
+            $openingBalance < 0 ? abs($openingBalance) : 0,
+            $openingBalance,
+        ], null, 'A' . $row);
+        $sheet->getStyle('A' . $row . ':F' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F8FAFC');
+        $sheet->getStyle('D' . $row . ':F' . $row)->getNumberFormat()->setFormatCode($tlFormat);
+        $row++;
         foreach ($transactions as $tx) {
             $sheet->fromArray([
                 $tx->transaction_date?->format('d.m.Y'),
@@ -478,13 +549,39 @@ class ReportController extends Controller
                 $tx->type === 'debit' ? $tx->amount : 0,
                 $tx->type === 'credit' ? $tx->amount : 0,
                 $tx->running_balance,
-            ], null, 'A' . $row++);
+            ], null, 'A' . $row);
+            $sheet->getStyle('D' . $row . ':F' . $row)->getNumberFormat()->setFormatCode($tlFormat);
+            $row++;
         }
+        // Dip toplam satırı
+        $dataStartRow = 5; // açılış satırı dahil veri başlangıcı
+        $dataEndRow   = $row - 1;
+        $sheet->fromArray([
+            '',
+            '',
+            'TOPLAM',
+            $totalDebit,
+            $totalCredit,
+            $runningBalance,
+        ], null, 'A' . $row);
+        $sheet->getStyle('A' . $row . ':F' . $row)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $row . ':F' . $row)->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setRGB('F1F5F9');
+        $sheet->getStyle('D' . $row . ':F' . $row)->getNumberFormat()->setFormatCode($tlFormat);
+        $sheet->getStyle('C' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+
         foreach (['A' => 13, 'B' => 10, 'C' => 32, 'D' => 14, 'E' => 14, 'F' => 14] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
-        return $this->excelResponse($spreadsheet, 'cari-ekstre');
+        $accountSlug = $account ? preg_replace('/[^a-z0-9]+/', '-', mb_strtolower(str_replace(
+            ['ç','ğ','ı','ö','ş','ü','Ç','Ğ','İ','Ö','Ş','Ü'],
+            ['c','g','i','o','s','u','c','g','i','o','s','u'],
+            $account->name
+        ))) : 'hesap';
+
+        return $this->excelResponse($spreadsheet, 'cari-ekstre-' . $accountSlug);
     }
 
     // -------------------------------------------------------------------------
@@ -1154,7 +1251,7 @@ class ReportController extends Controller
             $data = $accountData[$account->id];
             $rowData = [
                 $account->unit?->unit_no,
-                $account->name . ($showAccountType && $account->type === 'owner' ? ' (Kat Maliki)' : ''),
+                $account->name . ($showAccountType && $account->type === 'owner' ? ' (Kat Maliki)' : ($showAccountType && $account->type === 'tenant' ? ' (Kiracı)' : '')),
                 $data['pastRemaining'],
                 $data['selectedAmount'],
                 $data['paid'],

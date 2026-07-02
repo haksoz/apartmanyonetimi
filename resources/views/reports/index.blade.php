@@ -8,6 +8,36 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
+        {{-- Aylık Aidat Pano Tablosu --}}
+        <a href="{{ route('reports.monthly-board') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-indigo-400 hover:shadow-md transition-all">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition">
+                    <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-indigo-700">Aylık Aidat Pano Tablosu</h2>
+                    <p class="mt-1 text-xs text-slate-500">Belirli ay için pano çıktısı, PDF/Excel</p>
+                </div>
+            </div>
+        </a>
+
+        {{-- Cari Ekstreler --}}
+        <a href="{{ route('reports.account-statement') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-violet-400 hover:shadow-md transition-all">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-violet-50 flex items-center justify-center group-hover:bg-violet-100 transition">
+                    <svg class="w-6 h-6 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-violet-700">Cari Ekstreler</h2>
+                    <p class="mt-1 text-xs text-slate-500">Hesap bazlı hareket dökümü ve bakiye</p>
+                </div>
+            </div>
+        </a>
+
         {{-- Gelir-Gider Raporu --}}
         <a href="{{ route('reports.income-expense') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-emerald-400 hover:shadow-md transition-all">
             <div class="flex items-start gap-4">
@@ -49,21 +79,6 @@
                 <div>
                     <h2 class="text-sm font-semibold text-slate-800 group-hover:text-blue-700">Alacak Listesi</h2>
                     <p class="mt-1 text-xs text-slate-500">Tedarikçi ve hesap alacakları</p>
-                </div>
-            </div>
-        </a>
-
-        {{-- Cari Ekstreler --}}
-        <a href="{{ route('reports.account-statement') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-violet-400 hover:shadow-md transition-all">
-            <div class="flex items-start gap-4">
-                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-violet-50 flex items-center justify-center group-hover:bg-violet-100 transition">
-                    <svg class="w-6 h-6 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-violet-700">Cari Ekstreler</h2>
-                    <p class="mt-1 text-xs text-slate-500">Hesap bazlı hareket dökümü ve bakiye</p>
                 </div>
             </div>
         </a>
@@ -125,21 +140,6 @@
                 <div>
                     <h2 class="text-sm font-semibold text-slate-800 group-hover:text-amber-600">Bütçe Raporu</h2>
                     <p class="mt-1 text-xs text-slate-500">Kategori bazlı gider gerçekleşme analizi</p>
-                </div>
-            </div>
-        </a>
-
-        {{-- Aylık Aidat Pano Tablosu --}}
-        <a href="{{ route('reports.monthly-board') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-indigo-400 hover:shadow-md transition-all">
-            <div class="flex items-start gap-4">
-                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition">
-                    <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-indigo-700">Aylık Aidat Pano Tablosu</h2>
-                    <p class="mt-1 text-xs text-slate-500">Belirli ay için pano çıktısı, PDF/Excel</p>
                 </div>
             </div>
         </a>
