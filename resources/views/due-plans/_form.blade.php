@@ -17,20 +17,68 @@
            class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none" required>
 </div>
 
-<div class="grid grid-cols-2 gap-4">
-    <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Yıl</label>
-        <input type="number" name="year" value="{{ old('year', $plan?->year ?? now()->year) }}"
-               min="2000" max="2100"
-               class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none" required>
+@php
+    $autoGenChecked = old('auto_generate', $plan?->auto_generate ?? false);
+@endphp
+
+<div>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Yıl</label>
+    <input type="number" name="year" id="plan_year" value="{{ old('year', $plan?->year ?? now()->year) }}"
+           min="2000" max="2100"
+           class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none" required>
+</div>
+
+<div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-slate-700">Her ay otomatik oluşturulsun mu?</p>
+            <p class="text-xs text-slate-500 mt-0.5">Aktifse sistem her ay belirlenen günde aidat oluşturur.</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="auto_generate" value="0">
+            <input type="checkbox" name="auto_generate" id="auto_generate" value="1"
+                   {{ $autoGenChecked ? 'checked' : '' }}
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer
+                        peer-checked:bg-slate-800
+                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                        after:bg-white after:rounded-full after:h-5 after:w-5
+                        after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
     </div>
+
+    <div id="field-generate-day" class="{{ $autoGenChecked ? '' : 'hidden' }}">
+        <label class="block text-sm font-medium text-slate-700 mb-1">Aidat Oluşturma Günü (1-28)</label>
+        <input type="number" name="generate_day" id="generate_day"
+               value="{{ old('generate_day', $plan?->generate_day ?? 1) }}"
+               min="1" max="28"
+               class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
+        <p class="mt-1 text-xs text-slate-500">Sistem her ayın bu gününde aidatı otomatik oluşturur.</p>
+    </div>
+
     <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">Vade Günü (1-28)</label>
         <input type="number" name="due_day" value="{{ old('due_day', $plan?->due_day ?? 1) }}"
                min="1" max="28"
                class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none" required>
+        <p class="mt-1 text-xs text-slate-500">Oluşturulan aidatın son ödeme tarihi.</p>
     </div>
 </div>
+
+<script>
+    (function() {
+        var toggle = document.getElementById('auto_generate');
+        var fieldGenDay = document.getElementById('field-generate-day');
+        var genDayInput = document.getElementById('generate_day');
+
+        toggle.addEventListener('change', function() {
+            fieldGenDay.classList.toggle('hidden', !this.checked);
+            genDayInput.required = this.checked;
+        });
+
+        genDayInput.required = toggle.checked;
+    })();
+</script>
 
 <div>
     <label class="block text-sm font-medium text-slate-700 mb-1">Tutar Türü</label>
@@ -44,11 +92,6 @@
             <input type="radio" name="amount_type" value="yearly" id="amount_yearly"
                    {{ old('amount_type', $plan?->amount_type) === 'yearly' ? 'checked' : '' }}>
             <span class="text-sm text-slate-700">Yıllık toplam</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="amount_type" value="per_unit" id="amount_per_unit"
-                   {{ old('amount_type', $plan?->amount_type) === 'per_unit' ? 'checked' : '' }}>
-            <span class="text-sm text-slate-700">Daire başı tutar</span>
         </label>
     </div>
 </div>
@@ -234,26 +277,15 @@
     </select>
 </div>
 
-<div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Borç Türü</label>
-    <select name="due_type" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-        <option value="">— Tür seçin —</option>
-        @foreach ($dueTypes as $t)
-            <option value="{{ $t['value'] }}" {{ old('due_type', $plan?->due_type?->value) == $t['value'] ? 'selected' : '' }}>{{ $t['label'] }}</option>
-        @endforeach
-    </select>
-</div>
+
+
 
 <div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Konu / Kategori <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
-    <select name="category_id" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-        <option value="">— Kategori seçin —</option>
-        @foreach ($categories as $cat)
-            <option value="{{ $cat->id }}" {{ old('category_id', $plan?->category_id) == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-        @endforeach
-    </select>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Açıklama <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
+    <textarea name="description" id="plan_description" rows="3"
+              class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none resize-none"
+              placeholder="Aidat oluşturulurken kullanılacak açıklama...">{{ old('description', $plan?->description) }}</textarea>
 </div>
-
 
 <div class="flex items-center gap-2">
     <input type="hidden" name="is_active" value="0">
@@ -272,4 +304,23 @@
             document.getElementById('field-distribution').classList.toggle('hidden', this.value === 'per_unit');
         });
     });
+
+    (function() {
+        var yearInput       = document.getElementById('plan_year');
+        var descriptionArea = document.getElementById('plan_description');
+
+        function updatePlanDescription() {
+            var year = yearInput?.value;
+            if (year) {
+                descriptionArea.value = year + ' - Aidat';
+            }
+        }
+
+        yearInput?.addEventListener('input', updatePlanDescription);
+        yearInput?.addEventListener('change', updatePlanDescription);
+
+        @if (!$isEdit)
+        updatePlanDescription();
+        @endif
+    })();
 </script>

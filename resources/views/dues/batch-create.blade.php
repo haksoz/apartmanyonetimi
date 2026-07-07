@@ -195,7 +195,7 @@
                 </div>
 
                 <div>
-                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Konu / Kategori <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
+                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
                     <select id="category_id" name="category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
                         <option value="">Kategori seçin</option>
                         @foreach ($categories as $cat)
@@ -563,8 +563,7 @@
                 if (period && typeName) {
                     const [year, month] = period.split('-');
                     const monthName = months[month] || month;
-                    const suffix = topicName ? ` / ${topicName}` : '';
-                    descriptionInput.value = `${monthName} ${year} - ${typeName}${suffix}`;
+                    descriptionInput.value = `${monthName} ${year} - ${typeName}`;
                 }
             };
 
@@ -576,7 +575,6 @@
                 isDueDateManuallySet = dueDateInput.value !== '';
             });
             typeSelect?.addEventListener('change', updateDescription);
-            topicSelect?.addEventListener('change', updateDescription);
             periodInput?.addEventListener('change', updateDescription);
 
             // Init

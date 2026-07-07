@@ -30,6 +30,8 @@ class DuePlan extends Model
         'distribution_type',
         'target_audience',
         'due_day',
+        'auto_generate',
+        'generate_day',
         'description',
         'is_active',
     ];
@@ -38,8 +40,10 @@ class DuePlan extends Model
         'monthly_amount'  => 'decimal:2',
         'yearly_amount'   => 'decimal:2',
         'per_unit_amount' => 'decimal:2',
-        'due_day'        => 'integer',
-        'year'           => 'integer',
+        'due_day'         => 'integer',
+        'auto_generate'   => 'boolean',
+        'generate_day'    => 'integer',
+        'year'            => 'integer',
         'is_active'      => 'boolean',
         'due_type'       => DueType::class,
     ];

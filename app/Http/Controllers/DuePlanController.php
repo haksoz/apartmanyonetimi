@@ -63,9 +63,9 @@ class DuePlanController extends Controller
             'per_unit_amount'   => ['required_if:amount_type,per_unit', 'nullable', 'numeric', 'min:0.01'],
             'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
             'target_audience'   => ['required', Rule::in(['tenant_priority', 'owner_only'])],
-            'due_type'          => ['nullable', Rule::in(DueType::values())],
-            'category_id'       => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
             'due_day'           => ['required', 'integer', 'min:1', 'max:28'],
+            'auto_generate'     => ['boolean'],
+            'generate_day'      => ['required_if:auto_generate,1', 'nullable', 'integer', 'min:1', 'max:28'],
             'description'       => ['nullable', 'string', 'max:255'],
             'is_active'         => ['boolean'],
         ]);
@@ -74,12 +74,37 @@ class DuePlanController extends Controller
             $validated['per_unit_amount'] = round((float) $validated['per_unit_amount'], 2);
         }
 
+        if ($request->boolean('auto_generate', false)) {
+            $existingAutoPlan = DuePlan::where('apartment_id', $apartment->id)
+                ->where('auto_generate', true)
+                ->where('is_active', true)
+                ->first();
+
+            if ($existingAutoPlan) {
+                return back()->withInput()->withErrors([
+                    'auto_generate' => "Bu apartmanda zaten aktif bir otomatik aidat planı mevcut: \"{$existingAutoPlan->name}\". Apartman başına yalnızca 1 adet otomatik plan oluşturulabilir. Mevcut planı devre dışı bırakarak yeni plan oluşturabilirsiniz.",
+                ]);
+            }
+        }
+
+        $aidatCategory = Category::where('apartment_id', $apartment->id)
+            ->where('name', 'Aidat')
+            ->where('is_active', true)
+            ->first();
+
         DuePlan::create(array_merge($validated, [
-            'apartment_id' => $apartment->id,
-            'is_active'    => $request->boolean('is_active', true),
+            'apartment_id'  => $apartment->id,
+            'category_id'   => $aidatCategory?->id,
+            'due_type'      => DueType::Aidat,
+            'is_active'     => $request->boolean('is_active', true),
+            'auto_generate' => $request->boolean('auto_generate', false),
         ]));
 
-        return redirect()->route('due-plans.index')->with('status', 'Aidat planı oluşturuldu.');
+        $message = $request->boolean('auto_generate', false)
+            ? 'Aidat planı oluşturuldu. Sistem her ay belirlenen günde aidatı otomatik oluşturacaktır.'
+            : 'Aidat planı oluşturuldu. Aidatlar bölümünden bu plana göre aidat borçlandırması yapabilirsiniz.';
+
+        return redirect()->route('due-plans.index')->with('status', $message);
     }
 
     public function edit(CurrentApartment $currentApartment, DuePlan $duePlan)
@@ -114,9 +139,9 @@ class DuePlanController extends Controller
             'per_unit_amount'   => ['required_if:amount_type,per_unit', 'nullable', 'numeric', 'min:0.01'],
             'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
             'target_audience'   => ['required', Rule::in(['tenant_priority', 'owner_only'])],
-            'due_type'          => ['nullable', Rule::in(DueType::values())],
-            'category_id'       => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
             'due_day'           => ['required', 'integer', 'min:1', 'max:28'],
+            'auto_generate'     => ['boolean'],
+            'generate_day'      => ['required_if:auto_generate,1', 'nullable', 'integer', 'min:1', 'max:28'],
             'description'       => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -124,8 +149,16 @@ class DuePlanController extends Controller
             $validated['per_unit_amount'] = round((float) $validated['per_unit_amount'], 2);
         }
 
+        $aidatCategory = Category::where('apartment_id', $apartment->id)
+            ->where('name', 'Aidat')
+            ->where('is_active', true)
+            ->first();
+
         $duePlan->update(array_merge($validated, [
-            'is_active' => $request->boolean('is_active', true),
+            'category_id'   => $aidatCategory?->id,
+            'due_type'      => DueType::Aidat,
+            'is_active'     => $request->boolean('is_active', true),
+            'auto_generate' => $request->boolean('auto_generate', false),
         ]));
 
         return redirect()->route('due-plans.index')->with('status', 'Aidat planı güncellendi.');
@@ -154,7 +187,7 @@ class DuePlanController extends Controller
 
         $validated = $request->validate([
             'period'      => ['required', 'date_format:Y-m'],
-            'description' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:255'],
         ]);
 
         $period = $validated['period'];
@@ -203,7 +236,16 @@ class DuePlanController extends Controller
             return redirect()->route('due-plans.index')->with('error', 'Aidatlandırılacak daire bulunamadı.');
         }
 
-        $batchDescription = $validated['description'];
+        $turkishMonths = [
+            1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan',
+            5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos',
+            9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık',
+        ];
+        $monthName = $turkishMonths[(int) $periodDate->format('n')];
+        $planLabel = $duePlan->due_type_label !== '-' ? $duePlan->due_type_label : $duePlan->name;
+        $batchDescription = !empty($validated['description'])
+            ? $validated['description']
+            : "{$monthName} {$periodDate->year} - {$planLabel}";
 
         DB::transaction(function () use ($duePlan, $apartment, $period, $monthlyAmount, $dueDate, $periodDate, $unitAccounts, $totalWeight, $batchDescription) {
 
