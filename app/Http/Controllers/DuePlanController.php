@@ -30,7 +30,15 @@ class DuePlanController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('due-plans.index', compact('plans', 'apartment'));
+        $orphanBatches = DueBatch::query()
+            ->withCount('dues')
+            ->whereNull('due_plan_id')
+            ->where('apartment_id', $apartment->id)
+            ->has('dues')
+            ->orderBy('period')
+            ->get();
+
+        return view('due-plans.index', compact('plans', 'apartment', 'orphanBatches'));
     }
 
     public function create(CurrentApartment $currentApartment)
@@ -57,6 +65,8 @@ class DuePlanController extends Controller
         $validated = $request->validate([
             'name'              => ['required', 'string', 'max:255'],
             'year'              => ['required', 'integer', 'min:2000', 'max:2100'],
+            'due_type'          => ['required', Rule::in(DueType::values())],
+            'category_id'       => ['nullable', 'exists:categories,id'],
             'amount_type'       => ['required', Rule::in(['monthly', 'yearly', 'per_unit'])],
             'monthly_amount'    => ['required_if:amount_type,monthly', 'nullable', 'numeric', 'min:0.01'],
             'yearly_amount'     => ['required_if:amount_type,yearly', 'nullable', 'numeric', 'min:0.01'],
@@ -65,13 +75,25 @@ class DuePlanController extends Controller
             'target_audience'   => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'due_day'           => ['required', 'integer', 'min:1', 'max:28'],
             'auto_generate'     => ['boolean'],
-            'generate_day'      => ['required_if:auto_generate,1', 'nullable', 'integer', 'min:1', 'max:28'],
+            'generate_day'      => ['required', 'integer', 'min:1', 'max:28'],
             'description'       => ['nullable', 'string', 'max:255'],
             'is_active'         => ['boolean'],
         ]);
 
         if (isset($validated['per_unit_amount'])) {
             $validated['per_unit_amount'] = round((float) $validated['per_unit_amount'], 2);
+        }
+
+        $duplicatePlan = DuePlan::where('apartment_id', $apartment->id)
+            ->where('year', $validated['year'])
+            ->where('due_type', $validated['due_type'])
+            ->where('category_id', $validated['category_id'] ?? null)
+            ->first();
+
+        if ($duplicatePlan) {
+            return back()->withInput()->withErrors([
+                'year' => "Bu yıl, tür ve kategori kombinasyonu için zaten \"" . $duplicatePlan->name . "\" adında bir plan mevcut.",
+            ]);
         }
 
         if ($request->boolean('auto_generate', false)) {
@@ -87,18 +109,15 @@ class DuePlanController extends Controller
             }
         }
 
-        $aidatCategory = Category::where('apartment_id', $apartment->id)
-            ->where('name', 'Aidat')
-            ->where('is_active', true)
-            ->first();
-
-        DuePlan::create(array_merge($validated, [
+        $plan = DuePlan::create(array_merge($validated, [
             'apartment_id'  => $apartment->id,
-            'category_id'   => $aidatCategory?->id,
-            'due_type'      => DueType::Aidat,
             'is_active'     => $request->boolean('is_active', true),
             'auto_generate' => $request->boolean('auto_generate', false),
         ]));
+
+        if ($request->boolean('auto_generate', false) && $request->boolean('start_this_month', false)) {
+            $this->createDuesForPeriod($plan, now()->format('Y-m'));
+        }
 
         $message = $request->boolean('auto_generate', false)
             ? 'Aidat planı oluşturuldu. Sistem her ay belirlenen günde aidatı otomatik oluşturacaktır.'
@@ -133,6 +152,8 @@ class DuePlanController extends Controller
         $validated = $request->validate([
             'name'              => ['required', 'string', 'max:255'],
             'year'              => ['required', 'integer', 'min:2000', 'max:2100'],
+            'due_type'          => ['required', Rule::in(DueType::values())],
+            'category_id'       => ['nullable', 'exists:categories,id'],
             'amount_type'       => ['required', Rule::in(['monthly', 'yearly', 'per_unit'])],
             'monthly_amount'    => ['required_if:amount_type,monthly', 'nullable', 'numeric', 'min:0.01'],
             'yearly_amount'     => ['required_if:amount_type,yearly', 'nullable', 'numeric', 'min:0.01'],
@@ -141,7 +162,7 @@ class DuePlanController extends Controller
             'target_audience'   => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'due_day'           => ['required', 'integer', 'min:1', 'max:28'],
             'auto_generate'     => ['boolean'],
-            'generate_day'      => ['required_if:auto_generate,1', 'nullable', 'integer', 'min:1', 'max:28'],
+            'generate_day'      => ['required', 'integer', 'min:1', 'max:28'],
             'description'       => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -149,14 +170,20 @@ class DuePlanController extends Controller
             $validated['per_unit_amount'] = round((float) $validated['per_unit_amount'], 2);
         }
 
-        $aidatCategory = Category::where('apartment_id', $apartment->id)
-            ->where('name', 'Aidat')
-            ->where('is_active', true)
+        $duplicatePlan = DuePlan::where('apartment_id', $apartment->id)
+            ->where('year', $validated['year'])
+            ->where('due_type', $validated['due_type'])
+            ->where('category_id', $validated['category_id'] ?? null)
+            ->where('id', '!=', $duePlan->id)
             ->first();
 
+        if ($duplicatePlan) {
+            return back()->withInput()->withErrors([
+                'year' => "Bu yıl, tür ve kategori kombinasyonu için zaten \"" . $duplicatePlan->name . "\" adında bir plan mevcut.",
+            ]);
+        }
+
         $duePlan->update(array_merge($validated, [
-            'category_id'   => $aidatCategory?->id,
-            'due_type'      => DueType::Aidat,
             'is_active'     => $request->boolean('is_active', true),
             'auto_generate' => $request->boolean('auto_generate', false),
         ]));
@@ -170,13 +197,20 @@ class DuePlanController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
         if ($duePlan->apartment_id !== $apartment->id) abort(404);
 
-        if ($duePlan->batches()->exists()) {
-            return redirect()->route('due-plans.index')->with('error', 'Bu plana ait aidatlandırma kayıtları olduğu için silinemez.');
-        }
-
         $duePlan->delete();
 
         return redirect()->route('due-plans.index')->with('status', 'Aidat planı silindi.');
+    }
+
+    public function deactivate(CurrentApartment $currentApartment, DuePlan $duePlan)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
+        if ($duePlan->apartment_id !== $apartment->id) abort(404);
+
+        $duePlan->update(['is_active' => false, 'auto_generate' => false]);
+
+        return redirect()->route('due-plans.index')->with('status', "\"" . $duePlan->name . "\" planı pasife alındı.");
     }
 
     public function generateMonth(Request $request, CurrentApartment $currentApartment, DuePlan $duePlan)
@@ -192,7 +226,6 @@ class DuePlanController extends Controller
 
         $period = $validated['period'];
 
-        // Çakışma kontrolü: bu plan bu dönem için zaten oluşturulmuş mu?
         if ($duePlan->isGeneratedForPeriod($period)) {
             $existingBatch = $duePlan->batches()->where('period', $period)->whereHas('dues')->first();
             $duesUrl = $existingBatch
@@ -202,17 +235,29 @@ class DuePlanController extends Controller
                 ->with('error_html', "{$period} dönemi için bu plan kapsamında aidat zaten oluşturulmuş. Yeniden oluşturmak istiyorsanız önce mevcut aidatları silmeniz gerekir. <a href=\"{$duesUrl}\" class=\"underline font-semibold\">Mevcut aidatları görüntüle →</a>");
         }
 
-        $monthlyAmount = $duePlan->monthly_amount_resolved;
+        $count = $this->createDuesForPeriod($duePlan, $period, $validated['description'] ?? null);
+
+        if ($count === 0) {
+            return redirect()->route('due-plans.index')->with('error', 'Aidatlandırılacak daire bulunamadı.');
+        }
+
+        return redirect()->route('dues.index')
+            ->with('status', "{$period} dönemi için {$count} daireye aidat oluşturuldu.");
+    }
+
+    public function createDuesForPeriod(DuePlan $duePlan, string $period, ?string $customDescription = null): int
+    {
         $periodDate    = Carbon::parse($period . '-01');
         $dueDate       = $periodDate->copy()->setDay(min($duePlan->due_day, $periodDate->daysInMonth));
+        $createdAtDate = $periodDate->startOfMonth()->toDateString();
+        $monthlyAmount = $duePlan->monthly_amount_resolved;
 
         $units = Unit::query()
             ->with(['ownerAccount', 'accounts'])
-            ->where('apartment_id', $apartment->id)
+            ->where('apartment_id', $duePlan->apartment_id)
             ->orderBy('unit_no')
             ->get();
 
-        // Dağıtım tipine göre birim ağırlıklarını hesapla
         $unitAccounts = [];
         $totalWeight  = 0;
 
@@ -233,7 +278,7 @@ class DuePlanController extends Controller
         }
 
         if (empty($unitAccounts)) {
-            return redirect()->route('due-plans.index')->with('error', 'Aidatlandırılacak daire bulunamadı.');
+            return 0;
         }
 
         $turkishMonths = [
@@ -241,16 +286,14 @@ class DuePlanController extends Controller
             5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos',
             9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık',
         ];
-        $monthName = $turkishMonths[(int) $periodDate->format('n')];
-        $planLabel = $duePlan->due_type_label !== '-' ? $duePlan->due_type_label : $duePlan->name;
-        $batchDescription = !empty($validated['description'])
-            ? $validated['description']
-            : "{$monthName} {$periodDate->year} - {$planLabel}";
+        $monthName        = $turkishMonths[(int) $periodDate->format('n')];
+        $planLabel        = $duePlan->due_type_label !== '-' ? $duePlan->due_type_label : $duePlan->name;
+        $batchDescription = $customDescription ?: "{$monthName} {$periodDate->year} - {$planLabel}";
 
-        DB::transaction(function () use ($duePlan, $apartment, $period, $monthlyAmount, $dueDate, $periodDate, $unitAccounts, $totalWeight, $batchDescription) {
-
+        DB::transaction(function () use ($duePlan, $period, $monthlyAmount, $dueDate, $periodDate, $unitAccounts, $totalWeight, $batchDescription) {
+            $createdAtDate = Carbon::parse($period . '-01')->startOfMonth()->toDateString();
             $batch = DueBatch::create([
-                'apartment_id'      => $apartment->id,
+                'apartment_id'      => $duePlan->apartment_id,
                 'due_plan_id'       => $duePlan->id,
                 'due_type'          => $duePlan->due_type,
                 'category_id'       => $duePlan->category_id,
@@ -271,7 +314,6 @@ class DuePlanController extends Controller
                 $isLast = $index === $count - 1;
 
                 if ($isPerUnit) {
-                    // Daire başı sabit tutar — her daireye aynı miktar
                     $amount = (float) number_format((float) $duePlan->per_unit_amount, 2, '.', '');
                 } elseif ($duePlan->distribution_type === DuePlan::DISTRIBUTION_EQUAL) {
                     $amount = $isLast
@@ -286,38 +328,35 @@ class DuePlanController extends Controller
                 $allocated += $amount;
 
                 $due = Due::create([
-                    'apartment_id'     => $apartment->id,
-                    'due_batch_id'     => $batch->id,
-                    'unit_id'          => $item['unit']->id,
-                    'account_id'       => $item['account']->id,
-                    'due_type'         => $duePlan->due_type,
-                    'category_id'      => $duePlan->category_id,
-                    'period'           => $period,
-                    'amount'           => $amount,
-                    'remaining_amount' => $amount,
-                    'due_date'         => $dueDate,
-                    'status'           => 'unpaid',
-                    'description'      => $batchDescription,
-                    'created_at_manual' => $periodDate->startOfMonth()->toDateString(),
+                    'apartment_id'      => $duePlan->apartment_id,
+                    'due_batch_id'      => $batch->id,
+                    'unit_id'           => $item['unit']->id,
+                    'account_id'        => $item['account']->id,
+                    'due_type'          => $duePlan->due_type,
+                    'category_id'       => $duePlan->category_id,
+                    'period'            => $period,
+                    'amount'            => $amount,
+                    'remaining_amount'  => $amount,
+                    'due_date'          => $dueDate,
+                    'status'            => 'unpaid',
+                    'description'       => $batchDescription,
+                    'created_at_manual' => $createdAtDate,
                 ]);
 
                 AccountTransaction::create([
-                    'apartment_id'       => $apartment->id,
-                    'account_id'         => $item['account']->id,
+                    'apartment_id'         => $duePlan->apartment_id,
+                    'account_id'           => $item['account']->id,
                     'transactionable_type' => Due::class,
-                    'transactionable_id' => $due->id,
-                    'type'               => 'debit',
-                    'description'        => $batchDescription,
-                    'amount'             => $amount,
-                    'transaction_date'   => $periodDate->startOfMonth()->toDateString(),
+                    'transactionable_id'   => $due->id,
+                    'type'                 => 'debit',
+                    'description'          => $batchDescription,
+                    'amount'               => $amount,
+                    'transaction_date'     => $periodDate->startOfMonth()->toDateString(),
                 ]);
             }
         });
 
-        $count = count($unitAccounts);
-
-        return redirect()->route('dues.index')
-            ->with('status', "{$period} dönemi için {$count} daireye aidat oluşturuldu.");
+        return count($unitAccounts);
     }
 
     private function getAccountForPeriod(Unit $unit, Carbon $periodDate, string $targetAudience): ?\App\Models\Account

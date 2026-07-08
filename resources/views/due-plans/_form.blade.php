@@ -32,7 +32,9 @@
     <div class="flex items-center justify-between">
         <div>
             <p class="text-sm font-medium text-slate-700">Her ay otomatik oluşturulsun mu?</p>
-            <p class="text-xs text-slate-500 mt-0.5">Aktifse sistem her ay belirlenen günde aidat oluşturur.</p>
+            <p class="text-xs text-slate-500 mt-0.5" id="auto-generate-hint">
+                {{ $autoGenChecked ? 'Sistem her ay belirlenen günde aidatı otomatik oluşturur.' : 'Kapalı — aidatları Aidat Planları sayfasından siz tetiklersiniz.' }}
+            </p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
             <input type="hidden" name="auto_generate" value="0">
@@ -47,13 +49,15 @@
         </label>
     </div>
 
-    <div id="field-generate-day" class="{{ $autoGenChecked ? '' : 'hidden' }}">
+    <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">Aidat Oluşturma Günü (1-28)</label>
         <input type="number" name="generate_day" id="generate_day"
                value="{{ old('generate_day', $plan?->generate_day ?? 1) }}"
-               min="1" max="28"
+               min="1" max="28" required
                class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-        <p class="mt-1 text-xs text-slate-500">Sistem her ayın bu gününde aidatı otomatik oluşturur.</p>
+        <p class="mt-1 text-xs text-slate-500" id="generate-day-hint">
+            {{ $autoGenChecked ? 'Sistem her ayın bu gününde aidatı otomatik oluşturur.' : 'Aidat oluşturma butonuna bastığınızda bu gün dikkate alınır.' }}
+        </p>
     </div>
 
     <div>
@@ -68,15 +72,18 @@
 <script>
     (function() {
         var toggle = document.getElementById('auto_generate');
-        var fieldGenDay = document.getElementById('field-generate-day');
-        var genDayInput = document.getElementById('generate_day');
+        var autoHint = document.getElementById('auto-generate-hint');
+        var genDayHint = document.getElementById('generate-day-hint');
 
         toggle.addEventListener('change', function() {
-            fieldGenDay.classList.toggle('hidden', !this.checked);
-            genDayInput.required = this.checked;
+            if (this.checked) {
+                autoHint.textContent = 'Sistem her ay belirlenen günde aidatı otomatik oluşturur.';
+                genDayHint.textContent = 'Sistem her ayın bu gününde aidatı otomatik oluşturur.';
+            } else {
+                autoHint.textContent = 'Kapalı — aidatları Aidat Planları sayfasından siz tetiklersiniz.';
+                genDayHint.textContent = 'Aidat oluşturma butonuna bastığınızda bu gün dikkate alınır.';
+            }
         });
-
-        genDayInput.required = toggle.checked;
     })();
 </script>
 
@@ -270,6 +277,29 @@
 </script>
 
 <div>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Borç Türü</label>
+    <select name="due_type" id="plan_due_type" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none" required>
+        @foreach ($dueTypes as $dt)
+            <option value="{{ $dt['value'] }}" {{ old('due_type', $plan?->due_type?->value ?? 'aidat') === $dt['value'] ? 'selected' : '' }}>
+                {{ $dt['label'] }}
+            </option>
+        @endforeach
+    </select>
+</div>
+
+<div>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
+    <select name="category_id" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
+        <option value="">— Kategori seçin (isteğe bağlı) —</option>
+        @foreach ($categories as $cat)
+            <option value="{{ $cat->id }}" {{ old('category_id', $plan?->category_id) == $cat->id ? 'selected' : '' }}>
+                {{ $cat->name }}
+            </option>
+        @endforeach
+    </select>
+</div>
+
+<div>
     <label class="block text-sm font-medium text-slate-700 mb-1">Hedef Kitle</label>
     <select name="target_audience" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
         <option value="tenant_priority" {{ old('target_audience', $plan?->target_audience ?? 'tenant_priority') === 'tenant_priority' ? 'selected' : '' }}>Kiracı öncelikli (kiracı yoksa sahibi)</option>
@@ -311,13 +341,22 @@
 
         function updatePlanDescription() {
             var year = yearInput?.value;
+            var dueTypeSelect = document.getElementById('plan_due_type');
+            var dueTypeLabel = dueTypeSelect ? dueTypeSelect.options[dueTypeSelect.selectedIndex]?.text : 'Aidat';
+            var categorySelect = document.querySelector('select[name="category_id"]');
+            var categoryLabel = categorySelect ? categorySelect.options[categorySelect.selectedIndex]?.text : '';
+            if (categoryLabel && categorySelect?.value === '') categoryLabel = '';
             if (year) {
-                descriptionArea.value = year + ' - Aidat';
+                var desc = year + ' - ' + (dueTypeLabel || 'Aidat');
+                if (categoryLabel) desc += ' - ' + categoryLabel;
+                descriptionArea.value = desc;
             }
         }
 
         yearInput?.addEventListener('input', updatePlanDescription);
         yearInput?.addEventListener('change', updatePlanDescription);
+        document.getElementById('plan_due_type')?.addEventListener('change', updatePlanDescription);
+        document.querySelector('select[name="category_id"]')?.addEventListener('change', updatePlanDescription);
 
         @if (!$isEdit)
         updatePlanDescription();

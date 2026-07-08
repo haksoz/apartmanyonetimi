@@ -91,7 +91,7 @@ class DuePlan extends Model
     public function getDistributionLabelAttribute(): string
     {
         return match ($this->distribution_type) {
-            self::DISTRIBUTION_EQUAL             => 'Eşit',
+            self::DISTRIBUTION_EQUAL             => 'Eşit böl',
             self::DISTRIBUTION_SQUARE_METERS     => 'Metrekareye göre',
             self::DISTRIBUTION_SHARE_COEFFICIENT => 'Pay çarpanına göre',
             default                              => ucfirst((string) $this->distribution_type),

@@ -86,16 +86,6 @@ class DueController extends Controller
 
         $dues = $dues->paginate(25)->withQueryString();
 
-        $activePlans = $apartment
-            ? \App\Models\DuePlan::query()
-                ->withCount('batches')
-                ->where('apartment_id', $apartment->id)
-                ->where('is_active', true)
-                ->orderBy('year')
-                ->orderBy('name')
-                ->get(['id', 'name', 'year', 'due_type'])
-            : collect();
-
         $units = $apartment
             ? Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get(['id', 'unit_no'])
             : collect();
@@ -108,7 +98,7 @@ class DueController extends Controller
             ->where('is_imported', true)
             ->exists();
 
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'activePlans', 'filters', 'isOwner', 'units', 'showImported', 'hasImported'));
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'showImported', 'hasImported'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)

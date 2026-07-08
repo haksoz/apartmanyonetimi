@@ -245,6 +245,9 @@ class ApartmentController extends Controller
             // Delete due batches
             DueBatch::where('apartment_id', $apartment->id)->delete();
 
+            // Delete due plans
+            \App\Models\DuePlan::where('apartment_id', $apartment->id)->delete();
+
             // Delete expenses
             Expense::where('apartment_id', $apartment->id)->delete();
 
