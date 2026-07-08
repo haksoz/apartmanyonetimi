@@ -96,6 +96,117 @@ class DuePageTest extends TestCase
             ->assertSee('Ocak 2026 aidatı');
     }
 
+    public function test_status_filter_matches_computed_status(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Kat Maliki',
+            'is_active' => true,
+        ]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+
+        $paidDue = Due::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'unit_id' => $unit->id,
+            'due_type' => \App\Enums\DueType::Aidat,
+            'category_id' => $category->id,
+            'period' => '2026-01',
+            'amount' => 500,
+            'remaining_amount' => 0,
+            'due_date' => '2026-01-31',
+            'status' => 'paid',
+            'description' => 'Ödenmiş aidat',
+        ]);
+        $partialDue = Due::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'unit_id' => $unit->id,
+            'due_type' => \App\Enums\DueType::Aidat,
+            'category_id' => $category->id,
+            'period' => '2026-02',
+            'amount' => 500,
+            'remaining_amount' => 200,
+            'due_date' => '2026-02-28',
+            'status' => 'partial',
+            'description' => 'Kısmen ödenmiş aidat',
+        ]);
+        $overdueDue = Due::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'unit_id' => $unit->id,
+            'due_type' => \App\Enums\DueType::Aidat,
+            'category_id' => $category->id,
+            'period' => '2025-01',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => now()->subMonth()->format('Y-m-d'),
+            'status' => 'unpaid',
+            'description' => 'Gecikmiş aidat',
+        ]);
+        $pendingDue = Due::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'unit_id' => $unit->id,
+            'due_type' => \App\Enums\DueType::Aidat,
+            'category_id' => $category->id,
+            'period' => '2026-12',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => now()->addMonth()->format('Y-m-d'),
+            'status' => 'unpaid',
+            'description' => 'Bekleyen aidat',
+        ]);
+
+        $base = $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user);
+
+        $base->get(route('dues.index', ['status' => 'paid']))
+            ->assertStatus(200)
+            ->assertSee('Ödenmiş aidat')
+            ->assertDontSee('Kısmen ödenmiş aidat')
+            ->assertDontSee('Gecikmiş aidat')
+            ->assertDontSee('Bekleyen aidat');
+
+        $base->get(route('dues.index', ['status' => 'partial']))
+            ->assertStatus(200)
+            ->assertSee('Kısmen ödenmiş aidat')
+            ->assertDontSee('Ödenmiş aidat')
+            ->assertDontSee('Gecikmiş aidat')
+            ->assertDontSee('Bekleyen aidat');
+
+        $base->get(route('dues.index', ['status' => 'overdue']))
+            ->assertStatus(200)
+            ->assertSee('Gecikmiş aidat')
+            ->assertDontSee('Ödenmiş aidat')
+            ->assertDontSee('Kısmen ödenmiş aidat')
+            ->assertDontSee('Bekleyen aidat');
+
+        $base->get(route('dues.index', ['status' => 'unpaid']))
+            ->assertStatus(200)
+            ->assertSee('Bekleyen aidat')
+            ->assertDontSee('Ödenmiş aidat')
+            ->assertDontSee('Kısmen ödenmiş aidat')
+            ->assertDontSee('Gecikmiş aidat');
+
+        $base->get(route('dues.index'))
+            ->assertStatus(200)
+            ->assertSee('Ödenmiş aidat')
+            ->assertSee('Kısmen ödenmiş aidat')
+            ->assertSee('Gecikmiş aidat')
+            ->assertSee('Bekleyen aidat');
+    }
+
     public function test_dues_index_lists_only_selected_apartment_dues(): void
     {
         $user = User::factory()->create();

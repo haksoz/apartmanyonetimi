@@ -75,7 +75,7 @@ class DueController extends Controller
                 });
             })
             ->when($filterPeriod,  fn ($q) => $q->where('period', $filterPeriod))
-            ->when($filterStatus,  fn ($q) => $q->where('status', $filterStatus))
+            ->when($filterStatus,  fn ($q) => $this->applyStatusFilter($q, $filterStatus))
             ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))
             ->when($filterUnitId,  fn ($q) => $q->where('unit_id', $filterUnitId))
             ->when($filterAccountType, fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $filterAccountType)))
@@ -913,7 +913,7 @@ class DueController extends Controller
                   ->orWhere('description', 'like', '%'.$request->query('search').'%');
             }))
             ->when($request->query('period'),       fn ($q) => $q->where('period', $request->query('period')))
-            ->when($request->query('status'),       fn ($q) => $q->where('status', $request->query('status')))
+            ->when($request->query('status'),       fn ($q) => $this->applyStatusFilter($q, $request->query('status')))
             ->when($request->query('batch_id'),     fn ($q) => $q->where('due_batch_id', $request->query('batch_id')))
             ->when($request->query('unit_id'),      fn ($q) => $q->where('unit_id', $request->query('unit_id')))
             ->when($request->query('account_type'), fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $request->query('account_type'))))
@@ -979,5 +979,35 @@ class DueController extends Controller
         }, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
+    }
+
+    private function applyStatusFilter($query, string $status)
+    {
+        return $query->where(function ($sub) use ($status) {
+            switch ($status) {
+                case 'paid':
+                    $sub->where('remaining_amount', '<=', 0);
+                    break;
+                case 'partial':
+                    $sub->where('remaining_amount', '>', 0)
+                        ->whereColumn('remaining_amount', '<', 'amount');
+                    break;
+                case 'overdue':
+                    $sub->where('remaining_amount', '>', 0)
+                        ->whereColumn('remaining_amount', '>=', 'amount')
+                        ->where('due_date', '<', now());
+                    break;
+                case 'unpaid':
+                    $sub->where('remaining_amount', '>', 0)
+                        ->whereColumn('remaining_amount', '>=', 'amount')
+                        ->where(function ($s) {
+                            $s->whereNull('due_date')->orWhere('due_date', '>=', now());
+                        });
+                    break;
+                default:
+                    $sub->where('status', $status);
+                    break;
+            }
+        });
     }
 }
