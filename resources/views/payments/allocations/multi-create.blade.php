@@ -197,6 +197,14 @@
                     }
                 });
 
+                function allocatedTotal(excludeInput){
+                    let total = 0;
+                    document.querySelectorAll('input[name^="allocations"][name$="[amount]"]').forEach(inp => {
+                        if (inp !== excludeInput) total += toFloat(inp.value);
+                    });
+                    return total;
+                }
+
                 document.addEventListener('click', function(e){
                     const btn = e.target.closest('[data-fill-selector]');
                     if (btn) {
@@ -204,7 +212,9 @@
                         const input = document.querySelector(sel);
                         if (!input) return;
                         const remaining = toFloat(input.getAttribute('data-remaining'));
-                        input.value = remaining ? remaining.toFixed(2) : '';
+                        const available = Math.max(0, budget - allocatedTotal(input));
+                        const fill = Math.min(remaining, available);
+                        input.value = fill > 0 ? fill.toFixed(2) : '';
                         updateSummary();
                     }
                 });
