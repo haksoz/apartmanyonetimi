@@ -20,10 +20,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
+            $table->dropIndex(['reference_number']);
             $table->dropColumn('reference_number');
         });
 
         Schema::table('dues', function (Blueprint $table) {
+            $table->dropIndex(['reference_number']);
             $table->dropColumn('reference_number');
         });
     }

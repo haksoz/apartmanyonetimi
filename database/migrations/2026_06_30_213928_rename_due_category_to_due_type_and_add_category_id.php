@@ -32,7 +32,7 @@ return new class extends Migration
         foreach (['dues', 'due_batches', 'due_plans'] as $tbl) {
             Schema::table($tbl, function (Blueprint $t) use ($tbl) {
                 if (Schema::hasColumn($tbl, 'category_id')) {
-                    $t->dropForeign($tbl . '_category_id_foreign');
+                    $t->dropForeign(['category_id']);
                     $t->dropColumn('category_id');
                 }
             });

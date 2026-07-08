@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DueType;
 use App\Models\Account;
 use App\Models\AccountTransaction;
 use App\Models\CashTransaction;
@@ -875,6 +876,7 @@ class AccountController extends Controller
                         'apartment_id'    => $account->apartment_id,
                         'account_id'      => $account->id,
                         'unit_id'         => $account->unit_id,
+                        'due_type'        => DueType::Aidat,
                         'category_id'     => $category?->id,
                         'amount'          => $t['debit'],
                         'remaining_amount' => $t['debit'],
@@ -2024,6 +2026,7 @@ class AccountController extends Controller
                             'apartment_id' => $apartment->id,
                             'account_id' => $accountId,
                             'unit_id' => $account->unit_id,
+                            'due_type' => DueType::Aidat,
                             'category_id' => $category?->id,
                             'amount' => $t['debit'],
                             'remaining_amount' => $t['debit'],

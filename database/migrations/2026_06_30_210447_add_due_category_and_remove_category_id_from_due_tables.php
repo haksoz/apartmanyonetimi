@@ -46,16 +46,10 @@ return new class extends Migration
         }
 
         // 4. FK constraint kaldır, sonra category_id sütununu sil
-        $fkMap = [
-            'dues'        => 'dues_category_id_foreign',
-            'due_batches' => 'due_batches_category_id_foreign',
-            'due_plans'   => 'due_plans_category_id_foreign',
-        ];
-
-        foreach ($fkMap as $tbl => $fk) {
-            Schema::table($tbl, function (Blueprint $t) use ($tbl, $fk) {
+        foreach (['dues', 'due_batches', 'due_plans'] as $tbl) {
+            Schema::table($tbl, function (Blueprint $t) use ($tbl) {
                 if (Schema::hasColumn($tbl, 'category_id')) {
-                    try { $t->dropForeign($fk); } catch (\Throwable $e) {}
+                    $t->dropForeign(['category_id']);
                     $t->dropColumn('category_id');
                 }
             });

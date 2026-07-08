@@ -16,7 +16,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('accounts', function (Blueprint $table) {
-            $table->dropForeignIdFor(\App\Models\Category::class, 'default_category_id');
+            $table->dropForeign(['default_category_id']);
             $table->dropColumn('default_category_id');
         });
     }

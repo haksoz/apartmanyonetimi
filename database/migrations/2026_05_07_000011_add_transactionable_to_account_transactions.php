@@ -22,6 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('account_transactions', function (Blueprint $table) {
+            $table->dropIndex('account_transactions_transactionable_index');
             if (Schema::hasColumn('account_transactions', 'transactionable_type')) {
                 $table->dropColumn('transactionable_type');
             }
