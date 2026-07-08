@@ -17,6 +17,54 @@ class AccountPageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_account_detail_lists_open_payments_newest_to_oldest(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Kat Maliki',
+        ]);
+
+        $oldPayment = \App\Models\Payment::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'amount' => 100,
+            'unallocated_amount' => 100,
+            'payment_date' => '2023-01-15',
+        ]);
+        $newPayment = \App\Models\Payment::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'amount' => 200,
+            'unallocated_amount' => 200,
+            'payment_date' => '2025-08-20',
+        ]);
+
+        $response = $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('accounts.show', $account));
+
+        $response->assertStatus(200);
+        $this->assertStringContainsString('20.08.2025', $response->getContent());
+        $this->assertStringContainsString('15.01.2023', $response->getContent());
+
+        $newPos = strpos($response->getContent(), '20.08.2025');
+        $oldPos = strpos($response->getContent(), '15.01.2023');
+        $this->assertLessThan($oldPos, $newPos, 'Newest payment should appear before oldest payment');
+    }
+
     public function test_accounts_index_lists_selected_apartment_accounts(): void
     {
         $user = User::factory()->create();

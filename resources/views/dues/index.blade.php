@@ -36,12 +36,37 @@
             @if ($filters['filterBatchId'])
                 <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
             @endif
+            @if ($filters['filterUnitId'])
+                <input type="hidden" name="unit_id" value="{{ $filters['filterUnitId'] }}">
+            @endif
+            @if ($filters['filterAccountType'])
+                <input type="hidden" name="account_type" value="{{ $filters['filterAccountType'] }}">
+            @endif
+            @if ($showImported)
+                <input type="hidden" name="show_imported" value="1">
+            @endif
+            @if ($sortBy !== 'created_at')
+                <input type="hidden" name="sort_by" value="{{ $sortBy }}">
+            @endif
+            @if ($sortDirection !== 'desc')
+                <input type="hidden" name="sort_direction" value="{{ $sortDirection }}">
+            @endif
             <input type="text" name="search" value="{{ $filters['filterSearch'] ?? '' }}"
                 placeholder="Ad, daire no veya açıklama..."
                 class="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
             <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ara</button>
             @if ($filters['filterSearch'] ?? '')
-                <a href="{{ route('dues.index', array_filter(['period' => $filters['filterPeriod'], 'status' => $filters['filterStatus'], 'source' => $filters['filterSource'], 'batch_id' => $filters['filterBatchId']])) }}"
+                <a href="{{ route('dues.index', array_filter([
+                    'period' => $filters['filterPeriod'],
+                    'status' => $filters['filterStatus'],
+                    'source' => $filters['filterSource'],
+                    'batch_id' => $filters['filterBatchId'],
+                    'unit_id' => $filters['filterUnitId'],
+                    'account_type' => $filters['filterAccountType'],
+                    'show_imported' => $showImported ? 1 : null,
+                    'sort_by' => $sortBy !== 'created_at' ? $sortBy : null,
+                    'sort_direction' => $sortDirection !== 'desc' ? $sortDirection : null,
+                ])) }}"
                    class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50">✕</a>
             @endif
         </form>
@@ -53,6 +78,12 @@
             @endif
             @if ($filters['filterBatchId'])
                 <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
+            @endif
+            @if ($sortBy !== 'created_at')
+                <input type="hidden" name="sort_by" value="{{ $sortBy }}">
+            @endif
+            @if ($sortDirection !== 'desc')
+                <input type="hidden" name="sort_direction" value="{{ $sortDirection }}">
             @endif
             <input type="month" name="period" value="{{ $filters['filterPeriod'] }}"
                 class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
@@ -126,7 +157,7 @@
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Oluşturulma</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Son Ödeme</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
-                        <a href="{{ route('dues.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
+                        <a href="{{ route('dues.index', array_merge(request()->query(), ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc'])) }}" class="flex items-center justify-end gap-1 hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
                     </th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Kalan</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>

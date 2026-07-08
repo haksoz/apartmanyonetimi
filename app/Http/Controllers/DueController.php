@@ -61,11 +61,19 @@ class DueController extends Controller
             ->with(['account', 'unit', 'category', 'batch.plan'])
             ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
             ->when($memberAccountIds, fn ($q) => $q->whereIn('account_id', $memberAccountIds))
-            ->when($filterSearch, fn ($q) => $q->where(function ($sub) use ($filterSearch) {
-                $sub->whereHas('account', fn ($a) => $a->where('name', 'like', '%' . $filterSearch . '%'))
-                    ->orWhereHas('unit',    fn ($u) => $u->where('unit_no', 'like', '%' . $filterSearch . '%'))
-                    ->orWhere('description', 'like', '%' . $filterSearch . '%');
-            }))
+            ->when($filterSearch, function ($q) use ($filterSearch) {
+                $terms = array_filter(preg_split('/\s+/', trim($filterSearch)));
+
+                $q->where(function ($sub) use ($terms) {
+                    foreach ($terms as $term) {
+                        $sub->where(function ($inner) use ($term) {
+                            $inner->whereHas('account', fn ($a) => $a->where('name', 'like', '%' . $term . '%'))
+                                ->orWhereHas('unit', fn ($u) => $u->where('unit_no', 'like', '%' . $term . '%'))
+                                ->orWhere('description', 'like', '%' . $term . '%');
+                        });
+                    }
+                });
+            })
             ->when($filterPeriod,  fn ($q) => $q->where('period', $filterPeriod))
             ->when($filterStatus,  fn ($q) => $q->where('status', $filterStatus))
             ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))

@@ -36,6 +36,66 @@ class DuePageTest extends TestCase
             ->assertSee('Henüz aidat kaydı yok.');
     }
 
+    public function test_search_form_preserves_active_filters(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Ahmet Yılmaz', 'is_active' => true]);
+
+        Due::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'unit_id' => $unit->id,
+            'due_type' => \App\Enums\DueType::Aidat,
+            'period' => '2026-01',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => '2026-01-31',
+            'status' => 'unpaid',
+            'description' => 'Ocak 2026 aidatı',
+            'is_imported' => true,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('dues.index', [
+                'period' => '2026-01',
+                'status' => 'unpaid',
+                'source' => 'manual',
+                'unit_id' => (string) $unit->id,
+                'account_type' => 'owner',
+                'show_imported' => '1',
+                'sort_by' => 'amount',
+                'sort_direction' => 'asc',
+            ]))
+            ->assertStatus(200)
+            ->assertSee('Ocak 2026 aidatı')
+            ->assertSee('name="show_imported" value="1"', false)
+            ->assertSee('name="unit_id" value="' . $unit->id . '"', false)
+            ->assertSee('name="account_type" value="owner"', false)
+            ->assertSee('name="sort_by" value="amount"', false)
+            ->assertSee('name="sort_direction" value="asc"', false);
+
+        // Word-based search should match descriptions with separators between words
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('dues.index', ['search' => '2026 Ocak', 'show_imported' => '1']))
+            ->assertStatus(200)
+            ->assertSee('Ocak 2026 aidatı');
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('dues.index', ['search' => 'Ahmet Yılmaz', 'show_imported' => '1']))
+            ->assertStatus(200)
+            ->assertSee('Ocak 2026 aidatı');
+    }
+
     public function test_dues_index_lists_only_selected_apartment_dues(): void
     {
         $user = User::factory()->create();

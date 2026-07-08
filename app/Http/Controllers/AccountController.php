@@ -299,7 +299,7 @@ class AccountController extends Controller
                 'activeTenantAssignment',
                 'transactions' => fn ($query) => $query->orderBy('transaction_date')->orderBy('id'),
                 'dues' => fn ($query) => $query->where('remaining_amount', '>', 0)->where('is_imported', false)->orderByDesc('due_date'),
-                'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0)->where('is_imported', false)->orderBy('payment_date'),
+                'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0)->where('is_imported', false)->orderByDesc('payment_date'),
                 'expenses' => fn ($query) => $query->where('is_paid', false)->orderBy('expense_date'),
             ])
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
@@ -383,7 +383,7 @@ class AccountController extends Controller
         $importedPayments = $account->payments()
             ->where('unallocated_amount', '>', 0)
             ->where('is_imported', true)
-            ->orderBy('payment_date')
+            ->orderByDesc('payment_date')
             ->get();
 
         $unitIds = collect([$account->unit_id])
