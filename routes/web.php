@@ -187,6 +187,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('managers/{manager}', [AdminManagerController::class, 'show'])->name('managers.show');
     Route::patch('managers/{manager}/subscription', [AdminManagerController::class, 'updateSubscription'])->name('managers.subscription.update');
     Route::patch('managers/{manager}/quota', [AdminManagerController::class, 'updateQuota'])->name('managers.quota.update');
+    Route::post('managers/{manager}/trial-extend', [AdminManagerController::class, 'extendTrial'])->name('managers.trial.extend');
 
     Route::resource('packages', AdminPackageController::class);
     Route::patch('packages/{package}/features', [AdminPackageController::class, 'updateFeatures'])->name('packages.features.update');

@@ -137,4 +137,36 @@ class AdminManagerController extends Controller
 
         return back()->with('status', 'Apartman kotası güncellendi.');
     }
+
+    public function extendTrial(Request $request, User $manager)
+    {
+        $validated = $request->validate([
+            'days'       => ['nullable', 'integer', 'min:1', 'max:365'],
+            'expires_at' => ['nullable', 'date', 'after:today'],
+        ]);
+
+        $subscription = $manager->subscription;
+
+        if (! $subscription || $subscription->price != 0) {
+            return back()->withErrors(['trial' => 'Bu kullanıcının aktif bir deneme aboneliği yok.']);
+        }
+
+        if (isset($validated['expires_at'])) {
+            $newExpiry = \Carbon\Carbon::parse($validated['expires_at'])->endOfDay();
+        } elseif (isset($validated['days'])) {
+            $base = $subscription->expires_at && $subscription->expires_at->isFuture()
+                ? $subscription->expires_at
+                : now();
+            $newExpiry = $base->addDays($validated['days']);
+        } else {
+            return back()->withErrors(['trial' => 'Gün sayısı veya bitiş tarihi giriniz.']);
+        }
+
+        $subscription->update([
+            'expires_at' => $newExpiry,
+            'is_active'  => true,
+        ]);
+
+        return back()->with('status', 'Deneme süresi ' . $newExpiry->format('d.m.Y') . ' tarihine uzatıldı.');
+    }
 }

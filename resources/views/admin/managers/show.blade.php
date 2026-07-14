@@ -17,7 +17,16 @@
 
     <div class="grid gap-6 lg:grid-cols-2">
         <div class="rounded-xl border border-slate-200 bg-white p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Mevcut Abonelik</h2>
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-slate-900">Mevcut Abonelik</h2>
+                @if ($manager->subscription && $manager->subscription->price == 0 && !$manager->subscription->isExpired())
+                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">Deneme Süreci</span>
+                @elseif ($manager->subscription && $manager->subscription->isExpired())
+                    <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">Süresi Dolmuş</span>
+                @elseif ($manager->subscription)
+                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">Aktif</span>
+                @endif
+            </div>
             @if ($manager->subscription)
                 <div class="mt-4 space-y-2 text-sm">
                     <div class="flex justify-between"><span class="text-slate-500">Paket</span><span class="font-medium text-slate-900">{{ $manager->subscription->package->name }}</span></div>
@@ -26,9 +35,61 @@
                     <div class="flex justify-between"><span class="text-slate-500">Başlangıç</span><span class="font-medium text-slate-900">{{ $manager->subscription->started_at->format('d.m.Y') }}</span></div>
                     <div class="flex justify-between"><span class="text-slate-500">Bitiş</span><span class="font-medium text-slate-900">{{ $manager->subscription->expires_at?->format('d.m.Y') ?? 'Süresiz' }}</span></div>
                     <div class="flex justify-between"><span class="text-slate-500">Apartman Limiti</span><span class="font-medium text-slate-900">{{ $quota->currentCount($manager) }} / {{ $quota->maxFor($manager) ?? 'Sınırsız' }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Abonelik Türü</span><span class="font-medium text-slate-900">{{ $manager->subscription->price == 0 ? 'Deneme' : 'Ücretli' }}</span></div>
                 </div>
+                @if ($manager->subscription->price == 0 && $manager->subscription->expires_at && !$manager->subscription->isExpired())
+                    <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        Deneme süreci <strong>{{ $manager->subscription->expires_at->format('d.m.Y') }}</strong> tarihinde sona eriyor
+                        ({{ $manager->subscription->expires_at->diffForHumans() }}).
+                    </div>
+                @elseif ($manager->subscription->price == 0 && $manager->subscription->isExpired())
+                    <div class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        Deneme süreci <strong>{{ $manager->subscription->expires_at->format('d.m.Y') }}</strong> tarihinde sona erdi.
+                    </div>
+                @endif
             @else
                 <p class="mt-4 text-sm text-slate-500">Aktif abonelik yok.</p>
+            @endif
+
+            @if ($manager->subscription && $manager->subscription->price == 0)
+                <div class="mt-5 border-t border-slate-100 pt-5">
+                    <h3 class="text-sm font-semibold text-slate-700 mb-3">Deneme Süresini Uzat</h3>
+
+                    @if (session('status'))
+                        <div class="mb-3 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-700">{{ session('status') }}</div>
+                    @endif
+                    @error('trial')
+                        <div class="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{{ $message }}</div>
+                    @enderror
+
+                    {{-- Hızlı butonlar --}}
+                    <div class="flex gap-2 flex-wrap">
+                        @foreach ([30, 60, 90] as $days)
+                            <form method="POST" action="{{ route('admin.managers.trial.extend', $manager) }}">
+                                @csrf
+                                <input type="hidden" name="days" value="{{ $days }}">
+                                <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                    +{{ $days }} gün
+                                </button>
+                            </form>
+                        @endforeach
+                    </div>
+
+                    {{-- Tarih seçici --}}
+                    <form method="POST" action="{{ route('admin.managers.trial.extend', $manager) }}" class="mt-3 flex gap-2 items-end">
+                        @csrf
+                        <div class="flex-1">
+                            <label class="block text-xs text-slate-500 mb-1">Bu tarihe kadar uzat</label>
+                            <input type="date" name="expires_at"
+                                min="{{ now()->addDay()->format('Y-m-d') }}"
+                                value="{{ $manager->subscription->expires_at?->format('Y-m-d') }}"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+                        </div>
+                        <button type="submit" class="rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-amber-600">
+                            Uygula
+                        </button>
+                    </form>
+                </div>
             @endif
 
             <form method="POST" action="{{ route('admin.managers.subscription.update', $manager) }}" class="mt-6 space-y-4 border-t border-slate-100 pt-4">

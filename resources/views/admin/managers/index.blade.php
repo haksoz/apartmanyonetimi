@@ -26,6 +26,7 @@
                 <tr>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Kullanıcı</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Paket</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Dönem</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Apartman</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Kota</th>
@@ -40,7 +41,21 @@
                             <div class="text-xs text-slate-500">{{ $manager->email }}</div>
                         </td>
                         <td class="px-4 py-3 text-slate-700">
-                            {{ $manager->subscription?->package?->name ?? 'Paket yok' }}
+                            <div>{{ $manager->subscription?->package?->name ?? 'Paket yok' }}</div>
+                            @if ($manager->subscription && $manager->subscription->price == 0 && $manager->subscription->expires_at && !$manager->subscription->isExpired())
+                                <div class="text-xs text-amber-600 mt-0.5">{{ $manager->subscription->expires_at->format('d.m.Y') }}'de bitiyor</div>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3">
+                            @if ($manager->subscription && $manager->subscription->price == 0 && !$manager->subscription->isExpired())
+                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Deneme</span>
+                            @elseif ($manager->subscription && $manager->subscription->isExpired())
+                                <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Süresi Dolmuş</span>
+                            @elseif ($manager->subscription)
+                                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Aktif</span>
+                            @else
+                                <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">Yok</span>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-slate-700 capitalize">
                             {{ $manager->subscription?->period ?? '-' }}

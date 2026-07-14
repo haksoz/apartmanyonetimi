@@ -28,22 +28,38 @@
         </div>
     @endif
 
-    @if ($isTrial && $subscription && $subscription->expires_at)
-        <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+    @if ($subscription && $subscription->isExpired())
+        <div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-4">
+            <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-red-800">Aboneliğiniz sona erdi.</p>
+                    <p class="text-sm text-red-700 mt-0.5">Sistemi kullanmaya devam etmek için aşağıdan bir paket seçmeniz gerekmektedir.</p>
+                </div>
+                <a href="#packages" class="flex-shrink-0 rounded-lg bg-red-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-700">Paket Seç</a>
+            </div>
+        </div>
+    @elseif ($isTrial && $subscription && $subscription->expires_at)
+        <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
             <div class="flex items-start gap-3">
                 <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
-                <div>
-                    <p class="text-sm font-medium text-amber-800">
-                        Deneme süreciniz {{ $subscription->expires_at->format('d.m.Y') }} tarihine kadardır.
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-amber-800">
+                        Ücretsiz deneme süreciniz <strong>{{ $subscription->expires_at->format('d.m.Y') }}</strong> tarihinde sona eriyor
+                        ({{ $subscription->expires_at->diffForHumans() }}).
                     </p>
                     @if ($fallbackPackage)
                         <p class="text-sm text-amber-700 mt-1">
-                            Bu tarihten sonra paketiniz <strong>{{ $fallbackPackage->name }}</strong> olacaktır.
+                            Bir paket seçmezseniz deneme bitişinde <strong>{{ $fallbackPackage->name }}</strong> paketine otomatik geçirileceksiniz.
+                            Daha iyi özellikler için aşağıdan bir paket seçebilirsiniz.
                         </p>
                     @endif
                 </div>
+                <a href="#packages" class="flex-shrink-0 rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-amber-600">Paket Seç</a>
             </div>
         </div>
     @endif
@@ -60,7 +76,12 @@
                 <div>
                     <div class="text-sm font-medium text-slate-500">Aktif Abonelik</div>
                     @if ($subscription && ! $subscription->isExpired())
-                        <div class="text-lg font-semibold text-slate-900">{{ $subscription->package?->name ?? 'Paket' }}</div>
+                        <div class="text-lg font-semibold text-slate-900">
+                            {{ $subscription->package?->name ?? 'Paket' }}
+                            @if ($isTrial)
+                                <span class="ml-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Deneme</span>
+                            @endif
+                        </div>
                         <div class="text-sm text-slate-600">{{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }}</div>
                     @else
                         <div class="text-lg font-semibold text-slate-900">Aktif abonelik yok</div>
@@ -82,6 +103,43 @@
                         <span class="text-slate-500">Tutar</span>
                         <span class="font-medium text-slate-900">{{ number_format($subscription->price, 2) }} ₺</span>
                     </div>
+                    @if ($subscription->package?->apartment_limit)
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Apartman Limiti</span>
+                            <span class="font-medium text-slate-900">
+                                {{ $subscription->multi_apartment_limit_override ?? $subscription->package->apartment_limit }}
+                            </span>
+                        </div>
+                    @endif
+                </div>
+
+                @php
+                    $features = [
+                        'feature_auto_dues'       => 'Otomatik Aidat',
+                        'feature_user_portal'     => 'Kullanıcı Portalı',
+                        'feature_reports'         => 'Raporlar',
+                        'feature_multi_apartment' => 'Çoklu Apartman',
+                    ];
+                @endphp
+                <div class="mt-4 border-t border-slate-100 pt-4">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Özellikler</div>
+                    <ul class="space-y-1.5">
+                        @foreach ($features as $key => $label)
+                            <li class="flex items-center gap-2 text-sm">
+                                @if ($subscription->$key)
+                                    <svg class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span class="text-slate-700">{{ $label }}</span>
+                                @else
+                                    <svg class="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    <span class="text-slate-400">{{ $label }}</span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
 
                 <div class="mt-4">
@@ -150,5 +208,119 @@
             </div>
         </div>
     </div>
+
+    {{-- Paket Seçim Bölümü --}}
+    @if ($packages->isNotEmpty())
+        @php
+            $activePackageId = $subscription && !$subscription->isExpired() && !$isTrial ? $subscription->package_id : null;
+            $fallbackPackageId = $fallbackPackage?->id;
+
+            if ($isTrial || ($subscription && $subscription->isExpired()) || !$subscription)
+                $sectionTitle = 'Paket Seçin';
+            else
+                $sectionTitle = 'Paketinizi Yükselt / Değiştir';
+        @endphp
+
+        <div id="packages" class="mt-10 scroll-mt-6">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-900">{{ $sectionTitle }}</h2>
+                @if ($isTrial)
+                    <p class="mt-1 text-sm text-slate-500">Deneme süreniz dolmadan bir paket seçerek kesintisiz kullanmaya devam edin.</p>
+                @elseif ($subscription && $subscription->isExpired())
+                    <p class="mt-1 text-sm text-slate-500">Sistemi kullanmaya devam etmek için aşağıdaki paketlerden birini seçin.</p>
+                @else
+                    <p class="mt-1 text-sm text-slate-500">İhtiyacınıza göre paketinizi değiştirebilirsiniz.</p>
+                @endif
+            </div>
+
+            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                @foreach ($packages as $package)
+                    @php
+                        $isCurrent   = $activePackageId === $package->id;
+                        $isFallback  = !$isCurrent && $fallbackPackageId === $package->id && $isTrial;
+                        $isRecommended = $package->sort_order === 2;
+
+                        $borderClass = $isCurrent
+                            ? 'border-emerald-500 shadow-lg shadow-emerald-50'
+                            : ($isFallback ? 'border-amber-400 shadow-md shadow-amber-50' : ($isRecommended ? 'border-slate-900' : 'border-slate-200'));
+                    @endphp
+
+                    <div class="relative rounded-2xl border-2 {{ $borderClass }} bg-white p-6 flex flex-col">
+
+                        {{-- Badge --}}
+                        @if ($isCurrent)
+                            <span class="absolute -top-3 left-5 rounded-full bg-emerald-600 px-3 py-0.5 text-xs font-bold text-white">Aktif Paketiniz</span>
+                        @elseif ($isFallback)
+                            <span class="absolute -top-3 left-5 rounded-full bg-amber-500 px-3 py-0.5 text-xs font-bold text-white">Deneme Sonrası Paketiniz</span>
+                        @elseif ($isRecommended)
+                            <span class="absolute -top-3 left-5 rounded-full bg-slate-900 px-3 py-0.5 text-xs font-bold text-white">Tavsiye Edilen</span>
+                        @endif
+
+                        <h3 class="text-lg font-bold text-slate-900">{{ $package->name }}</h3>
+                        <p class="mt-1 text-sm text-slate-500">{{ $package->description }}</p>
+
+                        <div class="mt-4">
+                            @if ($package->monthly_price > 0)
+                                <span class="text-3xl font-extrabold text-slate-900">{{ number_format($package->monthly_price, 0, ',', '.') }} ₺</span>
+                                <span class="text-sm text-slate-500"> / ay</span>
+                            @else
+                                <span class="text-3xl font-extrabold text-slate-900">Ücretsiz</span>
+                            @endif
+                        </div>
+
+                        <ul class="mt-4 space-y-2 text-sm flex-1">
+                            @foreach ($package->features as $feature)
+                                <li class="flex items-center gap-2 {{ !$feature->is_enabled ? 'opacity-40' : '' }}">
+                                    @if ($feature->is_enabled)
+                                        <svg class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    @else
+                                        <svg class="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    @endif
+                                    <span class="text-slate-600">{{ $feature->feature_key }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+
+                        <div class="mt-6">
+                            @if ($isCurrent)
+                                <div class="w-full rounded-xl border-2 border-emerald-200 bg-emerald-50 py-2.5 text-center text-sm font-semibold text-emerald-700">
+                                    Mevcut Paketiniz
+                                </div>
+                            @else
+                                <button
+                                    type="button"
+                                    onclick="document.getElementById('contact-modal').classList.remove('hidden')"
+                                    class="w-full rounded-xl {{ $isRecommended ? 'bg-slate-900 text-white hover:bg-slate-800' : 'border-2 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50' }} py-2.5 text-sm font-semibold transition-colors">
+                                    {{ $isFallback ? 'Bu Paketi Seç' : ($subscription && !$subscription->isExpired() && !$isTrial ? 'Geç' : 'Bu Paketi Seç') }}
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- İletişim Modal (placeholder — ödeme entegrasyonu gelince değişecek) --}}
+        <div id="contact-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div class="max-w-sm w-full mx-4 rounded-2xl bg-white p-6 shadow-xl">
+                <h3 class="text-lg font-bold text-slate-900">Paket Seçimi</h3>
+                <p class="mt-2 text-sm text-slate-600">
+                    Paket satın alma işlemi için lütfen bizimle iletişime geçin. En kısa sürede size yardımcı olacağız.
+                </p>
+                <div class="mt-5 flex gap-3">
+                    <a href="mailto:destek@kapitalonline.com.tr" class="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-emerald-700">
+                        E-posta Gönder
+                    </a>
+                    <button type="button" onclick="document.getElementById('contact-modal').classList.add('hidden')" class="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        Kapat
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 
 @endsection

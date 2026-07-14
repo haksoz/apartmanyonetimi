@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Subscriber;
 
 use App\Http\Controllers\Controller;
+use App\Models\Package;
 use App\Models\Payment;
 use App\Models\SystemSetting;
 use App\Support\CurrentApartment;
@@ -41,8 +42,14 @@ class SubscriberDashboardController extends Controller
         }
 
         // Check if user is on trial
-        $isTrial = $subscription && $subscription->price === 0;
-        $fallbackPackage = $isTrial ? SystemSetting::getFallbackPackage() : null;
+        $isTrial = $subscription && $subscription->price == 0;
+        $fallbackPackage = SystemSetting::getFallbackPackage();
+
+        $packages = Package::where('is_active', true)
+            ->where('show_on_website', true)
+            ->orderBy('sort_order')
+            ->with('features')
+            ->get();
 
         return view('subscriber.dashboard', compact(
             'subscription',
@@ -51,7 +58,8 @@ class SubscriberDashboardController extends Controller
             'recentPayments',
             'upcomingPayment',
             'isTrial',
-            'fallbackPackage'
+            'fallbackPackage',
+            'packages'
         ));
     }
 }
