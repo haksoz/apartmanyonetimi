@@ -64,8 +64,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('income-expense', [ReportController::class, 'incomeExpense'])->name('income-expense');
         Route::get('income-expense/export/{type}', [ReportController::class, 'incomeExpenseExport'])->name('income-expense.export');
-        Route::get('debt-list', [ReportController::class, 'debtList'])->name('debt-list');
-        Route::get('debt-list/export/{type}', [ReportController::class, 'debtListExport'])->name('debt-list.export');
+        Route::get('debt-list', [ReportController::class, 'overdue2'])->name('debt-list');
+        Route::get('debt-list/export/{type}', [ReportController::class, 'overdue2Export'])->name('debt-list.export');
         Route::get('receivable-list', [ReportController::class, 'receivableList'])->name('receivable-list');
         Route::get('receivable-list/export/{type}', [ReportController::class, 'receivableListExport'])->name('receivable-list.export');
         Route::get('account-statement', [ReportController::class, 'accountStatement'])->name('account-statement');
@@ -74,8 +74,6 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('due-collection/export/{type}', [ReportController::class, 'dueCollectionExport'])->name('due-collection.export');
         Route::get('overdue', [ReportController::class, 'overdue'])->name('overdue');
         Route::get('overdue/export/{type}', [ReportController::class, 'overdueExport'])->name('overdue.export');
-        Route::get('overdue2', [ReportController::class, 'overdue2'])->name('overdue2');
-        Route::get('overdue2/export/{type}', [ReportController::class, 'overdue2Export'])->name('overdue2.export');
         Route::get('annual-activity', [ReportController::class, 'annualActivity'])->name('annual-activity');
         Route::get('annual-activity/export/{type}', [ReportController::class, 'annualActivityExport'])->name('annual-activity.export');
         Route::get('budget', [ReportController::class, 'budget'])->name('budget');

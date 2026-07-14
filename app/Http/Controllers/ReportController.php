@@ -62,10 +62,24 @@ class ReportController extends Controller
     private function applyAccountFilter($query, string $filterAccount): void
     {
         match ($filterAccount) {
-            'residents' => $query->whereHas('account', function ($q) {
-                $q->where('is_active', true)
-                  ->whereNotNull('unit_id')
-                  ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT]);
+            'residents' => $query->whereNotNull('unit_id')->where(function ($q) {
+                // Dairede aktif kiracı varsa, borç kaydı o kiracıya ait olmalı
+                $q->whereExists(function ($sub) {
+                    $sub->selectRaw(1)
+                        ->from('tenant_assignments')
+                        ->whereColumn('tenant_assignments.unit_id', 'dues.unit_id')
+                        ->whereNull('tenant_assignments.move_out_date')
+                        ->whereColumn('tenant_assignments.account_id', 'dues.account_id');
+                })
+                // Aktif kiracı yoksa, borç kaydı kat malikine ait olmalı
+                ->orWhere(function ($sub) {
+                    $sub->whereNotExists(function ($sub2) {
+                        $sub2->selectRaw(1)
+                            ->from('tenant_assignments')
+                            ->whereColumn('tenant_assignments.unit_id', 'dues.unit_id')
+                            ->whereNull('tenant_assignments.move_out_date');
+                    })->whereHas('account', fn ($a) => $a->where('type', Account::TYPE_OWNER));
+                });
             }),
             'owners' => $query->whereHas('account', fn ($q) => $q->where('type', Account::TYPE_OWNER)),
             'inactive' => $query->whereHas('account', fn ($q) => $q->where('is_active', false)),
@@ -876,6 +890,14 @@ class ReportController extends Controller
         $filterUnit = $request->input('unit_id');
         $filterAccount = $request->input('account_filter', 'all');
 
+        $tableTitleSuffix = match ($filterAccount) {
+            'residents' => ' - Daire Sakinleri',
+            'owners' => ' - Kat Malikleri',
+            'inactive' => ' - Pasif Hesaplar',
+            default => '',
+        };
+        $tableTitle = 'Genel Borç Listesi' . $tableTitleSuffix;
+
         $dues = Due::with(['account', 'unit', 'category'])
             ->where('apartment_id', $apartment->id)
             ->where('remaining_amount', '>', 0)
@@ -908,16 +930,16 @@ class ReportController extends Controller
         $avgDays = $dues->count() ? round($dues->avg('days_overdue')) : 0;
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.overdue2', ['apartment' => $apartment, 'groups' => $groups, 'units' => collect(), 'filterUnit' => null, 'filterAccount' => $filterAccount, 'totalOverdue' => $totalOverdue, 'avgDays' => $avgDays], 'gecikme-raporu-2');
+            return $this->pdfResponse('reports.debt-list-pdf', ['apartment' => $apartment, 'groups' => $groups, 'tableTitle' => $tableTitle, 'totalOverdue' => $totalOverdue], 'borclar-listesi');
         }
 
         $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet()->setTitle('Gecikme Raporu 2');
+        $sheet = $spreadsheet->getActiveSheet()->setTitle('Borç Listesi');
         $sheet->mergeCells('A1:D1');
-        $sheet->setCellValue('A1', 'GECİKME RAPORU 2 — ' . $apartment->name . ' — ' . now()->format('d.m.Y'));
+        $sheet->setCellValue('A1', $tableTitle . ' — ' . $apartment->name . ' — ' . now()->format('d.m.Y'));
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->fromArray(['Daire', 'Hesap Adı', 'Detaylar', 'Toplam Kalan (₺)'], null, 'A3');
+        $sheet->fromArray(['Daire', 'Hesap Adı', 'Detaylar', 'Toplam Borç (₺)'], null, 'A3');
         $this->applyHeaderStyle($sheet, 'A3:D3');
 
         $row = 4;
@@ -925,7 +947,7 @@ class ReportController extends Controller
             $details = [];
             foreach ($group->dues as $due) {
                 $details[] = sprintf(
-                    '%s | %s ₺ | Açıklama: %s',
+                    '%s | %s ₺ | %s',
                     $due->created_at_manual?->format('d.m.Y') ?? $due->created_at?->format('d.m.Y') ?? '-',
                     number_format($due->amount, 2, ',', '.'),
                     $due->description ?? '-'
@@ -938,18 +960,22 @@ class ReportController extends Controller
                 implode("\n", $details),
                 $group->total_remaining,
             ], null, 'A' . $row);
+            $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle('B' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
             $sheet->getStyle('C' . $row)->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+            $sheet->getStyle('D' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
             $row++;
         }
 
         $sheet->setCellValue('D' . $row, $totalOverdue);
         $this->applyHeaderStyle($sheet, "A{$row}:D{$row}", 'FFb71c1c');
+        $sheet->getStyle("D4:D{$row}")->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
 
         foreach (['A' => 10, 'B' => 22, 'C' => 70, 'D' => 18] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
-        return $this->excelResponse($spreadsheet, 'gecikme-raporu-2');
+        return $this->excelResponse($spreadsheet, 'borclar-listesi');
     }
 
     // -------------------------------------------------------------------------

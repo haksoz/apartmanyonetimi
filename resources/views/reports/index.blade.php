@@ -113,8 +113,8 @@
             </div>
         </a>
 
-        {{-- Gecikme Raporu 2 --}}
-        <a href="{{ route('reports.overdue2') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-rose-400 hover:shadow-md transition-all">
+        {{-- Borç Listesi --}}
+        <a href="{{ route('reports.debt-list') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-rose-400 hover:shadow-md transition-all">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center group-hover:bg-rose-100 transition">
                     <svg class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,8 +122,8 @@
                     </svg>
                 </div>
                 <div>
-                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-rose-600">Gecikme Raporu 2</h2>
-                    <p class="mt-1 text-xs text-slate-500">Hesap bazında birleştirilmiş gecikmiş borçlar</p>
+                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-rose-600">Borç Listesi</h2>
+                    <p class="mt-1 text-xs text-slate-500">Hesap bazında birleştirilmiş borçlar</p>
                 </div>
             </div>
         </a>
