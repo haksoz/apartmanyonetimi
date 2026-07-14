@@ -59,6 +59,20 @@ class ReportController extends Controller
         ]);
     }
 
+    private function applyAccountFilter($query, string $filterAccount): void
+    {
+        match ($filterAccount) {
+            'residents' => $query->whereHas('account', function ($q) {
+                $q->where('is_active', true)
+                  ->whereNotNull('unit_id')
+                  ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT]);
+            }),
+            'owners' => $query->whereHas('account', fn ($q) => $q->where('type', Account::TYPE_OWNER)),
+            'inactive' => $query->whereHas('account', fn ($q) => $q->where('is_active', false)),
+            default => null,
+        };
+    }
+
     private function excelResponse(Spreadsheet $spreadsheet, string $filename): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $writer = new Xlsx($spreadsheet);
@@ -725,6 +739,7 @@ class ReportController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
         $filterUnit = $request->input('unit_id');
+        $filterAccount = $request->input('account_filter', 'all');
         $units = Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get();
 
         $dues = Due::with(['account', 'unit', 'category'])
@@ -732,6 +747,37 @@ class ReportController extends Controller
             ->where('remaining_amount', '>', 0)
             ->where('due_date', '<', now())
             ->when($filterUnit, fn($q) => $q->where('unit_id', $filterUnit))
+            ->tap(fn ($q) => $this->applyAccountFilter($q, $filterAccount))
+            ->orderBy('due_date')
+            ->get()
+            ->map(function ($due) {
+                $due->days_overdue = (int) now()->diffInDays($due->due_date, false) * -1;
+                return $due;
+            })
+            ->sortBy(fn($due) => $due->unit?->unit_no, SORT_NATURAL, false)
+            ->values();
+
+        $totalOverdue = $dues->sum('remaining_amount');
+        $avgDays      = $dues->count() ? round($dues->avg('days_overdue')) : 0;
+
+        return view('reports.overdue', compact('apartment', 'dues', 'units', 'filterUnit', 'filterAccount', 'totalOverdue', 'avgDays'));
+    }
+
+    public function overdue2(CurrentApartment $currentApartment, Request $request)
+    {
+        $apartment = $this->getApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
+
+        $filterUnit = $request->input('unit_id');
+        $filterAccount = $request->input('account_filter', 'all');
+        $units = Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get();
+
+        $dues = Due::with(['account', 'unit', 'category'])
+            ->where('apartment_id', $apartment->id)
+            ->where('remaining_amount', '>', 0)
+            ->where('due_date', '<', now())
+            ->when($filterUnit, fn($q) => $q->where('unit_id', $filterUnit))
+            ->tap(fn ($q) => $this->applyAccountFilter($q, $filterAccount))
             ->orderBy('due_date')
             ->get()
             ->map(function ($due) {
@@ -739,10 +785,28 @@ class ReportController extends Controller
                 return $due;
             });
 
-        $totalOverdue = $dues->sum('remaining_amount');
-        $avgDays      = $dues->count() ? round($dues->avg('days_overdue')) : 0;
+        $groups = $dues
+            ->groupBy(fn($due) => $due->account_id)
+            ->map(function ($accountDues) {
+                $first = $accountDues->first();
+                $account = $first->account;
 
-        return view('reports.overdue', compact('apartment', 'dues', 'units', 'filterUnit', 'totalOverdue', 'avgDays'));
+                return (object) [
+                    'account' => $account,
+                    'unit' => $first->unit,
+                    'dues' => $accountDues,
+                    'total_remaining' => $accountDues->sum('remaining_amount'),
+                    'total_amount' => $accountDues->sum('amount'),
+                    'avg_days' => $accountDues->count() ? round($accountDues->avg('days_overdue')) : 0,
+                ];
+            })
+            ->sortBy(fn($group) => $group->unit?->unit_no, SORT_NATURAL, false)
+            ->values();
+
+        $totalOverdue = $groups->sum('total_remaining');
+        $avgDays = $dues->count() ? round($dues->avg('days_overdue')) : 0;
+
+        return view('reports.overdue2', compact('apartment', 'groups', 'units', 'filterUnit', 'filterAccount', 'totalOverdue', 'avgDays'));
     }
 
     public function overdueExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -750,51 +814,142 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
+        $filterAccount = $request->input('account_filter', 'all');
+
         $dues = Due::with(['account', 'unit', 'category'])
             ->where('apartment_id', $apartment->id)
             ->where('remaining_amount', '>', 0)
             ->where('due_date', '<', now())
             ->when($request->input('unit_id'), fn($q) => $q->where('unit_id', $request->input('unit_id')))
+            ->tap(fn ($q) => $this->applyAccountFilter($q, $filterAccount))
             ->orderBy('due_date')->get()
             ->map(function ($due) {
                 $due->days_overdue = (int) now()->diffInDays($due->due_date, false) * -1;
                 return $due;
-            });
+            })
+            ->sortBy(fn($due) => $due->unit?->unit_no, SORT_NATURAL, false)
+            ->values();
 
         $totalOverdue = $dues->sum('remaining_amount');
         $avgDays      = $dues->count() ? round($dues->avg('days_overdue')) : 0;
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.overdue', ['apartment' => $apartment, 'dues' => $dues, 'units' => collect(), 'filterUnit' => null, 'totalOverdue' => $totalOverdue, 'avgDays' => $avgDays], 'gecikme-raporu');
+            return $this->pdfResponse('reports.overdue', ['apartment' => $apartment, 'dues' => $dues, 'units' => collect(), 'filterUnit' => null, 'filterAccount' => $filterAccount, 'totalOverdue' => $totalOverdue, 'avgDays' => $avgDays], 'gecikme-raporu');
         }
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet()->setTitle('Gecikme Raporu');
-        $sheet->mergeCells('A1:G1');
+        $sheet->mergeCells('A1:H1');
         $sheet->setCellValue('A1', 'GECİKME RAPORU — ' . $apartment->name . ' — ' . now()->format('d.m.Y'));
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->fromArray(['Daire', 'Hesap Adı', 'Kategori', 'Vade Tarihi', 'Gecikme (Gün)', 'Toplam (₺)', 'Kalan (₺)'], null, 'A3');
-        $this->applyHeaderStyle($sheet, 'A3:G3');
+        $sheet->fromArray(['Daire', 'Hesap Adı', 'Kategori', 'Açıklama', 'Vade Tarihi', 'Gecikme (Gün)', 'Toplam (₺)', 'Kalan (₺)'], null, 'A3');
+        $this->applyHeaderStyle($sheet, 'A3:H3');
         $row = 4;
         foreach ($dues as $due) {
             $sheet->fromArray([
                 $due->unit?->unit_no ?? '-',
                 $due->account?->name ?? '-',
                 $due->category?->name ?? '-',
+                $due->description ?? '-',
                 $due->due_date?->format('d.m.Y') ?? '-',
                 $due->days_overdue,
                 $due->amount,
                 $due->remaining_amount,
             ], null, 'A' . $row++);
         }
-        $sheet->setCellValue('G' . $row, $totalOverdue);
-        $this->applyHeaderStyle($sheet, "A{$row}:G{$row}", 'FFb71c1c');
-        foreach (['A' => 10, 'B' => 22, 'C' => 16, 'D' => 14, 'E' => 16, 'F' => 14, 'G' => 14] as $col => $width) {
+        $sheet->setCellValue('H' . $row, $totalOverdue);
+        $this->applyHeaderStyle($sheet, "A{$row}:H{$row}", 'FFb71c1c');
+        foreach (['A' => 10, 'B' => 22, 'C' => 16, 'D' => 28, 'E' => 14, 'F' => 16, 'G' => 14, 'H' => 14] as $col => $width) {
+            $sheet->getColumnDimension($col)->setWidth($width);
+        }
+        $sheet->getStyle('D4:D' . ($row - 1))->getAlignment()->setWrapText(true);
+
+        return $this->excelResponse($spreadsheet, 'gecikme-raporu');
+    }
+
+    public function overdue2Export(CurrentApartment $currentApartment, Request $request, string $type)
+    {
+        $apartment = $this->getApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
+
+        $filterUnit = $request->input('unit_id');
+        $filterAccount = $request->input('account_filter', 'all');
+
+        $dues = Due::with(['account', 'unit', 'category'])
+            ->where('apartment_id', $apartment->id)
+            ->where('remaining_amount', '>', 0)
+            ->where('due_date', '<', now())
+            ->when($filterUnit, fn($q) => $q->where('unit_id', $filterUnit))
+            ->tap(fn ($q) => $this->applyAccountFilter($q, $filterAccount))
+            ->orderBy('due_date')
+            ->get()
+            ->map(function ($due) {
+                $due->days_overdue = (int) now()->diffInDays($due->due_date, false) * -1;
+                return $due;
+            });
+
+        $groups = $dues
+            ->groupBy(fn($due) => $due->account_id)
+            ->map(function ($accountDues) {
+                $first = $accountDues->first();
+
+                return (object) [
+                    'account' => $first->account,
+                    'unit' => $first->unit,
+                    'dues' => $accountDues,
+                    'total_remaining' => $accountDues->sum('remaining_amount'),
+                ];
+            })
+            ->sortBy(fn($group) => $group->unit?->unit_no, SORT_NATURAL, false)
+            ->values();
+
+        $totalOverdue = $groups->sum('total_remaining');
+        $avgDays = $dues->count() ? round($dues->avg('days_overdue')) : 0;
+
+        if ($type === 'pdf') {
+            return $this->pdfResponse('reports.overdue2', ['apartment' => $apartment, 'groups' => $groups, 'units' => collect(), 'filterUnit' => null, 'filterAccount' => $filterAccount, 'totalOverdue' => $totalOverdue, 'avgDays' => $avgDays], 'gecikme-raporu-2');
+        }
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet()->setTitle('Gecikme Raporu 2');
+        $sheet->mergeCells('A1:D1');
+        $sheet->setCellValue('A1', 'GECİKME RAPORU 2 — ' . $apartment->name . ' — ' . now()->format('d.m.Y'));
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->fromArray(['Daire', 'Hesap Adı', 'Detaylar', 'Toplam Kalan (₺)'], null, 'A3');
+        $this->applyHeaderStyle($sheet, 'A3:D3');
+
+        $row = 4;
+        foreach ($groups as $group) {
+            $details = [];
+            foreach ($group->dues as $due) {
+                $details[] = sprintf(
+                    '%s | %s ₺ | Açıklama: %s',
+                    $due->created_at_manual?->format('d.m.Y') ?? $due->created_at?->format('d.m.Y') ?? '-',
+                    number_format($due->amount, 2, ',', '.'),
+                    $due->description ?? '-'
+                );
+            }
+
+            $sheet->fromArray([
+                $group->unit?->unit_no ?? '-',
+                $group->account?->name ?? '-',
+                implode("\n", $details),
+                $group->total_remaining,
+            ], null, 'A' . $row);
+            $sheet->getStyle('C' . $row)->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+            $row++;
+        }
+
+        $sheet->setCellValue('D' . $row, $totalOverdue);
+        $this->applyHeaderStyle($sheet, "A{$row}:D{$row}", 'FFb71c1c');
+
+        foreach (['A' => 10, 'B' => 22, 'C' => 70, 'D' => 18] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
-        return $this->excelResponse($spreadsheet, 'gecikme-raporu');
+        return $this->excelResponse($spreadsheet, 'gecikme-raporu-2');
     }
 
     // -------------------------------------------------------------------------

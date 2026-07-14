@@ -113,6 +113,21 @@
             </div>
         </a>
 
+        {{-- Gecikme Raporu 2 --}}
+        <a href="{{ route('reports.overdue2') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-rose-400 hover:shadow-md transition-all">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center group-hover:bg-rose-100 transition">
+                    <svg class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-rose-600">Gecikme Raporu 2</h2>
+                    <p class="mt-1 text-xs text-slate-500">Hesap bazında birleştirilmiş gecikmiş borçlar</p>
+                </div>
+            </div>
+        </a>
+
         {{-- Yıllık Faaliyet Raporu --}}
         <a href="{{ route('reports.annual-activity') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-slate-500 hover:shadow-md transition-all">
             <div class="flex items-start gap-4">

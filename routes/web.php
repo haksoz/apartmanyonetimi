@@ -74,6 +74,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('due-collection/export/{type}', [ReportController::class, 'dueCollectionExport'])->name('due-collection.export');
         Route::get('overdue', [ReportController::class, 'overdue'])->name('overdue');
         Route::get('overdue/export/{type}', [ReportController::class, 'overdueExport'])->name('overdue.export');
+        Route::get('overdue2', [ReportController::class, 'overdue2'])->name('overdue2');
+        Route::get('overdue2/export/{type}', [ReportController::class, 'overdue2Export'])->name('overdue2.export');
         Route::get('annual-activity', [ReportController::class, 'annualActivity'])->name('annual-activity');
         Route::get('annual-activity/export/{type}', [ReportController::class, 'annualActivityExport'])->name('annual-activity.export');
         Route::get('budget', [ReportController::class, 'budget'])->name('budget');

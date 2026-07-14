@@ -7,18 +7,18 @@
             <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
                 <a href="{{ route('reports.index') }}" class="hover:text-slate-600">Raporlar</a>
                 <span>/</span>
-                <span class="text-slate-600">Gecikme Raporu</span>
+                <span class="text-slate-600">Gecikme Raporu 2</span>
             </div>
-            <h1 class="text-2xl font-bold text-slate-950">Gecikme Raporu</h1>
+            <h1 class="text-2xl font-bold text-slate-950">Gecikme Raporu 2</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }} — {{ now()->format('d.m.Y') }}</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('reports.overdue.export', array_merge(['type'=>'excel'], request()->query())) }}"
+            <a href="{{ route('reports.overdue2.export', array_merge(['type'=>'excel'], request()->query())) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.overdue.export', array_merge(['type'=>'pdf'], request()->query())) }}"
+            <a href="{{ route('reports.overdue2.export', array_merge(['type'=>'pdf'], request()->query())) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
@@ -27,7 +27,7 @@
     </div>
 
     {{-- Filtreler --}}
-    <form method="GET" action="{{ route('reports.overdue') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-3 items-end">
+    <form method="GET" action="{{ route('reports.overdue2') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-3 items-end">
         <div>
             <label class="block text-xs text-slate-500 mb-1">Daire</label>
             <select name="unit_id" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
@@ -51,20 +51,34 @@
     @endif
 
     {{-- Özet Kartlar --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-2 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-slate-200 p-5">
-            <p class="text-xs text-slate-500 mb-1">Gecikmiş Kayıt</p>
-            <p class="text-2xl font-bold text-slate-800">{{ $dues->count() }}</p>
+            <p class="text-xs text-slate-500 mb-1">Gecikmiş Hesap</p>
+            <p class="text-2xl font-bold text-slate-800">{{ $groups->count() }}</p>
         </div>
         <div class="bg-white rounded-2xl border border-slate-200 p-5">
             <p class="text-xs text-slate-500 mb-1">Toplam Gecikmiş Tutar</p>
             <p class="text-2xl font-bold text-red-600">{{ number_format($totalOverdue, 2, ',', '.') }} ₺</p>
         </div>
-        <div class="bg-white rounded-2xl border border-slate-200 p-5">
-            <p class="text-xs text-slate-500 mb-1">Ort. Gecikme Süresi</p>
-            <p class="text-2xl font-bold text-orange-500">{{ $avgDays }} gün</p>
-        </div>
     </div>
+
+    @if($filterAccount !== 'all' || $filterUnit)
+        @php
+            $filterLabels = ['all' => 'Tümü', 'residents' => 'Daire Sakinleri', 'owners' => 'Kat Malikleri', 'inactive' => 'Pasif Hesaplar'];
+            $activeFilters = [];
+            if ($filterAccount !== 'all') {
+                $activeFilters[] = 'Hesaplar: ' . ($filterLabels[$filterAccount] ?? $filterAccount);
+            }
+            if ($filterUnit) {
+                $selectedUnit = $units->firstWhere('id', $filterUnit);
+                $activeFilters[] = 'Daire: ' . ($selectedUnit?->unit_no ?? $filterUnit);
+            }
+        @endphp
+        <div class="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm text-indigo-800">
+            <span class="font-semibold">Filtreler:</span>
+            <span class="ml-1">{{ implode(' — ', $activeFilters) }}</span>
+        </div>
+    @endif
 
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
@@ -73,39 +87,38 @@
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold">Daire</th>
                         <th class="px-4 py-3 text-left font-semibold">Hesap Adı</th>
-                        <th class="px-4 py-3 text-left font-semibold">Kategori</th>
-                        <th class="px-4 py-3 text-left font-semibold">Açıklama</th>
-                        <th class="px-4 py-3 text-left font-semibold">Vade Tarihi</th>
-                        <th class="px-4 py-3 text-center font-semibold">Gecikme (Gün)</th>
-                        <th class="px-4 py-3 text-right font-semibold">Toplam</th>
-                        <th class="px-4 py-3 text-right font-semibold">Kalan</th>
+                        <th class="px-4 py-3 text-left font-semibold">Detaylar</th>
+                        <th class="px-4 py-3 text-right font-semibold">Toplam Kalan</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                    @forelse($dues as $due)
-                        <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3 font-medium text-slate-700">{{ $due->unit?->unit_no ?? '-' }}</td>
-                            <td class="px-4 py-3 text-slate-800">{{ $due->account?->name ?? '-' }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ $due->category?->name ?? '-' }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ $due->description ?? '-' }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ $due->due_date?->format('d.m.Y') ?? '-' }}</td>
-                            <td class="px-4 py-3 text-center">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold
-                                    {{ $due->days_overdue > 90 ? 'bg-red-200 text-red-800' : ($due->days_overdue > 30 ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700') }}">
-                                    {{ $due->days_overdue }} gün
-                                </span>
+                    @forelse($groups as $group)
+                        <tr class="hover:bg-slate-50 align-top">
+                            <td class="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{{ $group->unit?->unit_no ?? '-' }}</td>
+                            <td class="px-4 py-3 text-slate-800 whitespace-nowrap">{{ $group->account?->name ?? '-' }}</td>
+                            <td class="px-4 py-3 text-slate-600">
+                                <div class="flex flex-col gap-1">
+                                    @foreach($group->dues as $due)
+                                        <div class="text-xs">
+                                            <span class="font-medium">{{ $due->created_at_manual?->format('d.m.Y') ?? $due->created_at?->format('d.m.Y') ?? '-' }}</span>
+                                            <span class="mx-1 text-slate-300">|</span>
+                                            {{ number_format($due->amount, 2, ',', '.') }} ₺
+                                            <span class="mx-1 text-slate-300">|</span>
+                                            <span class="font-medium">Açıklama:</span> {{ $due->description ?? '-' }}
+                                        </div>
+                                    @endforeach
+                                </div>
                             </td>
-                            <td class="px-4 py-3 text-right text-slate-700">{{ number_format($due->amount, 2, ',', '.') }} ₺</td>
-                            <td class="px-4 py-3 text-right font-semibold text-red-600">{{ number_format($due->remaining_amount, 2, ',', '.') }} ₺</td>
+                            <td class="px-4 py-3 text-right font-semibold text-red-600 whitespace-nowrap">{{ number_format($group->total_remaining, 2, ',', '.') }} ₺</td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="px-4 py-8 text-center text-slate-400">Gecikmiş aidat bulunamadı.</td></tr>
+                        <tr><td colspan="4" class="px-4 py-8 text-center text-slate-400">Gecikmiş hesap bulunamadı.</td></tr>
                     @endforelse
                 </tbody>
-                @if($dues->count())
+                @if($groups->count())
                 <tfoot class="bg-slate-50 border-t-2 border-slate-200">
                     <tr>
-                        <td colspan="7" class="px-4 py-3 font-bold text-slate-700">TOPLAM GECİKMİŞ</td>
+                        <td colspan="3" class="px-4 py-3 font-bold text-slate-700">TOPLAM GECİKMİŞ</td>
                         <td class="px-4 py-3 text-right font-bold text-red-600">{{ number_format($totalOverdue, 2, ',', '.') }} ₺</td>
                     </tr>
                 </tfoot>
