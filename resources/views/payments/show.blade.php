@@ -14,6 +14,10 @@
 
         $labelAccusative = $isTahsilat ? 'Tahsilatı' : 'Ödemeyi';
 
+        $hasDueAllocations = $payment->allocations->contains(fn ($allocation) => $allocation->due_id !== null);
+        $linkedRecordsLabel = $hasDueAllocations ? 'aidatlar' : 'giderler';
+        $linkedToLabel = $hasDueAllocations ? 'tahsilata' : 'ödemeye';
+
     @endphp
 
     {{-- Header --}}
@@ -50,7 +54,7 @@
 
             @if ($payment->allocations->isNotEmpty())
 
-                <button type="button" onclick="alert('{{ $isTahsilat ? 'Bu tahsilata bağlı borçlar var. Silmek için önce tüm bağlı borçları geri alın.' : 'Bu ödemeye bağlı giderler var. Silmek için önce tüm bağlı giderleri geri alın.' }}')" class="flex-1 md:flex-none rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">{{ $labelAccusative }} Sil</button>
+                <button type="button" onclick="document.getElementById('delete-payment-modal').classList.remove('hidden')" class="flex-1 md:flex-none rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">{{ $labelAccusative }} Sil</button>
 
             @else
 
@@ -201,7 +205,7 @@
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 
-        <h2 class="text-lg font-semibold text-slate-950 mb-4">{{ $isTahsilat ? 'Bağlı Borçlar' : 'Bağlı Giderler' }}</h2>
+        <h2 class="text-lg font-semibold text-slate-950 mb-4">{{ $isTahsilat ? 'Bağlı Aidatlar (Borçlar)' : 'Bağlı Giderler' }}</h2>
 
         @if ($payment->allocations->isEmpty())
 
@@ -318,6 +322,60 @@
         @endif
 
     </div>
+
+    @if ($payment->allocations->isNotEmpty())
+        <div id="delete-payment-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900 mb-1">{{ $labelAccusative }} Sil</h3>
+                <p class="text-sm text-slate-500 mb-4">Bu {{ $linkedToLabel }} bağlı {{ $linkedRecordsLabel }}:</p>
+
+                <div class="overflow-hidden rounded-xl border border-slate-200 mb-4">
+                    <div class="divide-y divide-slate-100">
+                        @foreach ($payment->allocations as $allocation)
+                            <div class="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                                <div class="min-w-0">
+                                    <div class="font-medium text-slate-900">
+                                        @if ($allocation->due)
+                                            {{ $allocation->due->reference_number ?? '#'.$allocation->due_id }}
+                                        @else
+                                            {{ $allocation->expense->reference_number ?? '#'.$allocation->expense_id }}
+                                        @endif
+                                    </div>
+                                    <div class="truncate text-slate-500">
+                                        @if ($allocation->due)
+                                            {{ $allocation->due->description ?: 'Aidat' }}
+                                        @else
+                                            {{ $allocation->expense->description ?: 'Gider' }}
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="shrink-0 font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 mb-4">
+                    Bağlı {{ $hasDueAllocations ? 'aidatların tahsilat kapamaları' : 'giderlerin ödeme kapamaları' }} geri alınacak, ardından {{ $labelLower }} ve ilgili kasa hareketi silinecek. Bu işlem geri alınamaz.
+                </div>
+
+                <div class="flex gap-3">
+                    <form method="POST" action="{{ route('payments.destroy', $payment) }}" class="flex-1">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">{{ $labelAccusative }} Sil</button>
+                    </form>
+                    <button type="button" onclick="document.getElementById('delete-payment-modal').classList.add('hidden')" class="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.getElementById('delete-payment-modal')?.addEventListener('click', function(e) {
+                if (e.target === this) this.classList.add('hidden');
+            });
+        </script>
+    @endif
 
 @endsection
 

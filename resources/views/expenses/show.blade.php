@@ -66,7 +66,7 @@
 
             @if ($expense->paymentAllocations->isNotEmpty())
 
-                <button type="button" onclick="alert('Bu gidere bağlı ödeme(ler) var. Silmek için önce ödeme bağlantısını kaldırın.')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                <button type="button" onclick="document.getElementById('delete-expense-modal').classList.remove('hidden')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
 
             @else
 
@@ -293,7 +293,8 @@
 
             @foreach ($expense->paymentAllocations as $allocation)
                 @php
-                    $hasMultipleAllocations = $allocation->payment->allocations_count > 1;
+                    $canDeletePayment = $allocation->payment->allocations_count === 1
+                        && round((float) $allocation->payment->amount, 2) === round((float) $allocation->amount, 2);
                 @endphp
 
                 <div id="revert-allocation-modal-{{ $allocation->id }}" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
@@ -310,28 +311,30 @@
                         </div>
 
                         <div class="flex flex-col gap-3">
-                            <form method="POST" action="{{ route('payments.allocations.destroy', [$allocation->payment, $allocation]) }}">
-                                @csrf
-                                @method('DELETE')
-                                <input type="hidden" name="redirect_to" value="{{ route('expenses.show', $expense) }}">
-                                <button type="submit" class="w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
-                                    Sadece Geri Al (Ödeme Hesapta Kalır)
-                                </button>
-                            </form>
+                            @unless ($canDeletePayment)
+                                <form method="POST" action="{{ route('payments.allocations.destroy', [$allocation->payment, $allocation]) }}">
+                                    @csrf
+                                    @method('DELETE')
+                                    <input type="hidden" name="redirect_to" value="{{ route('expenses.show', $expense) }}">
+                                    <button type="submit" class="w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
+                                        Geri Al (Ödeme Hesapta Kalır)
+                                    </button>
+                                </form>
+                            @endunless
 
                             <form method="POST" action="{{ route('payments.destroy', $allocation->payment) }}">
                                 @csrf
                                 @method('DELETE')
                                 <input type="hidden" name="redirect_to" value="{{ route('expenses.show', $expense) }}">
-                                <button type="submit" @disabled($hasMultipleAllocations)
-                                        class="w-full rounded-xl px-4 py-2.5 text-sm font-semibold {{ $hasMultipleAllocations ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700' }}">
-                                    Ödemeyi de Sil
+                                <button type="submit" @disabled(! $canDeletePayment)
+                                        class="w-full rounded-xl px-4 py-2.5 text-sm font-semibold {{ $canDeletePayment ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-100 text-slate-400 cursor-not-allowed' }}">
+                                    Ödemeyi Sil
                                 </button>
                             </form>
 
-                            @if ($hasMultipleAllocations)
-                                <p class="text-xs text-amber-600">Bu ödeme başka giderleri de kapatmıştır; sadece geri alabilirsiniz.</p>
-                            @endif
+                            @unless ($canDeletePayment)
+                                <p class="text-xs text-amber-600">Bu ödeme bu gideri birebir kapatmadığından silinemez; yalnızca gider kapamayı geri alabilirsiniz.</p>
+                            @endunless
 
                             <button type="button" onclick="document.getElementById('revert-allocation-modal-{{ $allocation->id }}').classList.add('hidden')"
                                     class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -352,7 +355,40 @@
 
     </div>
 
+    @if ($expense->paymentAllocations->isNotEmpty())
+        <div id="delete-expense-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900 mb-1">Gideri Sil</h3>
+                <p class="text-sm text-slate-500 mb-4">Bu gideri kapatan ödemeler:</p>
 
+                <div class="overflow-hidden rounded-xl border border-slate-200 mb-4">
+                    <div class="divide-y divide-slate-100">
+                        @foreach ($expense->paymentAllocations as $allocation)
+                            <div class="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                                <div class="min-w-0">
+                                    <div class="font-medium text-slate-900">{{ $allocation->payment->reference_number ?? '#'.$allocation->payment_id }}</div>
+                                    <div class="truncate text-slate-500">{{ $allocation->payment->description ?: 'Ödeme' }}</div>
+                                </div>
+                                <div class="shrink-0 font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 mb-4">
+                    Bu gideri kapatan ödemeler olduğu için gider silinemez.
+                </div>
+
+                <button type="button" onclick="document.getElementById('delete-expense-modal').classList.add('hidden')" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+            </div>
+        </div>
+
+        <script>
+            document.getElementById('delete-expense-modal')?.addEventListener('click', function(e) {
+                if (e.target === this) this.classList.add('hidden');
+            });
+        </script>
+    @endif
 
 @endsection
 

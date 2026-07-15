@@ -37,9 +37,9 @@
 
             <a href="{{ route('dues.edit', $due) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Düzenle</a>
 
-            @if (in_array($due->status, ['paid', 'partial']))
+            @if ($due->allocations->isNotEmpty())
 
-                <button type="button" onclick="alert('Bu aidat ödenmiş olduğu için silinemez. Önce ilgili ödemeleri iptal edin.')" class="flex-1 md:flex-none rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="flex-1 md:flex-none rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
 
             @else
 
@@ -299,7 +299,8 @@
 
             @foreach ($due->allocations as $allocation)
                 @php
-                    $hasMultipleAllocations = $allocation->payment->allocations_count > 1;
+                    $canDeletePayment = $allocation->payment->allocations_count === 1
+                        && round((float) $allocation->payment->amount, 2) === round((float) $allocation->amount, 2);
                 @endphp
 
                 <div id="revert-allocation-modal-{{ $allocation->id }}" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
@@ -316,28 +317,30 @@
                         </div>
 
                         <div class="flex flex-col gap-3">
-                            <form method="POST" action="{{ route('payments.allocations.destroy', [$allocation->payment, $allocation]) }}">
-                                @csrf
-                                @method('DELETE')
-                                <input type="hidden" name="redirect_to" value="{{ route('dues.show', $due) }}">
-                                <button type="submit" class="w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
-                                    Sadece Geri Al (Tahsilat Hesapta Kalır)
-                                </button>
-                            </form>
+                            @unless ($canDeletePayment)
+                                <form method="POST" action="{{ route('payments.allocations.destroy', [$allocation->payment, $allocation]) }}">
+                                    @csrf
+                                    @method('DELETE')
+                                    <input type="hidden" name="redirect_to" value="{{ route('dues.show', $due) }}">
+                                    <button type="submit" class="w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
+                                        Geri Al (Tahsilat Hesapta Kalır)
+                                    </button>
+                                </form>
+                            @endunless
 
                             <form method="POST" action="{{ route('payments.destroy', $allocation->payment) }}">
                                 @csrf
                                 @method('DELETE')
                                 <input type="hidden" name="redirect_to" value="{{ route('dues.show', $due) }}">
-                                <button type="submit" @disabled($hasMultipleAllocations)
-                                        class="w-full rounded-xl px-4 py-2.5 text-sm font-semibold {{ $hasMultipleAllocations ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700' }}">
-                                    Tahsilatı da Sil
+                                <button type="submit" @disabled(! $canDeletePayment)
+                                        class="w-full rounded-xl px-4 py-2.5 text-sm font-semibold {{ $canDeletePayment ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-100 text-slate-400 cursor-not-allowed' }}">
+                                    Tahsilatı Sil
                                 </button>
                             </form>
 
-                            @if ($hasMultipleAllocations)
-                                <p class="text-xs text-amber-600">Bu tahsilat başka aidatları da kapatmış olduğundan sadece geri alabilirsiniz.</p>
-                            @endif
+                            @unless ($canDeletePayment)
+                                <p class="text-xs text-amber-600">Bu tahsilat bu aidatı birebir kapatmadığından silinemez; yalnızca aidat kapamayı geri alabilirsiniz.</p>
+                            @endunless
 
                             <button type="button" onclick="document.getElementById('revert-allocation-modal-{{ $allocation->id }}').classList.add('hidden')"
                                     class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -358,7 +361,40 @@
 
     </div>
 
+    @if ($due->allocations->isNotEmpty())
+        <div id="delete-due-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900 mb-1">Aidatı Sil</h3>
+                <p class="text-sm text-slate-500 mb-4">Bu aidatı kapatan tahsilatlar:</p>
 
+                <div class="overflow-hidden rounded-xl border border-slate-200 mb-4">
+                    <div class="divide-y divide-slate-100">
+                        @foreach ($due->allocations as $allocation)
+                            <div class="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                                <div class="min-w-0">
+                                    <div class="font-medium text-slate-900">{{ $allocation->payment->reference_number ?? '#'.$allocation->payment_id }}</div>
+                                    <div class="truncate text-slate-500">{{ $allocation->payment->description ?: 'Tahsilat' }}</div>
+                                </div>
+                                <div class="shrink-0 font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 mb-4">
+                    Bu aidatı kapatan tahsilatlar olduğu için aidat silinemez.
+                </div>
+
+                <button type="button" onclick="document.getElementById('delete-due-modal').classList.add('hidden')" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+            </div>
+        </div>
+
+        <script>
+            document.getElementById('delete-due-modal')?.addEventListener('click', function(e) {
+                if (e.target === this) this.classList.add('hidden');
+            });
+        </script>
+    @endif
 
     @if (! in_array($due->status, ['paid', 'partial']) && $transferableAccounts->isNotEmpty())
 

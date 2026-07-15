@@ -77,15 +77,6 @@
                 </select>
             </div>
 
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Kategori <span class="text-red-500">*</span></label>
-                <select name="category_id" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-950 focus:outline-none">
-                    <option value="">Seçin...</option>
-                    @foreach ($categories as $cat)
-                        <option value="{{ $cat->id }}" {{ old('category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                    @endforeach
-                </select>
-            </div>
 
             <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1.5">Ödeme Tarihi <span class="text-red-500">*</span></label>

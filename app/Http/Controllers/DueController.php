@@ -519,8 +519,8 @@ class DueController extends Controller
             return $response;
         }
 
-        if (in_array($due->status, ['paid', 'partial'])) {
-            return redirect()->route('dues.show', $due)->with('error', 'Ödenmiş veya kısmen ödenmiş aidat silinemez. Önce ilgili ödemeleri iptal edin.');
+        if ($due->allocations()->exists()) {
+            return redirect()->route('dues.show', $due)->with('error', 'Bu aidatı kapatan tahsilatlar olduğu için silinemez.');
         }
 
         $due->transactions()->delete();

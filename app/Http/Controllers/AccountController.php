@@ -2368,15 +2368,9 @@ class AccountController extends Controller
             ->orderBy('name')
             ->get();
 
-        $categories = Category::where('apartment_id', $account->apartment_id)
-            ->where('type', Category::TYPE_EXPENSE)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
         $totalAmount = $expenses->sum('amount');
 
-        return view('accounts.expenses.multi-pay', compact('account', 'expenses', 'cashBoxes', 'categories', 'totalAmount'));
+        return view('accounts.expenses.multi-pay', compact('account', 'expenses', 'cashBoxes', 'totalAmount'));
     }
 
     public function storeMultiPayExpenses(Request $request, Account $account)
@@ -2384,7 +2378,6 @@ class AccountController extends Controller
         $validated = $request->validate([
             'expense_ids'   => ['required', 'string'],
             'cash_box_id'   => ['required', 'integer', Rule::exists('cash_boxes', 'id')->where('apartment_id', $account->apartment_id)->where('is_active', true)],
-            'category_id'   => ['required', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
             'payment_date'  => ['required', 'date'],
             'description'   => ['nullable', 'string', 'max:255'],
         ]);
@@ -2420,7 +2413,7 @@ class AccountController extends Controller
                 'cash_box_id'      => $validated['cash_box_id'],
                 'account_id'       => $account->id,
                 'payment_id'       => $payment->id,
-                'category_id'      => $validated['category_id'],
+                'category_id'      => null,
                 'type'             => 'expense',
                 'description'      => $paymentDescription,
                 'amount'           => $totalAmount,
