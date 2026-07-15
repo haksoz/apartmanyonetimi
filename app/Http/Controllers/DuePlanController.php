@@ -30,15 +30,7 @@ class DuePlanController extends Controller
             ->orderBy('name')
             ->get();
 
-        $orphanBatches = DueBatch::query()
-            ->withCount('dues')
-            ->whereNull('due_plan_id')
-            ->where('apartment_id', $apartment->id)
-            ->has('dues')
-            ->orderBy('period')
-            ->get();
-
-        return view('due-plans.index', compact('plans', 'apartment', 'orphanBatches'));
+        return view('due-plans.index', compact('plans', 'apartment'));
     }
 
     public function create(CurrentApartment $currentApartment)

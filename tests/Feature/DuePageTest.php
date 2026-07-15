@@ -8,6 +8,7 @@ use App\Models\Apartment;
 use App\Models\Category;
 use App\Models\Due;
 use App\Models\DueBatch;
+use App\Models\DuePlan;
 use App\Models\Expense;
 use App\Models\Unit;
 use App\Models\User;
@@ -709,5 +710,101 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'is_imported' => true,
         ]);
+    }
+
+    public function test_batch_due_does_not_appear_as_deleted_plan_in_due_plans_page(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 2]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unitOne = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $unitTwo = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '2']);
+        $accountOne = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitOne->id, 'type' => Account::TYPE_OWNER, 'name' => '1. Daire Maliki', 'is_active' => true]);
+        $accountTwo = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitTwo->id, 'type' => Account::TYPE_OWNER, 'name' => '2. Daire Maliki', 'is_active' => true]);
+        $unitOne->update(['owner_account_id' => $accountOne->id, 'occupant_account_id' => $accountOne->id]);
+        $unitTwo->update(['owner_account_id' => $accountTwo->id, 'occupant_account_id' => $accountTwo->id]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        DuePlan::create([
+            'apartment_id' => $apartment->id,
+            'category_id' => $category->id,
+            'name' => '2026 Aidat Planı',
+            'year' => 2026,
+            'due_type' => \App\Enums\DueType::Aidat,
+            'amount_type' => DuePlan::AMOUNT_TYPE_MONTHLY,
+            'monthly_amount' => 1000,
+            'distribution_type' => DuePlan::DISTRIBUTION_EQUAL,
+            'target_audience' => 'tenant_priority',
+            'due_day' => 1,
+            'generate_day' => 1,
+            'is_active' => true,
+            'auto_generate' => false,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('dues.store'), [
+                'source_type' => DueBatch::SOURCE_MANUAL,
+                'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
+                'target_audience' => 'tenant_priority',
+                'period' => '2026-05',
+                'due_date' => '2026-05-31',
+                'due_type' => \App\Enums\DueType::Aidat->value,
+                'category_id' => $category->id,
+                'source_amount' => 1200,
+                'description' => 'Mayıs aidatı',
+            ])
+            ->assertRedirect(route('dues.index'));
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('due-plans.index'))
+            ->assertStatus(200)
+            ->assertSee('2026 Aidat Planı')
+            ->assertDontSee('Silinmiş Plan')
+            ->assertDontSee('Mayıs 2026');
+    }
+
+    public function test_plan_generated_month_appears_in_due_plans_page(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 2]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unitOne = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $unitTwo = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '2']);
+        $accountOne = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitOne->id, 'type' => Account::TYPE_OWNER, 'name' => '1. Daire Maliki', 'is_active' => true]);
+        $accountTwo = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitTwo->id, 'type' => Account::TYPE_OWNER, 'name' => '2. Daire Maliki', 'is_active' => true]);
+        $unitOne->update(['owner_account_id' => $accountOne->id, 'occupant_account_id' => $accountOne->id]);
+        $unitTwo->update(['owner_account_id' => $accountTwo->id, 'occupant_account_id' => $accountTwo->id]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $plan = DuePlan::create([
+            'apartment_id' => $apartment->id,
+            'category_id' => $category->id,
+            'name' => '2026 Aidat Planı',
+            'year' => 2026,
+            'due_type' => \App\Enums\DueType::Aidat,
+            'amount_type' => DuePlan::AMOUNT_TYPE_MONTHLY,
+            'monthly_amount' => 1000,
+            'distribution_type' => DuePlan::DISTRIBUTION_EQUAL,
+            'target_audience' => 'tenant_priority',
+            'due_day' => 1,
+            'generate_day' => 1,
+            'is_active' => true,
+            'auto_generate' => false,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('due-plans.generate-month', $plan), [
+                'period' => '2026-06',
+                'description' => 'Haziran 2026 aidatı',
+            ])
+            ->assertRedirect(route('dues.index'));
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('due-plans.index'))
+            ->assertStatus(200)
+            ->assertSee('2026 Aidat Planı')
+            ->assertSee('Haziran 2026');
     }
 }

@@ -182,8 +182,7 @@
     @php
         $allBatches = $plans->flatMap(fn ($p) => $p->batches
                                ->filter(fn ($b) => $b->dues_count > 0)
-                               ->map(fn ($b) => ['plan' => $p, 'batch' => $b, 'deleted' => false]))
-                           ->concat($orphanBatches->map(fn ($b) => ['plan' => null, 'batch' => $b, 'deleted' => true]))
+                               ->map(fn ($b) => ['plan' => $p, 'batch' => $b]))
                            ->sortBy(fn ($row) => $row['batch']->period);
     @endphp
     @if ($allBatches->isNotEmpty())
@@ -207,18 +206,13 @@
                             <tr class="hover:bg-slate-50">
                                 <td class="px-5 py-3 font-medium text-slate-900">{{ $batchPeriod }}</td>
                                 <td class="px-5 py-3 text-slate-700">
-                                    @if ($row['deleted'])
-                                        <span class="text-slate-600">{{ $row['batch']->description ?? '—' }}</span>
-                                        <span class="ml-1 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-500">Silinmiş Plan</span>
-                                    @else
-                                        {{ $row['plan']->name }}
-                                        @if (!$row['plan']->is_active)
-                                            <span class="ml-1 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Pasif</span>
-                                        @endif
+                                    {{ $row['plan']->name }}
+                                    @if (!$row['plan']->is_active)
+                                        <span class="ml-1 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Pasif</span>
                                     @endif
                                 </td>
                                 <td class="px-5 py-3 text-slate-500">
-                                    {{ $row['deleted'] ? $row['batch']->distribution_type_label : $row['plan']->distribution_label }}
+                                    {{ $row['plan']->distribution_label }}
                                 </td>
                                 <td class="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($row['batch']->source_amount, 2, ',', '.') }} TL</td>
                             </tr>
