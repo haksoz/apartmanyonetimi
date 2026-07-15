@@ -22,7 +22,8 @@ class DuePlan extends Model
         'due_type',
         'category_id',
         'name',
-        'year',
+        'start_date',
+        'end_date',
         'amount_type',
         'monthly_amount',
         'yearly_amount',
@@ -43,9 +44,10 @@ class DuePlan extends Model
         'due_day'         => 'integer',
         'auto_generate'   => 'boolean',
         'generate_day'    => 'integer',
-        'year'            => 'integer',
-        'is_active'      => 'boolean',
-        'due_type'       => DueType::class,
+        'start_date'      => 'date',
+        'end_date'        => 'date',
+        'is_active'       => 'boolean',
+        'due_type'        => DueType::class,
     ];
 
     public function apartment(): BelongsTo

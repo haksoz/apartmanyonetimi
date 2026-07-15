@@ -20,10 +20,12 @@ class Category extends Model
         'name',
         'type',
         'is_active',
+        'is_system',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_system' => 'boolean',
     ];
 
     public function apartment(): BelongsTo
@@ -58,21 +60,21 @@ class Category extends Model
     public static function createDefaultsFor(int $apartmentId): void
     {
         $defaults = [
-            ['name' => 'Aidat', 'type' => self::TYPE_INCOME],
-            ['name' => 'Demirbaş', 'type' => self::TYPE_INCOME],
-            ['name' => 'Elektrik', 'type' => self::TYPE_EXPENSE],
-            ['name' => 'Su', 'type' => self::TYPE_EXPENSE],
-            ['name' => 'Asansör', 'type' => self::TYPE_EXPENSE],
-            ['name' => 'Temizlik', 'type' => self::TYPE_EXPENSE],
-            ['name' => 'Yönetim', 'type' => self::TYPE_EXPENSE],
-            ['name' => 'Bakım', 'type' => self::TYPE_EXPENSE],
-            ['name' => 'Diğer', 'type' => self::TYPE_ALL],
+            ['name' => 'Aidat', 'type' => self::TYPE_INCOME, 'is_system' => true],
+            ['name' => 'Demirbaş', 'type' => self::TYPE_ALL, 'is_system' => true],
+            ['name' => 'Elektrik', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
+            ['name' => 'Su', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
+            ['name' => 'Asansör', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
+            ['name' => 'Temizlik', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
+            ['name' => 'Yönetim', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
+            ['name' => 'Bakım', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
+            ['name' => 'Diğer', 'type' => self::TYPE_ALL, 'is_system' => true],
         ];
 
         foreach ($defaults as $default) {
-            self::firstOrCreate(
+            self::updateOrCreate(
                 ['apartment_id' => $apartmentId, 'name' => $default['name']],
-                ['type' => $default['type'], 'is_active' => true],
+                ['type' => $default['type'], 'is_active' => true, 'is_system' => $default['is_system']],
             );
         }
     }

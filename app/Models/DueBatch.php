@@ -37,6 +37,7 @@ class DueBatch extends Model
         'source_period',
         'category_filter_ids',
         'source_amount',
+        'distribution_snapshot',
         'description',
         'created_by',
     ];
@@ -45,6 +46,7 @@ class DueBatch extends Model
         'source_period' => 'date',
         'category_filter_ids' => 'array',
         'source_amount' => 'decimal:2',
+        'distribution_snapshot' => 'array',
         'due_type' => DueType::class,
     ];
 

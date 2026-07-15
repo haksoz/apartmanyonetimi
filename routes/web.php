@@ -161,6 +161,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
         Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
         Route::post('due-plans/{duePlan}/generate-month', [DuePlanController::class, 'generateMonth'])->name('due-plans.generate-month');
+        Route::post('due-plans/{duePlan}/regenerate-period', [DuePlanController::class, 'regeneratePeriod'])->name('due-plans.regenerate-period');
         Route::patch('due-plans/{duePlan}/deactivate', [DuePlanController::class, 'deactivate'])->name('due-plans.deactivate');
         Route::resource('due-plans', DuePlanController::class);
         Route::get('dues/batch/create', [DueController::class, 'createBatch'])->name('dues.batch.create');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\DueType;
 use App\Models\Account;
 use App\Models\AccountTransaction;
+use App\Models\Apartment;
 use App\Models\CashTransaction;
 use App\Models\Category;
 use App\Models\Due;
@@ -14,6 +15,7 @@ use App\Models\Unit;
 use App\Models\CashBox;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
+use App\Support\AidatPeriodReconciliation;
 use App\Support\CurrentApartment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -21,6 +23,10 @@ use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
+    public function __construct(private readonly AidatPeriodReconciliation $aidatReconciliation)
+    {
+    }
+
     /**
      * Parse Turkish number format (1.135,00 -> 1135.00)
      */
@@ -863,7 +869,10 @@ class AccountController extends Controller
         $defaultCategory = $categories->firstWhere('name', 'Aidat') ?? $categories->first();
 
         $importedCount = 0;
-        DB::transaction(function () use ($account, $transactions, $cashBox, $categories, $defaultCategory, &$importedCount) {
+        $apartment = Apartment::query()->findOrFail($account->apartment_id);
+        $aidatCategory = $this->aidatReconciliation->categoryFor($apartment);
+
+        DB::transaction(function () use ($account, $transactions, $cashBox, $categories, $defaultCategory, &$importedCount, $apartment, $aidatCategory) {
             foreach ($transactions as $t) {
                 if ($t['debit'] > 0) {
                     // Borç → Devir Öncesi Aidat (Due)
@@ -871,6 +880,14 @@ class AccountController extends Controller
                     $category = $catName
                         ? ($categories->first(fn($c) => mb_strtolower($c->name) === mb_strtolower($catName)) ?? $defaultCategory)
                         : $defaultCategory;
+
+                    // Aidat + Aidat tekillik kontrolü: import sırasında
+                    $period = \Carbon\Carbon::parse($t['date'])->format('Y-m');
+                    if ($category && $category->id === $aidatCategory->id) {
+                        if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $account->id, $period)) {
+                            continue;
+                        }
+                    }
 
                     $due = \App\Models\Due::create([
                         'apartment_id'    => $account->apartment_id,

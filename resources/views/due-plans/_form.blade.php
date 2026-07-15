@@ -1,365 +1,268 @@
-@php $isEdit = !is_null($plan); @endphp
+<input type="hidden" name="name" value="Aidat Kararı">
+<input type="hidden" name="auto_generate" value="1">
+<input type="hidden" name="amount_type" value="monthly">
+<input type="hidden" name="due_type" value="aidat">
+<input type="hidden" name="category_id" value="">
 
-{{-- Errors --}}
-@if ($errors->any())
-    <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        <ul class="list-disc list-inside space-y-1">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
+<div class="space-y-4">
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-700 mb-4">Plan Dönemi</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-slate-600 mb-1">Başlangıç Tarihi</label>
+                <input type="date" id="start_date" name="start_date"
+                       value="{{ old('start_date', $plan?->start_date?->format('Y-m-d')) }}"
+                       class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none"
+                       required>
+                @error('start_date')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
 
-<div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Plan Adı</label>
-    <input type="text" name="name" value="{{ old('name', $plan?->name) }}"
-           class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none" required>
-</div>
-
-@php
-    $autoGenChecked = old('auto_generate', $plan?->auto_generate ?? false);
-@endphp
-
-<div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Yıl</label>
-    <input type="number" name="year" id="plan_year" value="{{ old('year', $plan?->year ?? now()->year) }}"
-           min="2000" max="2100"
-           class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none" required>
-</div>
-
-<div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
-    <div class="flex items-center justify-between">
-        <div>
-            <p class="text-sm font-medium text-slate-700">Her ay otomatik oluşturulsun mu?</p>
-            <p class="text-xs text-slate-500 mt-0.5" id="auto-generate-hint">
-                {{ $autoGenChecked ? 'Sistem her ay belirlenen günde aidatı otomatik oluşturur.' : 'Kapalı — aidatları Aidat Planları sayfasından siz tetiklersiniz.' }}
-            </p>
+            <div>
+                <label for="end_date" class="block text-sm font-medium text-slate-600 mb-1">Bitiş Tarihi</label>
+                <input type="date" id="end_date" name="end_date"
+                       value="{{ old('end_date', $plan?->end_date?->format('Y-m-d')) }}"
+                       class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none"
+                       required>
+                @error('end_date')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
         </div>
-        <label class="relative inline-flex items-center cursor-pointer">
-            <input type="hidden" name="auto_generate" value="0">
-            <input type="checkbox" name="auto_generate" id="auto_generate" value="1"
-                   {{ $autoGenChecked ? 'checked' : '' }}
-                   class="sr-only peer">
-            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer
-                        peer-checked:bg-slate-800
-                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                        after:bg-white after:rounded-full after:h-5 after:w-5
-                        after:transition-all peer-checked:after:translate-x-full"></div>
-        </label>
     </div>
 
-    <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Aidat Oluşturma Günü (1-28)</label>
-        <input type="number" name="generate_day" id="generate_day"
-               value="{{ old('generate_day', $plan?->generate_day ?? 1) }}"
-               min="1" max="28" required
-               class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-        <p class="mt-1 text-xs text-slate-500" id="generate-day-hint">
-            {{ $autoGenChecked ? 'Sistem her ayın bu gününde aidatı otomatik oluşturur.' : 'Aidat oluşturma butonuna bastığınızda bu gün dikkate alınır.' }}
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-700 mb-4">Vade ve Oluşturma Günleri</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="generate_day" class="block text-sm font-medium text-slate-600 mb-1">Aidat Oluşturma Günü (1-28)</label>
+                <input type="number" id="generate_day" name="generate_day"
+                       value="{{ old('generate_day', $plan?->generate_day ?? 1) }}"
+                       min="1" max="28" required
+                       class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                <p class="mt-1 text-xs text-slate-500">Sistem her ayın bu gününde aidatı otomatik oluşturur.</p>
+                @error('generate_day')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label for="due_day" class="block text-sm font-medium text-slate-600 mb-1">Vade Günü (1-28)</label>
+                <input type="number" id="due_day" name="due_day"
+                       value="{{ old('due_day', $plan?->due_day ?? 1) }}"
+                       min="1" max="28" required
+                       class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                @error('due_day')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-700 mb-4">Tutar Girişi</h3>
+        <div class="md:w-1/2">
+            <label for="monthly_amount" class="mb-2 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Aylık Tutar</label>
+            <input id="monthly_amount" name="monthly_amount" type="number" min="0.01" step="0.01"
+                   value="{{ old('monthly_amount', $plan?->monthly_amount) }}"
+                   class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold"
+                   placeholder="0,00" required>
+            @error('monthly_amount')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+
+    <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-slate-700">Borç Bilgileri</h3>
+            <div id="calc-summary" class="text-sm font-medium text-red-600 hidden"></div>
+        </div>
+
+        <div class="mb-4">
+            <label class="mb-2 block text-sm font-medium text-slate-600">Dağıtım Yöntemi</label>
+            <select name="distribution_type" id="distribution_type" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                <option value="equal" @selected(old('distribution_type', $plan?->distribution_type ?? 'equal') === 'equal')>Eşit dağıtım</option>
+                <option value="square_meters" @selected(old('distribution_type', $plan?->distribution_type) === 'square_meters')>Metrekareye göre</option>
+                <option value="share_coefficient" @selected(old('distribution_type', $plan?->distribution_type) === 'share_coefficient')>Pay çarpanına göre</option>
+            </select>
+            @error('distribution_type')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div id="distribution-preview" class="hidden mb-4">
+            <div class="rounded-xl border border-slate-200 overflow-hidden">
+                <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dağıtım Önizlemesi</span>
+                    <span id="preview-total-label" class="text-xs text-slate-500"></span>
+                </div>
+                <div id="preview-warning" class="hidden px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700"></div>
+                <div id="preview-groups" class="divide-y divide-slate-100"></div>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="mb-2 block text-sm font-medium text-slate-600">Borçlanacak Kişiler</label>
+            <div class="flex gap-3">
+                <label class="cursor-pointer flex-1">
+                    <input type="radio" name="target_audience" value="tenant_priority" class="peer sr-only" @checked(old('target_audience', $plan?->target_audience ?? 'tenant_priority') === 'tenant_priority')>
+                    <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                        <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Kiracı Öncelikli</div>
+                        <div class="text-xs text-slate-500 mt-1">Varsa Kiracıya, yoksa sahibine</div>
+                    </div>
+                </label>
+                <label class="cursor-pointer flex-1">
+                    <input type="radio" name="target_audience" value="owner_only" class="peer sr-only" @checked(old('target_audience', $plan?->target_audience) === 'owner_only')>
+                    <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                        <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Sadece Sahipler</div>
+                        <div class="text-xs text-slate-500 mt-1">Tüm borçlar kat maliklerine</div>
+                    </div>
+                </label>
+            </div>
+            @error('target_audience')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+    </div>
+
+    <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 mb-2">Oluşacak Aidat Açıklaması</p>
+        <p class="text-sm text-emerald-900">
+            Her ay aidat oluşturulduğunda açıklama şu şekilde otomatik yazılır:<br>
+            <span class="font-medium">"Temmuz 2026 - Aidat"</span>
+        </p>
+        <p class="mt-2 text-xs text-emerald-700">
+            Ay ve yıl, oluşturulan döneme göre değişir.
         </p>
     </div>
 
-    <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">Vade Günü (1-28)</label>
-        <input type="number" name="due_day" value="{{ old('due_day', $plan?->due_day ?? 1) }}"
-               min="1" max="28"
-               class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none" required>
-        <p class="mt-1 text-xs text-slate-500">Oluşturulan aidatın son ödeme tarihi.</p>
-    </div>
-</div>
-
-<script>
-    (function() {
-        var toggle = document.getElementById('auto_generate');
-        var autoHint = document.getElementById('auto-generate-hint');
-        var genDayHint = document.getElementById('generate-day-hint');
-
-        toggle.addEventListener('change', function() {
-            if (this.checked) {
-                autoHint.textContent = 'Sistem her ay belirlenen günde aidatı otomatik oluşturur.';
-                genDayHint.textContent = 'Sistem her ayın bu gününde aidatı otomatik oluşturur.';
-            } else {
-                autoHint.textContent = 'Kapalı — aidatları Aidat Planları sayfasından siz tetiklersiniz.';
-                genDayHint.textContent = 'Aidat oluşturma butonuna bastığınızda bu gün dikkate alınır.';
-            }
-        });
-    })();
-</script>
-
-<div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Tutar Türü</label>
-    <div class="flex gap-4" id="amount-type-group">
-        <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="amount_type" value="monthly" id="amount_monthly"
-                   {{ old('amount_type', $plan?->amount_type ?? 'monthly') === 'monthly' ? 'checked' : '' }}>
-            <span class="text-sm text-slate-700">Aylık tutar</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="amount_type" value="yearly" id="amount_yearly"
-                   {{ old('amount_type', $plan?->amount_type) === 'yearly' ? 'checked' : '' }}>
-            <span class="text-sm text-slate-700">Yıllık toplam</span>
-        </label>
-    </div>
-</div>
-
-<div id="field-monthly" class="{{ old('amount_type', $plan?->amount_type ?? 'monthly') === 'monthly' ? '' : 'hidden' }}">
-    <label class="block text-sm font-medium text-slate-700 mb-1">Aylık Tutar (TL)</label>
-    <input type="number" name="monthly_amount" value="{{ old('monthly_amount', $plan?->monthly_amount) }}"
-           step="0.01" min="0.01"
-           class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-    <p class="mt-1 text-xs text-slate-500">Her ay bu tutar dairelere dağıtılır.</p>
-</div>
-
-<div id="field-yearly" class="{{ old('amount_type', $plan?->amount_type ?? 'monthly') === 'yearly' ? '' : 'hidden' }}">
-    <label class="block text-sm font-medium text-slate-700 mb-1">Yıllık Toplam (TL)</label>
-    <input type="number" name="yearly_amount" value="{{ old('yearly_amount', $plan?->yearly_amount) }}"
-           step="0.01" min="0.01"
-           class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-    <p class="mt-1 text-xs text-slate-500">12'ye bölünerek aylık tutar hesaplanır.</p>
-</div>
-
-<div id="field-per-unit" class="{{ old('amount_type', $plan?->amount_type ?? 'monthly') === 'per_unit' ? '' : 'hidden' }}">
-    <label class="block text-sm font-medium text-slate-700 mb-1">Daire Başı Tutar (TL)</label>
-    <input type="number" name="per_unit_amount" value="{{ old('per_unit_amount', $plan?->per_unit_amount ? (float)$plan->per_unit_amount : '') }}"
-           step="any" min="0.01"
-           onwheel="this.blur()"
-           class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-    <p class="mt-1 text-xs text-slate-500">Her daireye bu sabit tutar uygulanır. Toplam = daire sayısı × tutar.</p>
-</div>
-
-<div id="field-distribution" class="{{ old('amount_type', $plan?->amount_type ?? 'monthly') === 'per_unit' ? 'hidden' : '' }}">
-    <label class="block text-sm font-medium text-slate-700 mb-1">Dağıtım Yöntemi</label>
-    <select name="distribution_type" id="distribution_type" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-        <option value="equal" {{ old('distribution_type', $plan?->distribution_type ?? 'equal') === 'equal' ? 'selected' : '' }}>Eşit dağıtım</option>
-        <option value="square_meters" {{ old('distribution_type', $plan?->distribution_type) === 'square_meters' ? 'selected' : '' }}>Metrekareye göre</option>
-        <option value="share_coefficient" {{ old('distribution_type', $plan?->distribution_type) === 'share_coefficient' ? 'selected' : '' }}>Pay çarpanına göre</option>
-    </select>
-</div>
-
-{{-- Canlı Dağıtım Önizlemesi --}}
-<div id="distribution-preview" class="hidden">
-    <div class="rounded-xl border border-slate-200 overflow-hidden">
-        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dağıtım Önizlemesi</span>
-            <span id="preview-total-label" class="text-xs text-slate-500"></span>
+    <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div>
+            <p class="text-sm font-medium text-slate-700">Aktif / Pasif</p>
+            <p class="text-xs text-slate-500 mt-0.5">Plan aktifken aidatlar otomatik oluşturulur.</p>
         </div>
-        <div id="preview-warning" class="hidden px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700"></div>
-        <div id="preview-groups" class="divide-y divide-slate-100"></div>
+        <label class="relative inline-flex items-center cursor-pointer">
+            <input type="hidden" name="is_active" value="0">
+            <input type="checkbox" name="is_active" value="1"
+                   @checked(old('is_active', $plan?->is_active ?? true))
+                   class="sr-only peer">
+            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:bg-slate-900 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
     </div>
 </div>
 
 <script>
-(function() {
-    @php
-        $unitsJson = $units->map(function($u) {
-            return [
-                'label' => ($u->block ? $u->block . '/' : '') . $u->unit_no,
-                'sqm'   => (float) ($u->square_meters ?? 0),
-                'coef'  => (float) ($u->share_coefficient ?? 0),
-            ];
-        });
-    @endphp
-    var units = {!! json_encode($unitsJson) !!};
+    (() => {
+        const unitsData = [
+            @foreach ($units as $u)
+            {
+                label: {!! json_encode(($u->block ? $u->block . '/' : '') . $u->unit_no) !!},
+                sqm: {!! json_encode($u->square_meters) !!},
+                coef: {!! json_encode($u->share_coefficient) !!}
+            }@if (!$loop->last),@endif
+            @endforeach
+        ];
 
-    function getMonthlyAmount() {
-        var type = document.querySelector('input[name="amount_type"]:checked')?.value;
-        if (type === 'monthly') {
-            return parseFloat(document.querySelector('input[name="monthly_amount"]')?.value) || 0;
-        } else if (type === 'yearly') {
-            var y = parseFloat(document.querySelector('input[name="yearly_amount"]')?.value) || 0;
-            return Math.round(y / 12 * 100) / 100;
-        } else {
-            // per_unit: önizleme için daire başı tutar * daire sayısı
-            var perUnit = parseFloat(document.querySelector('input[name="per_unit_amount"]')?.value) || 0;
-            return Math.round(perUnit * units.length * 100) / 100;
-        }
-    }
+        const monthlyAmount = document.getElementById('monthly_amount');
+        const distributionType = document.getElementById('distribution_type');
+        const calcSummary = document.getElementById('calc-summary');
 
-    function fmt(n) {
-        return n.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    }
+        const formatMoney = (amount) => {
+            return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' TL';
+        };
 
-    function updatePreview() {
-        var distType  = document.getElementById('distribution_type')?.value;
-        var amount    = getMonthlyAmount();
-        var preview   = document.getElementById('distribution-preview');
-        var groupsEl  = document.getElementById('preview-groups');
-        var warning   = document.getElementById('preview-warning');
-        var totalLbl  = document.getElementById('preview-total-label');
+        const updateDistributionPreview = (total) => {
+            const distType = distributionType.value;
+            const previewEl = document.getElementById('distribution-preview');
+            const groupsEl = document.getElementById('preview-groups');
+            const warningEl = document.getElementById('preview-warning');
+            const totalLbl = document.getElementById('preview-total-label');
 
-        if (!amount || amount <= 0 || !units.length) {
-            preview.classList.add('hidden');
-            return;
-        }
-        preview.classList.remove('hidden');
+            if (! total || total <= 0 || ! unitsData.length) {
+                previewEl.classList.add('hidden');
+                return;
+            }
 
-        // Aktif daireler + ağırlıklar
-        var activeUnits = units.filter(function(u) {
-            if (distType === 'square_meters')     return u.sqm > 0;
-            if (distType === 'share_coefficient') return u.coef > 0;
-            return true;
-        });
+            const activeUnits = unitsData.filter(u => {
+                if (distType === 'square_meters') return u.sqm > 0;
+                if (distType === 'share_coefficient') return u.coef > 0;
+                return true;
+            });
 
-        var zeroCount = units.length - activeUnits.length;
-        if (distType !== 'equal' && zeroCount > 0) {
-            warning.textContent = zeroCount + ' dairenin ' + (distType === 'square_meters' ? 'metrekare' : 'pay çarpanı') + ' bilgisi 0 veya boş — bu daireler dağıtımdan hariç tutulur.';
-            warning.classList.remove('hidden');
-        } else {
-            warning.classList.add('hidden');
-        }
-
-        var totalWeight = activeUnits.reduce(function(s, u) {
-            if (distType === 'square_meters')     return s + u.sqm;
-            if (distType === 'share_coefficient') return s + u.coef;
-            return s + 1;
-        }, 0);
-
-        // Her daireye düşen pay
-        var shares = [];
-        var allocated = 0;
-        activeUnits.forEach(function(u, idx) {
-            var w = distType === 'equal' ? 1 : (distType === 'square_meters' ? u.sqm : u.coef);
-            var share = (idx === activeUnits.length - 1)
-                ? Math.round((amount - allocated) * 100) / 100
-                : Math.round(amount * w / totalWeight * 100) / 100;
-            allocated += share;
-            shares.push({unit: u, w: w, share: share});
-        });
-
-        // Gruplama: aynı ağırlık → aynı grup
-        var groups = {};
-        shares.forEach(function(s) {
-            var key = distType === 'equal' ? 'equal' : s.w.toString();
-            if (!groups[key]) groups[key] = {w: s.w, share: s.share, count: 0};
-            groups[key].count++;
-        });
-
-        // Grupları sırala (ağırlığa göre artan)
-        var sortedGroups = Object.values(groups).sort(function(a, b) { return a.w - b.w; });
-
-        // HTML oluştur
-        var html = '';
-        sortedGroups.forEach(function(g) {
-            var weightLabel = '';
-            if (distType === 'equal') {
-                weightLabel = 'Eşit dağıtım';
-            } else if (distType === 'square_meters') {
-                weightLabel = g.w.toLocaleString('tr-TR') + ' m²';
+            const zeroCount = unitsData.length - activeUnits.length;
+            if (distType !== 'equal' && zeroCount > 0) {
+                warningEl.textContent = zeroCount + ' dairenin ' + (distType === 'square_meters' ? 'metrekare' : 'pay çarpanı') + ' bilgisi 0 veya boş — bu daireler dağıtımdan hariç tutulur.';
+                warningEl.classList.remove('hidden');
             } else {
-                weightLabel = g.w.toLocaleString('tr-TR') + ' çarpan';
+                warningEl.classList.add('hidden');
             }
 
-            html += '<div class="flex items-center justify-between px-4 py-3 text-sm">'
-                + '<div class="text-slate-700">'
-                + '<span class="font-medium">' + weightLabel + '</span>'
-                + ' &mdash; <span class="text-slate-500">' + g.count + ' daire</span>'
-                + '</div>'
-                + '<div class="font-bold text-slate-900 tabular-nums">' + fmt(g.share) + ' TL / daire</div>'
-                + '</div>';
-        });
-
-        groupsEl.innerHTML = html;
-        totalLbl.textContent = fmt(amount) + ' TL · ' + activeUnits.length + ' daire';
-    }
-
-    // Event listeners
-    document.addEventListener('change', function(e) {
-        if (e.target.name === 'amount_type' || e.target.name === 'distribution_type') updatePreview();
-    });
-    document.addEventListener('input', function(e) {
-        if (e.target.name === 'monthly_amount' || e.target.name === 'yearly_amount' || e.target.name === 'per_unit_amount') updatePreview();
-    });
-
-    // İlk yükleme
-    document.addEventListener('DOMContentLoaded', updatePreview);
-})();
-</script>
-
-<div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Borç Türü</label>
-    <select name="due_type" id="plan_due_type" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none" required>
-        @foreach ($dueTypes as $dt)
-            <option value="{{ $dt['value'] }}" {{ old('due_type', $plan?->due_type?->value ?? 'aidat') === $dt['value'] ? 'selected' : '' }}>
-                {{ $dt['label'] }}
-            </option>
-        @endforeach
-    </select>
-</div>
-
-<div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
-    <select name="category_id" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-        <option value="">— Kategori seçin (isteğe bağlı) —</option>
-        @foreach ($categories as $cat)
-            <option value="{{ $cat->id }}" {{ old('category_id', $plan?->category_id) == $cat->id ? 'selected' : '' }}>
-                {{ $cat->name }}
-            </option>
-        @endforeach
-    </select>
-</div>
-
-<div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Hedef Kitle</label>
-    <select name="target_audience" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none">
-        <option value="tenant_priority" {{ old('target_audience', $plan?->target_audience ?? 'tenant_priority') === 'tenant_priority' ? 'selected' : '' }}>Kiracı öncelikli (kiracı yoksa sahibi)</option>
-        <option value="owner_only" {{ old('target_audience', $plan?->target_audience) === 'owner_only' ? 'selected' : '' }}>Sadece sahipler</option>
-    </select>
-</div>
-
-
-
-
-<div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Açıklama <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
-    <textarea name="description" id="plan_description" rows="3"
-              class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:outline-none resize-none"
-              placeholder="Aidat oluşturulurken kullanılacak açıklama...">{{ old('description', $plan?->description) }}</textarea>
-</div>
-
-<div class="flex items-center gap-2">
-    <input type="hidden" name="is_active" value="0">
-    <input type="checkbox" name="is_active" id="is_active" value="1"
-           {{ old('is_active', $plan?->is_active ?? true) ? 'checked' : '' }}
-           class="rounded border-slate-300">
-    <label for="is_active" class="text-sm text-slate-700">Aktif plan</label>
-</div>
-
-<script>
-    document.querySelectorAll('input[name="amount_type"]').forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            document.getElementById('field-monthly').classList.toggle('hidden', this.value !== 'monthly');
-            document.getElementById('field-yearly').classList.toggle('hidden', this.value !== 'yearly');
-            document.getElementById('field-per-unit').classList.toggle('hidden', this.value !== 'per_unit');
-            document.getElementById('field-distribution').classList.toggle('hidden', this.value === 'per_unit');
-        });
-    });
-
-    (function() {
-        var yearInput       = document.getElementById('plan_year');
-        var descriptionArea = document.getElementById('plan_description');
-
-        function updatePlanDescription() {
-            var year = yearInput?.value;
-            var dueTypeSelect = document.getElementById('plan_due_type');
-            var dueTypeLabel = dueTypeSelect ? dueTypeSelect.options[dueTypeSelect.selectedIndex]?.text : 'Aidat';
-            var categorySelect = document.querySelector('select[name="category_id"]');
-            var categoryLabel = categorySelect ? categorySelect.options[categorySelect.selectedIndex]?.text : '';
-            if (categoryLabel && categorySelect?.value === '') categoryLabel = '';
-            if (year) {
-                var desc = year + ' - ' + (dueTypeLabel || 'Aidat');
-                if (categoryLabel) desc += ' - ' + categoryLabel;
-                descriptionArea.value = desc;
+            if (activeUnits.length === 0) {
+                previewEl.classList.add('hidden');
+                return;
             }
-        }
 
-        yearInput?.addEventListener('input', updatePlanDescription);
-        yearInput?.addEventListener('change', updatePlanDescription);
-        document.getElementById('plan_due_type')?.addEventListener('change', updatePlanDescription);
-        document.querySelector('select[name="category_id"]')?.addEventListener('change', updatePlanDescription);
+            const totalWeight = activeUnits.reduce((s, u) => {
+                if (distType === 'square_meters') return s + u.sqm;
+                if (distType === 'share_coefficient') return s + u.coef;
+                return s + 1;
+            }, 0);
 
-        @if (!$isEdit)
-        updatePlanDescription();
-        @endif
+            let shares = [];
+            let allocated = 0;
+            activeUnits.forEach((u, idx) => {
+                const w = distType === 'equal' ? 1 : (distType === 'square_meters' ? u.sqm : u.coef);
+                const share = idx === activeUnits.length - 1
+                    ? Math.round((total - allocated) * 100) / 100
+                    : Math.round(total * w / totalWeight * 100) / 100;
+                allocated += share;
+                shares.push({ unit: u, w, share });
+            });
+
+            const groups = {};
+            shares.forEach(s => {
+                const key = distType === 'equal' ? 'equal' : s.w.toString();
+                if (! groups[key]) groups[key] = { w: s.w, share: s.share, count: 0 };
+                groups[key].count++;
+            });
+
+            const sortedGroups = Object.values(groups).sort((a, b) => a.w - b.w);
+
+            let html = '';
+            sortedGroups.forEach(g => {
+                let weightLabel = distType === 'equal' ? 'Eşit dağıtım'
+                    : distType === 'square_meters' ? g.w.toLocaleString('tr-TR') + ' m²'
+                    : g.w.toLocaleString('tr-TR') + ' çarpan';
+                html += `<div class="flex items-center justify-between px-4 py-3 text-sm">
+                    <div class="text-slate-700"><span class="font-medium">${weightLabel}</span> — <span class="text-slate-500">${g.count} daire</span></div>
+                    <div class="font-bold text-slate-900 tabular-nums">${formatMoney(g.share)} / daire</div>
+                </div>`;
+            });
+
+            groupsEl.innerHTML = html;
+            totalLbl.textContent = formatMoney(total) + ' · ' + activeUnits.length + ' daire';
+            previewEl.classList.remove('hidden');
+        };
+
+        const updateCalculation = () => {
+            const total = parseFloat(monthlyAmount?.value?.replace(',', '.')) || 0;
+            updateDistributionPreview(total);
+
+            if (unitsData.length && total > 0) {
+                const perUnit = total / unitsData.length;
+                calcSummary.textContent = `Toplam: ${formatMoney(total)} / Daire: ${formatMoney(perUnit)}`;
+                calcSummary.classList.remove('hidden');
+            } else {
+                calcSummary.classList.add('hidden');
+            }
+        };
+
+        monthlyAmount?.addEventListener('input', updateCalculation);
+        distributionType?.addEventListener('change', updateCalculation);
+
+        updateCalculation();
     })();
 </script>

@@ -76,6 +76,10 @@ class CategoryController extends Controller
             return $category;
         }
 
+        if ($category->is_system) {
+            return redirect()->route('categories.index')->with('error', 'Sistem kategorileri düzenlenemez.');
+        }
+
         $validated = $this->validateCategory($request, $category->apartment_id, $category->id);
 
         $category->update([
@@ -93,6 +97,10 @@ class CategoryController extends Controller
 
         if ($category instanceof \Illuminate\Http\RedirectResponse) {
             return $category;
+        }
+
+        if ($category->is_system) {
+            return redirect()->route('categories.index')->with('error', 'Bu kategori sistem kategorisi olduğu için silinemez.');
         }
 
         $category->delete();

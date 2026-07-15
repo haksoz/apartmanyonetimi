@@ -23,12 +23,16 @@
                         <td class="px-5 py-4">{{ $category->is_active ? 'Aktif' : 'Pasif' }}</td>
                         <td class="px-5 py-4">
                             <div class="flex justify-end gap-2">
-                                <a href="{{ route('categories.edit', $category) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
-                                <form method="POST" action="{{ route('categories.destroy', $category) }}" onsubmit="return confirm('Kategori silinsin mi?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
-                                </form>
+                                @if (! $category->is_system)
+                                    <a href="{{ route('categories.edit', $category) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+                                    <form method="POST" action="{{ route('categories.destroy', $category) }}" onsubmit="return confirm('Kategori silinsin mi?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                                    </form>
+                                @else
+                                    <span class="text-xs text-slate-400">Sistem kategorisi</span>
+                                @endif
                             </div>
                         </td>
                     </tr>

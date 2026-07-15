@@ -3,17 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Enums\DueType;
-use App\Models\Category;
 use App\Models\Account;
 use App\Models\AccountTransaction;
+use App\Models\Apartment;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
+use App\Models\Category;
 use App\Models\Due;
 use App\Models\DueBatch;
 use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
+use App\Support\AidatPeriodReconciliation;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +23,9 @@ use Illuminate\Validation\Rule;
 
 class DueController extends Controller
 {
+    public function __construct(private readonly AidatPeriodReconciliation $aidatReconciliation)
+    {
+    }
     public function index(CurrentApartment $currentApartment, Request $request)
     {
         $apartment = $currentApartment->getFor(auth()->user());
@@ -480,7 +485,29 @@ class DueController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
+        // Aidat + Aidat tekillik kontrolü: hesap veya dönem değişiyorsa
+        $apartment = Apartment::query()->findOrFail($due->apartment_id);
+        $aidatCategory = $this->aidatReconciliation->categoryFor($apartment);
+
+        if (isset($validated['account_id']) && $validated['account_id'] != $due->account_id) {
+            if ($due->due_type === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
+                if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $validated['account_id'], $validated['period'], $due->id)) {
+                    return back()->withErrors(['account_id' => 'Bu hesap için seçilen dönemde zaten Aidat borcu bulunuyor.'])->withInput();
+                }
+            }
+        }
+
+        if (isset($validated['period']) && $validated['period'] != $due->period) {
+            if ($due->due_type === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
+                $targetAccountId = $validated['account_id'] ?? $due->account_id;
+                if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $targetAccountId, $validated['period'], $due->id)) {
+                    return back()->withErrors(['period' => 'Bu hesap için seçilen dönemde zaten Aidat borcu bulunuyor.'])->withInput();
+                }
+            }
+        }
+
         DB::transaction(function () use ($due, $validated) {
+
             $oldAmount = (float) $due->amount;
             $newAmount = (float) $validated['amount'];
             $remainingAmount = (float) $due->remaining_amount;
@@ -795,6 +822,19 @@ class DueController extends Controller
 
     private function createDue(DueBatch $batch, ?Unit $unit, Account $account, float $amount, array $validated): void
     {
+        $apartment = Apartment::query()->findOrFail($batch->apartment_id);
+        $aidatCategory = $this->aidatReconciliation->categoryFor($apartment);
+
+        // Aidat + Aidat tekillik kontrolü: batch category_id null ise sistem kategorisi ile karşılaştır
+        $categoryId = $batch->category_id ?? $aidatCategory->id;
+        $batchDueType = is_string($batch->due_type) ? $batch->due_type : $batch->due_type->value;
+
+        if ($batchDueType === DueType::Aidat->value && $categoryId === $aidatCategory->id) {
+            if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $account->id, $validated['period'])) {
+                return;
+            }
+        }
+
         $due = Due::create([
             'apartment_id' => $batch->apartment_id,
             'due_batch_id' => $batch->id,
@@ -876,6 +916,16 @@ class DueController extends Controller
             ->where('apartment_id', $due->apartment_id)
             ->where('id', $validated['target_account_id'])
             ->firstOrFail();
+
+        $apartment = Apartment::query()->findOrFail($due->apartment_id);
+        $aidatCategory = $this->aidatReconciliation->categoryFor($apartment);
+
+        // Aidat + Aidat tekillik kontrolü: devir hedef hesabında aynı dönemde Aidat borcu varsa engelle
+        if ($due->due_type === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
+            if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $targetAccount->id, $due->period, $due->id)) {
+                return back()->with('error', 'Hedef hesap için bu dönemde zaten Aidat borcu bulunuyor. Devir yapılamaz.');
+            }
+        }
 
         $sourceAccount = $due->account;
         $fromAccountName = $sourceAccount->name;

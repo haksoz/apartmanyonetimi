@@ -5,14 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\CashTransaction;
 use App\Models\Due;
+use App\Models\DuePlan;
 use App\Models\Expense;
+use App\Support\AidatPeriodReconciliation;
 use App\Models\Unit;
 use App\Support\CurrentApartment;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function __invoke(CurrentApartment $currentApartment)
+    public function __invoke(CurrentApartment $currentApartment, AidatPeriodReconciliation $aidatReconciliation)
     {
         $user = auth()->user();
         $apartment = $currentApartment->getFor($user);
@@ -150,6 +152,29 @@ class DashboardController extends Controller
 
         // Tahsil edilmemiş toplam aidat (bekleyen + gecikmiş + kısmi ödenmiş kalan)
         $uncollectedDues = $dueUnpaid + $dueOverdue + $duePartial;
+        $partialAidatConfirmation = null;
+        $plan = DuePlan::query()
+            ->where('apartment_id', $id)
+            ->where('is_active', true)
+            ->whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
+            ->first();
+
+        if ($plan && $this->isOwnerOf($apartment) && now()->day >= $plan->generate_day) {
+            $period = now()->format('Y-m');
+            $reconciliation = $aidatReconciliation->reconcile($plan, $period);
+            $completedCount = count($reconciliation['completed_account_ids']);
+            $targetCount = $reconciliation['target_accounts']->count();
+
+            if ($completedCount > 0 && $completedCount < $targetCount) {
+                $partialAidatConfirmation = [
+                    'plan' => $plan,
+                    'period' => $period,
+                    'completed_count' => $completedCount,
+                    'missing_count' => $targetCount - $completedCount,
+                ];
+            }
+        }
 
         return view('dashboard', compact(
             'apartment',
@@ -161,7 +186,8 @@ class DashboardController extends Controller
             'cashBalance', 'cashIncome', 'cashExpense',
             'monthLabels', 'monthDueData', 'monthExpData',
             'accountTypes',
-            'uncollectedDues'
+            'uncollectedDues',
+            'partialAidatConfirmation'
         ));
     }
 }
