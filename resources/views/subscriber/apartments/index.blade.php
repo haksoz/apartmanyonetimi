@@ -25,6 +25,10 @@
                         <button type="submit" class="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Seç</button>
                     </form>
                     <a href="{{ route('subscriber.apartments.edit', $apartment) }}" class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+                    <form method="POST" action="{{ route('subscriber.apartments.trigger-aidat', $apartment) }}">
+                        @csrf
+                        <button type="submit" class="rounded-xl border border-emerald-600 px-4 py-3 text-sm font-semibold text-emerald-600 hover:bg-emerald-50">Aidat Tetikle</button>
+                    </form>
                 </div>
             </div>
         @endforeach

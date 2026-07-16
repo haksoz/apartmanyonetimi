@@ -2,11 +2,11 @@
 
 @section('content')
     @if ($partialAidatConfirmation)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                <h2 class="text-lg font-bold text-slate-900">Eksik Aidat Oluşturulsun mu?</h2>
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border-2 border-red-500">
+                <h2 class="text-lg font-bold text-red-600">Planlı Aidat Oluşturulma Hatası!!</h2>
                 <p class="mt-2 text-sm leading-6 text-slate-600">
-                    {{ \Carbon\Carbon::parse($partialAidatConfirmation['period'].'-01')->locale('tr')->isoFormat('MMMM YYYY') }} dönemi için {{ $partialAidatConfirmation['completed_count'] }} hesapta Aidat borcu zaten bulunuyor. Kalan {{ $partialAidatConfirmation['missing_count'] }} hesap için plan aidatı oluşturulsun mu?
+                    {{ \Carbon\Carbon::parse($partialAidatConfirmation['period'].'-01')->locale('tr')->isoFormat('MMMM YYYY') }} döneminde oluşturulması gereken aidatlar {{ $partialAidatConfirmation['completed_count'] }} hesapta oluşturulmuş aidat olduğu için oluşturulamadı. Kalan {{ $partialAidatConfirmation['missing_count'] }} hesap için plan aidatı oluşturulsun mu?
                 </p>
                 <div class="mt-6 flex justify-end gap-3">
                     <button type="button" onclick="this.closest('.fixed').remove()" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Şimdi Değil</button>

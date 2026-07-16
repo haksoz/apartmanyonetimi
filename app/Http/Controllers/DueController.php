@@ -489,8 +489,10 @@ class DueController extends Controller
         $apartment = Apartment::query()->findOrFail($due->apartment_id);
         $aidatCategory = $this->aidatReconciliation->categoryFor($apartment);
 
+        $dueDueType = is_string($due->due_type) ? $due->due_type : $due->due_type->value;
+
         if (isset($validated['account_id']) && $validated['account_id'] != $due->account_id) {
-            if ($due->due_type === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
+            if ($dueDueType === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
                 if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $validated['account_id'], $validated['period'], $due->id)) {
                     return back()->withErrors(['account_id' => 'Bu hesap için seçilen dönemde zaten Aidat borcu bulunuyor.'])->withInput();
                 }
@@ -498,7 +500,7 @@ class DueController extends Controller
         }
 
         if (isset($validated['period']) && $validated['period'] != $due->period) {
-            if ($due->due_type === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
+            if ($dueDueType === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
                 $targetAccountId = $validated['account_id'] ?? $due->account_id;
                 if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $targetAccountId, $validated['period'], $due->id)) {
                     return back()->withErrors(['period' => 'Bu hesap için seçilen dönemde zaten Aidat borcu bulunuyor.'])->withInput();
@@ -506,23 +508,22 @@ class DueController extends Controller
             }
         }
 
+        $oldAmount = (float) $due->amount;
+        $newAmount = (float) $validated['amount'];
+        $remainingAmount = (float) $due->remaining_amount;
+
+        // remaining_amount'ı güncelle (henüz ödeme yoksa yeni amount'a eşitle)
+        // Floating point karşılaştırması için tolerans kullan
+        $tolerance = 0.01;
+        if (abs($remainingAmount - $oldAmount) < $tolerance) {
+            $validated['remaining_amount'] = $newAmount;
+        } else {
+            // Ödeme varsa, kalan tutarı orantılı olarak güncelle
+            $paidAmount = $oldAmount - $remainingAmount;
+            $validated['remaining_amount'] = max(0, $newAmount - $paidAmount);
+        }
+
         DB::transaction(function () use ($due, $validated) {
-
-            $oldAmount = (float) $due->amount;
-            $newAmount = (float) $validated['amount'];
-            $remainingAmount = (float) $due->remaining_amount;
-
-            // remaining_amount'ı güncelle (henüz ödeme yoksa yeni amount'a eşitle)
-            // Floating point karşılaştırması için tolerans kullan
-            $tolerance = 0.01;
-            if (abs($remainingAmount - $oldAmount) < $tolerance) {
-                $validated['remaining_amount'] = $newAmount;
-            } else {
-                // Ödeme varsa, kalan tutarı orantılı olarak güncelle
-                $paidAmount = $oldAmount - $remainingAmount;
-                $validated['remaining_amount'] = max(0, $newAmount - $paidAmount);
-            }
-
             // Due'u güncelle
             $due->update($validated);
 
@@ -921,7 +922,8 @@ class DueController extends Controller
         $aidatCategory = $this->aidatReconciliation->categoryFor($apartment);
 
         // Aidat + Aidat tekillik kontrolü: devir hedef hesabında aynı dönemde Aidat borcu varsa engelle
-        if ($due->due_type === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
+        $dueDueType = is_string($due->due_type) ? $due->due_type : $due->due_type->value;
+        if ($dueDueType === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
             if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $targetAccount->id, $due->period, $due->id)) {
                 return back()->with('error', 'Hedef hesap için bu dönemde zaten Aidat borcu bulunuyor. Devir yapılamaz.');
             }

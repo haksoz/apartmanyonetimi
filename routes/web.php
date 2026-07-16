@@ -102,6 +102,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::resource('apartments', ApartmentController::class);
         Route::post('apartments/{apartment}/destroy-all', [ApartmentController::class, 'destroyAll'])->name('apartments.destroy-all');
         Route::post('apartments/{apartment}/reset-and-renew', [ApartmentController::class, 'resetAndRenew'])->name('apartments.reset-and-renew');
+        Route::post('apartments/{apartment}/trigger-aidat', [SubscriberApartmentController::class, 'triggerAidatGeneration'])->name('apartments.trigger-aidat');
         Route::resource('units', UnitController::class);
 
         // Bulk account import from Excel - MUST be before resource route
@@ -208,6 +209,7 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
 
     Route::get('apartments', [SubscriberApartmentController::class, 'index'])->name('apartments.index');
     Route::post('apartment', [SubscriberApartmentController::class, 'update'])->name('apartment.update');
+    Route::post('apartments/{apartment}/trigger-aidat', [SubscriberApartmentController::class, 'triggerAidatGeneration'])->name('apartments.trigger-aidat');
 
     // Apartment creation for subscribers - no apartment required
     Route::get('apartments/create', [SubscriberApartmentCreateController::class, 'create'])->name('apartments.create');

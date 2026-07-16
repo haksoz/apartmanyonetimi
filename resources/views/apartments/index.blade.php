@@ -22,6 +22,10 @@
                         <td class="px-5 py-4">{{ $apartment->accounts_count }}</td>
                         <td class="px-5 py-4 text-right flex items-center justify-end gap-4">
                             @if(auth()->user()->isAdmin())
+                                <form action="{{ route('apartments.trigger-aidat', $apartment) }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="font-semibold text-emerald-600 hover:text-emerald-800">Aidat Tetikle</button>
+                                </form>
                                 <form action="{{ route('apartments.destroy', $apartment) }}" method="POST" onsubmit="return confirm('{{ $apartment->name }} apartmanını silmek istediğinize emin misiniz?')">
                                     @csrf
                                     @method('DELETE')
