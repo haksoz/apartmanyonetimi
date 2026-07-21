@@ -4,7 +4,7 @@
 
 @section('content')
 
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-row items-center justify-between gap-4">
 
         <div>
 
@@ -14,10 +14,11 @@
                 <span class="text-slate-500">{{ $account->type_label }}</span>
             </div>
 
-            <h1 class="text-2xl font-bold text-slate-950">
-                {{ $account->name }}
+            <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">
                 @if ($account->unit)
-                    <span class="text-slate-400 font-normal"> — Daire No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</span>
+                    Daire No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @else
+                    {{ $account->name }}
                 @endif
             </h1>
 
@@ -29,49 +30,23 @@
 
         </div>
 
-        <div class="flex gap-2">
-
-            <a href="{{ route('accounts.statement', $account) }}"
-
-               class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-
-                Tüm Hareketler
-
-            </a>
-
-            @if (in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]))
-
-                <a href="{{ route('dues.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">+ Borçlandır</a>
-
-            @endif
-
-            @if ($account->type === App\Models\Account::TYPE_SUPPLIER)
-
-                <a href="{{ route('expenses.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">+ Gider Ekle</a>
-
-                <a href="{{ route('accounts.supplier-payment.create', $account) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Ödeme Ekle</a>
-
-            @else
-
-                <a href="{{ route('payments.create', ['account_id' => $account->id]) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">+ Tahsilat Ekle</a>
-
-            @endif
-
-            @if (in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && ($account->dues->isNotEmpty() || $importedDues->isNotEmpty()) && $transferableAccounts->isNotEmpty())
-
-                <button type="button" onclick="document.getElementById('transfer-dues-modal').classList.remove('hidden')"
-
-                        class="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600">
-
-                    Borç Devret
-
-                </button>
-
-            @endif
-
-            <a href="{{ route('accounts.edit', $account) }}" class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">Düzenle</a>
-
+        {{-- Masaüstü butonlar --}}
+        <div class="hidden lg:flex flex-wrap gap-2">
+            @include('accounts._actions', ['account' => $account, 'mobile' => false])
         </div>
+
+        {{-- Mobil işlemler menüsü --}}
+        <details class="lg:hidden relative group">
+            <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+                İşlem
+            </summary>
+            <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
+                @include('accounts._actions', ['account' => $account, 'mobile' => true])
+            </div>
+        </details>
 
     </div>
 
@@ -79,67 +54,60 @@
 
     {{-- Özet + Bilgiler Birleşik Kart --}}
     <div class="rounded-2xl bg-white shadow-sm mb-6 overflow-hidden">
-        {{-- Üst: Borç / Alacak / Bakiye --}}
-        <div class="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
-            <div class="p-5">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Borç</div>
-                <div class="mt-1.5 text-xl font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
+        {{-- Üst: Bilgiler --}}
+        <div class="p-6 border-b border-slate-100">
+            {{-- Hesap adı --}}
+            <div class="mb-5">
+                <div class="text-xs text-slate-500 mb-1">Hesap Adı</div>
+                <div class="text-2xl font-bold text-slate-900">{{ $account->name }}</div>
             </div>
-            <div class="p-5">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Alacak</div>
-                <div class="mt-1.5 text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
-            </div>
-            <div class="p-5">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bakiye</div>
-                @php $balance = $account->ledger_balance; @endphp
-                <div class="mt-1.5 text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
-                    {{ number_format(abs($balance), 2, ',', '.') }} TL
-                    <span class="text-sm font-normal">{{ $balance < 0 ? '(B)' : ($balance > 0 ? '(A)' : '') }}</span>
-                </div>
-            </div>
-        </div>
 
-        {{-- Alt: Bilgiler --}}
-        <div class="p-6">
-            <div class="grid gap-x-8 gap-y-4 text-sm" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr))">
+            <details class="group">
+                <summary class="cursor-pointer list-none inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Detaylar
+                </summary>
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 
                 {{-- Daire bilgileri --}}
                 @if ($account->unit)
                     @if ($account->unit->floor)
-                    <div>
-                        <div class="text-xs text-slate-500 mb-0.5">Kat</div>
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="text-xs text-slate-500">Kat</div>
                         <div class="font-semibold text-slate-900">{{ $account->unit->floor }}</div>
                     </div>
                     @endif
                     @if ($account->unit->block)
-                    <div>
-                        <div class="text-xs text-slate-500 mb-0.5">Blok</div>
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="text-xs text-slate-500">Blok</div>
                         <div class="font-semibold text-slate-900">{{ $account->unit->block }}</div>
                     </div>
                     @endif
                     @if ($account->unit->square_meters)
-                    <div>
-                        <div class="text-xs text-slate-500 mb-0.5">Alan</div>
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="text-xs text-slate-500">Alan</div>
                         <div class="font-semibold text-slate-900">{{ number_format($account->unit->square_meters, 0, ',', '.') }} m²</div>
                     </div>
                     @endif
                     @if ($account->unit->share_coefficient)
-                    <div>
-                        <div class="text-xs text-slate-500 mb-0.5">Hisse Katsayısı</div>
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="text-xs text-slate-500">Hisse Katsayısı</div>
                         <div class="font-semibold text-slate-900">{{ $account->unit->share_coefficient }}</div>
                     </div>
                     @endif
                 @endif
 
                 {{-- Portal erişimi --}}
-                <div>
-                    <div class="text-xs text-slate-500 mb-0.5">Portal Erişimi</div>
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-slate-500">Portal Erişimi</div>
                     <div class="font-semibold text-slate-900">{{ $account->user ? 'Var' : 'Yok' }}</div>
                 </div>
 
                 {{-- Açılış tarihi --}}
-                <div>
-                    <div class="text-xs text-slate-500 mb-0.5">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-slate-500">
                         @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Girişi
                         @else Hesap Açılışı
                         @endif
@@ -155,8 +123,8 @@
 
                 {{-- Kapanış tarihi --}}
                 @if ($account->account_end_date)
-                <div>
-                    <div class="text-xs text-slate-500 mb-0.5">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-slate-500">
                         @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Çıkışı
                         @elseif ($account->type === App\Models\Account::TYPE_OWNER) Maliklik Bitişi
                         @else Hesap Kapanışı
@@ -168,18 +136,39 @@
 
                 {{-- Kullanıcı bilgileri --}}
                 @if ($account->user)
-                <div>
-                    <div class="text-xs text-slate-500 mb-0.5">E-posta</div>
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-slate-500">E-posta</div>
                     <div class="font-semibold text-slate-900">{{ $account->user->email }}</div>
                 </div>
                 @if ($account->user->phone)
-                <div>
-                    <div class="text-xs text-slate-500 mb-0.5">Telefon</div>
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-slate-500">Telefon</div>
                     <div class="font-semibold text-slate-900">{{ $account->user->phone }}</div>
                 </div>
                 @endif
                 @endif
 
+            </div>
+        </details>
+    </div>
+
+    {{-- Alt: Borç / Alacak / Bakiye --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+            <div class="p-5 flex items-center justify-between gap-2">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Borç</div>
+                <div class="text-xl font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
+            </div>
+            <div class="p-5 flex items-center justify-between gap-2">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Alacak</div>
+                <div class="text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
+            </div>
+            <div class="p-5 flex items-center justify-between gap-2">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bakiye</div>
+                @php $balance = $account->ledger_balance; @endphp
+                <div class="text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
+                    {{ number_format(abs($balance), 2, ',', '.') }} TL
+                    <span class="text-sm font-normal">{{ $balance < 0 ? '(B)' : ($balance > 0 ? '(A)' : '') }}</span>
+                </div>
             </div>
         </div>
     </div>
