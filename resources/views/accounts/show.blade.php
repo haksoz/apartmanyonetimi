@@ -619,7 +619,7 @@
 
                                 <td class="px-4 py-4">
 
-                                    <input type="checkbox" class="payment-checkbox rounded"
+                                    <input type="checkbox" class="payment-checkbox payment-checkbox-desktop rounded"
 
                                         data-payment-id="{{ $payment->id }}"
 
@@ -651,7 +651,7 @@
 
                                 <td class="px-4 py-4">
 
-                                    <input type="checkbox" class="payment-checkbox rounded"
+                                    <input type="checkbox" class="payment-checkbox payment-checkbox-desktop rounded"
 
                                         data-payment-id="{{ $payment->id }}"
 
@@ -693,7 +693,7 @@
                         <div class="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50"
                              onclick="window.location.href='{{ route('payments.show', $payment) }}'">
                             <div class="flex items-center gap-3 min-w-0 flex-1">
-                                <input type="checkbox" class="payment-checkbox rounded shrink-0"
+                                <input type="checkbox" class="payment-checkbox payment-checkbox-mobile rounded shrink-0"
                                        data-payment-id="{{ $payment->id }}"
                                        data-amount="{{ $payment->unallocated_amount }}"
                                        onclick="event.stopPropagation()">
@@ -714,7 +714,7 @@
                         <div class="imported-payment-row-mobile hidden flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-blue-100/40 bg-blue-50/40"
                              onclick="window.location.href='{{ route('payments.show', $payment) }}'">
                             <div class="flex items-center gap-3 min-w-0 flex-1">
-                                <input type="checkbox" class="payment-checkbox rounded shrink-0"
+                                <input type="checkbox" class="payment-checkbox payment-checkbox-mobile rounded shrink-0"
                                        data-payment-id="{{ $payment->id }}"
                                        data-amount="{{ $payment->unallocated_amount }}"
                                        onclick="event.stopPropagation()">
@@ -1300,9 +1300,29 @@
 
 
 
+            const isDesktopPaymentView = () => window.innerWidth >= 768;
+
+            const paymentCheckboxSelector = () => isDesktopPaymentView() ? '.payment-checkbox-desktop' : '.payment-checkbox-mobile';
+
+            const visiblePaymentCheckboxes = () => document.querySelectorAll(paymentCheckboxSelector());
+
+            const visibleCheckedPayments = () => document.querySelectorAll(paymentCheckboxSelector() + ':checked');
+
+            function syncPaymentCheckboxes(source) {
+
+                const paymentId = source.dataset.paymentId;
+
+                document.querySelectorAll('.payment-checkbox[data-payment-id="' + paymentId + '"]').forEach(cb => {
+
+                    if (cb !== source) cb.checked = source.checked;
+
+                });
+
+            }
+
             const updatePayBtn = () => {
 
-                const checked = document.querySelectorAll('.payment-checkbox:checked');
+                const checked = visibleCheckedPayments();
 
                 let total = 0, ids = [];
 
@@ -1352,15 +1372,29 @@
 
                 cb.addEventListener('change', function() {
 
-                    const all = document.querySelectorAll('.payment-checkbox');
+                    syncPaymentCheckboxes(this);
 
-                    selectAllPay.checked = Array.from(all).every(c => c.checked);
+                    const all = visiblePaymentCheckboxes();
+
+                    selectAllPay.checked = all.length > 0 && Array.from(all).every(c => c.checked);
 
                     selectAllPay.indeterminate = !selectAllPay.checked && Array.from(all).some(c => c.checked);
 
                     updatePayBtn();
 
                 });
+
+            });
+
+            window.addEventListener('resize', function() {
+
+                const all = visiblePaymentCheckboxes();
+
+                selectAllPay.checked = all.length > 0 && Array.from(all).every(c => c.checked);
+
+                selectAllPay.indeterminate = !selectAllPay.checked && Array.from(all).some(c => c.checked);
+
+                updatePayBtn();
 
             });
 
