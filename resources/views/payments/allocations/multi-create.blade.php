@@ -8,23 +8,19 @@
                 <span>/</span>
                 <a href="{{ route('accounts.show', $account) }}" class="hover:text-slate-600">{{ $account->type_label }}</a>
             </div>
-            <h1 class="text-2xl font-bold text-slate-950">Tahsilattan Açık Aidat Kapama</h1>
+            <h1 class="text-2xl font-bold text-slate-950">Tahsilattan Aidat Kapama</h1>
             <p class="mt-1 text-sm text-slate-500">
-                {{ $account->name }}
-                @if ($account->unit)
-                    — Daire No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                @endif
-                &mdash; {{ $payments->count() }} tahsilat seçildi
+                {{ $account->name }} &mdash; {{ $payments->count() }} tahsilat seçildi
             </p>
         </div>
         <a href="{{ route('accounts.show', $account) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri Dön</a>
     </div>
 
     {{-- Seçili Tahsilatlar --}}
-    <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+    <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Seçili Tahsilatlar</h2>
         <div class="overflow-hidden rounded-xl border border-slate-200">
-            <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <table class="hidden md:table min-w-full divide-y divide-slate-200 text-sm">
                 <thead class="bg-slate-50 text-left text-slate-500">
                     <tr>
                         <th class="px-5 py-3">Tarih</th>
@@ -48,11 +44,28 @@
                     </tr>
                 </tfoot>
             </table>
+
+            {{-- Mobil: Seçili Tahsilatlar Kartları --}}
+            <div class="md:hidden divide-y divide-slate-100">
+                @foreach ($payments as $payment)
+                    <div class="flex items-center justify-between gap-3 px-4 py-3">
+                        <div class="min-w-0">
+                            <div class="text-sm text-slate-700 truncate">{{ $payment->description ?: 'Ödeme' }}</div>
+                            <div class="text-xs text-slate-500">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</div>
+                        </div>
+                        <div class="shrink-0 text-sm font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
+                    </div>
+                @endforeach
+                <div class="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50">
+                    <div class="text-sm font-semibold text-slate-700">Toplam Bakiye</div>
+                    <div class="text-sm font-bold text-slate-900">{{ number_format($totalBudget, 2, ',', '.') }} TL</div>
+                </div>
+            </div>
         </div>
     </div>
 
     {{-- Tahsis Formu --}}
-    <form method="POST" action="{{ route('accounts.payments.multi-allocate.store', $account) }}" class="rounded-2xl bg-white p-6 shadow-sm">
+    <form method="POST" action="{{ route('accounts.payments.multi-allocate.store', $account) }}" class="rounded-2xl bg-white p-4 md:p-6 shadow-sm">
         @csrf
         <input type="hidden" name="payment_ids" value="{{ $payments->pluck('id')->join(',') }}">
 
@@ -63,7 +76,7 @@
         <div class="mb-4 flex items-center justify-between gap-3 flex-wrap">
             <div class="flex items-center gap-3">
                 <button type="button" id="btn-fifo" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                    Eskiden Yeniye Bakiye Dağıt (FIFO)
+                    Eskiden Yeniye Bakiye Dağıt
                 </button>
                 <button type="button" id="btn-clear" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                     Temizle
@@ -82,7 +95,7 @@
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Açık Aidatlar</h3>
 
         <div class="mb-4 overflow-hidden rounded-2xl border border-slate-200">
-            <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <table class="hidden md:table min-w-full divide-y divide-slate-200 text-sm">
                 <thead class="bg-slate-50 text-left text-slate-500">
                     <tr>
                         <th class="px-5 py-3">Tarih</th>
@@ -114,9 +127,9 @@
                                         step="0.01"
                                         max="{{ $due->remaining_amount }}"
                                         value="{{ old('allocations.'.$index.'.amount') }}"
-                                        class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none"
+                                        class="desktop-alloc-input w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none"
                                     >
-                                    <button type="button" data-fill-selector="#alloc-{{ $index }}" class="fill-remaining text-sm text-slate-700 hover:underline whitespace-nowrap">Tamamını Doldur</button>
+                                    <button type="button" data-fill-selector="#alloc-{{ $index }}" class="fill-remaining text-sm text-slate-700 hover:underline whitespace-nowrap">Tam Doldur</button>
                                 </div>
                             </td>
                         </tr>
@@ -127,6 +140,42 @@
                     @endforelse
                 </tbody>
             </table>
+
+            {{-- Mobil: Açık Aidatlar Kartları --}}
+            <div class="md:hidden divide-y divide-slate-100">
+                @forelse ($dues as $index => $due)
+                    <div class="px-4 py-3" data-imported="{{ $due->is_imported ? '1' : '0' }}">
+                        <div class="mb-2">
+                            <div class="text-sm text-slate-700">
+                                {{ $due->description ?: 'Aidat' }}
+                                @if ($due->is_imported)
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                @endif
+                            </div>
+                            <div class="text-xs text-slate-500">{{ $due->due_date?->format('d.m.Y') ?? '-' }} &mdash; Kalan: <span class="font-semibold text-slate-700">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</span></div>
+                        </div>
+                        <input type="hidden" name="allocations[{{ $index }}][due_id]" value="{{ $due->id }}">
+                        <div class="flex items-center gap-2">
+                            <input
+                                id="alloc-mobile-{{ $index }}"
+                                data-remaining="{{ $due->remaining_amount }}"
+                                type="number"
+                                name="allocations[{{ $index }}][amount]"
+                                min="0"
+                                step="0.01"
+                                max="{{ $due->remaining_amount }}"
+                                value="{{ old('allocations.'.$index.'.amount') }}"
+                                class="mobile-alloc-input flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none"
+                                placeholder="Tutar"
+                            >
+                            <button type="button" data-fill-selector="#alloc-mobile-{{ $index }}" class="fill-remaining text-sm text-slate-700 hover:underline whitespace-nowrap">Tam Doldur</button>
+                        </div>
+                    </div>
+                @empty
+                    <div class="px-4 py-6 text-sm text-slate-500">Bu hesap için eşlenmemiş açık aidat bulunamadı.</div>
+                @endforelse
+            </div>
+
         </div>
 
         {{-- Canlı özet --}}
@@ -166,7 +215,7 @@
 
                 function updateSummary(){
                     let total = 0;
-                    document.querySelectorAll('input[name^="allocations"][name$="[amount]"]').forEach(inp => {
+                    document.querySelectorAll('input[name^="allocations"][name$="[amount]"]:not(:disabled)').forEach(inp => {
                         total += toFloat(inp.value);
                     });
 
@@ -192,14 +241,14 @@
                 }
 
                 document.addEventListener('input', function(e){
-                    if (e.target.matches('input[name^="allocations"][name$="[amount]"]')) {
+                    if (e.target.matches('input[name^="allocations"][name$="[amount]"]:not(:disabled)')) {
                         updateSummary();
                     }
                 });
 
                 function allocatedTotal(excludeInput){
                     let total = 0;
-                    document.querySelectorAll('input[name^="allocations"][name$="[amount]"]').forEach(inp => {
+                    document.querySelectorAll('input[name^="allocations"][name$="[amount]"]:not(:disabled)').forEach(inp => {
                         if (inp !== excludeInput) total += toFloat(inp.value);
                     });
                     return total;
@@ -221,7 +270,7 @@
 
                 // FIFO: eskiden yeniye otomatik dağıt
                 document.getElementById('btn-fifo').addEventListener('click', function(){
-                    const inputs = Array.from(document.querySelectorAll('input[name^="allocations"][name$="[amount]"]'));
+                    const inputs = Array.from(document.querySelectorAll('input[name^="allocations"][name$="[amount]"]:not(:disabled)'));
                     inputs.forEach(inp => inp.value = '');
 
                     let remaining = budget;
@@ -238,7 +287,7 @@
 
                 // Temizle
                 document.getElementById('btn-clear').addEventListener('click', function(){
-                    document.querySelectorAll('input[name^="allocations"][name$="[amount]"]').forEach(inp => inp.value = '');
+                    document.querySelectorAll('input[name^="allocations"][name$="[amount]"]:not(:disabled)').forEach(inp => inp.value = '');
                     updateSummary();
                 });
 
@@ -247,7 +296,7 @@
                 const countSpan = document.getElementById('imported-count');
                 if (toggleBtn) {
                     let showImported = false;
-                    const importedRows = document.querySelectorAll('tr[data-imported="1"]');
+                    const importedRows = document.querySelectorAll('[data-imported="1"]');
                     const importedCount = importedRows.length;
 
                     importedRows.forEach(row => row.style.display = 'none');
@@ -260,6 +309,15 @@
                         countSpan.textContent  = showImported ? `${importedCount} devir öncesi gösteriliyor` : `${importedCount} devir öncesi gizli`;
                     });
                 }
+
+                function toggleInputsByViewport(){
+                    const isDesktop = window.innerWidth >= 768;
+                    document.querySelectorAll('.desktop-alloc-input').forEach(i => i.disabled = !isDesktop);
+                    document.querySelectorAll('.mobile-alloc-input').forEach(i => i.disabled = isDesktop);
+                }
+
+                window.addEventListener('resize', toggleInputsByViewport);
+                toggleInputsByViewport();
             })();
         </script>
     </form>

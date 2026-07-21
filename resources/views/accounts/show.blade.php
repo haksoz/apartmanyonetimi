@@ -251,7 +251,7 @@
 
                                     <td class="px-5 py-4">
 
-                                        <input type="checkbox" class="due-checkbox rounded"
+                                        <input type="checkbox" class="due-checkbox due-checkbox-desktop rounded"
 
                                                data-due-id="{{ $due->id }}"
 
@@ -317,7 +317,7 @@
 
                                     <td class="px-5 py-4">
 
-                                        <input type="checkbox" class="due-checkbox rounded"
+                                        <input type="checkbox" class="due-checkbox due-checkbox-desktop rounded"
 
                                                data-due-id="{{ $due->id }}"
 
@@ -393,7 +393,7 @@
                             <div class="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50"
                                  onclick="window.location.href='{{ route('dues.show', $due) }}'">
                                 <div class="flex items-center gap-3 min-w-0 flex-1">
-                                    <input type="checkbox" class="due-checkbox rounded shrink-0"
+                                    <input type="checkbox" class="due-checkbox due-checkbox-mobile rounded shrink-0"
                                            data-due-id="{{ $due->id }}"
                                            data-amount="{{ $due->remaining_amount }}"
                                            data-description="{{ $due->description ?: 'Aidat' }}"
@@ -427,7 +427,7 @@
                             <div class="imported-due-row-mobile hidden flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-blue-100/40 bg-blue-50/40"
                                  onclick="window.location.href='{{ route('dues.show', $due) }}'">
                                 <div class="flex items-center gap-3 min-w-0 flex-1">
-                                    <input type="checkbox" class="due-checkbox rounded shrink-0"
+                                    <input type="checkbox" class="due-checkbox due-checkbox-mobile rounded shrink-0"
                                            data-due-id="{{ $due->id }}"
                                            data-amount="{{ $due->remaining_amount }}"
                                            data-description="{{ $due->description ?: 'Aidat' }}"
@@ -998,9 +998,24 @@
 
 
 
+            const isDesktop = () => window.innerWidth >= 768;
+
+            const dueCheckboxSelector = () => isDesktop() ? '.due-checkbox-desktop' : '.due-checkbox-mobile';
+
+            function visibleDueChecked() {
+                return document.querySelectorAll(dueCheckboxSelector() + ':checked');
+            }
+
+            function syncDueCheckboxes(source) {
+                const dueId = source.dataset.dueId;
+                document.querySelectorAll('.due-checkbox[data-due-id="' + dueId + '"]').forEach(cb => {
+                    if (cb !== source) cb.checked = source.checked;
+                });
+            }
+
             const updateBtn = () => {
 
-                const checked = document.querySelectorAll('.due-checkbox:checked');
+                const checked = visibleDueChecked();
 
                 let total = 0;
 
@@ -1046,11 +1061,13 @@
 
                 cb.addEventListener('change', function() {
 
-                    const all = document.querySelectorAll('.due-checkbox');
+                    syncDueCheckboxes(this);
 
-                    selectAll.checked = Array.from(all).every(c => c.checked);
+                    const allDesktop = document.querySelectorAll('.due-checkbox-desktop');
 
-                    selectAll.indeterminate = !selectAll.checked && Array.from(all).some(c => c.checked);
+                    selectAll.checked = Array.from(allDesktop).every(c => c.checked);
+
+                    selectAll.indeterminate = !selectAll.checked && Array.from(allDesktop).some(c => c.checked);
 
                     updateBtn();
 
@@ -1058,13 +1075,14 @@
 
             });
 
+            window.addEventListener('resize', updateBtn);
         })();
 
 
 
         function openBulkPayModal() {
 
-            const checked = document.querySelectorAll('.due-checkbox:checked');
+            const checked = document.querySelectorAll(window.innerWidth >= 768 ? '.due-checkbox-desktop:checked' : '.due-checkbox-mobile:checked');
 
             if (!checked.length) return;
 
