@@ -278,38 +278,46 @@
                 $balance = $credit - $debit;
             @endphp
             <div class="rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
-                <a href="{{ route('accounts.show', $account) }}" class="flex items-start justify-between">
-                    <div class="flex-1">
-                        <div class="text-sm text-slate-900">
-                            <span class="font-bold">{{ $account->name }}</span>
-                            <span class="mx-1 text-slate-400">•</span>
-                            <span class="text-xs text-slate-500">{{ $account->type_label }}</span>
-                            @if ($account->unit)
-                                <span class="mx-1 text-slate-400">•</span>
-                                <span class="text-xs text-slate-500">Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</span>
-                            @endif
-                        </div>
+                <a href="{{ route('accounts.show', $account) }}" class="block">
+                    <div class="flex items-start gap-2 flex-wrap">
+                        <div class="text-base font-bold text-slate-900">{{ $account->name }}</div>
                         @if ($account->is_active)
-                            <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium mt-2">
+                            <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span> Aktif
                             </span>
                         @else
-                            <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500 mt-2">
+                            <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500">
                                 <span class="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block"></span> Pasif
                             </span>
                         @endif
-                        <div class="flex items-center gap-3 mt-1 text-xs text-slate-600">
-                            <span>Borç: {{ number_format($debit, 2, ',', '.') }} TL</span>
-                            <span>Alacak: {{ number_format($credit, 2, ',', '.') }} TL</span>
-                        </div>
                     </div>
-                    <div class="ml-3 text-right shrink-0">
-                        <div class="font-bold {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ number_format(abs($balance), 2, ',', '.') }} TL</div>
-                        @if ($balance < 0)
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 mt-1">(B)</span>
-                        @elseif ($balance > 0)
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 mt-1">(A)</span>
+                    <div class="text-xs text-slate-600 mt-1">
+                        <span>{{ $account->type_label }}</span>
+                        @if ($account->unit)
+                            <span class="mx-1 text-slate-400">•</span>
+                            <span>Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</span>
                         @endif
+                    </div>
+                    <div class="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
+                        <div>
+                            <div class="text-slate-500">Borç</div>
+                            <div class="font-medium text-red-600 tabular-nums">{{ number_format($debit, 2, ',', '.') }} TL</div>
+                        </div>
+                        <div>
+                            <div class="text-slate-500">Alacak</div>
+                            <div class="font-medium text-emerald-600 tabular-nums">{{ number_format($credit, 2, ',', '.') }} TL</div>
+                        </div>
+                        <div>
+                            <div class="text-slate-500">Bakiye</div>
+                            <div class="font-bold {{ $balance < 0 ? 'text-red-600' : 'text-emerald-600' }} tabular-nums">
+                                {{ number_format(abs($balance), 2, ',', '.') }} TL
+                                @if ($balance < 0)
+                                    <span class="inline-block rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-semibold text-red-700">(B)</span>
+                                @elseif ($balance > 0)
+                                    <span class="inline-block rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-700">(A)</span>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </a>
             </div>

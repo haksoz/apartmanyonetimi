@@ -63,7 +63,9 @@
     @if ($plan->exists && ! empty($periods))
         <div class="mt-8 max-w-4xl">
             <h2 class="text-base font-semibold text-slate-900 mb-3">Plan Ayları</h2>
-            <div class="rounded-2xl bg-white shadow-sm overflow-hidden">
+
+            {{-- Desktop Table --}}
+            <div class="hidden md:block rounded-2xl bg-white shadow-sm overflow-hidden">
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 text-left">
                         <tr>
@@ -115,6 +117,56 @@
                         @endforeach
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Mobile Cards --}}
+            <div class="md:hidden space-y-2">
+                @foreach ($periods as $p)
+                    <div class="rounded-xl bg-white p-3 shadow-sm border border-slate-200">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="font-medium text-slate-900 text-sm">{{ $p['label'] }}</div>
+                            <div class="shrink-0 text-right">
+                                @if ($p['status'] === 'complete')
+                                    <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Tamamlandı</span>
+                                @elseif ($p['status'] === 'incomplete')
+                                    <span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">Eksik</span>
+                                @else
+                                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Oluşturulmadı</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="mt-1 text-xs text-slate-500">
+                            Aidat / Daire:
+                            <span class="font-medium text-slate-700 tabular-nums">
+                                @if ($p['status'] !== 'not_generated')
+                                    {{ $p['active_count'] }} / {{ $p['expected_count'] }}
+                                @else
+                                    –
+                                @endif
+                            </span>
+                            @if ($p['status'] === 'incomplete')
+                                <span class="ml-1 text-slate-400">({{ $p['active_count'] }} / {{ $p['expected_count'] }})</span>
+                            @endif
+                        </div>
+                        <div class="mt-2 flex justify-end">
+                            @if ($p['status'] === 'complete')
+                                <a href="{{ route('dues.index', ['batch_id' => $p['batch_id']]) }}" class="text-xs font-medium text-slate-700 hover:text-slate-900 underline">Görüntüle</a>
+                            @elseif ($p['status'] === 'incomplete')
+                                <form method="POST" action="{{ route('due-plans.regenerate-period', $plan) }}" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="period" value="{{ $p['period'] }}">
+                                    <button type="submit" class="text-xs font-medium text-emerald-700 hover:text-emerald-800 underline">Eksikleri Tamamla</button>
+                                </form>
+                            @else
+                                <form method="POST" action="{{ route('due-plans.generate-month', $plan) }}" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="period" value="{{ $p['period'] }}">
+                                    <button type="submit" class="text-xs font-medium text-slate-700 hover:text-slate-900 underline">Oluştur</button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
             </div>
         </div>
     @endif

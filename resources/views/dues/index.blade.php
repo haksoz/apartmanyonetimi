@@ -395,64 +395,64 @@
                 $isOverdue = $due->status !== 'paid' && $due->due_date && $due->due_date->isPast();
             @endphp
             <div class="rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
-                <a href="{{ route('dues.show', $due) }}" class="flex items-start justify-between">
-                    <div class="flex-1">
-                        <div class="flex items-start gap-2 flex-wrap">
-                            @if ($due->description)
-                                <div class="text-base font-bold text-slate-900">{{ $due->description }}</div>
-                            @endif
-                            @if ($due->is_imported)
-                                <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
-                            @endif
-                        </div>
-                        <div class="text-xs text-slate-600 mt-1">
-                            <span>{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</span>
-                            <span class="mx-1 text-slate-400">•</span>
-                            <span>{{ $due->account?->name }}</span>
-                            <span class="mx-1 text-slate-400">•</span>
-                            <span>{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
-                        </div>
-                        @if ($due->due_date)
-                            <div class="text-xs mt-1 {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500' }}">Son Ödeme: {{ $due->due_date->format('d.m.Y') }} · {{ $due->due_type_label }}{{ $due->category ? ' / '.$due->category->name : '' }}</div>
-                        @endif
-                        @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
-                            <div class="text-xs text-amber-600 mt-1">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
-                        @endif
+                {{-- Parça 1: Bilgiler --}}
+                <a href="{{ route('dues.show', $due) }}" class="block">
+                    @if ($due->description)
+                        <div class="text-base font-bold text-slate-900">{{ $due->description }}</div>
+                    @endif
+                    <div class="text-xs text-slate-600 mt-1">
+                        <span>{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
+                        <span class="mx-1 text-slate-400">•</span>
+                        <span>{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</span>
+                        <span class="mx-1 text-slate-400">•</span>
+                        <span>{{ $due->account?->name }}</span>
                     </div>
-                    <div class="ml-3 text-right shrink-0">
-                        <div class="font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
+                    @if ($due->due_date)
+                        <div class="text-xs mt-1 {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500' }}">Son Ödeme: {{ $due->due_date->format('d.m.Y') }} · {{ $due->due_type_label }}{{ $due->category ? ' / '.$due->category->name : '' }}</div>
+                    @endif
+                    <div class="mt-1.5 flex flex-wrap items-center gap-1">
                         @if ($due->computed_status === 'overdue')
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 mt-1">
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
                                 <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
                                 Gecikmiş
                             </span>
                         @elseif ($due->computed_status === 'paid')
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 mt-1">
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
                                 <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
                                 Ödendi
                             </span>
                         @elseif ($due->computed_status === 'partial')
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 mt-1">
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
                                 <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
                                 Kısmi
                             </span>
                         @else
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 mt-1">
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
                                 <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
                                 Bekliyor
                             </span>
                         @endif
+                        @if ($due->is_imported)
+                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                        @endif
                     </div>
                 </a>
-                @if ($due->computed_status !== 'paid')
-                    <div class="mt-2 flex justify-end">
+
+                {{-- Parça 2: Tutarlar | Parça 3: Tahsil Et --}}
+                <div class="mt-2 flex items-end justify-between gap-2">
+                    <a href="{{ route('dues.show', $due) }}" class="block">
+                        <div class="font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
+                        @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
+                            <div class="text-xs text-amber-600 font-semibold">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                        @endif
+                    </a>
+                    @if ($due->computed_status !== 'paid')
                         <a href="{{ route('dues.payment.create', $due) }}"
-                           class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
-                           onclick="event.stopPropagation();">
+                           class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">
                             Tahsil Et
                         </a>
-                    </div>
-                @endif
+                    @endif
+                </div>
             </div>
         @empty
             <div class="rounded-xl bg-white p-8 text-center text-slate-500 shadow-sm">

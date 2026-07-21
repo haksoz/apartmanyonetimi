@@ -4,15 +4,15 @@
 <input type="hidden" name="due_type" value="aidat">
 <input type="hidden" name="category_id" value="">
 
-<div class="space-y-4">
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-700 mb-4">Plan Dönemi</h3>
+<div class="space-y-5">
+    <div>
+        <h3 class="text-sm font-semibold text-slate-700 mb-3">Plan Dönemi</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label for="start_date" class="block text-sm font-medium text-slate-600 mb-1">Başlangıç Tarihi</label>
                 <input type="date" id="start_date" name="start_date"
                        value="{{ old('start_date', $plan?->start_date?->format('Y-m-d')) }}"
-                       class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none"
+                       class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none"
                        required>
                 @error('start_date')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -23,7 +23,7 @@
                 <label for="end_date" class="block text-sm font-medium text-slate-600 mb-1">Bitiş Tarihi</label>
                 <input type="date" id="end_date" name="end_date"
                        value="{{ old('end_date', $plan?->end_date?->format('Y-m-d')) }}"
-                       class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none"
+                       class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none"
                        required>
                 @error('end_date')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -32,27 +32,31 @@
         </div>
     </div>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-700 mb-4">Vade ve Oluşturma Günleri</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <hr class="border-slate-100">
+
+    <div>
+        <h3 class="text-sm font-semibold text-slate-700 mb-3">Vade ve Oluşturma Günleri</h3>
+        <div class="grid grid-cols-2 gap-4">
             <div>
-                <label for="generate_day" class="block text-sm font-medium text-slate-600 mb-1">Aidat Oluşturma Günü (1-28)</label>
+                <label for="generate_day" class="block text-sm font-medium text-slate-600 mb-1">Oluşturma Günü</label>
                 <input type="number" id="generate_day" name="generate_day"
                        value="{{ old('generate_day', $plan?->generate_day ?? 1) }}"
                        min="1" max="28" required
-                       class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                <p class="mt-1 text-xs text-slate-500">Sistem her ayın bu gününde aidatı otomatik oluşturur.</p>
+                       placeholder="1-28"
+                       class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-center focus:border-emerald-500 focus:outline-none">
+                <p class="mt-1 text-xs text-slate-500">Her ay aidatın oluşturulacağı gün.</p>
                 @error('generate_day')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
             </div>
 
             <div>
-                <label for="due_day" class="block text-sm font-medium text-slate-600 mb-1">Vade Günü (1-28)</label>
+                <label for="due_day" class="block text-sm font-medium text-slate-600 mb-1">Vade Günü</label>
                 <input type="number" id="due_day" name="due_day"
                        value="{{ old('due_day', $plan?->due_day ?? 1) }}"
                        min="1" max="28" required
-                       class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                       placeholder="1-28"
+                       class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-center focus:border-emerald-500 focus:outline-none">
                 @error('due_day')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
@@ -60,13 +64,15 @@
         </div>
     </div>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-700 mb-4">Tutar Girişi</h3>
+    <hr class="border-slate-100">
+
+    <div>
+        <h3 class="text-sm font-semibold text-slate-700 mb-3">Tutar Girişi</h3>
         <div class="md:w-1/2">
-            <label for="monthly_amount" class="mb-2 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Aylık Tutar</label>
+            <label for="monthly_amount" class="mb-1 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Aylık Tutar</label>
             <input id="monthly_amount" name="monthly_amount" type="number" min="0.01" step="0.01"
                    value="{{ old('monthly_amount', $plan?->monthly_amount) }}"
-                   class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold"
+                   class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none font-semibold"
                    placeholder="0,00" required>
             @error('monthly_amount')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -74,72 +80,77 @@
         </div>
     </div>
 
-    <div class="rounded-2xl bg-white p-5 shadow-sm">
-        <div class="flex items-center justify-between mb-4">
+    <hr class="border-slate-100">
+
+    <div>
+        <div class="flex items-center justify-between mb-3">
             <h3 class="text-sm font-semibold text-slate-700">Borç Bilgileri</h3>
             <div id="calc-summary" class="text-sm font-medium text-red-600 hidden"></div>
         </div>
 
-        <div class="mb-4">
-            <label class="mb-2 block text-sm font-medium text-slate-600">Dağıtım Yöntemi</label>
-            <select name="distribution_type" id="distribution_type" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                <option value="equal" @selected(old('distribution_type', $plan?->distribution_type ?? 'equal') === 'equal')>Eşit dağıtım</option>
-                <option value="square_meters" @selected(old('distribution_type', $plan?->distribution_type) === 'square_meters')>Metrekareye göre</option>
-                <option value="share_coefficient" @selected(old('distribution_type', $plan?->distribution_type) === 'share_coefficient')>Pay çarpanına göre</option>
-            </select>
-            @error('distribution_type')
-                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-            @enderror
-        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Dağıtım Yöntemi</label>
+                <select name="distribution_type" id="distribution_type" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none">
+                    <option value="equal" @selected(old('distribution_type', $plan?->distribution_type ?? 'equal') === 'equal')>Eşit dağıtım</option>
+                    <option value="square_meters" @selected(old('distribution_type', $plan?->distribution_type) === 'square_meters')>Metrekareye göre</option>
+                    <option value="share_coefficient" @selected(old('distribution_type', $plan?->distribution_type) === 'share_coefficient')>Pay çarpanına göre</option>
+                </select>
+                @error('distribution_type')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
 
-        <div id="distribution-preview" class="hidden mb-4">
-            <div class="rounded-xl border border-slate-200 overflow-hidden">
-                <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dağıtım Önizlemesi</span>
-                    <span id="preview-total-label" class="text-xs text-slate-500"></span>
+            <div id="distribution-preview" class="hidden">
+                <div class="rounded-xl border border-slate-200 overflow-hidden">
+                    <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dağıtım Önizlemesi</span>
+                        <span id="preview-total-label" class="text-xs text-slate-500"></span>
+                    </div>
+                    <div id="preview-warning" class="hidden px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700"></div>
+                    <div id="preview-groups" class="divide-y divide-slate-100"></div>
                 </div>
-                <div id="preview-warning" class="hidden px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700"></div>
-                <div id="preview-groups" class="divide-y divide-slate-100"></div>
+            </div>
+
+            <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600">Borçlanacak Kişiler</label>
+                <div class="flex gap-3">
+                    <label class="cursor-pointer flex-1">
+                        <input type="radio" name="target_audience" value="tenant_priority" class="peer sr-only" @checked(old('target_audience', $plan?->target_audience ?? 'tenant_priority') === 'tenant_priority')>
+                        <div class="rounded-lg border border-slate-200 p-2.5 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Kiracı Öncelikli</div>
+                            <div class="text-xs text-slate-500 mt-0.5">Varsa Kiracıya, yoksa sahibine</div>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer flex-1">
+                        <input type="radio" name="target_audience" value="owner_only" class="peer sr-only" @checked(old('target_audience', $plan?->target_audience) === 'owner_only')>
+                        <div class="rounded-lg border border-slate-200 p-2.5 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Sadece Sahipler</div>
+                            <div class="text-xs text-slate-500 mt-0.5">Tüm borçlar kat maliklerine</div>
+                        </div>
+                    </label>
+                </div>
+                @error('target_audience')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
             </div>
         </div>
-
-        <div class="mb-4">
-            <label class="mb-2 block text-sm font-medium text-slate-600">Borçlanacak Kişiler</label>
-            <div class="flex gap-3">
-                <label class="cursor-pointer flex-1">
-                    <input type="radio" name="target_audience" value="tenant_priority" class="peer sr-only" @checked(old('target_audience', $plan?->target_audience ?? 'tenant_priority') === 'tenant_priority')>
-                    <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
-                        <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Kiracı Öncelikli</div>
-                        <div class="text-xs text-slate-500 mt-1">Varsa Kiracıya, yoksa sahibine</div>
-                    </div>
-                </label>
-                <label class="cursor-pointer flex-1">
-                    <input type="radio" name="target_audience" value="owner_only" class="peer sr-only" @checked(old('target_audience', $plan?->target_audience) === 'owner_only')>
-                    <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
-                        <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Sadece Sahipler</div>
-                        <div class="text-xs text-slate-500 mt-1">Tüm borçlar kat maliklerine</div>
-                    </div>
-                </label>
-            </div>
-            @error('target_audience')
-                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-            @enderror
-        </div>
-
     </div>
 
-    <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 mb-2">Oluşacak Aidat Açıklaması</p>
+    <hr class="border-slate-100">
+
+    <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 mb-1">Oluşacak Aidat Açıklaması</p>
         <p class="text-sm text-emerald-900">
-            Her ay aidat oluşturulduğunda açıklama şu şekilde otomatik yazılır:<br>
+            Her ay aidat oluşturulduğunda açıklama şu şekilde otomatik yazılır:
             <span class="font-medium">"Temmuz 2026 - Aidat"</span>
         </p>
-        <p class="mt-2 text-xs text-emerald-700">
-            Ay ve yıl, oluşturulan döneme göre değişir.
-        </p>
+        <p class="mt-1 text-xs text-emerald-700">Ay ve yıl, oluşturulan döneme göre değişir.</p>
     </div>
 
-    <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <hr class="border-slate-100">
+
+    <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
         <div>
             <p class="text-sm font-medium text-slate-700">Aktif / Pasif</p>
             <p class="text-xs text-slate-500 mt-0.5">Plan aktifken aidatlar otomatik oluşturulur.</p>

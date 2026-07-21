@@ -12,7 +12,8 @@
         </div>
     </div>
 
-    <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
+    {{-- Desktop Table --}}
+    <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left text-slate-500"><tr><th class="px-5 py-3">Kategori</th><th class="px-5 py-3">Tip</th><th class="px-5 py-3">Durum</th><th class="px-5 py-3 text-right">İşlemler</th></tr></thead>
             <tbody class="divide-y divide-slate-100">
@@ -41,5 +42,36 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+
+    {{-- Mobile Cards --}}
+    <div class="md:hidden space-y-3">
+        @forelse ($categories as $category)
+            <div class="rounded-xl bg-white p-4 shadow-sm border border-slate-200">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="font-semibold text-slate-900">{{ $category->name }}</div>
+                    <span class="shrink-0 rounded-full px-2 py-1 text-xs font-semibold {{ $category->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
+                        {{ $category->is_active ? 'Aktif' : 'Pasif' }}
+                    </span>
+                </div>
+                <div class="mt-1 text-xs text-slate-500">{{ $category->type_label }}</div>
+                <div class="mt-3 flex flex-wrap justify-end gap-2">
+                    @if (! $category->is_system)
+                        <a href="{{ route('categories.edit', $category) }}" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">Düzenle</a>
+                        <form method="POST" action="{{ route('categories.destroy', $category) }}" class="inline" onsubmit="return confirm('Kategori silinsin mi?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100">Sil</button>
+                        </form>
+                    @else
+                        <span class="text-xs text-slate-400">Sistem kategorisi</span>
+                    @endif
+                </div>
+            </div>
+        @empty
+            <div class="rounded-xl bg-white p-8 text-center text-slate-500 shadow-sm">
+                Henüz kategori yok.
+            </div>
+        @endforelse
     </div>
 @endsection

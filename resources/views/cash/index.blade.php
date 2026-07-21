@@ -12,10 +12,21 @@
         </div>
     </div>
 
-    <div class="mb-6 grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Gelir</div><div class="mt-2 text-2xl font-bold text-emerald-600">{{ number_format($income, 2, ',', '.') }} TL</div></div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Gider</div><div class="mt-2 text-2xl font-bold text-red-600">{{ number_format($expense, 2, ',', '.') }} TL</div></div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Bakiye</div><div class="mt-2 text-2xl font-bold">{{ number_format($balance, 2, ',', '.') }} TL</div></div>
+    <div class="mb-6 rounded-2xl bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-4 md:divide-x md:divide-slate-100">
+            <div class="flex items-center justify-between md:flex-col md:justify-center md:text-center px-2">
+                <div class="text-sm text-slate-500">Gelir</div>
+                <div class="text-lg md:text-2xl font-bold text-emerald-600">{{ number_format($income, 2, ',', '.') }} TL</div>
+            </div>
+            <div class="flex items-center justify-between md:flex-col md:justify-center md:text-center px-2">
+                <div class="text-sm text-slate-500">Gider</div>
+                <div class="text-lg md:text-2xl font-bold text-red-600">{{ number_format($expense, 2, ',', '.') }} TL</div>
+            </div>
+            <div class="flex items-center justify-between md:flex-col md:justify-center md:text-center px-2">
+                <div class="text-sm text-slate-500">Bakiye</div>
+                <div class="text-lg md:text-2xl font-bold text-slate-900">{{ number_format($balance, 2, ',', '.') }} TL</div>
+            </div>
+        </div>
     </div>
 
     <div class="mb-6 rounded-2xl bg-white p-6 shadow-sm">
