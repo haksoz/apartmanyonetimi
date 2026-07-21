@@ -164,7 +164,8 @@ class PaymentMultiAllocateTest extends TestCase
                     ['due_id' => $due->id, 'amount' => 500],
                 ],
             ])
-            ->assertSessionHasNoErrors();
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('accounts.show', $account));
 
         $this->assertDatabaseHas('payment_allocations', [
             'payment_id' => $payment->id,
