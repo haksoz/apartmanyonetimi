@@ -273,23 +273,36 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
-        $filterUnit    = $request->input('unit_id');
-        $filterStatus  = $request->input('status', 'unpaid'); // unpaid | overdue | all
-        $filterPeriod  = $request->input('period');
+        $filterUnit      = $request->input('unit_id');
+        $filterStatus    = $request->input('status', 'unpaid'); // unpaid | overdue | all
+        $filterStartDate = $request->input('start_date');
+        $filterEndDate   = $request->input('end_date');
+
+        $today = now()->startOfDay();
 
         $query = Due::with(['account', 'unit', 'category'])
             ->where('apartment_id', $apartment->id)
             ->where('remaining_amount', '>', 0)
             ->when($filterUnit, fn($q) => $q->where('unit_id', $filterUnit))
-            ->when($filterPeriod, fn($q) => $q->where('period', $filterPeriod))
-            ->when($filterStatus === 'overdue', fn($q) => $q->where('due_date', '<', now()))
+            ->when($filterStartDate || $filterEndDate, function ($q) use ($filterStartDate, $filterEndDate) {
+                $column = 'DATE(due_date)';
+                if ($filterStartDate && $filterEndDate) {
+                    $q->whereRaw("{$column} BETWEEN ? AND ?", [$filterStartDate, $filterEndDate]);
+                } elseif ($filterStartDate) {
+                    $q->whereRaw("{$column} >= ?", [$filterStartDate]);
+                } elseif ($filterEndDate) {
+                    $q->whereRaw("{$column} <= ?", [$filterEndDate]);
+                }
+            })
+            ->when($filterStatus === 'unpaid', fn($q) => $q->where('due_date', '>=', $today))
+            ->when($filterStatus === 'overdue', fn($q) => $q->where('due_date', '<', $today))
             ->orderBy('due_date');
 
         $dues  = $query->get();
         $units = Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get();
         $total = $dues->sum('remaining_amount');
 
-        return view('reports.debt-list', compact('apartment', 'dues', 'units', 'total', 'filterUnit', 'filterStatus', 'filterPeriod'));
+        return view('reports.debt-list', compact('apartment', 'dues', 'units', 'total', 'filterUnit', 'filterStatus', 'filterStartDate', 'filterEndDate'));
     }
 
     public function debtListExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -297,17 +310,32 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
+        $today = now()->startOfDay();
+
         $dues  = Due::with(['account', 'unit', 'category'])
             ->where('apartment_id', $apartment->id)
             ->where('remaining_amount', '>', 0)
             ->when($request->input('unit_id'), fn($q) => $q->where('unit_id', $request->input('unit_id')))
-            ->when($request->input('status') === 'overdue', fn($q) => $q->where('due_date', '<', now()))
+            ->when($request->input('start_date') || $request->input('end_date'), function ($q) use ($request) {
+                $start = $request->input('start_date');
+                $end   = $request->input('end_date');
+                $column = 'DATE(due_date)';
+                if ($start && $end) {
+                    $q->whereRaw("{$column} BETWEEN ? AND ?", [$start, $end]);
+                } elseif ($start) {
+                    $q->whereRaw("{$column} >= ?", [$start]);
+                } elseif ($end) {
+                    $q->whereRaw("{$column} <= ?", [$end]);
+                }
+            })
+            ->when($request->input('status') === 'unpaid', fn($q) => $q->where('due_date', '>=', $today))
+            ->when($request->input('status') === 'overdue', fn($q) => $q->where('due_date', '<', $today))
             ->orderBy('due_date')->get();
 
         $total = $dues->sum('remaining_amount');
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.debt-list', ['apartment' => $apartment, 'dues' => $dues, 'total' => $total, 'units' => collect(), 'filterUnit' => null, 'filterStatus' => $request->input('status', 'unpaid'), 'filterPeriod' => null], 'borclar-listesi');
+            return $this->pdfResponse('reports.debt-list', ['apartment' => $apartment, 'dues' => $dues, 'total' => $total, 'units' => collect(), 'filterUnit' => null, 'filterStatus' => $request->input('status', 'unpaid'), 'filterStartDate' => $request->input('start_date'), 'filterEndDate' => $request->input('end_date')], 'borclar-listesi');
         }
 
         $spreadsheet = new Spreadsheet();

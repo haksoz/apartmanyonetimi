@@ -35,29 +35,111 @@
         </div>
     </div>
 
-    {{-- Filtreler --}}
-    <form method="GET" action="{{ route('reports.debt-list') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-3 items-end">
-        <div>
-            <label class="block text-xs text-slate-500 mb-1">Daire</label>
-            <select name="unit_id" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="">— Tüm Daireler —</option>
-                @foreach($units as $unit)
-                    <option value="{{ $unit->id }}" @selected($filterUnit == $unit->id)>{{ $unit->unit_no }}</option>
-                @endforeach
-            </select>
+    @php
+        $accountLabels = ['all' => 'Tümü', 'residents' => 'Daire Sakinleri', 'owners' => 'Kat Malikleri', 'inactive' => 'Pasif Hesaplar'];
+        $activeUnit = $filterUnit ? $units->firstWhere('id', $filterUnit) : null;
+        $activeFilterCount = 0;
+        if ($filterUnit) $activeFilterCount++;
+        if ($filterAccount !== 'all') $activeFilterCount++;
+    @endphp
+
+    {{-- Filtre Butonu + Rozetler --}}
+    <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <button type="button" onclick="openFilterModal()"
+            class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.238 2.022l-3.158 1.579A2.25 2.25 0 018.25 20.05v-5.83a2.25 2.25 0 00-.659-1.591L2.659 7.197A2.25 2.25 0 012 5.606V4.562c0-.54.384-1.006.917-1.096A49.32 49.32 0 0112 3z"/>
+            </svg>
+            Filtrele
+            @if ($activeFilterCount > 0)
+                <span class="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-950">{{ $activeFilterCount }}</span>
+            @endif
+        </button>
+    </div>
+
+    @if ($activeFilterCount > 0)
+        <div class="mb-4 flex flex-wrap items-center gap-2">
+            <span class="text-xs font-medium text-slate-500">Aktif filtreler:</span>
+            @if ($filterUnit && $activeUnit)
+                <a href="{{ route('reports.debt-list', request()->except('unit_id')) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    Daire: {{ $activeUnit->unit_no }}
+                    <span class="text-slate-500">&times;</span>
+                </a>
+            @endif
+            @if ($filterAccount !== 'all')
+                <a href="{{ route('reports.debt-list', request()->except('account_filter')) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    {{ $accountLabels[$filterAccount] ?? $filterAccount }}
+                    <span class="text-slate-500">&times;</span>
+                </a>
+            @endif
+            <a href="{{ route('reports.debt-list') }}" class="ml-1 text-xs font-medium text-slate-400 hover:text-slate-600 underline">Tümünü temizle</a>
         </div>
-        <div>
-            <label class="block text-xs text-slate-500 mb-1">Hesaplar</label>
-            <select name="account_filter" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="all" @selected($filterAccount === 'all')>Tümü</option>
-                <option value="residents" @selected($filterAccount === 'residents')>Daire Sakinleri</option>
-                <option value="owners" @selected($filterAccount === 'owners')>Kat Malikleri</option>
-                <option value="inactive" @selected($filterAccount === 'inactive')>Pasif Hesaplar</option>
-            </select>
-        </div>
-        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-    </form>
     @endif
+
+    {{-- Filter Modal --}}
+    <div id="filter-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div class="absolute inset-0 bg-black/50 transition-opacity" onclick="closeFilterModal()"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl p-6 overflow-y-auto flex flex-col">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-bold text-slate-900">Filtrele</h2>
+                <button type="button" onclick="closeFilterModal()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="filter-form" method="GET" action="{{ route('reports.debt-list') }}" class="flex flex-col flex-1">
+                <div class="flex-1 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Daire</label>
+                        <select name="unit_id" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
+                            <option value="">Tüm Daireler</option>
+                            @foreach($units as $unit)
+                                <option value="{{ $unit->id }}" @selected($filterUnit == $unit->id)>{{ $unit->unit_no }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Hesaplar</label>
+                        <select name="account_filter" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
+                            <option value="all" @selected($filterAccount === 'all')>Tümü</option>
+                            <option value="residents" @selected($filterAccount === 'residents')>Daire Sakinleri</option>
+                            <option value="owners" @selected($filterAccount === 'owners')>Kat Malikleri</option>
+                            <option value="inactive" @selected($filterAccount === 'inactive')>Pasif Hesaplar</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex items-center gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="resetFilters()" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Temizle</button>
+                    <button type="button" onclick="closeFilterModal()" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</button>
+                    <button type="submit" class="ml-auto rounded-xl bg-slate-950 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Uygula</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    <script>
+        function openFilterModal() {
+            document.getElementById('filter-modal').classList.remove('hidden');
+        }
+        function closeFilterModal() {
+            document.getElementById('filter-modal').classList.add('hidden');
+        }
+        function resetFilters() {
+            const form = document.getElementById('filter-form');
+            form.querySelectorAll('select').forEach(el => el.value = '');
+            form.submit();
+        }
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeFilterModal();
+        });
+    </script>
 
     {{-- Özet Kartlar --}}
     <div class="grid grid-cols-2 gap-4 mb-6">
@@ -70,24 +152,6 @@
             <p class="text-2xl font-bold text-red-600">{{ number_format($totalOverdue, 2, ',', '.') }} ₺</p>
         </div>
     </div>
-
-    @if($filterAccount !== 'all' || $filterUnit)
-        @php
-            $filterLabels = ['all' => 'Tümü', 'residents' => 'Daire Sakinleri', 'owners' => 'Kat Malikleri', 'inactive' => 'Pasif Hesaplar'];
-            $activeFilters = [];
-            if ($filterAccount !== 'all') {
-                $activeFilters[] = 'Hesaplar: ' . ($filterLabels[$filterAccount] ?? $filterAccount);
-            }
-            if ($filterUnit) {
-                $selectedUnit = $units->firstWhere('id', $filterUnit);
-                $activeFilters[] = 'Daire: ' . ($selectedUnit?->unit_no ?? $filterUnit);
-            }
-        @endphp
-        <div class="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm text-indigo-800">
-            <span class="font-semibold">Filtreler:</span>
-            <span class="ml-1">{{ implode(' — ', $activeFilters) }}</span>
-        </div>
-    @endif
 
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-200 bg-slate-50">
