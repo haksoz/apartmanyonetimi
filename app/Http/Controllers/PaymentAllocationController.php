@@ -465,6 +465,62 @@ class PaymentAllocationController extends Controller
             ->with('status', 'Tahsis silindi.');
     }
 
+    public function bulkDestroy(Request $request, CurrentApartment $currentApartment, Payment $payment)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        if ($payment->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'allocation_ids' => ['required', 'array'],
+            'allocation_ids.*' => ['integer', Rule::exists('payment_allocations', 'id')->where('payment_id', $payment->id)],
+        ]);
+
+        DB::transaction(function () use ($validated, $payment) {
+            $allocations = PaymentAllocation::whereIn('id', $validated['allocation_ids'])->get();
+            foreach ($allocations as $allocation) {
+                if ($allocation->payment_id !== $payment->id) {
+                    continue;
+                }
+
+                $allocationAmount = (float) $allocation->amount;
+
+                if ($allocation->due_id && $allocation->due) {
+                    $due = $allocation->due;
+                    $newRemaining = min($due->amount, (float) $due->remaining_amount + $allocationAmount);
+                    $due->remaining_amount = $newRemaining;
+                    $due->status = $newRemaining >= $due->amount ? 'unpaid' : 'partial';
+                    $due->save();
+                }
+
+                if ($allocation->expense_id && $allocation->expense) {
+                    $expense = $allocation->expense;
+                    $newRemaining = (float) $expense->remaining_amount + $allocationAmount;
+                    $expense->update([
+                        'remaining_amount' => $newRemaining,
+                        'paid_amount' => max(0, (float) $expense->paid_amount - $allocationAmount),
+                        'is_paid' => false,
+                    ]);
+                }
+
+                $payment->increment('unallocated_amount', $allocationAmount);
+                $allocation->delete();
+            }
+        });
+
+        $redirectTo = $request->input('redirect_to');
+        if ($redirectTo && str_starts_with($redirectTo, url('/'))) {
+            return redirect($redirectTo)->with('status', 'Seçili tahsisler silindi.');
+        }
+
+        return redirect()->route('payments.show', $payment)
+            ->with('status', 'Seçili tahsisler silindi.');
+    }
+
     private function resolveApartment(CurrentApartment $currentApartment)
     {
         $apartment = $currentApartment->getFor(auth()->user());
