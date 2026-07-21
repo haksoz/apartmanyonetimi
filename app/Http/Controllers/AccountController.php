@@ -117,7 +117,8 @@ class AccountController extends Controller
 
         return view('accounts.index', compact(
             'accounts', 'apartment', 'filters',
-            'orphanPaymentsCount', 'orphanPaymentsTotal', 'isOwner', 'hasImported'
+            'orphanPaymentsCount', 'orphanPaymentsTotal', 'isOwner', 'hasImported',
+            'sortBy', 'sortDir'
         ));
     }
 

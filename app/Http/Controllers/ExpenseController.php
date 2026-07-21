@@ -78,10 +78,9 @@ class ExpenseController extends Controller
 
 
 
-        $filterPeriod   = $request->query('period');
-
+        $filterStartDate = $request->query('start_date');
+        $filterEndDate   = $request->query('end_date');
         $filterStatus   = $request->query('status');
-
         $filterCategory = $request->query('category');
 
         $filterSearch   = $request->query('search');
@@ -108,7 +107,16 @@ class ExpenseController extends Controller
 
             }))
 
-            ->when($filterPeriod,   fn ($q) => $q->whereYear('period_month', substr($filterPeriod, 0, 4))->whereMonth('period_month', substr($filterPeriod, 5, 2)))
+            ->when($filterStartDate || $filterEndDate, function ($q) use ($filterStartDate, $filterEndDate) {
+                $column = 'DATE(expense_date)';
+                if ($filterStartDate && $filterEndDate) {
+                    $q->whereRaw("{$column} BETWEEN ? AND ?", [$filterStartDate, $filterEndDate]);
+                } elseif ($filterStartDate) {
+                    $q->whereRaw("{$column} >= ?", [$filterStartDate]);
+                } elseif ($filterEndDate) {
+                    $q->whereRaw("{$column} <= ?", [$filterEndDate]);
+                }
+            })
 
             ->when($filterStatus === 'paid',    fn ($q) => $q->where('is_paid', true))
 
@@ -133,7 +141,7 @@ class ExpenseController extends Controller
 
 
 
-        $filters = compact('filterPeriod', 'filterStatus', 'filterCategory', 'filterSearch');
+        $filters = compact('filterStartDate', 'filterEndDate', 'filterStatus', 'filterCategory', 'filterSearch');
 
         // Check if there are any imported expenses for this apartment
         $hasImported = Expense::where('apartment_id', $apartment->id)
