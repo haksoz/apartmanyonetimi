@@ -20,21 +20,23 @@
     </div>
 
     {{-- Arama + Filtre --}}
-    <div class="mb-4 flex flex-col md:flex-row gap-2">
-
+    <div class="mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         {{-- Arama --}}
-        <form method="GET" action="{{ route('dues.index') }}" class="flex gap-2 flex-1">
-            @if ($filters['filterPeriod'])
-                <input type="hidden" name="period" value="{{ $filters['filterPeriod'] }}">
+        <form method="GET" action="{{ route('dues.index') }}" class="flex gap-2 flex-1 w-full md:w-auto">
+            @if ($filters['filterBatchId'])
+                <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
+            @endif
+            @if ($filters['filterStartDate'])
+                <input type="hidden" name="start_date" value="{{ $filters['filterStartDate'] }}">
+            @endif
+            @if ($filters['filterEndDate'])
+                <input type="hidden" name="end_date" value="{{ $filters['filterEndDate'] }}">
             @endif
             @if ($filters['filterStatus'])
                 <input type="hidden" name="status" value="{{ $filters['filterStatus'] }}">
             @endif
             @if ($filters['filterSource'])
                 <input type="hidden" name="source" value="{{ $filters['filterSource'] }}">
-            @endif
-            @if ($filters['filterBatchId'])
-                <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
             @endif
             @if ($filters['filterUnitId'])
                 <input type="hidden" name="unit_id" value="{{ $filters['filterUnitId'] }}">
@@ -56,74 +58,199 @@
                 class="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
             <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ara</button>
             @if ($filters['filterSearch'] ?? '')
-                <a href="{{ route('dues.index', array_filter([
-                    'period' => $filters['filterPeriod'],
-                    'status' => $filters['filterStatus'],
-                    'source' => $filters['filterSource'],
-                    'batch_id' => $filters['filterBatchId'],
-                    'unit_id' => $filters['filterUnitId'],
-                    'account_type' => $filters['filterAccountType'],
-                    'show_imported' => $showImported ? 1 : null,
-                    'sort_by' => $sortBy !== 'created_at' ? $sortBy : null,
-                    'sort_direction' => $sortDirection !== 'desc' ? $sortDirection : null,
-                ])) }}"
+                <a href="{{ route('dues.index', request()->except('search')) }}"
                    class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50">✕</a>
             @endif
         </form>
 
-        {{-- Filtreler --}}
-        <form method="GET" action="{{ route('dues.index') }}" class="flex gap-2 items-center flex-wrap md:flex-nowrap">
-            @if ($filters['filterSearch'] ?? '')
-                <input type="hidden" name="search" value="{{ $filters['filterSearch'] }}">
+        @php
+            $activeFilterCount = 0;
+            if ($filters['filterStartDate'] || $filters['filterEndDate']) $activeFilterCount++;
+            if ($filters['filterStatus']) $activeFilterCount++;
+            if ($filters['filterSource']) $activeFilterCount++;
+            if ($filters['filterUnitId']) $activeFilterCount++;
+            if ($filters['filterAccountType']) $activeFilterCount++;
+            if ($showImported) $activeFilterCount++;
+        @endphp
+
+        <button type="button" onclick="openFilterModal()"
+            class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.238 2.022l-3.158 1.579A2.25 2.25 0 018.25 20.05v-5.83a2.25 2.25 0 00-.659-1.591L2.659 7.197A2.25 2.25 0 012 5.606V4.562c0-.54.384-1.006.917-1.096A49.32 49.32 0 0112 3z"/>
+            </svg>
+            Filtrele
+            @if ($activeFilterCount > 0)
+                <span class="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-950">{{ $activeFilterCount }}</span>
             @endif
-            @if ($filters['filterBatchId'])
-                <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
+        </button>
+    </div>
+
+    @php
+        $statusLabels = ['unpaid' => 'Bekliyor', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
+        $accountTypeLabels = ['owner' => 'Kat Maliki', 'tenant' => 'Kiracı', 'supplier' => 'Tedarikçi'];
+        $sourceLabels = ['plan' => 'Aidat Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel'];
+    @endphp
+
+    @if ($activeFilterCount > 0)
+        <div class="mb-4 flex flex-wrap items-center gap-2">
+            <span class="text-xs font-medium text-slate-500">Aktif filtreler:</span>
+            @if ($filters['filterStartDate'] || $filters['filterEndDate'])
+                <a href="{{ route('dues.index', request()->except(['start_date', 'end_date'])) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    {{ $filters['filterStartDate'] ? \Carbon\Carbon::parse($filters['filterStartDate'])->format('d.m.Y') : '...' }}
+                    -
+                    {{ $filters['filterEndDate'] ? \Carbon\Carbon::parse($filters['filterEndDate'])->format('d.m.Y') : '...' }}
+                    <span class="text-slate-500">&times;</span>
+                </a>
             @endif
-            @if ($sortBy !== 'created_at')
-                <input type="hidden" name="sort_by" value="{{ $sortBy }}">
+            @if ($filters['filterStatus'])
+                <a href="{{ route('dues.index', request()->except('status')) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    {{ $statusLabels[$filters['filterStatus']] ?? $filters['filterStatus'] }}
+                    <span class="text-slate-500">&times;</span>
+                </a>
             @endif
-            @if ($sortDirection !== 'desc')
-                <input type="hidden" name="sort_direction" value="{{ $sortDirection }}">
+            @if ($filters['filterUnitId'])
+                @php $activeUnit = $units->firstWhere('id', $filters['filterUnitId']); @endphp
+                <a href="{{ route('dues.index', request()->except('unit_id')) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    Daire {{ $activeUnit ? str_pad($activeUnit->unit_no, 2, '0', STR_PAD_LEFT) : $filters['filterUnitId'] }}
+                    <span class="text-slate-500">&times;</span>
+                </a>
             @endif
-            <input type="month" name="period" value="{{ $filters['filterPeriod'] }}"
-                class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-            <select name="status" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="">Tüm Durumlar</option>
-                <option value="unpaid"  {{ $filters['filterStatus'] === 'unpaid'  ? 'selected' : '' }}>Bekliyor</option>
-                <option value="partial" {{ $filters['filterStatus'] === 'partial' ? 'selected' : '' }}>Kısmen Ödendi</option>
-                <option value="paid"    {{ $filters['filterStatus'] === 'paid'    ? 'selected' : '' }}>Ödendi</option>
-                <option value="overdue" {{ $filters['filterStatus'] === 'overdue' ? 'selected' : '' }}>Gecikmiş</option>
-            </select>
-            <select name="unit_id" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="">Tüm Daireler</option>
-                @foreach ($units as $unit)
-                    <option value="{{ $unit->id }}" {{ $filters['filterUnitId'] == $unit->id ? 'selected' : '' }}>Daire {{ str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT) }}</option>
-                @endforeach
-            </select>
-            <select name="account_type" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="">Tüm Hesaplar</option>
-                <option value="owner" {{ $filters['filterAccountType'] === 'owner' ? 'selected' : '' }}>Kat Maliki</option>
-                <option value="tenant" {{ $filters['filterAccountType'] === 'tenant' ? 'selected' : '' }}>Kiracı</option>
-                <option value="supplier" {{ $filters['filterAccountType'] === 'supplier' ? 'selected' : '' }}>Tedarikçi</option>
-            </select>
-            <select name="source" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="">Tüm Kaynaklar</option>
-                <option value="plan"   {{ $filters['filterSource'] === 'plan'   ? 'selected' : '' }}>Aidat Planı</option>
-                <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
-                <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
-            </select>
-            @if ($hasImported)
-                <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-500 select-none whitespace-nowrap">
-                    <input type="checkbox" name="show_imported" value="1" class="rounded" {{ $showImported ? 'checked' : '' }}>
-                    Devir Öncesini Göster
-                </label>
+            @if ($filters['filterAccountType'])
+                <a href="{{ route('dues.index', request()->except('account_type')) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    {{ $accountTypeLabels[$filters['filterAccountType']] ?? $filters['filterAccountType'] }}
+                    <span class="text-slate-500">&times;</span>
+                </a>
             @endif
-            <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-            @if ($filters['filterPeriod'] || $filters['filterStatus'] || $filters['filterSource'] || $filters['filterBatchId'] || $filters['filterUnitId'] || $filters['filterAccountType'] || $showImported)
-                <a href="{{ route('dues.index', array_filter(['search' => $filters['filterSearch']])) }}"
-                   class="text-xs text-slate-400 hover:text-slate-600 whitespace-nowrap">Temizle</a>
+            @if ($filters['filterSource'])
+                <a href="{{ route('dues.index', request()->except('source')) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    {{ $sourceLabels[$filters['filterSource']] ?? $filters['filterSource'] }}
+                    <span class="text-slate-500">&times;</span>
+                </a>
             @endif
-        </form>
+            @if ($showImported)
+                <a href="{{ route('dues.index', request()->except('show_imported')) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
+                    Devir Öncesi
+                    <span class="text-blue-500">&times;</span>
+                </a>
+            @endif
+            <a href="{{ route('dues.index', request()->only(['search', 'batch_id', 'sort_by', 'sort_direction'])) }}"
+               class="ml-1 text-xs font-medium text-slate-400 hover:text-slate-600 underline">
+                Tümünü temizle
+            </a>
+        </div>
+    @endif
+
+    {{-- Filter Modal --}}
+    <div id="filter-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div class="absolute inset-0 bg-black/50 transition-opacity" onclick="closeFilterModal()"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl p-6 overflow-y-auto flex flex-col">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-bold text-slate-900">Filtrele</h2>
+                <button type="button" onclick="closeFilterModal()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="filter-form" method="GET" action="{{ route('dues.index') }}" class="flex flex-col flex-1">
+                @if ($filters['filterSearch'] ?? '')
+                    <input type="hidden" name="search" value="{{ $filters['filterSearch'] }}">
+                @endif
+                @if ($filters['filterBatchId'])
+                    <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
+                @endif
+                @if ($sortBy !== 'created_at')
+                    <input type="hidden" name="sort_by" value="{{ $sortBy }}">
+                @endif
+                @if ($sortDirection !== 'desc')
+                    <input type="hidden" name="sort_direction" value="{{ $sortDirection }}">
+                @endif
+
+                <div class="flex-1 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Başlangıç Tarihi</label>
+                        <input type="date" name="start_date" value="{{ $filters['filterStartDate'] }}"
+                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Bitiş Tarihi</label>
+                        <input type="date" name="end_date" value="{{ $filters['filterEndDate'] ?: \Carbon\Carbon::now()->format('Y-m-d') }}"
+                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Durum</label>
+                        <select name="status" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
+                            <option value="">Tüm Durumlar</option>
+                            <option value="unpaid"  {{ $filters['filterStatus'] === 'unpaid'  ? 'selected' : '' }}>Bekliyor</option>
+                            <option value="partial" {{ $filters['filterStatus'] === 'partial' ? 'selected' : '' }}>Kısmen Ödendi</option>
+                            <option value="paid"    {{ $filters['filterStatus'] === 'paid'    ? 'selected' : '' }}>Ödendi</option>
+                            <option value="overdue" {{ $filters['filterStatus'] === 'overdue' ? 'selected' : '' }}>Gecikmiş</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Daire</label>
+                        <select name="unit_id" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
+                            <option value="">Tüm Daireler</option>
+                            @foreach ($units as $unit)
+                                <option value="{{ $unit->id }}" {{ $filters['filterUnitId'] == $unit->id ? 'selected' : '' }}>Daire {{ str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Hesap Türü</label>
+                        <select name="account_type" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
+                            <option value="">Tüm Hesaplar</option>
+                            <option value="owner" {{ $filters['filterAccountType'] === 'owner' ? 'selected' : '' }}>Kat Maliki</option>
+                            <option value="tenant" {{ $filters['filterAccountType'] === 'tenant' ? 'selected' : '' }}>Kiracı</option>
+                            <option value="supplier" {{ $filters['filterAccountType'] === 'supplier' ? 'selected' : '' }}>Tedarikçi</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Kaynak</label>
+                        <select name="source" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
+                            <option value="">Tüm Kaynaklar</option>
+                            <option value="plan"   {{ $filters['filterSource'] === 'plan'   ? 'selected' : '' }}>Aidat Planı</option>
+                            <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
+                            <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
+                        </select>
+                    </div>
+
+                    @if ($hasImported)
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-700 select-none">
+                            <input type="checkbox" name="show_imported" value="1" class="rounded border-slate-300 text-slate-700 focus:ring-slate-300" {{ $showImported ? 'checked' : '' }}>
+                            Devir Öncesini Göster
+                        </label>
+                    @endif
+                </div>
+
+                <div class="mt-6 flex items-center gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="resetFilters()"
+                        class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        Temizle
+                    </button>
+                    <button type="button" onclick="closeFilterModal()"
+                        class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        İptal
+                    </button>
+                    <button type="submit"
+                        class="ml-auto rounded-xl bg-slate-950 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                        Uygula
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     @if ($filters['filterBatchId'])
@@ -267,50 +394,66 @@
             @php
                 $isOverdue = $due->status !== 'paid' && $due->due_date && $due->due_date->isPast();
             @endphp
-            <a href="{{ route('dues.show', $due) }}" class="flex items-start justify-between rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
-                <div class="flex-1">
-                    @if ($due->description)
-                        <div class="text-base font-bold text-slate-900">{{ $due->description }}</div>
-                    @endif
-                    <div class="text-xs text-slate-600 mt-1">
-                        <span>{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</span>
-                        <span class="mx-1 text-slate-400">•</span>
-                        <span>{{ $due->account?->name }}</span>
-                        <span class="mx-1 text-slate-400">•</span>
-                        <span>{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
+            <div class="rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
+                <a href="{{ route('dues.show', $due) }}" class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-start gap-2 flex-wrap">
+                            @if ($due->description)
+                                <div class="text-base font-bold text-slate-900">{{ $due->description }}</div>
+                            @endif
+                            @if ($due->is_imported)
+                                <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                            @endif
+                        </div>
+                        <div class="text-xs text-slate-600 mt-1">
+                            <span>{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</span>
+                            <span class="mx-1 text-slate-400">•</span>
+                            <span>{{ $due->account?->name }}</span>
+                            <span class="mx-1 text-slate-400">•</span>
+                            <span>{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
+                        </div>
+                        @if ($due->due_date)
+                            <div class="text-xs mt-1 {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500' }}">Son Ödeme: {{ $due->due_date->format('d.m.Y') }} · {{ $due->due_type_label }}{{ $due->category ? ' / '.$due->category->name : '' }}</div>
+                        @endif
+                        @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
+                            <div class="text-xs text-amber-600 mt-1">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                        @endif
                     </div>
-                    @if ($due->due_date)
-                        <div class="text-xs mt-1 {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500' }}">Son Ödeme: {{ $due->due_date->format('d.m.Y') }} · {{ $due->due_type_label }}{{ $due->category ? ' / '.$due->category->name : '' }}</div>
-                    @endif
-                    @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
-                        <div class="text-xs text-amber-600 mt-1">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
-                    @endif
-                </div>
-                <div class="ml-3 text-right">
-                    <div class="font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
-                    @if ($due->computed_status === 'overdue')
-                        <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 mt-1">
-                            <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
-                            Gecikmiş
-                        </span>
-                    @elseif ($due->computed_status === 'paid')
-                        <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 mt-1">
-                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
-                            Ödendi
-                        </span>
-                    @elseif ($due->computed_status === 'partial')
-                        <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 mt-1">
-                            <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
-                            Kısmi
-                        </span>
-                    @else
-                        <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 mt-1">
-                            <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
-                            Bekliyor
-                        </span>
-                    @endif
-                </div>
-            </a>
+                    <div class="ml-3 text-right shrink-0">
+                        <div class="font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
+                        @if ($due->computed_status === 'overdue')
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 mt-1">
+                                <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
+                                Gecikmiş
+                            </span>
+                        @elseif ($due->computed_status === 'paid')
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 mt-1">
+                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
+                                Ödendi
+                            </span>
+                        @elseif ($due->computed_status === 'partial')
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 mt-1">
+                                <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
+                                Kısmi
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 mt-1">
+                                <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
+                                Bekliyor
+                            </span>
+                        @endif
+                    </div>
+                </a>
+                @if ($due->computed_status !== 'paid')
+                    <div class="mt-2 flex justify-end">
+                        <a href="{{ route('dues.payment.create', $due) }}"
+                           class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
+                           onclick="event.stopPropagation();">
+                            Tahsil Et
+                        </a>
+                    </div>
+                @endif
+            </div>
         @empty
             <div class="rounded-xl bg-white p-8 text-center text-slate-500 shadow-sm">
                 Henüz aidat kaydı yok.
@@ -389,5 +532,26 @@
             }
             return confirm(selectedIds.size + ' aidat kaydı silinecek. Devam edilsin mi?');
         }
+
+        function openFilterModal() {
+            document.getElementById('filter-modal').classList.remove('hidden');
+        }
+
+        function closeFilterModal() {
+            document.getElementById('filter-modal').classList.add('hidden');
+        }
+
+        function resetFilters() {
+            var form = document.getElementById('filter-form');
+            form.querySelectorAll('select').forEach(function (el) { el.value = ''; });
+            form.querySelectorAll('input[type="date"]').forEach(function (el) { el.value = ''; });
+            var cb = form.querySelector('input[name="show_imported"]');
+            if (cb) cb.checked = false;
+            form.submit();
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeFilterModal();
+        });
     </script>
 @endsection

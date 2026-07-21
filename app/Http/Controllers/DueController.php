@@ -45,7 +45,8 @@ class DueController extends Controller
             $sortDirection = 'desc';
         }
 
-        $filterPeriod  = $request->query('period');
+        $filterStartDate = $request->query('start_date');
+        $filterEndDate   = $request->query('end_date');
         $filterStatus  = $request->query('status');
         $filterSource  = $request->query('source');
         $filterBatchId = $request->query('batch_id');
@@ -79,7 +80,16 @@ class DueController extends Controller
                     }
                 });
             })
-            ->when($filterPeriod,  fn ($q) => $q->where('period', $filterPeriod))
+            ->when($filterStartDate || $filterEndDate, function ($q) use ($filterStartDate, $filterEndDate) {
+                $column = 'COALESCE(DATE(created_at_manual), DATE(created_at))';
+                if ($filterStartDate && $filterEndDate) {
+                    $q->whereRaw("{$column} BETWEEN ? AND ?", [$filterStartDate, $filterEndDate]);
+                } elseif ($filterStartDate) {
+                    $q->whereRaw("{$column} >= ?", [$filterStartDate]);
+                } elseif ($filterEndDate) {
+                    $q->whereRaw("{$column} <= ?", [$filterEndDate]);
+                }
+            })
             ->when($filterStatus,  fn ($q) => $this->applyStatusFilter($q, $filterStatus))
             ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))
             ->when($filterUnitId,  fn ($q) => $q->where('unit_id', $filterUnitId))
@@ -103,7 +113,7 @@ class DueController extends Controller
             ? Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get(['id', 'unit_no'])
             : collect();
 
-        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'showImported');
+        $filters = compact('filterStartDate', 'filterEndDate', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'showImported');
 
         $hasImported = Due::query()
             ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
