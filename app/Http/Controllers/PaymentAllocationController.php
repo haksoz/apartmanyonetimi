@@ -112,7 +112,7 @@ class PaymentAllocationController extends Controller
             $payment->decrement('unallocated_amount', $totalAmount);
         });
 
-        return redirect()->route('dues.index')->with('status', 'Ödeme başarıyla borçlara tahsis edildi.');
+        return redirect()->route('accounts.show', $payment->account_id)->with('status', 'Ödeme başarıyla borçlara tahsis edildi.');
     }
 
     public function supplierCreate(CurrentApartment $currentApartment, Payment $payment)
