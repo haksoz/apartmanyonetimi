@@ -55,7 +55,7 @@
     {{-- Özet + Bilgiler Birleşik Kart --}}
     <div class="rounded-2xl bg-white shadow-sm mb-6 overflow-hidden">
         {{-- Üst: Bilgiler --}}
-        <div class="p-6 border-b border-slate-100">
+        <div class="p-4 md:p-6 border-b border-slate-100">
             {{-- Hesap adı --}}
             <div class="mb-5">
                 <div class="text-xs text-slate-500 mb-1">Hesap Adı</div>
@@ -154,20 +154,20 @@
 
     {{-- Alt: Borç / Alacak / Bakiye --}}
         <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-            <div class="p-5 flex items-center justify-between gap-2">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Borç</div>
-                <div class="text-xl font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
+            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
+                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Borç</div>
+                <div class="text-lg md:text-xl font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
             </div>
-            <div class="p-5 flex items-center justify-between gap-2">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Alacak</div>
-                <div class="text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
+            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
+                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Alacak</div>
+                <div class="text-lg md:text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
             </div>
-            <div class="p-5 flex items-center justify-between gap-2">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bakiye</div>
+            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
+                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Bakiye</div>
                 @php $balance = $account->ledger_balance; @endphp
-                <div class="text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
+                <div class="text-lg md:text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
                     {{ number_format(abs($balance), 2, ',', '.') }} TL
-                    <span class="text-sm font-normal">{{ $balance < 0 ? '(B)' : ($balance > 0 ? '(A)' : '') }}</span>
+                    <span class="text-xs font-normal">{{ $balance < 0 ? '(B)' : ($balance > 0 ? '(A)' : '') }}</span>
                 </div>
             </div>
         </div>
@@ -177,9 +177,9 @@
 
     @if (!in_array($account->type, [App\Models\Account::TYPE_SUPPLIER]))
 
-        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+        <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
 
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
 
                 <div class="flex items-center gap-3">
 
@@ -203,7 +203,7 @@
 
                     <button type="button" id="bulk-pay-btn" onclick="openBulkPayModal()"
 
-                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
+                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed w-full md:w-auto" disabled>
 
                         Seçilenleri Tahsil Et &mdash; <span id="selected-count">0</span> aidat / <span id="selected-total">0,00</span> TL
 
@@ -221,7 +221,7 @@
 
                 <div class="overflow-hidden rounded-2xl border border-slate-200">
 
-                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <table class="hidden md:table min-w-full divide-y divide-slate-200 text-sm">
 
                         <thead class="bg-slate-50 text-left text-slate-500">
 
@@ -255,7 +255,9 @@
 
                                                data-due-id="{{ $due->id }}"
 
-                                               data-amount="{{ $due->remaining_amount }}">
+                                               data-amount="{{ $due->remaining_amount }}"
+
+                                               data-description="{{ $due->description ?: 'Aidat' }}">
 
                                     </td>
 
@@ -319,7 +321,9 @@
 
                                                data-due-id="{{ $due->id }}"
 
-                                               data-amount="{{ $due->remaining_amount }}">
+                                               data-amount="{{ $due->remaining_amount }}"
+
+                                               data-description="{{ $due->description ?: 'Aidat' }}">
 
                                     </td>
 
@@ -374,6 +378,75 @@
                         </tbody>
 
                     </table>
+
+                    {{-- Mobil: Açık Aidatlar Kartları --}}
+                    <div class="md:hidden divide-y divide-slate-100 rounded-2xl border border-slate-200">
+                        @foreach ($account->dues as $due)
+                            @php
+                                $statusLabel = match($due->status) {
+                                    'paid'    => 'Ödendi',
+                                    'partial' => 'Kısmi Ödendi',
+                                    'overdue' => 'Gecikmiş',
+                                    default   => 'Bekliyor',
+                                };
+                            @endphp
+                            <div class="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50"
+                                 onclick="window.location.href='{{ route('dues.show', $due) }}'">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <input type="checkbox" class="due-checkbox rounded shrink-0"
+                                           data-due-id="{{ $due->id }}"
+                                           data-amount="{{ $due->remaining_amount }}"
+                                           data-description="{{ $due->description ?: 'Aidat' }}"
+                                           onclick="event.stopPropagation()">
+                                    <div class="min-w-0">
+                                        <div class="text-xs text-slate-500">{{ $due->due_date->format('d.m.Y') }}</div>
+                                        <div class="text-sm text-slate-700 truncate">
+                                            {{ \Illuminate\Support\Str::limit($due->description ?: 'Aidat', 30) }}
+                                            @if ($due->status === 'partial')
+                                                <span class="text-xs text-slate-400 block">Toplam: {{ number_format($due->amount, 2, ',', '.') }} TL</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="shrink-0 text-right text-sm">
+                                    <div class="font-semibold text-slate-900">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                                    <div class="text-xs {{ $due->status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">{{ $statusLabel }}</div>
+                                </div>
+                            </div>
+                        @endforeach
+
+                        @foreach ($importedDues as $due)
+                            @php
+                                $statusLabel = match($due->status) {
+                                    'paid'    => 'Ödendi',
+                                    'partial' => 'Kısmi Ödendi',
+                                    'overdue' => 'Gecikmiş',
+                                    default   => 'Bekliyor',
+                                };
+                            @endphp
+                            <div class="imported-due-row-mobile hidden flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-blue-100/40 bg-blue-50/40"
+                                 onclick="window.location.href='{{ route('dues.show', $due) }}'">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <input type="checkbox" class="due-checkbox rounded shrink-0"
+                                           data-due-id="{{ $due->id }}"
+                                           data-amount="{{ $due->remaining_amount }}"
+                                           data-description="{{ $due->description ?: 'Aidat' }}"
+                                           onclick="event.stopPropagation()">
+                                    <div class="min-w-0">
+                                        <div class="text-xs text-slate-500">{{ $due->due_date->format('d.m.Y') }}</div>
+                                        <div class="text-sm text-slate-700 truncate">
+                                            {{ \Illuminate\Support\Str::limit($due->description ?: 'Aidat', 30) }}
+                                            <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="shrink-0 text-right text-sm">
+                                    <div class="font-semibold text-slate-900">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                                    <div class="text-xs text-amber-600">{{ $statusLabel }}</div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
 
                 </div>
 
@@ -437,7 +510,7 @@
 
                             <label class="block text-xs font-medium text-slate-600 mb-1.5">Açıklama <span class="text-slate-400">(opsiyonel)</span></label>
 
-                            <input type="text" name="description" placeholder="Çoklu Aidat Tahsilatı"
+                            <input type="text" name="description" id="bulk-description" placeholder="Çoklu Aidat Tahsilatı"
 
                                    class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
 
@@ -477,9 +550,9 @@
 
     @if (!in_array($account->type, [App\Models\Account::TYPE_SUPPLIER]) && ($account->payments->isNotEmpty() || $importedPayments->isNotEmpty()))
 
-        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+        <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
 
-            <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
 
                 <div class="flex items-center gap-3">
 
@@ -506,7 +579,7 @@
                     <input type="hidden" name="payment_ids" id="multi-allocate-payment-ids">
 
                     <button type="submit" id="multi-allocate-btn"
-                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
+                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed w-full md:w-auto" disabled>
 
                         Seçilenleri Aidata Bağla &mdash; <span id="selected-payment-count">0</span> tahsilat / <span id="selected-payment-total">0,00</span> TL
 
@@ -518,7 +591,7 @@
 
             <div class="overflow-hidden rounded-2xl border border-slate-200">
 
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <table class="hidden md:table min-w-full divide-y divide-slate-200 text-sm">
 
                     <thead class="bg-slate-50 text-left text-slate-500">
 
@@ -614,6 +687,52 @@
 
                 </table>
 
+                {{-- Mobil: Açık Tahsilatlar Kartları --}}
+                <div class="md:hidden divide-y divide-slate-100 rounded-2xl border border-slate-200">
+                    @foreach ($account->payments as $payment)
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50"
+                             onclick="window.location.href='{{ route('payments.show', $payment) }}'">
+                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                <input type="checkbox" class="payment-checkbox rounded shrink-0"
+                                       data-payment-id="{{ $payment->id }}"
+                                       data-amount="{{ $payment->unallocated_amount }}"
+                                       onclick="event.stopPropagation()">
+                                <div class="min-w-0">
+                                    <div class="text-xs text-slate-500">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</div>
+                                    <div class="text-sm text-slate-700 truncate">
+                                        {{ \Illuminate\Support\Str::limit($payment->description ?: 'Ödeme', 30) }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shrink-0 text-right text-sm">
+                                <div class="font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
+                            </div>
+                        </div>
+                    @endforeach
+
+                    @foreach ($importedPayments as $payment)
+                        <div class="imported-payment-row-mobile hidden flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-blue-100/40 bg-blue-50/40"
+                             onclick="window.location.href='{{ route('payments.show', $payment) }}'">
+                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                <input type="checkbox" class="payment-checkbox rounded shrink-0"
+                                       data-payment-id="{{ $payment->id }}"
+                                       data-amount="{{ $payment->unallocated_amount }}"
+                                       onclick="event.stopPropagation()">
+                                <div class="min-w-0">
+                                    <div class="text-xs text-slate-500">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</div>
+                                    <div class="text-sm text-slate-700 truncate">
+                                        {{ \Illuminate\Support\Str::limit($payment->description ?: 'Ödeme', 30) }}
+                                        <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shrink-0 text-right text-sm">
+                                <div class="font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
             </div>
 
         </div>
@@ -626,7 +745,7 @@
 
     @if ($account->type === App\Models\Account::TYPE_SUPPLIER && $account->expenses->isNotEmpty())
 
-        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+        <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
 
             <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
 
@@ -712,7 +831,7 @@
 
     @if ($account->type === App\Models\Account::TYPE_SUPPLIER && ($account->payments->isNotEmpty() || $importedPayments->isNotEmpty()))
 
-        <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+        <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
 
             <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
 
@@ -975,6 +1094,15 @@
 
 
 
+            const descEl = document.getElementById('bulk-description');
+            if (descEl) {
+                if (checked.length === 1) {
+                    descEl.value = (checked[0].dataset.description || 'Aidat') + ' Tahsilatı';
+                } else {
+                    descEl.value = 'Çoklu Aidat Tahsilatı';
+                }
+            }
+
             document.getElementById('modal-total').textContent =
 
                 total.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + ' TL';
@@ -1021,7 +1149,7 @@
 
             document.getElementById('show-imported-dues')?.addEventListener('change', function() {
 
-                document.querySelectorAll('.imported-due-row').forEach(r => r.classList.toggle('hidden', !this.checked));
+                document.querySelectorAll('.imported-due-row, .imported-due-row-mobile').forEach(r => r.classList.toggle('hidden', !this.checked));
 
             });
 
@@ -1029,7 +1157,7 @@
 
             document.getElementById('show-imported-payments')?.addEventListener('change', function() {
 
-                document.querySelectorAll('.imported-payment-row').forEach(r => r.classList.toggle('hidden', !this.checked));
+                document.querySelectorAll('.imported-payment-row, .imported-payment-row-mobile').forEach(r => r.classList.toggle('hidden', !this.checked));
 
             });
 
@@ -1310,7 +1438,7 @@
 
 
 
-    <div class="rounded-2xl bg-white p-6 shadow-sm">
+    <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm">
 
         <h2 class="mb-4 text-lg font-semibold text-slate-950">Son Hareketler</h2>
 
@@ -1322,7 +1450,7 @@
 
             <div class="overflow-hidden rounded-2xl border border-slate-200">
 
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <table class="hidden md:table min-w-full divide-y divide-slate-200 text-sm">
 
                     <thead class="bg-slate-50 text-left text-slate-500">
 
@@ -1451,6 +1579,40 @@
                     </tbody>
 
                 </table>
+
+                {{-- Mobil: Son Hareketler Kartları --}}
+                <div class="md:hidden divide-y divide-slate-100">
+                    @foreach ($transactions as $t)
+                        @php
+                            $debit = $t->type === 'debit' ? $t->amount : 0;
+                            $credit = $t->type === 'credit' ? $t->amount : 0;
+                            $detailUrl = null;
+                            if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->transactionable_id)
+                                $detailUrl = route('payments.show', $t->transactionable_id);
+                            elseif(($t->transactionable_type ?? '') === \App\Models\Expense::class && $t->transactionable_id)
+                                $detailUrl = route('expenses.show', $t->transactionable_id);
+                            elseif(($t->transactionable_type ?? '') === \App\Models\Due::class && $t->transactionable_id)
+                                $detailUrl = route('dues.show', $t->transactionable_id);
+                        @endphp
+
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 {{ $detailUrl ? 'cursor-pointer hover:bg-slate-50' : '' }}"
+                             @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-xs text-slate-500 mb-0.5">{{ $t->transaction_date->format('d.m.Y') }}</div>
+                                <div class="text-sm text-slate-700 truncate">
+                                    {{ \Illuminate\Support\Str::limit($t->description ?: ucfirst($t->type), 30) }}
+                                </div>
+                            </div>
+                            <div class="shrink-0 text-sm">
+                                @if ($debit)
+                                    <span class="font-semibold text-red-600">-{{ number_format($debit,2,',','.') }} TL</span>
+                                @elseif ($credit)
+                                    <span class="font-semibold text-emerald-600">+{{ number_format($credit,2,',','.') }} TL</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
 
             </div>
 
