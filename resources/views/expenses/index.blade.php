@@ -277,66 +277,54 @@
     {{-- Mobile Card View --}}
     <div class="md:hidden space-y-3">
         @forelse ($expenses as $expense)
-            @php
-                $months = ['January' => 'Ocak', 'February' => 'Şubat', 'March' => 'Mart', 'April' => 'Nisan', 'May' => 'Mayıs', 'June' => 'Haziran',
-                           'July' => 'Temmuz', 'August' => 'Ağustos', 'September' => 'Eylül', 'October' => 'Ekim', 'November' => 'Kasım', 'December' => 'Aralık'];
-                $periodText = $expense->period_month ? $expense->period_month->format('F Y') : null;
-                if ($periodText) {
-                    foreach ($months as $en => $tr) {
-                        $periodText = str_replace($en, $tr, $periodText);
-                    }
-                }
-            @endphp
             <div class="rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
-                <a href="{{ route('expenses.show', $expense) }}" class="flex items-start justify-between">
-                    <div class="flex-1">
-                        <div class="flex items-start gap-2 flex-wrap">
-                            @if ($expense->description)
-                                <div class="text-base font-bold text-slate-900">{{ $expense->description }}</div>
-                            @endif
-                            @if ($expense->is_imported)
-                                <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
-                            @endif
-                        </div>
-                        <div class="text-xs text-slate-600 mt-1">
-                            <span>{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</span>
+                {{-- Parça 1: Bilgiler --}}
+                <a href="{{ route('expenses.show', $expense) }}" class="block">
+                    @if ($expense->description)
+                        <div class="text-base font-bold text-slate-900">{{ $expense->description }}</div>
+                    @endif
+                    <div class="text-xs text-slate-600 mt-1">
+                        <span>{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</span>
+                        <span class="mx-1 text-slate-400">•</span>
+                        <span>{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</span>
+                        @if ($expense->account)
                             <span class="mx-1 text-slate-400">•</span>
-                            <span>{{ $periodText ?? '-' }}</span>
-                            <span class="mx-1 text-slate-400">•</span>
-                            <span>{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</span>
-                            @if ($expense->account)
-                                <span class="mx-1 text-slate-400">•</span>
-                                <span>{{ $expense->account->name }}</span>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="ml-3 text-right shrink-0">
-                        <div class="font-bold text-slate-900">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
-                        @if (!$expense->is_paid)
-                            <div class="text-xs text-amber-600 font-semibold mt-0.5">Kalan: {{ number_format($expense->remaining_amount ?? $expense->amount, 2, ',', '.') }} TL</div>
+                            <span>{{ $expense->account->name }}</span>
                         @endif
+                    </div>
+                    <div class="mt-1.5 flex flex-wrap items-center gap-1">
                         @if ($expense->is_paid)
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 mt-1">
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
                                 <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
                                 Ödendi
                             </span>
                         @else
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 mt-1">
+                            <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
                                 <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
                                 Bekliyor
                             </span>
                         @endif
+                        @if ($expense->is_imported)
+                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                        @endif
                     </div>
                 </a>
-                @if (! $expense->is_paid)
-                    <div class="mt-2 flex justify-end">
+
+                {{-- Parça 2: Tutarlar | Parça 3: Öde butonu --}}
+                <div class="mt-2 flex items-end justify-between gap-2">
+                    <a href="{{ route('expenses.show', $expense) }}" class="block">
+                        <div class="font-bold text-slate-900">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
+                        @if (!$expense->is_paid)
+                            <div class="text-xs text-amber-600 font-semibold">Kalan: {{ number_format($expense->remaining_amount ?? $expense->amount, 2, ',', '.') }} TL</div>
+                        @endif
+                    </a>
+                    @if (!$expense->is_paid)
                         <a href="{{ route('expenses.payment.create', $expense) }}"
-                           class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
-                           onclick="event.stopPropagation();">
+                           class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">
                             Öde
                         </a>
-                    </div>
-                @endif
+                    @endif
+                </div>
             </div>
         @empty
             <div class="rounded-xl bg-white p-8 text-center text-slate-500 shadow-sm">
