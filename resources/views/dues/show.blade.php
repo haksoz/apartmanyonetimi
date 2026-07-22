@@ -13,17 +13,12 @@
             <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">Aidat Detayı</h1>
 
             @if ($due->reference_number)
-                <div class="mt-1">
-                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600">Referans: {{ $due->reference_number }}</span>
-                </div>
+                <div class="mt-1 text-sm text-slate-500">{{ $due->reference_number }}</div>
             @endif
 
             @if ($due->account)
-                <div class="mt-1">
-                    <a href="{{ route('accounts.show', $due->account) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600 hover:text-emerald-600 hover:bg-slate-100">
-                        {{ $due->account->name }}
-                        @if ($due->unit) - Daire {{ str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) }}@endif
-                    </a>
+                <div class="mt-1 text-sm text-slate-500">
+                    <a href="{{ route('accounts.show', $due->account) }}" class="hover:text-emerald-600 hover:underline">{{ $due->account->name }}@if ($due->unit) - Daire {{ str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) }}@endif</a>
                 </div>
             @endif
 

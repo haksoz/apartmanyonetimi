@@ -211,15 +211,11 @@
                     @error('created_at_manual')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
-                <div>
-                    <label for="period" class="mb-2 block text-sm font-medium text-slate-600">Borç Dönemi</label>
-                    <input id="period" name="period" type="month" value="{{ old('period', now()->format('Y-m')) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                    @error('period')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
+                <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
 
                 <div>
                     <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
-                    <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                    <input id="due_date" name="due_date" type="date" value="{{ old('due_date') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
                     @error('due_date')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
@@ -251,7 +247,7 @@
             const expenseTotalDisplay = document.getElementById('expense-total-display');
             const expenseTotalAmount = document.getElementById('expense-total-amount');
             const dueDateInput = document.getElementById('due_date');
-            let isDueDateManuallySet = !!dueDateInput?.value;
+            let isDueDateManuallySet = false;
 
             const calcSummary = document.getElementById('calc-summary');
             const calcBtn = document.getElementById('calc-btn');
@@ -547,9 +543,12 @@
             const syncDueDateFromCreatedAt = () => {
                 const dateVal = createdAtInput?.value;
                 if (dateVal && !isDueDateManuallySet) {
-                    const [year, month] = dateVal.split('-');
-                    const lastDay = new Date(year, month, 0).getDate();
-                    dueDateInput.value = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+                    const dueDate = new Date(dateVal);
+                    dueDate.setDate(dueDate.getDate() + 15);
+                    const year = dueDate.getFullYear();
+                    const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(dueDate.getDate()).padStart(2, '0');
+                    dueDateInput.value = `${year}-${month}-${day}`;
                 }
             };
 
@@ -579,7 +578,9 @@
 
             // Init
             syncPeriodFromDate();
-            syncDueDateFromCreatedAt();
+            if (!dueDateInput.value) {
+                syncDueDateFromCreatedAt();
+            }
         })();
     </script>
 @endsection

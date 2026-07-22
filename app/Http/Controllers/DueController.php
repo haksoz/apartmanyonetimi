@@ -276,7 +276,7 @@ class DueController extends Controller
             'source_type' => ['required', Rule::in([DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_INDIVIDUAL, DueBatch::SOURCE_FIXED])],
             'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL, DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT])],
             'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
-            'period' => ['required', 'date_format:Y-m'],
+            'period' => ['nullable', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'due_type' => ['required', Rule::in(DueType::values())],
             'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
@@ -294,6 +294,11 @@ class DueController extends Controller
             ],
             'individual_amount' => ['required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL, 'nullable', 'numeric', 'min:0.01'],
         ]);
+
+        // Period formdan gönderilmemişse oluşturulma tarihinden otomatik belirle
+        if (empty($validated['period'])) {
+            $validated['period'] = \Carbon\Carbon::parse($validated['created_at_manual'] ?? now())->format('Y-m');
+        }
 
         if ($validated['source_type'] === DueBatch::SOURCE_FIXED && $validated['distribution_type'] !== DueBatch::DISTRIBUTION_EQUAL) {
             $validated['distribution_type'] = DueBatch::DISTRIBUTION_EQUAL;

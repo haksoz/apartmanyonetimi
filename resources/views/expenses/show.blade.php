@@ -38,59 +38,43 @@
 
         <div>
 
-            <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">Gider Detayı <span class="text-slate-400 font-normal text-lg">— Giderler</span></h1>
+            <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">Gider Detayı</h1>
 
-            <p class="mt-1 text-sm text-slate-500">
+            @if ($expense->reference_number)
+                <div class="mt-1 text-sm text-slate-500">{{ $expense->reference_number }}</div>
+            @endif
 
-                {{ $expense->reference_number ?? 'Gider' }}
-
-                @if ($expense->account)
-
-                    <span class="mx-1 text-slate-300">&bull;</span><a href="{{ route('accounts.show', $expense->account) }}" class="hover:text-emerald-600">{{ $expense->account->name }}</a>
-
-                @endif
-
-            </p>
+            @if ($expense->account)
+                <div class="mt-1 text-sm text-slate-500">
+                    <a href="{{ route('accounts.show', $expense->account) }}" class="hover:text-emerald-600 hover:underline">{{ $expense->account->name }}</a>
+                </div>
+            @endif
 
         </div>
 
         <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" aria-label="Geri dön"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full overflow-hidden transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <img src="{{ asset('images/back-button.png') }}" srcset="{{ asset('images/back-button@2x.png') }} 2x" alt="" class="h-10 w-10 object-cover" aria-hidden="true">
+            </button>
+
             <div class="hidden lg:flex flex-wrap items-center gap-2">
-                <button type="button" onclick="history.back()" aria-label="Geri dön" class="inline-flex h-10 w-10 items-center justify-center rounded-full overflow-hidden transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300">
-                    <img src="{{ asset('images/back-button.png') }}" srcset="{{ asset('images/back-button@2x.png') }} 2x" alt="" class="h-10 w-10 object-cover" aria-hidden="true">
-                </button>
-
                 @unless ($expense->is_paid)
-
                     <a href="{{ route('expenses.payment.create', $expense) }}" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Ödeme Ekle</a>
-
                 @endunless
 
                 <a href="{{ route('expenses.edit', $expense) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
 
                 @if ($expense->paymentAllocations->isNotEmpty())
-
                     <button type="button" onclick="document.getElementById('delete-expense-modal').classList.remove('hidden')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
-
                 @else
-
                     <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Gider kaydı silinsin mi?')">
-
                         @csrf
-
                         @method('DELETE')
-
                         <button type="submit" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
-
                     </form>
-
                 @endif
-
             </div>
-
-            <button type="button" onclick="history.back()" aria-label="Geri dön" class="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-full overflow-hidden transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <img src="{{ asset('images/back-button.png') }}" srcset="{{ asset('images/back-button@2x.png') }} 2x" alt="" class="h-10 w-10 object-cover" aria-hidden="true">
-            </button>
 
             <details class="lg:hidden relative group">
                 <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
@@ -137,116 +121,94 @@
 
     {{-- Info Card --}}
 
-    <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+    <div class="rounded-2xl bg-white shadow-sm mb-6 overflow-hidden">
 
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+        <div class="p-4 md:p-6 border-b border-slate-100">
 
-            @if ($expense->account)
+            <div class="mb-5">
+                <div class="text-xs text-slate-500 mb-1">Açıklama</div>
+                <div class="text-2xl font-bold text-slate-900">{{ $expense->description ?: 'Gider' }}</div>
+            </div>
 
-            <div>
+            <details class="group">
+                <summary class="cursor-pointer list-none inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Detaylar
+                </summary>
 
-                <div class="text-xs text-slate-400 mb-1">HESAP / TEDARİKÇİ</div>
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 
-                <div class="text-sm font-medium text-slate-900">
-                    <a href="{{ route('accounts.show', $expense->account) }}" class="hover:text-emerald-600 hover:underline">{{ $expense->account->name }}</a>
+                    @if ($expense->account)
+                        <div class="flex items-center justify-between gap-2 md:col-span-2 md:justify-start">
+                            <div class="text-xs text-slate-500 md:w-24 shrink-0">Hesap / Tedarikçi</div>
+                            <div class="font-semibold text-slate-900 text-right md:text-left">
+                                <a href="{{ route('accounts.show', $expense->account) }}" class="hover:text-emerald-600 hover:underline">{{ $expense->account->name }}</a>
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="flex items-center justify-between gap-2 md:justify-start">
+                        <div class="text-xs text-slate-500 md:w-24 shrink-0">Gider Tarihi</div>
+                        <div class="font-semibold text-slate-900 text-right md:text-left">{{ $expense->expense_date->format('d.m.Y') }}</div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 md:justify-start">
+                        <div class="text-xs text-slate-500 md:w-24 shrink-0">Son Ödeme</div>
+                        <div class="font-semibold text-slate-900 text-right md:text-left">{{ $expense->due_date?->format('d.m.Y') ?? '-' }}</div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 md:justify-start">
+                        <div class="text-xs text-slate-500 md:w-24 shrink-0">Durum</div>
+                        <div class="font-semibold text-slate-900 text-right md:text-left">
+                            @if ($expense->is_paid)
+                                <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">Ödendi</span>
+                            @elseif (($expense->paid_amount ?? 0) > 0)
+                                <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200">Kısmen Ödendi</span>
+                            @else
+                                <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">Bekliyor</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 md:justify-start">
+                        <div class="text-xs text-slate-500 md:w-24 shrink-0">Kategori</div>
+                        <div class="font-semibold text-slate-900 text-right md:text-left">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 md:justify-start">
+                        <div class="text-xs text-slate-500 md:w-24 shrink-0">Dönem</div>
+                        <div class="font-semibold text-slate-900 text-right md:text-left">{{ $periodText ?? '-' }}</div>
+                    </div>
+
+                    @if ($expense->reference_number)
+                        <div class="flex items-center justify-between gap-2 md:justify-start">
+                            <div class="text-xs text-slate-500 md:w-24 shrink-0">Referans</div>
+                            <div class="font-semibold text-slate-900 text-right md:text-left">{{ $expense->reference_number }}</div>
+                        </div>
+                    @endif
+
                 </div>
+            </details>
 
+        </div>
+
+        @php $remaining = $expense->remaining_amount ?? $expense->amount; @endphp
+
+        <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
+                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Tutar</div>
+                <div class="text-lg md:text-xl font-bold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
             </div>
-
-            @endif
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">TUTAR</div>
-
-                <div class="text-sm font-bold text-slate-900">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
-
+            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
+                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Ödenen</div>
+                <div class="text-lg md:text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($expense->paid_amount ?? 0, 2, ',', '.') }} TL</div>
             </div>
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">ÖDENEN</div>
-
-                <div class="text-sm font-bold text-emerald-600">{{ number_format($expense->paid_amount ?? 0, 2, ',', '.') }} TL</div>
-
+            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
+                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Kalan</div>
+                <div class="text-lg md:text-xl font-bold {{ $remaining > 0 ? 'text-amber-600' : 'text-slate-400' }} tabular-nums">{{ number_format($remaining, 2, ',', '.') }} TL</div>
             </div>
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">KALAN</div>
-
-                @php $remaining = $expense->remaining_amount ?? $expense->amount; @endphp
-
-                <div class="text-sm font-bold {{ $remaining > 0 ? 'text-amber-600' : 'text-slate-400' }}">{{ number_format($remaining, 2, ',', '.') }} TL</div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">GİDER TARİHİ</div>
-
-                <div class="text-sm font-medium text-slate-900">{{ $expense->expense_date->format('d.m.Y') }}</div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">SON ÖDEME TARİHİ</div>
-
-                <div class="text-sm font-medium text-slate-900">{{ $expense->due_date?->format('d.m.Y') ?? '-' }}</div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">DURUM</div>
-
-                @if ($expense->is_paid)
-                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">Ödendi</span>
-                @elseif (($expense->paid_amount ?? 0) > 0)
-                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200">Kısmen Ödendi</span>
-                @else
-                    <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">Bekliyor</span>
-                @endif
-
-            </div>
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">KATEGORİ</div>
-
-                <div class="text-sm font-medium text-slate-900">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</div>
-
-            </div>
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">DÖNEM</div>
-
-                <div class="text-sm font-medium text-slate-900">{{ $periodText ?? '-' }}</div>
-
-            </div>
-
-            @if ($expense->reference_number)
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">REFERANS</div>
-
-                <div class="text-sm font-medium text-slate-900">{{ $expense->reference_number }}</div>
-
-            </div>
-
-            @endif
-
-            <div>
-
-                <div class="text-xs text-slate-400 mb-1">AÇIKLAMA</div>
-
-                <div class="text-sm font-medium text-slate-900">{{ $expense->description ?: '-' }}</div>
-
-            </div>
-
         </div>
 
     </div>
@@ -257,17 +219,7 @@
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
 
-        <div class="flex items-center justify-between mb-4">
-
-            <h2 class="text-base font-semibold text-slate-950">Gideri Kapatan Ödemeler</h2>
-
-            @if ($expense->is_paid)
-
-                <button type="button" disabled class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-400 cursor-not-allowed">Tümünü İptal Et</button>
-
-            @endif
-
-        </div>
+        <h2 class="text-lg font-semibold text-slate-950 mb-4">Gideri Kapatan Ödeme / Ödemeler</h2>
 
         @if ($expense->paymentAllocations->isEmpty())
 
@@ -277,7 +229,7 @@
 
             <div class="overflow-hidden rounded-xl border border-slate-200">
 
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <table class="hidden md:table min-w-full divide-y divide-slate-200 text-sm">
 
                     <thead class="bg-slate-50 text-left text-slate-500">
 
@@ -333,6 +285,27 @@
                     </tbody>
 
                 </table>
+
+                {{-- Mobil: Kapatan Ödemeler Kartları --}}
+                <div class="md:hidden divide-y divide-slate-100">
+                    @foreach ($expense->paymentAllocations as $allocation)
+                        <div class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                            <div class="flex-1 min-w-0">
+                                <a href="{{ route('payments.show', $allocation->payment) }}" class="block">
+                                    <div class="text-sm text-slate-700 truncate">
+                                        {{ $allocation->payment->description ?: 'Ödeme' }}
+                                    </div>
+                                    <div class="mt-0.5 flex items-center justify-between gap-2">
+                                        <span class="text-xs text-slate-500">{{ $allocation->payment->payment_date?->format('d.m.Y') ?? '-' }}</span>
+                                        <span class="text-sm font-semibold text-emerald-600">{{ number_format($allocation->amount, 2, ',', '.') }} TL</span>
+                                    </div>
+                                </a>
+                            </div>
+                            <button type="button" onclick="document.getElementById('revert-allocation-modal-{{ $allocation->id }}').classList.remove('hidden')"
+                                    class="shrink-0 rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Geri Al</button>
+                        </div>
+                    @endforeach
+                </div>
 
             </div>
 

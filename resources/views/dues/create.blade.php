@@ -17,13 +17,13 @@
         <input type="hidden" name="source_type" value="individual">
         <input type="hidden" name="distribution_type" value="individual">
         <input type="hidden" name="target_audience" value="tenant_priority">
+        <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
 
         {{-- Main Fields --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Hesap &amp; Borç Bilgisi</h3>
             <div class="grid gap-5 md:grid-cols-2">
                 <div>
-                    <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Borçlandırılacak Hesap</label>
+                    <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Hesap / Kiracı-Katmaliki</label>
                     <select id="account_id" name="account_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Hesap seçin</option>
                         @foreach ($accounts as $account)
@@ -47,7 +47,7 @@
                 </div>
 
                 <div>
-                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Konu / Kategori <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
+                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
                     <select id="category_id" name="category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Kategori seçin</option>
                         @foreach ($categories as $cat)
@@ -58,9 +58,15 @@
                 </div>
 
                 <div>
-                    <label for="period" class="mb-2 block text-sm font-medium text-slate-600">Borç Dönemi</label>
-                    <input id="period" name="period" type="month" value="{{ old('period', now()->format('Y-m')) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('period')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
+                    <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('created_at_manual')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                    <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
+                    <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('due_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
                 <div>
@@ -77,24 +83,6 @@
             </div>
         </div>
 
-        {{-- Date Fields --}}
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Tarih Bilgileri</h3>
-            <div class="grid gap-5 md:grid-cols-2">
-                <div>
-                    <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
-                    <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('created_at_manual')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <div>
-                    <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
-                    <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('due_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-            </div>
-        </div>
-
         <div class="flex justify-end">
             <button type="submit" class="w-full md:w-auto rounded-xl bg-slate-950 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800">Borçlandır</button>
         </div>
@@ -105,12 +93,34 @@
             const typeSelect = document.getElementById('due_type');
             const topicSelect = document.getElementById('category_id');
             const periodInput = document.getElementById('period');
+            const createdAtInput = document.getElementById('created_at_manual');
+            const dueDateInput = document.getElementById('due_date');
             const descriptionInput = document.getElementById('description');
+            let isDueDateManuallySet = false;
 
             const months = {
                 '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
                 '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
                 '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+            };
+
+            const syncPeriodFromCreatedAt = () => {
+                const dateVal = createdAtInput?.value;
+                if (dateVal) {
+                    periodInput.value = dateVal.substring(0, 7);
+                }
+            };
+
+            const syncDueDate = () => {
+                const dateVal = createdAtInput?.value;
+                if (dateVal && !isDueDateManuallySet) {
+                    const dueDate = new Date(dateVal);
+                    dueDate.setDate(dueDate.getDate() + 15);
+                    const year = dueDate.getFullYear();
+                    const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(dueDate.getDate()).padStart(2, '0');
+                    dueDateInput.value = `${year}-${month}-${day}`;
+                }
             };
 
             const updateDescription = () => {
@@ -140,10 +150,20 @@
                 descriptionInput.dataset.userEdited = '';
                 updateDescription();
             });
-            periodInput.addEventListener('change', () => {
+            createdAtInput?.addEventListener('change', () => {
+                syncPeriodFromCreatedAt();
+                syncDueDate();
                 descriptionInput.dataset.userEdited = '';
                 updateDescription();
             });
+
+            dueDateInput?.addEventListener('input', () => {
+                isDueDateManuallySet = dueDateInput.value !== '';
+            });
+
+            // Init
+            syncPeriodFromCreatedAt();
+            syncDueDate();
         })();
     </script>
 @endsection
