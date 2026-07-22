@@ -82,6 +82,7 @@ class ExpenseController extends Controller
         $filterEndDate   = $request->query('end_date');
         $filterStatus   = $request->query('status');
         $filterCategory = $request->query('category');
+        $filterPeriod   = $request->query('period');
 
         $filterSearch   = $request->query('search');
 
@@ -106,6 +107,13 @@ class ExpenseController extends Controller
                     ->orWhere('amount', 'like', '%' . $filterSearch . '%');
 
             }))
+
+            ->when($filterPeriod, function ($q) use ($filterPeriod) {
+                $start = \Carbon\Carbon::parse($filterPeriod . '-01')->startOfMonth();
+                $end   = \Carbon\Carbon::parse($filterPeriod . '-01')->endOfMonth();
+
+                $q->whereBetween('period_month', [$start->toDateString(), $end->toDateString()]);
+            })
 
             ->when($filterStartDate || $filterEndDate, function ($q) use ($filterStartDate, $filterEndDate) {
                 $column = 'DATE(expense_date)';
@@ -141,7 +149,7 @@ class ExpenseController extends Controller
 
 
 
-        $filters = compact('filterStartDate', 'filterEndDate', 'filterStatus', 'filterCategory', 'filterSearch');
+        $filters = compact('filterStartDate', 'filterEndDate', 'filterPeriod', 'filterStatus', 'filterCategory', 'filterSearch');
 
         // Check if there are any imported expenses for this apartment
         $hasImported = Expense::where('apartment_id', $apartment->id)

@@ -47,6 +47,7 @@ class DueController extends Controller
 
         $filterStartDate = $request->query('start_date');
         $filterEndDate   = $request->query('end_date');
+        $filterPeriod    = $request->query('period');
         $filterStatus  = $request->query('status');
         $filterSource  = $request->query('source');
         $filterBatchId = $request->query('batch_id');
@@ -90,6 +91,7 @@ class DueController extends Controller
                     $q->whereRaw("{$column} <= ?", [$filterEndDate]);
                 }
             })
+            ->when($filterPeriod, fn ($q) => $q->where('period', $filterPeriod))
             ->when($filterStatus,  fn ($q) => $this->applyStatusFilter($q, $filterStatus))
             ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))
             ->when($filterUnitId,  fn ($q) => $q->where('unit_id', $filterUnitId))
@@ -113,7 +115,7 @@ class DueController extends Controller
             ? Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get(['id', 'unit_no'])
             : collect();
 
-        $filters = compact('filterStartDate', 'filterEndDate', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'showImported');
+        $filters = compact('filterStartDate', 'filterEndDate', 'filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'showImported');
 
         $hasImported = Due::query()
             ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))

@@ -34,11 +34,11 @@
 
     {{-- Header --}}
 
-    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="mb-6 flex flex-row items-center justify-between gap-4">
 
         <div>
 
-            <h1 class="text-2xl font-bold text-slate-950">Gider Detayı <span class="text-slate-400 font-normal text-lg">— Giderler</span></h1>
+            <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">Gider Detayı <span class="text-slate-400 font-normal text-lg">— Giderler</span></h1>
 
             <p class="mt-1 text-sm text-slate-500">
 
@@ -54,36 +54,81 @@
 
         </div>
 
-        <div class="flex flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+            <div class="hidden lg:flex flex-wrap items-center gap-2">
+                <button type="button" onclick="history.back()" aria-label="Geri dön" class="inline-flex h-10 w-10 items-center justify-center rounded-full overflow-hidden transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300">
+                    <img src="{{ asset('images/back-button.png') }}" srcset="{{ asset('images/back-button@2x.png') }} 2x" alt="" class="h-10 w-10 object-cover" aria-hidden="true">
+                </button>
 
-            @unless ($expense->is_paid)
+                @unless ($expense->is_paid)
 
-                <a href="{{ route('expenses.payment.create', $expense) }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-emerald-700">Ödeme Ekle</a>
+                    <a href="{{ route('expenses.payment.create', $expense) }}" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Ödeme Ekle</a>
 
-            @endunless
+                @endunless
 
-            <a href="{{ route('expenses.edit', $expense) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Düzenle</a>
+                <a href="{{ route('expenses.edit', $expense) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
 
-            @if ($expense->paymentAllocations->isNotEmpty())
+                @if ($expense->paymentAllocations->isNotEmpty())
 
-                <button type="button" onclick="document.getElementById('delete-expense-modal').classList.remove('hidden')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                    <button type="button" onclick="document.getElementById('delete-expense-modal').classList.remove('hidden')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
 
-            @else
+                @else
 
-                <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Gider kaydı silinsin mi?')">
+                    <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Gider kaydı silinsin mi?')">
 
-                    @csrf
+                        @csrf
 
-                    @method('DELETE')
+                        @method('DELETE')
 
-                    <button type="submit" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                        <button type="submit" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
 
-                </form>
+                    </form>
 
-            @endif
+                @endif
 
-            <a href="{{ route('expenses.index') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Giderlere Dön</a>
+            </div>
 
+            <button type="button" onclick="history.back()" aria-label="Geri dön" class="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-full overflow-hidden transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <img src="{{ asset('images/back-button.png') }}" srcset="{{ asset('images/back-button@2x.png') }} 2x" alt="" class="h-10 w-10 object-cover" aria-hidden="true">
+            </button>
+
+            <details class="lg:hidden relative group">
+                <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    İşlem
+                </summary>
+                <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
+
+                    @unless ($expense->is_paid)
+
+                        <a href="{{ route('expenses.payment.create', $expense) }}" class="block w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-left hover:bg-emerald-700">Ödeme Ekle</a>
+
+                    @endunless
+
+                    <a href="{{ route('expenses.edit', $expense) }}" class="block w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-left hover:bg-slate-50">Düzenle</a>
+
+                    @if ($expense->paymentAllocations->isNotEmpty())
+
+                        <button type="button" onclick="document.getElementById('delete-expense-modal').classList.remove('hidden')" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
+
+                    @else
+
+                        <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Gider kaydı silinsin mi?')">
+
+                            @csrf
+
+                            @method('DELETE')
+
+                            <button type="submit" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
+
+                        </form>
+
+                    @endif
+
+                </div>
+            </details>
         </div>
 
     </div>

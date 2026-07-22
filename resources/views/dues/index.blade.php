@@ -32,6 +32,9 @@
             @if ($filters['filterEndDate'])
                 <input type="hidden" name="end_date" value="{{ $filters['filterEndDate'] }}">
             @endif
+            @if ($filters['filterPeriod'])
+                <input type="hidden" name="period" value="{{ $filters['filterPeriod'] }}">
+            @endif
             @if ($filters['filterStatus'])
                 <input type="hidden" name="status" value="{{ $filters['filterStatus'] }}">
             @endif
@@ -66,6 +69,7 @@
         @php
             $activeFilterCount = 0;
             if ($filters['filterStartDate'] || $filters['filterEndDate']) $activeFilterCount++;
+            if ($filters['filterPeriod']) $activeFilterCount++;
             if ($filters['filterStatus']) $activeFilterCount++;
             if ($filters['filterSource']) $activeFilterCount++;
             if ($filters['filterUnitId']) $activeFilterCount++;
@@ -74,7 +78,7 @@
         @endphp
 
         <button type="button" onclick="openFilterModal()"
-            class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shrink-0">
+            class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shrink-0 ml-auto">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.238 2.022l-3.158 1.579A2.25 2.25 0 018.25 20.05v-5.83a2.25 2.25 0 00-.659-1.591L2.659 7.197A2.25 2.25 0 012 5.606V4.562c0-.54.384-1.006.917-1.096A49.32 49.32 0 0112 3z"/>
             </svg>
@@ -100,6 +104,13 @@
                     {{ $filters['filterStartDate'] ? \Carbon\Carbon::parse($filters['filterStartDate'])->format('d.m.Y') : '...' }}
                     -
                     {{ $filters['filterEndDate'] ? \Carbon\Carbon::parse($filters['filterEndDate'])->format('d.m.Y') : '...' }}
+                    <span class="text-slate-500">&times;</span>
+                </a>
+            @endif
+            @if ($filters['filterPeriod'])
+                <a href="{{ route('dues.index', request()->except('period')) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    {{ \Carbon\Carbon::parse($filters['filterPeriod'] . '-01')->format('m/Y') }}
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif
@@ -177,13 +188,19 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">Başlangıç Tarihi</label>
                         <input type="date" name="start_date" value="{{ $filters['filterStartDate'] }}"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                            class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">Bitiş Tarihi</label>
-                        <input type="date" name="end_date" value="{{ $filters['filterEndDate'] ?: \Carbon\Carbon::now()->format('Y-m-d') }}"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                        <input type="date" name="end_date" value="{{ $filters['filterEndDate'] }}"
+                            class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Dönem</label>
+                        <input type="month" name="period" value="{{ $filters['filterPeriod'] }}"
+                            class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
                     </div>
 
                     <div>
@@ -228,9 +245,12 @@
                     </div>
 
                     @if ($hasImported)
-                        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-700 select-none">
-                            <input type="checkbox" name="show_imported" value="1" class="rounded border-slate-300 text-slate-700 focus:ring-slate-300" {{ $showImported ? 'checked' : '' }}>
-                            Devir Öncesini Göster
+                        <label class="flex items-center justify-between cursor-pointer select-none">
+                            <span class="text-sm font-medium text-slate-700">Devir Öncesini Göster</span>
+                            <input type="checkbox" name="show_imported" value="1" class="peer sr-only" {{ $showImported ? 'checked' : '' }}>
+                            <span class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full bg-slate-200 transition-colors peer-checked:bg-slate-950 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-slate-300">
+                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1 peer-checked:translate-x-6"></span>
+                            </span>
                         </label>
                     @endif
                 </div>
@@ -544,7 +564,7 @@
         function resetFilters() {
             var form = document.getElementById('filter-form');
             form.querySelectorAll('select').forEach(function (el) { el.value = ''; });
-            form.querySelectorAll('input[type="date"]').forEach(function (el) { el.value = ''; });
+            form.querySelectorAll('input[type="date"], input[type="month"]').forEach(function (el) { el.value = ''; });
             var cb = form.querySelector('input[name="show_imported"]');
             if (cb) cb.checked = false;
             form.submit();

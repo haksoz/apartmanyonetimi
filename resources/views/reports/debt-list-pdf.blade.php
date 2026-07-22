@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $tableTitle ?? 'Borç Listesi' }}</title>
+    <title>{{ $tableTitle ?? 'Borç Listesi' }} — {{ $apartment->name }}</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #334155; margin: 10mm; }
@@ -21,7 +21,7 @@
     </style>
 </head>
 <body>
-    <h2>{{ $tableTitle ?? 'Borç Listesi' }}</h2>
+    <h2>{{ $tableTitle ?? 'Borç Listesi' }} — {{ $apartment->name }}</h2>
     <div class="meta">{{ $apartment->name }} — {{ now()->format('d.m.Y') }} tarihli çıktı</div>
 
     <table>

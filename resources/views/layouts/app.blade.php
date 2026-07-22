@@ -57,8 +57,8 @@
             <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-4 lg:px-6">
                 <div class="flex items-center gap-4">
                     {{-- Mobile Menu Toggle --}}
-                    <button type="button" onclick="toggleMobileSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100">
-                        <svg class="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button type="button" onclick="toggleMobileSidebar()" class="lg:hidden p-3 rounded-lg hover:bg-slate-100 -ml-1">
+                        <svg class="w-8 h-8 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
                         </svg>
                     </button>

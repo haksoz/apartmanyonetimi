@@ -29,27 +29,31 @@
 
         </div>
 
-        {{-- Masaüstü butonlar --}}
-        <div class="hidden lg:flex flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+            {{-- Masaüstü butonlar --}}
+            <div class="hidden lg:flex flex-wrap items-center gap-2">
+                <button type="button" onclick="history.back()" aria-label="Geri dön" class="inline-flex h-10 w-10 items-center justify-center rounded-full overflow-hidden transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300">
+                    <img src="{{ asset('images/back-button.png') }}" srcset="{{ asset('images/back-button@2x.png') }} 2x" alt="" class="h-10 w-10 object-cover" aria-hidden="true">
+                </button>
 
             @if ($due->status !== 'paid')
 
-                <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsil Et</a>
+                <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Tahsil Et</a>
 
             @endif
 
             @if (! in_array($due->status, ['paid', 'partial']) && $transferableAccounts->isNotEmpty())
 
                 <button type="button" onclick="document.getElementById('transfer-due-modal').classList.remove('hidden')"
-                        class="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600">Borç Aktar</button>
+                        class="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">Borç Aktar</button>
 
             @endif
 
-            <a href="{{ route('dues.edit', $due) }}" class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">Düzenle</a>
+            <a href="{{ route('dues.edit', $due) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
 
             @if ($due->allocations->isNotEmpty())
 
-                <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Sil</button>
+                <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
 
             @else
 
@@ -59,19 +63,22 @@
 
                     @method('DELETE')
 
-                    <button type="submit" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Sil</button>
+                    <button type="submit" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
 
                 </form>
 
             @endif
 
-            <a href="{{ route('dues.index') }}" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Aidatlara Dön</a>
-
         </div>
+
+            {{-- Mobil geri butonu --}}
+            <button type="button" onclick="history.back()" aria-label="Geri dön" class="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-full overflow-hidden transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <img src="{{ asset('images/back-button.png') }}" srcset="{{ asset('images/back-button@2x.png') }} 2x" alt="" class="h-10 w-10 object-cover" aria-hidden="true">
+            </button>
 
         {{-- Mobil işlemler menüsü --}}
         <details class="lg:hidden relative group">
-            <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
+            <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -81,22 +88,22 @@
 
                 @if ($due->status !== 'paid')
 
-                    <a href="{{ route('dues.payment.create', $due) }}" class="block w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-emerald-700">Tahsil Et</a>
+                    <a href="{{ route('dues.payment.create', $due) }}" class="block w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-left hover:bg-emerald-700">Tahsil Et</a>
 
                 @endif
 
                 @if (! in_array($due->status, ['paid', 'partial']) && $transferableAccounts->isNotEmpty())
 
                     <button type="button" onclick="document.getElementById('transfer-due-modal').classList.remove('hidden')"
-                            class="block w-full rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-orange-600">Borç Aktar</button>
+                            class="block w-full rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white text-left hover:bg-orange-600">Borç Aktar</button>
 
                 @endif
 
-                <a href="{{ route('dues.edit', $due) }}" class="block w-full rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-amber-600">Düzenle</a>
+                <a href="{{ route('dues.edit', $due) }}" class="block w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-left hover:bg-slate-50">Düzenle</a>
 
                 @if ($due->allocations->isNotEmpty())
 
-                    <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="block w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-red-700">Sil</button>
+                    <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
 
                 @else
 
@@ -106,16 +113,15 @@
 
                         @method('DELETE')
 
-                        <button type="submit" class="block w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-red-700">Sil</button>
+                        <button type="submit" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
 
                     </form>
 
                 @endif
 
-                <a href="{{ route('dues.index') }}" class="block w-full rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-slate-800">Aidatlara Dön</a>
-
             </div>
         </details>
+        </div>
 
     </div>
 
