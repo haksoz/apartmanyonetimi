@@ -253,6 +253,7 @@
                         </a>
                     @endif
 
+                    @if(!request()->routeIs('subscriber.*'))
                     @if($currentApartment)
                     <a href="{{ route('dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,6 +377,7 @@
                         </svg>
                         <span class="sidebar-text">Kullanıcılar</span>
                     </a>
+                    @endif
                     @endif
                     @endif
                 </nav>

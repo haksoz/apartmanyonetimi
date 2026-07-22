@@ -13,9 +13,6 @@ class SubscriberDashboardController extends Controller
 {
     public function __invoke(Request $request, CurrentApartment $currentApartment)
     {
-        // Reset apartment selection when accessing subscriber dashboard
-        session()->forget(CurrentApartment::SESSION_KEY);
-
         $user = auth()->user();
 
         $subscription = $user->subscription?->load('package');
