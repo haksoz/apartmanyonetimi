@@ -15,9 +15,9 @@
     </div>
 
     {{-- Arama + Filtre --}}
-    <div class="mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+    <div class="mb-4 flex flex-row items-center justify-between gap-3">
         {{-- Arama --}}
-        <form method="GET" action="{{ route('expenses.index') }}" class="flex gap-2 flex-1 w-full md:w-auto">
+        <form method="GET" action="{{ route('expenses.index') }}" class="flex gap-2 flex-1 min-w-0">
             @if ($filters['filterStartDate'])
                 <input type="hidden" name="start_date" value="{{ $filters['filterStartDate'] }}">
             @endif
@@ -45,7 +45,7 @@
             <input type="text" name="search" value="{{ $filters['filterSearch'] ?? '' }}"
                 placeholder="Hesap adı veya tutar..."
                 class="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-            <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ara</button>
+            <button type="submit" class="h-9 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ara</button>
             @if ($filters['filterSearch'] ?? '')
                 <a href="{{ route('expenses.index', request()->except('search')) }}"
                    class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50">✕</a>
@@ -62,11 +62,11 @@
         @endphp
 
         <button type="button" onclick="openFilterModal()"
-            class="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shrink-0 ml-auto">
+            class="h-9 ml-auto flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 shrink-0">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.238 2.022l-3.158 1.579A2.25 2.25 0 018.25 20.05v-5.83a2.25 2.25 0 00-.659-1.591L2.659 7.197A2.25 2.25 0 012 5.606V4.562c0-.54.384-1.006.917-1.096A49.32 49.32 0 0112 3z"/>
             </svg>
-            Filtrele
+            <span class="hidden md:inline">Filitrele</span>
             @if ($activeFilterCount > 0)
                 <span class="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-950">{{ $activeFilterCount }}</span>
             @endif
