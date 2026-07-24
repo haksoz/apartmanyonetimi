@@ -27,9 +27,12 @@
         <div class="flex items-center gap-2">
             {{-- Masaüstü butonlar --}}
             <div class="hidden lg:flex flex-wrap items-center gap-2">
-                <button type="button" onclick="history.back()" aria-label="Geri dön" class="inline-flex h-10 w-10 items-center justify-center rounded-full overflow-hidden transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300">
-                    <img src="{{ asset('images/back-button.png') }}" srcset="{{ asset('images/back-button@2x.png') }} 2x" alt="" class="h-10 w-10 object-cover" aria-hidden="true">
-                </button>
+                <a href="{{ route('dues.index') }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                    </svg>
+                    Aidatlara Dön
+                </a>
 
             @if ($due->status !== 'paid')
 
@@ -67,9 +70,12 @@
         </div>
 
             {{-- Mobil geri butonu --}}
-            <button type="button" onclick="history.back()" aria-label="Geri dön" class="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-full overflow-hidden transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <img src="{{ asset('images/back-button.png') }}" srcset="{{ asset('images/back-button@2x.png') }} 2x" alt="" class="h-10 w-10 object-cover" aria-hidden="true">
-            </button>
+            <a href="{{ route('dues.index') }}" class="lg:hidden rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                </svg>
+                Aidatlara Dön
+            </a>
 
         {{-- Mobil işlemler menüsü --}}
         <details class="lg:hidden relative group">

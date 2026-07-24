@@ -469,7 +469,6 @@ class DueController extends Controller
         }
 
         $due->load('allocations');
-        $units = Unit::where('apartment_id', $due->apartment_id)->orderBy('unit_no')->get();
         $dueTypes = DueType::options();
         $categories = Category::where('apartment_id', $due->apartment_id)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->where('is_active', true)->orderBy('name')->get();
         $accounts = Account::where('accounts.apartment_id', $due->apartment_id)
@@ -481,7 +480,7 @@ class DueController extends Controller
             ->select('accounts.*')
             ->get();
 
-        return view('dues.edit', compact('due', 'units', 'dueTypes', 'categories', 'accounts'));
+        return view('dues.edit', compact('due', 'dueTypes', 'categories', 'accounts'));
     }
 
     public function update(Request $request, CurrentApartment $currentApartment, Due $due)
@@ -492,7 +491,6 @@ class DueController extends Controller
 
         $validated = $request->validate([
             'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('apartment_id', $due->apartment_id)],
-            'unit_id'    => ['nullable', 'integer', Rule::exists('units', 'id')->where('apartment_id', $due->apartment_id)],
             'due_type' => ['nullable', Rule::in(DueType::values())],
             'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $due->apartment_id)->where('is_active', true)],
             'period' => ['required', 'date_format:Y-m'],
@@ -501,6 +499,14 @@ class DueController extends Controller
             'created_at_manual' => ['nullable', 'date'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
+
+        // Daire bilgisi, seçilen hesabın dairesinden otomatik belirlenir
+        if (isset($validated['account_id'])) {
+            $account = Account::query()->where('apartment_id', $due->apartment_id)->findOrFail($validated['account_id']);
+            $validated['unit_id'] = $account->unit_id;
+        } else {
+            $validated['unit_id'] = $due->unit_id;
+        }
 
         // Aidat + Aidat tekillik kontrolü: hesap veya dönem değişiyorsa
         $apartment = Apartment::query()->findOrFail($due->apartment_id);
@@ -548,14 +554,14 @@ class DueController extends Controller
             $transaction = $due->transactions()->first();
             if ($transaction) {
                 $transaction->update([
-                    'amount' => $newAmount,
+                    'amount' => $validated['amount'],
                     'transaction_date' => $validated['due_date'],
                     'description' => $validated['description'] ?? $due->category?->name.' borçlandırması',
                 ]);
             }
         });
 
-        return redirect()->route('dues.index')->with('status', 'Aidat kaydı güncellendi.');
+        return redirect()->route('dues.show', $due)->with('status', 'Aidat kaydı güncellendi.');
     }
 
     public function destroy(CurrentApartment $currentApartment, Due $due)

@@ -1227,6 +1227,54 @@ class DuePageTest extends TestCase
         ]);
     }
 
+    public function test_due_description_and_created_at_manual_can_be_updated(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Maliki', 'is_active' => true]);
+        $unit->update(['owner_account_id' => $account->id, 'occupant_account_id' => $account->id]);
+
+        $reconciliation = new \App\Support\AidatPeriodReconciliation();
+        $category = $reconciliation->categoryFor($apartment);
+
+        $due = Due::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'unit_id' => $unit->id,
+            'due_type' => \App\Enums\DueType::Aidat,
+            'category_id' => $category->id,
+            'period' => '2026-06',
+            'amount' => 250,
+            'remaining_amount' => 250,
+            'due_date' => '2026-06-01',
+            'created_at_manual' => '2026-06-01',
+            'description' => 'Eski açıklama',
+            'status' => 'unpaid',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->patch(route('dues.update', $due), [
+                'account_id' => $account->id,
+                'due_type' => \App\Enums\DueType::Aidat->value,
+                'category_id' => $category->id,
+                'period' => '2026-06',
+                'due_date' => '2026-06-01',
+                'amount' => 250,
+                'created_at_manual' => '2026-06-15',
+                'description' => 'Yeni açıklama',
+            ])
+            ->assertRedirect(route('dues.show', $due));
+
+        $this->assertDatabaseHas('dues', [
+            'id' => $due->id,
+            'description' => 'Yeni açıklama',
+            'created_at_manual' => '2026-06-15 00:00:00',
+        ]);
+    }
+
     public function test_aidat_uniqueness_prevents_duplicate_on_transfer(): void
     {
         $user = User::factory()->create();
