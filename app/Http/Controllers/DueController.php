@@ -696,7 +696,7 @@ class DueController extends Controller
             }
         });
 
-        return redirect()->route('dues.index')->with('status', 'Aidat ödemesi kaydedildi.');
+        return redirect()->route('accounts.show', $due->account_id)->with('status', 'Aidat ödemesi kaydedildi.');
     }
 
     public function bulkPay(Request $request, CurrentApartment $currentApartment, Account $account)

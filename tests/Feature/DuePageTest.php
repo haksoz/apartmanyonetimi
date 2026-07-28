@@ -407,6 +407,43 @@ class DuePageTest extends TestCase
             ->assertSee('600,00 TL');
     }
 
+    public function test_due_payment_redirects_back_to_account_page(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
+        $cashBox = \App\Models\CashBox::create(['apartment_id' => $apartment->id, 'name' => 'Ana Kasa', 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $due = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $account->id,
+            'category_id' => $category->id,
+            'period' => '2026-05',
+            'amount' => 500,
+            'remaining_amount' => 500,
+            'due_date' => '2026-05-31',
+            'status' => 'unpaid',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('dues.payment.store', $due), [
+                'cash_box_id' => $cashBox->id,
+                'amount' => 500,
+                'payment_date' => '2026-05-31',
+            ])
+            ->assertRedirect(route('accounts.show', $account->id));
+
+        $this->assertDatabaseHas('dues', [
+            'id' => $due->id,
+            'status' => 'paid',
+            'remaining_amount' => 0,
+        ]);
+    }
+
     public function test_due_detail_page_shows_transfer_button_for_open_due(): void
     {
         $user = User::factory()->create();
