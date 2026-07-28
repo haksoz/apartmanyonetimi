@@ -1977,7 +1977,7 @@ class AccountController extends Controller
                             'transactionable_id' => $expense->id,
                             'transaction_date' => $t['date'],
                             'description' => $t['description'] ?: 'Devir Öncesi',
-                            'type' => 'debit',
+                            'type' => 'credit',
                             'amount' => $t['credit'],
                             'is_imported' => true,
                         ]);
@@ -2012,7 +2012,7 @@ class AccountController extends Controller
                             'transactionable_id' => $payment->id,
                             'transaction_date' => $t['date'],
                             'description' => $t['description'],
-                            'type' => 'credit',
+                            'type' => 'debit',
                             'amount' => $t['debit'],
                             'is_imported' => true,
                         ]);
