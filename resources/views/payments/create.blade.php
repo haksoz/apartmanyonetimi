@@ -165,6 +165,32 @@
 
     <script>
         (() => {
+            const descriptionInput = document.getElementById('description');
+            const paymentDateInput = document.getElementById('payment_date');
+            const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+            const formatDescription = (dateString) => {
+                if (!dateString) return '';
+                const [year, month] = dateString.split('-');
+                if (!year || !month) return '';
+                return `${monthNames[parseInt(month, 10) - 1]} ${year} Toplu Borç Tahsilatı`;
+            };
+
+            const isAutoDescription = (current, dateString) => {
+                if (!current) return true;
+                return current === formatDescription(dateString);
+            };
+
+            if (paymentDateInput && descriptionInput) {
+                const updateDescription = () => {
+                    if (isAutoDescription(descriptionInput.value.trim(), paymentDateInput.value)) {
+                        descriptionInput.value = formatDescription(paymentDateInput.value);
+                    }
+                };
+                paymentDateInput.addEventListener('change', updateDescription);
+                updateDescription();
+            }
+
             const accountDebts = @json($accountDebts);
             const accountSelect = document.getElementById('account_id');
             const amountInput   = document.getElementById('amount');

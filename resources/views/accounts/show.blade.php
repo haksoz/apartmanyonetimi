@@ -508,7 +508,7 @@
 
                             <label class="block text-xs font-medium text-slate-600 mb-1.5">Ödeme Tarihi</label>
 
-                            <input type="date" name="payment_date" required value="{{ now()->toDateString() }}"
+                            <input type="date" id="bulk-payment-date" name="payment_date" required value="{{ now()->toDateString() }}"
 
                                    class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
 
@@ -1090,6 +1090,29 @@
 
 
 
+        const bulkMonthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+        const formatBulkDescription = (dateString) => {
+            if (!dateString) return '';
+            const [year, month] = dateString.split('-');
+            if (!year || !month) return '';
+            return `${bulkMonthNames[parseInt(month, 10) - 1]} ${year} Toplu Borç Tahsilatı`;
+        };
+
+        const isAutoBulkDescription = (current, dateString) => {
+            if (!current) return true;
+            return current === formatBulkDescription(dateString);
+        };
+
+        document.getElementById('bulk-payment-date')?.addEventListener('change', function() {
+            const descEl = document.getElementById('bulk-description');
+            if (descEl && isAutoBulkDescription(descEl.value.trim(), this.value)) {
+                descEl.value = formatBulkDescription(this.value);
+            }
+        });
+
+
+
         function openBulkPayModal() {
 
             const checked = document.querySelectorAll(window.innerWidth >= 768 ? '.due-checkbox-desktop:checked' : '.due-checkbox-mobile:checked');
@@ -1123,12 +1146,9 @@
 
 
             const descEl = document.getElementById('bulk-description');
-            if (descEl) {
-                if (checked.length === 1) {
-                    descEl.value = (checked[0].dataset.description || 'Aidat') + ' Tahsilatı';
-                } else {
-                    descEl.value = 'Çoklu Aidat Tahsilatı';
-                }
+            const paymentDateEl = document.getElementById('bulk-payment-date');
+            if (descEl && paymentDateEl && isAutoBulkDescription(descEl.value.trim(), paymentDateEl.value)) {
+                descEl.value = formatBulkDescription(paymentDateEl.value);
             }
 
             document.getElementById('modal-total').textContent =
