@@ -24,13 +24,13 @@
                 <label class="block text-sm font-medium text-slate-700 mb-2">Ücretsiz denemelerde kullanılacak paket türü</label>
                 <select name="trial_package_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:ring-emerald-500">
                     <option value="">-- Paket Seçin --</option>
-                    @foreach($packages as $package)
+                    @foreach($trialPackages as $package)
                         <option value="{{ $package->id }}" {{ $setting->trial_package_id == $package->id ? 'selected' : '' }}>
                             {{ $package->name }} ({{ $package->monthly_price > 0 ? number_format($package->monthly_price, 0, ',', '.') . ' TL/ay' : 'Ücretsiz' }})
                         </option>
                     @endforeach
                 </select>
-                <p class="mt-1 text-xs text-slate-500">Yeni kayıt olan kullanıcıların ücretsiz deneme süresinde kullanacağı paket.</p>
+                <p class="mt-1 text-xs text-slate-500">Yeni kayıt olan kullanıcıların ücretsiz deneme süresinde kullanacağı paket. Sadece deneme paketleri listelenir.</p>
             </div>
 
             <div>

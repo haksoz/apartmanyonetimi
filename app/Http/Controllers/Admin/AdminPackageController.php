@@ -33,6 +33,7 @@ class AdminPackageController extends Controller
             'yearly_price' => ['required', 'numeric', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'show_on_website' => ['nullable', 'boolean'],
+            'is_trial' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'features' => ['nullable', 'array'],
         ]);
@@ -40,6 +41,7 @@ class AdminPackageController extends Controller
         $validated['slug'] = $validated['slug'] ? \Illuminate\Support\Str::slug($validated['slug']) : \Illuminate\Support\Str::slug($validated['name']);
         $validated['is_active'] = $request->input('is_active') == '1';
         $validated['show_on_website'] = $request->input('show_on_website') == '1';
+        $validated['is_trial'] = $request->input('is_trial') == '1';
         $validated['multi_apartment_limit'] = $validated['multi_apartment_limit'] ?? 0;
         $validated['sort_order'] = $validated['sort_order'] ?? 0;
 
@@ -84,6 +86,7 @@ class AdminPackageController extends Controller
             'multi_apartment_limit' => ['nullable', 'integer', 'min:0'],
             'monthly_price' => ['required', 'numeric', 'min:0'],
             'yearly_price' => ['required', 'numeric', 'min:0'],
+            'is_trial' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
             'show_on_website' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
@@ -91,6 +94,7 @@ class AdminPackageController extends Controller
         ]);
 
         $validated['slug'] = \Illuminate\Support\Str::slug($validated['slug']);
+        $validated['is_trial'] = $request->input('is_trial') == '1';
         $validated['is_active'] = $request->input('is_active') == '1';
         $validated['show_on_website'] = $request->input('show_on_website') == '1';
         $validated['multi_apartment_limit'] = $validated['multi_apartment_limit'] ?? 0;

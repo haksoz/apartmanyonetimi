@@ -20,6 +20,7 @@ class Package extends Model
         'yearly_price',
         'is_active',
         'show_on_website',
+        'is_trial',
         'sort_order',
     ];
 
@@ -30,6 +31,7 @@ class Package extends Model
         'yearly_price' => 'decimal:2',
         'is_active' => 'boolean',
         'show_on_website' => 'boolean',
+        'is_trial' => 'boolean',
         'sort_order' => 'integer',
     ];
 

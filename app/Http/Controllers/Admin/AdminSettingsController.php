@@ -13,8 +13,9 @@ class AdminSettingsController extends Controller
     {
         $setting = SystemSetting::firstOrCreate(['id' => 1]);
         $packages = Package::where('is_active', true)->orderBy('sort_order')->get();
+        $trialPackages = Package::where('is_active', true)->where('is_trial', true)->orderBy('sort_order')->get();
 
-        return view('admin.settings.index', compact('setting', 'packages'));
+        return view('admin.settings.index', compact('setting', 'packages', 'trialPackages'));
     }
 
     public function update(Request $request)

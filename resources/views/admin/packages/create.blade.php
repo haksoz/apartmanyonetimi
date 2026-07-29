@@ -69,6 +69,11 @@
                     <input type="checkbox" name="show_on_website" value="1" {{ old('show_on_website', true) ? 'checked' : '' }} id="show_on_website" class="rounded border-slate-300">
                     <label for="show_on_website" class="text-sm font-medium text-slate-700">Webde göster</label>
                 </div>
+                <div class="flex items-center gap-2">
+                    <input type="hidden" name="is_trial" value="0">
+                    <input type="checkbox" name="is_trial" value="1" {{ old('is_trial', false) ? 'checked' : '' }} id="is_trial" class="rounded border-slate-300">
+                    <label for="is_trial" class="text-sm font-medium text-slate-700">Deneme paketi</label>
+                </div>
             </div>
 
             <div>
@@ -120,6 +125,25 @@
             if (multiApartmentCheckbox) {
                 multiApartmentCheckbox.addEventListener('change', toggleMultiApartmentLimit);
                 toggleMultiApartmentLimit();
+            }
+
+            const trialCheckbox = document.getElementById('is_trial');
+            const websiteCheckbox = document.getElementById('show_on_website');
+
+            function toggleWebsiteVisibilityOnTrial() {
+                if (trialCheckbox && websiteCheckbox) {
+                    if (trialCheckbox.checked) {
+                        websiteCheckbox.checked = false;
+                        websiteCheckbox.disabled = true;
+                    } else {
+                        websiteCheckbox.disabled = false;
+                    }
+                }
+            }
+
+            if (trialCheckbox) {
+                trialCheckbox.addEventListener('change', toggleWebsiteVisibilityOnTrial);
+                toggleWebsiteVisibilityOnTrial();
             }
         });
     </script>

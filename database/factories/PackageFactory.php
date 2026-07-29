@@ -25,6 +25,8 @@ class PackageFactory extends Factory
             'monthly_price' => fake()->randomFloat(2, 0, 500),
             'yearly_price' => fake()->randomFloat(2, 0, 5000),
             'is_active' => true,
+            'show_on_website' => true,
+            'is_trial' => false,
             'sort_order' => 0,
         ];
     }

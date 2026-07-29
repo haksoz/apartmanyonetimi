@@ -34,11 +34,16 @@
                         <td class="px-4 py-3 text-slate-700">{{ number_format($package->monthly_price, 2) }} ₺</td>
                         <td class="px-4 py-3 text-slate-700">{{ number_format($package->yearly_price, 2) }} ₺</td>
                         <td class="px-4 py-3">
-                            @if ($package->is_active)
-                                <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Aktif</span>
-                            @else
-                                <span class="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">Pasif</span>
-                            @endif
+                            <div class="flex flex-wrap gap-1">
+                                @if ($package->is_active)
+                                    <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Aktif</span>
+                                @else
+                                    <span class="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">Pasif</span>
+                                @endif
+                                @if ($package->is_trial)
+                                    <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Deneme</span>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('admin.packages.edit', $package) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Düzenle</a>
