@@ -396,7 +396,11 @@
                         <td class="px-5 py-4 text-right whitespace-nowrap" onclick="event.stopPropagation()">
                             <div class="flex items-center justify-end gap-2">
                                 @if ($due->computed_status !== 'paid')
-                                    <a href="{{ route('dues.payment.create', $due) }}" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">Tahsil Et</a>
+                                    <button type="button"
+                                            onclick="openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
+                                            class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">
+                                        Tahsil Et
+                                    </button>
                                 @endif
                             </div>
                         </td>
@@ -467,10 +471,11 @@
                         @endif
                     </a>
                     @if ($due->computed_status !== 'paid')
-                        <a href="{{ route('dues.payment.create', $due) }}"
-                           class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">
+                        <button type="button"
+                                onclick="openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
+                                class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">
                             Tahsil Et
-                        </a>
+                        </button>
                     @endif
                 </div>
             </div>
@@ -487,6 +492,8 @@
             {{ $dues->links() }}
         </div>
     @endif
+
+    @include('dues._payment_modal', ['cashBoxes' => $cashBoxes])
 
     <script>
         var selectedIds = new Set();
@@ -572,6 +579,35 @@
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') closeFilterModal();
+        });
+
+        // Tekli aidat tahsilatı popup
+        function openDuePaymentModal(dueId, amount, description, accountName, unitNo) {
+            const modal = document.getElementById('due-payment-modal');
+            const form = document.getElementById('due-payment-form');
+            if (!modal || !form) return;
+
+            form.action = (form.dataset.baseUrl || '').replace('__DUE_ID__', dueId);
+            document.getElementById('due-payment-due-id').value = dueId;
+            document.getElementById('due-payment-amount-input').value = amount;
+            document.getElementById('due-payment-description').textContent = description || 'Aidat';
+            document.getElementById('due-payment-amount').textContent = amount.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' TL';
+            document.getElementById('due-payment-account').textContent = 'No:' + (unitNo || '-') + ' ' + (accountName || '-');
+
+            const descInput = document.getElementById('due-payment-description-input');
+            if (descInput) {
+                descInput.value = (description ? description + ' Tahsilatı' : 'Aidat Tahsilatı');
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeDuePaymentModal() {
+            document.getElementById('due-payment-modal')?.classList.add('hidden');
+        }
+
+        document.getElementById('due-payment-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeDuePaymentModal();
         });
     </script>
 @endsection

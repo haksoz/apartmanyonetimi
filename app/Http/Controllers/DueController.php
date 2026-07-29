@@ -115,6 +115,14 @@ class DueController extends Controller
             ? Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get(['id', 'unit_no'])
             : collect();
 
+        $cashBoxes = $apartment
+            ? CashBox::query()
+                ->where('apartment_id', $apartment->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get()
+            : collect();
+
         $filters = compact('filterStartDate', 'filterEndDate', 'filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'showImported');
 
         $hasImported = Due::query()
@@ -123,7 +131,7 @@ class DueController extends Controller
             ->where('is_imported', true)
             ->exists();
 
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'showImported', 'hasImported'));
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'cashBoxes', 'showImported', 'hasImported'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)
