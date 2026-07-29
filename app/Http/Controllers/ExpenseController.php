@@ -149,6 +149,14 @@ class ExpenseController extends Controller
 
 
 
+        $cashBoxes = $apartment
+            ? CashBox::query()
+                ->where('apartment_id', $apartment->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get()
+            : collect();
+
         $filters = compact('filterStartDate', 'filterEndDate', 'filterPeriod', 'filterStatus', 'filterCategory', 'filterSearch');
 
         // Check if there are any imported expenses for this apartment
@@ -156,7 +164,7 @@ class ExpenseController extends Controller
             ->where('is_imported', true)
             ->exists();
 
-        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'isOwner', 'hasImported', 'showImported'));
+        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'cashBoxes', 'isOwner', 'hasImported', 'showImported'));
 
     }
 

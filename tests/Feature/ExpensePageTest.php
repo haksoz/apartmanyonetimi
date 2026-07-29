@@ -153,7 +153,6 @@ class ExpensePageTest extends TestCase
                 'amount' => 1250.75,
                 'expense_date' => '2026-05-03',
                 'period_month' => '2026-05',
-                'is_paid' => '1',
             ])
             ->assertRedirect(route('expenses.index'));
 
@@ -163,7 +162,7 @@ class ExpensePageTest extends TestCase
             'category' => 'Elektrik',
             'period_month' => '2026-05-01 00:00:00',
             'amount' => 1250.75,
-            'is_paid' => true,
+            'is_paid' => false,
         ]);
     }
 
@@ -266,7 +265,7 @@ class ExpensePageTest extends TestCase
             ->actingAs($user)
             ->get(route('expenses.index'))
             ->assertStatus(200)
-            ->assertSee('Ödeme Ekle')
+            ->assertSee('Öde')
             ->assertSee('Düzenle')
             ->assertSee('Sil');
     }
