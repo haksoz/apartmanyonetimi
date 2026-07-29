@@ -31,24 +31,12 @@
     </div>
 
     {{-- Özet Kartlar --}}
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Daire</div>
-            <div class="mt-2 text-3xl font-bold text-slate-950">{{ $totalUnits }}</div>
-        </div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Aktif Hesap</div>
-            <div class="mt-2 text-3xl font-bold text-slate-950">{{ $totalAccounts }}</div>
-        </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="rounded-2xl bg-white p-5 shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Kasa Bakiyesi</div>
             <div class="mt-2 text-2xl font-bold {{ $cashBalance >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
                 {{ number_format($cashBalance, 2, ',', '.') }} TL
             </div>
-        </div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Toplam Gider</div>
-            <div class="mt-2 text-2xl font-bold text-slate-950">{{ number_format($totalExpenses, 2, ',', '.') }} TL</div>
         </div>
         <div class="rounded-2xl bg-white p-5 shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ödenmemiş Gider</div>
