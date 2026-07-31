@@ -188,7 +188,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
     Route::get('managers/{manager}', [AdminManagerController::class, 'show'])->name('managers.show');
-    Route::patch('managers/{manager}/subscription', [AdminManagerController::class, 'updateSubscription'])->name('managers.subscription.update');
+    Route::patch('managers/{manager}/subscription', [AdminManagerController::class, 'updateCurrentSubscription'])->name('managers.subscription.update');
+    Route::post('managers/{manager}/subscription/order', [AdminManagerController::class, 'storeSubscriptionOrder'])->name('managers.subscription.order');
+    Route::patch('managers/{manager}/subscription/{subscription}/approve', [AdminManagerController::class, 'approveSubscriptionOrder'])->name('managers.subscription.approve');
+    Route::patch('managers/{manager}/subscription/{subscription}/reactivate', [AdminManagerController::class, 'reactivateSubscription'])->name('managers.subscription.reactivate');
+    Route::post('managers/{manager}/subscription/cancel', [AdminManagerController::class, 'cancelSubscription'])->name('managers.subscription.cancel');
     Route::patch('managers/{manager}/quota', [AdminManagerController::class, 'updateQuota'])->name('managers.quota.update');
     Route::post('managers/{manager}/trial-extend', [AdminManagerController::class, 'extendTrial'])->name('managers.trial.extend');
 

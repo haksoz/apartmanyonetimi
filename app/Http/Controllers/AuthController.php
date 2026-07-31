@@ -81,6 +81,7 @@ class AuthController extends Controller
             'started_at' => now(),
             'expires_at' => now()->addMonths($trialDuration),
             'is_active' => true,
+            'is_trial' => true,
             'feature_auto_dues' => $featureAutoDues,
             'feature_user_portal' => $featureUserPortal,
             'feature_reports' => $featureReports,

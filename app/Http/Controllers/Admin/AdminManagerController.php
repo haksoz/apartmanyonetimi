@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Package;
+use App\Models\SubscriptionPayment;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\UserQuotaOverride;
 use App\Models\UserSubscription;
 use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class AdminManagerController extends Controller
@@ -36,7 +39,13 @@ class AdminManagerController extends Controller
 
     public function show(User $manager, UserApartmentQuota $quota)
     {
-        $manager->load(['subscription.package', 'quotaOverride']);
+        $manager->load([
+            'subscription.package',
+            'subscription.payments',
+            'subscriptions.package',
+            'subscriptions.payments',
+            'quotaOverride',
+        ]);
 
         $apartments = $manager->apartments()->withPivot('role', 'is_active')->latest()->get();
 
@@ -62,58 +71,110 @@ class AdminManagerController extends Controller
             ];
         }
 
-        return view('admin.managers.show', compact('manager', 'apartments', 'packages', 'quota', 'packageFeatures'));
+        $pendingSubscription = $manager->subscriptions()->pending()->with('package')->first();
+
+        return view('admin.managers.show', compact('manager', 'apartments', 'packages', 'quota', 'packageFeatures', 'pendingSubscription'));
     }
 
-    public function updateSubscription(Request $request, User $manager)
+    public function updateCurrentSubscription(Request $request, User $manager)
     {
         $validated = $request->validate([
-            'package_id' => ['required', 'exists:packages,id'],
-            'period' => ['required', Rule::in(['monthly', 'yearly'])],
-            'price' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string'],
             'multi_apartment_limit_override' => ['nullable', 'integer', 'min:0'],
             'max_apartments' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $package = Package::with('features')->findOrFail($validated['package_id']);
+        $subscription = $manager->subscription;
 
-        $price = $validated['price'] ?? ($validated['period'] === 'yearly' ? $package->yearly_price : $package->monthly_price);
+        if (! $subscription) {
+            return back()->withErrors(['subscription' => 'Aktif abonelik bulunamadı.']);
+        }
 
-        // Get package features as defaults
-        $featureAutoDues = $package->features->where('feature_key', 'Otomatik aidat planlama')->first()?->is_enabled ?? false;
-        $featureUserPortal = $package->features->where('feature_key', 'Kullanıcı portalı erişimi')->first()?->is_enabled ?? false;
-        $featureReports = $package->features->where('feature_key', 'Hesap ekstresi ve raporlar')->first()?->is_enabled ?? false;
-        $featureMultiApartment = $package->features->where('feature_key', 'Çoklu apartman yönetimi')->first()?->is_enabled ?? false;
+        $subscription->update([
+            'notes' => $validated['notes'] ?? $subscription->notes,
+            'feature_auto_dues' => $request->input('feature_auto_dues') == '1',
+            'feature_user_portal' => $request->input('feature_user_portal') == '1',
+            'feature_reports' => $request->input('feature_reports') == '1',
+            'feature_multi_apartment' => $request->input('feature_multi_apartment') == '1',
+            'multi_apartment_limit_override' => $validated['multi_apartment_limit_override'] ?? null,
+        ]);
 
-        // Use override values from form (checkbox values), otherwise use package defaults
-        // Hidden inputs are always present, so we check if checkbox was checked (value='1')
-        $finalFeatureAutoDues = $request->input('feature_auto_dues') == '1';
-        $finalFeatureUserPortal = $request->input('feature_user_portal') == '1';
-        $finalFeatureReports = $request->input('feature_reports') == '1';
-        $finalFeatureMultiApartment = $request->input('feature_multi_apartment') == '1';
-        $finalMultiApartmentLimit = $request->filled('multi_apartment_limit_override') ? $validated['multi_apartment_limit_override'] : ($finalFeatureMultiApartment ? $package->multi_apartment_limit : null);
-
-        // Handle quota override
         if ($request->filled('max_apartments')) {
             UserQuotaOverride::updateOrCreate(
                 ['user_id' => $manager->id],
                 ['max_apartments' => $validated['max_apartments']]
             );
         } else {
-            // If empty, remove the override to use package default
             $manager->quotaOverride?->delete();
         }
 
-        UserSubscription::where('user_id', $manager->id)->update(['is_active' => false]);
+        return back()->with('status', 'Mevcut abonelik güncellendi.');
+    }
 
-        UserSubscription::create([
+    public function storeSubscriptionOrder(Request $request, User $manager)
+    {
+        $validated = $request->validate([
+            'order.package_id' => ['required', 'exists:packages,id'],
+            'order.period' => ['required', Rule::in(['monthly', 'yearly'])],
+            'order.price' => ['required', 'numeric', 'min:0'],
+            'is_paid' => ['required', 'boolean'],
+            'payment_date' => ['nullable', 'date', 'required_if:is_paid,1'],
+            'payment_method' => ['nullable', 'string', 'max:50', 'required_if:is_paid,1'],
+            'reference_code' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+            'order.feature_auto_dues' => ['nullable', 'boolean'],
+            'order.feature_user_portal' => ['nullable', 'boolean'],
+            'order.feature_reports' => ['nullable', 'boolean'],
+            'order.feature_multi_apartment' => ['nullable', 'boolean'],
+            'order.multi_apartment_limit_override' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $order = $validated['order'];
+
+        $package = Package::with('features')->findOrFail($order['package_id']);
+        $isTrial = $package->is_trial;
+        $isPaid = (bool) $validated['is_paid'];
+
+        $defaultFeatureAutoDues = $package->features->where('feature_key', 'Otomatik aidat planlama')->first()?->is_enabled ?? false;
+        $defaultFeatureUserPortal = $package->features->where('feature_key', 'Kullanıcı portalı erişimi')->first()?->is_enabled ?? false;
+        $defaultFeatureReports = $package->features->where('feature_key', 'Hesap ekstresi ve raporlar')->first()?->is_enabled ?? false;
+        $defaultFeatureMultiApartment = $package->features->where('feature_key', 'Çoklu apartman yönetimi')->first()?->is_enabled ?? false;
+
+        $finalFeatureAutoDues = $request->filled('order.feature_auto_dues') ? ($request->input('order.feature_auto_dues') == '1') : $defaultFeatureAutoDues;
+        $finalFeatureUserPortal = $request->filled('order.feature_user_portal') ? ($request->input('order.feature_user_portal') == '1') : $defaultFeatureUserPortal;
+        $finalFeatureReports = $request->filled('order.feature_reports') ? ($request->input('order.feature_reports') == '1') : $defaultFeatureReports;
+        $finalFeatureMultiApartment = $request->filled('order.feature_multi_apartment') ? ($request->input('order.feature_multi_apartment') == '1') : $defaultFeatureMultiApartment;
+        $finalMultiApartmentLimit = $request->filled('order.multi_apartment_limit_override')
+            ? $order['multi_apartment_limit_override']
+            : ($finalFeatureMultiApartment ? $package->multi_apartment_limit : null);
+
+        $status = $isTrial || $isPaid ? UserSubscription::STATUS_ACTIVE : UserSubscription::STATUS_PENDING;
+        $isActive = $status === UserSubscription::STATUS_ACTIVE;
+
+        $expiresAt = null;
+        if ($isActive) {
+            $expiresAt = $order['period'] === 'yearly' ? now()->addYear() : now()->addMonth();
+            if ($isTrial) {
+                $expiresAt = now()->addMonths(SystemSetting::getTrialDuration());
+            }
+        }
+
+        // If this is an active (paid or trial) order, close the current active subscription.
+        if ($isActive) {
+            $this->closeActiveSubscription($manager);
+        }
+
+        $subscription = UserSubscription::create([
             'user_id' => $manager->id,
-            'package_id' => $package->id,
-            'period' => $validated['period'],
-            'price' => $price,
+            'package_id' => $order['package_id'],
+            'period' => $order['period'],
+            'price' => $order['price'],
             'started_at' => now(),
-            'expires_at' => $validated['period'] === 'yearly' ? now()->addYear() : now()->addMonth(),
-            'is_active' => true,
+            'expires_at' => $expiresAt,
+            'is_active' => $isActive,
+            'is_trial' => $isTrial,
+            'status' => $status,
+            'notes' => $validated['notes'] ?? null,
             'feature_auto_dues' => $finalFeatureAutoDues,
             'feature_user_portal' => $finalFeatureUserPortal,
             'feature_reports' => $finalFeatureReports,
@@ -121,7 +182,64 @@ class AdminManagerController extends Controller
             'multi_apartment_limit_override' => $finalMultiApartmentLimit,
         ]);
 
-        return back()->with('status', 'Abonelik güncellendi.');
+        if ($isPaid && ! $isTrial) {
+            $subscription->payments()->create([
+                'amount' => $order['price'],
+                'payment_date' => $validated['payment_date'],
+                'payment_method' => $validated['payment_method'] ?? 'havale',
+                'reference_code' => $validated['reference_code'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+            ]);
+        }
+
+        $message = $isActive ? 'Yeni abonelik siparişi oluşturuldu ve aktif edildi.' : 'Yeni abonelik siparişi oluşturuldu; ödeme onayı bekleniyor.';
+
+        return back()->with('status', $message);
+    }
+
+    public function approveSubscriptionOrder(Request $request, User $manager, UserSubscription $subscription)
+    {
+        if ($subscription->user_id !== $manager->id) {
+            return back()->withErrors(['subscription' => 'Abonelik bu kullanıcıya ait değil.']);
+        }
+
+        if (! $subscription->isPending()) {
+            return back()->withErrors(['subscription' => 'Bu abonelik zaten onaylı veya iptal edilmiş.']);
+        }
+
+        $validated = $request->validate([
+            'payment_method' => ['required', 'string', 'max:50', Rule::in(['havale', 'nakit'])],
+            'reference_code' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $paymentMethod = $validated['payment_method'];
+        $referenceCode = $validated['reference_code'] ?? null;
+
+        if ($paymentMethod === 'nakit' && empty($referenceCode)) {
+            $referenceCode = 'NKT-' . now()->format('Ymd-His') . '-' . strtoupper(Str::random(4));
+        }
+
+        $this->closeActiveSubscription($manager);
+
+        $expiresAt = $subscription->period === 'yearly' ? now()->addYear() : now()->addMonth();
+
+        $subscription->update([
+            'status' => UserSubscription::STATUS_ACTIVE,
+            'is_active' => true,
+            'started_at' => now(),
+            'expires_at' => $expiresAt,
+        ]);
+
+        $subscription->payments()->create([
+            'amount' => $subscription->price,
+            'payment_date' => now(),
+            'payment_method' => $paymentMethod,
+            'reference_code' => $referenceCode,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return back()->with('status', 'Ödeme onaylandı ve abonelik aktif edildi.');
     }
 
     public function updateQuota(Request $request, User $manager)
@@ -147,7 +265,7 @@ class AdminManagerController extends Controller
 
         $subscription = $manager->subscription;
 
-        if (! $subscription || $subscription->price != 0) {
+        if (! $subscription || ! $subscription->is_trial) {
             return back()->withErrors(['trial' => 'Bu kullanıcının aktif bir deneme aboneliği yok.']);
         }
 
@@ -168,5 +286,61 @@ class AdminManagerController extends Controller
         ]);
 
         return back()->with('status', 'Deneme süresi ' . $newExpiry->format('d.m.Y') . ' tarihine uzatıldı.');
+    }
+
+    public function reactivateSubscription(Request $request, User $manager, UserSubscription $subscription)
+    {
+        if ($subscription->user_id !== $manager->id) {
+            return back()->withErrors(['subscription' => 'Abonelik bu kullanıcıya ait değil.']);
+        }
+
+        if ($subscription->is_active) {
+            return back()->withErrors(['subscription' => 'Abonelik zaten aktif.']);
+        }
+
+        if ($subscription->isCancelled()) {
+            return back()->withErrors(['subscription' => 'İptal edilen abonelik geri yüklenemez.']);
+        }
+
+        $this->closeActiveSubscription($manager);
+
+        $subscription->update([
+            'is_active' => true,
+            'status' => UserSubscription::STATUS_ACTIVE,
+            'ended_at' => null,
+        ]);
+
+        return back()->with('status', 'Abonelik geri yüklendi.');
+    }
+
+    public function cancelSubscription(Request $request, User $manager)
+    {
+        $validated = $request->validate([
+            'cancellation_notes' => ['nullable', 'string'],
+        ]);
+
+        $subscription = $manager->subscription;
+
+        if (! $subscription) {
+            return back()->withErrors(['subscription' => 'Aktif abonelik bulunamadı.']);
+        }
+
+        $subscription->update([
+            'is_active' => false,
+            'status' => UserSubscription::STATUS_CANCELLED,
+            'ended_at' => now(),
+            'notes' => $validated['cancellation_notes'] ?? null,
+        ]);
+
+        return back()->with('status', 'Abonelik iptal edildi.');
+    }
+
+    private function closeActiveSubscription(User $manager): void
+    {
+        $manager->subscription?->update([
+            'is_active' => false,
+            'status' => UserSubscription::STATUS_CANCELLED,
+            'ended_at' => now(),
+        ]);
     }
 }

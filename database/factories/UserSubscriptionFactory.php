@@ -27,6 +27,7 @@ class UserSubscriptionFactory extends Factory
             'started_at' => now(),
             'expires_at' => $period === 'yearly' ? now()->addYear() : now()->addMonth(),
             'is_active' => true,
+            'status' => UserSubscription::STATUS_ACTIVE,
         ];
     }
 }
