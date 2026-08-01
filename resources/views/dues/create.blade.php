@@ -134,7 +134,7 @@
                 if (period && typeName) {
                     const [year, month] = period.split('-');
                     const suffix = topicName ? ` / ${topicName}` : '';
-                    descriptionInput.value = `${months[month] || month} ${year} - ${typeName}${suffix}`;
+                    descriptionInput.value = `${year} ${months[month] || month} - ${typeName}${suffix}`;
                 }
             };
 

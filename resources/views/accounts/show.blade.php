@@ -1100,7 +1100,7 @@
             if (!dateString) return '';
             const [year, month] = dateString.split('-');
             if (!year || !month) return '';
-            return `${bulkMonthNames[parseInt(month, 10) - 1]} ${year} Toplu Borç Tahsilatı`;
+            return `${year} ${bulkMonthNames[parseInt(month, 10) - 1]} Toplu Borç Tahsilatı`;
         };
 
         const isAutoBulkDescription = (current, dateString) => {
@@ -1553,7 +1553,7 @@
             if (!dateString) return '';
             const [year, month] = dateString.split('-');
             if (!year || !month) return '';
-            return `${expenseMonthNames[parseInt(month, 10) - 1]} ${year} Toplu Ödeme`;
+            return `${year} ${expenseMonthNames[parseInt(month, 10) - 1]} Toplu Ödeme`;
         }
 
         function isAutoExpenseDescription(current, description) {

@@ -176,7 +176,7 @@
                 if (!dateString) return '';
                 const [year, month] = dateString.split('-');
                 if (!year || !month) return '';
-                return `${monthNames[parseInt(month, 10) - 1]} ${year} Toplu Borç Tahsilatı`;
+                return `${year} ${monthNames[parseInt(month, 10) - 1]} Toplu Borç Tahsilatı`;
             };
 
             const isAutoDescription = (current, dateString) => {

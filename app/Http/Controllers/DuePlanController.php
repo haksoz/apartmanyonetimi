@@ -270,7 +270,7 @@ class DuePlanController extends Controller
         $dueDate = $periodDate->copy()->setDay(min($duePlan->due_day, $periodDate->daysInMonth));
         $monthlyAmount = $duePlan->monthly_amount_resolved;
         $monthName = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'][(int) $periodDate->format('n')];
-        $batchDescription = $customDescription ?: "{$monthName} {$periodDate->year} - Aidat";
+        $batchDescription = $customDescription ?: "{$periodDate->year} {$monthName} - Aidat";
         $count = count($unitAccounts);
         $allocated = 0;
         $snapshot = [];

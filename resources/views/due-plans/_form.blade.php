@@ -143,7 +143,7 @@
         <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 mb-1">Oluşacak Aidat Açıklaması</p>
         <p class="text-sm text-emerald-900">
             Her ay aidat oluşturulduğunda açıklama şu şekilde otomatik yazılır:
-            <span class="font-medium">"Temmuz 2026 - Aidat"</span>
+            <span class="font-medium">"2026 Temmuz - Aidat"</span>
         </p>
         <p class="mt-1 text-xs text-emerald-700">Ay ve yıl, oluşturulan döneme göre değişir.</p>
     </div>
