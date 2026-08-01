@@ -322,6 +322,8 @@ class ExpenseController extends Controller
 
             'expense_date' => ['required', 'date'],
 
+            'due_date' => ['nullable', 'date'],
+
             'period_month' => ['required', 'date_format:Y-m'],
 
             'is_paid' => ['nullable', 'boolean'],
