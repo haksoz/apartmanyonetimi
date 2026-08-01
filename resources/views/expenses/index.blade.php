@@ -43,7 +43,7 @@
                 <input type="hidden" name="sort_direction" value="{{ $sortDirection }}">
             @endif
             <input type="text" name="search" value="{{ $filters['filterSearch'] ?? '' }}"
-                placeholder="Hesap adı veya tutar..."
+                placeholder="Hesap adı, tutar veya açıklama..."
                 class="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
             <button type="submit" class="h-9 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ara</button>
             @if ($filters['filterSearch'] ?? '')

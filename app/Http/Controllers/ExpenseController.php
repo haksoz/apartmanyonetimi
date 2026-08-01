@@ -104,7 +104,9 @@ class ExpenseController extends Controller
 
                 $sub->whereHas('account', fn ($a) => $a->where('name', 'like', '%' . $filterSearch . '%'))
 
-                    ->orWhere('amount', 'like', '%' . $filterSearch . '%');
+                    ->orWhere('amount', 'like', '%' . $filterSearch . '%')
+
+                    ->orWhere('description', 'like', '%' . $filterSearch . '%');
 
             }))
 
