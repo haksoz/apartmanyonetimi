@@ -129,4 +129,85 @@
             <button type="submit" class="w-full md:w-auto rounded-xl bg-slate-950 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800">Güncelle</button>
         </div>
     </form>
+
+    <script>
+        (() => {
+            const expenseDateInput = document.getElementById('expense_date');
+            const dueDateInput = document.getElementById('due_date');
+            const periodInput = document.getElementById('period_month');
+            const categorySelect = document.getElementById('category_id');
+            const descriptionInput = document.getElementById('description');
+            let isDueDateManuallySet = !!dueDateInput?.value;
+
+            const months = {
+                '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+                '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+                '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+            };
+
+            const syncPeriodFromDate = () => {
+                const dateVal = expenseDateInput?.value;
+                if (dateVal) {
+                    periodInput.value = dateVal.substring(0, 7);
+                }
+            };
+
+            const syncPeriodFromDueDate = () => {
+                const dateVal = dueDateInput?.value;
+                if (dateVal && isDueDateManuallySet) {
+                    periodInput.value = dateVal.substring(0, 7);
+                }
+            };
+
+            const syncDueDate = () => {
+                const dateVal = expenseDateInput?.value;
+                if (dateVal && !isDueDateManuallySet) {
+                    const dueDate = new Date(dateVal);
+                    dueDate.setDate(dueDate.getDate() + 15);
+                    const year = dueDate.getFullYear();
+                    const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(dueDate.getDate()).padStart(2, '0');
+                    dueDateInput.value = `${year}-${month}-${day}`;
+                }
+            };
+
+            const updateDescription = () => {
+                if (descriptionInput.value && descriptionInput.dataset.userEdited) return;
+                const period = periodInput.value;
+                const categoryOption = categorySelect.options[categorySelect.selectedIndex];
+                const categoryName = categoryOption ? categoryOption.text : '';
+
+                if (period && categoryName) {
+                    const [year, month] = period.split('-');
+                    const monthName = months[month] || month;
+                    descriptionInput.value = `${year} ${monthName} - ${categoryName}`;
+                }
+            };
+
+            expenseDateInput?.addEventListener('change', () => {
+                syncPeriodFromDate();
+                syncDueDate();
+                updateDescription();
+            });
+
+            dueDateInput?.addEventListener('input', () => {
+                isDueDateManuallySet = dueDateInput.value !== '';
+                syncPeriodFromDueDate();
+                updateDescription();
+            });
+
+            categorySelect?.addEventListener('change', () => {
+                descriptionInput.dataset.userEdited = '';
+                updateDescription();
+            });
+
+            descriptionInput?.addEventListener('input', () => {
+                descriptionInput.dataset.userEdited = '1';
+            });
+
+            // Init
+            syncPeriodFromDate();
+            syncDueDate();
+        })();
+    </script>
 @endsection

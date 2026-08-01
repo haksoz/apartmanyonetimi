@@ -162,6 +162,13 @@
                 }
             };
 
+            const syncPeriodFromDueDate = () => {
+                const dateVal = dueDateInput?.value;
+                if (dateVal && isDueDateManuallySet) {
+                    periodInput.value = dateVal.substring(0, 7);
+                }
+            };
+
             const syncDueDate = () => {
                 const dateVal = expenseDateInput?.value;
                 if (dateVal && !isDueDateManuallySet) {
@@ -175,6 +182,7 @@
             };
 
             const updateDescription = () => {
+                if (descriptionInput.value && descriptionInput.dataset.userEdited) return;
                 const period = periodInput.value;
                 const categoryOption = categorySelect.options[categorySelect.selectedIndex];
                 const categoryName = categoryOption ? categoryOption.text : '';
@@ -194,9 +202,18 @@
 
             dueDateInput?.addEventListener('input', () => {
                 isDueDateManuallySet = dueDateInput.value !== '';
+                syncPeriodFromDueDate();
+                updateDescription();
             });
 
-            categorySelect?.addEventListener('change', updateDescription);
+            categorySelect?.addEventListener('change', () => {
+                descriptionInput.dataset.userEdited = '';
+                updateDescription();
+            });
+
+            descriptionInput?.addEventListener('input', () => {
+                descriptionInput.dataset.userEdited = '1';
+            });
 
             // Init
             syncPeriodFromDate();
