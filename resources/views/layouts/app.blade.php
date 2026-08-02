@@ -32,6 +32,20 @@
         .sidebar-collapsed main {
             padding-left: 5rem;
         }
+        .sidebar-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .sidebar-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .sidebar-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
         @media (max-width: 1023px) {
             .sidebar-collapsed aside {
                 width: 18rem;
@@ -160,17 +174,27 @@
         @endauth
 
         {{-- Sidebar --}}
-        <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 pt-20 pb-6 px-4 sidebar-transition z-30 lg:z-30 -translate-x-full lg:translate-x-0">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 pt-20 pb-6 px-4 sidebar-transition z-30 lg:z-30 -translate-x-full lg:translate-x-0 flex flex-col overflow-hidden">
             @auth
-                {{-- Mobile Close Button --}}
-                <button type="button" onclick="closeMobileSidebar()" class="lg:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-slate-100 text-slate-500">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+                {{-- Sidebar Header: collapse (desktop) + close (mobile) --}}
+                <div class="flex items-center justify-between mb-4 shrink-0">
+                    <button type="button" onclick="toggleSidebar()" class="hidden lg:flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors" title="Menüyü Daralt/Genişlet">
+                        <svg id="collapse-icon" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5"/>
+                        </svg>
+                        <span class="sidebar-text text-sm">Daralt</span>
+                    </button>
 
-                {{-- Navigation --}}
-                <nav class="space-y-1">
+                    <button type="button" onclick="closeMobileSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-500 ml-auto">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Scrollable Navigation --}}
+                <div class="flex-1 overflow-y-auto sidebar-scroll -mx-4 px-4 min-h-0">
+                    <nav class="space-y-1">
                     @if(!request()->routeIs('admin.*') && !request()->routeIs('subscriber.*'))
                         @if(auth()->user()->isAdmin())
                             <a href="{{ route('admin.dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
@@ -381,6 +405,7 @@
                     @endif
                     @endif
                 </nav>
+                </div>
 
                 {{-- Mobile Logout --}}
                 <form method="POST" action="{{ route('logout') }}" class="mt-6 lg:hidden">
@@ -423,15 +448,6 @@
                     </div>
                 </div>
 
-                {{-- Collapse Toggle (Desktop only) --}}
-                <div class="hidden lg:block mt-auto pt-4 border-t border-slate-200">
-                    <button type="button" onclick="toggleSidebar()" class="w-full flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors" title="Menüyü Daralt/Genişlet">
-                        <svg id="collapse-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5"/>
-                        </svg>
-                        <span class="sidebar-text text-sm">Daralt</span>
-                    </button>
-                </div>
             @endauth
         </aside>
 
