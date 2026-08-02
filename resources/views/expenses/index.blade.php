@@ -74,7 +74,7 @@
     </div>
 
     @php
-        $statusLabels = ['unpaid' => 'Bekliyor', 'paid' => 'Ödendi'];
+        $statusLabels = ['paid' => 'Ödendi', 'overdue' => 'Ödenmedi', 'pending' => 'Bekliyor'];
         $activeCategory = $filters['filterCategory'] ? $categories->get($filters['filterCategory']) : null;
     @endphp
 
@@ -172,8 +172,9 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">Durum</label>
                         <select name="status" class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white sm:py-2 sm:text-sm">
                             <option value="">Tüm Durumlar</option>
-                            <option value="paid"   @selected($filters['filterStatus'] === 'paid')>Ödendi</option>
-                            <option value="unpaid" @selected($filters['filterStatus'] === 'unpaid')>Bekliyor</option>
+                            <option value="paid"    @selected($filters['filterStatus'] === 'paid')>Ödendi</option>
+                            <option value="overdue" @selected($filters['filterStatus'] === 'overdue')>Ödenmedi</option>
+                            <option value="pending" @selected($filters['filterStatus'] === 'pending')>Bekliyor</option>
                         </select>
                     </div>
 
@@ -269,15 +270,15 @@
                             {{ $expense->is_paid ? '—' : number_format($expense->remaining_amount ?? $expense->amount, 2, ',', '.') . ' TL' }}
                         </td>
                         <td class="px-5 py-4">
-                            @if ($expense->is_paid)
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Ödendi
-                                </span>
-                            @else
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Bekliyor
-                                </span>
-                            @endif
+                            @php
+                                $statusColor = $expense->payment_status_color;
+                                $statusColorBg = $statusColor === 'emerald' ? 'bg-emerald-50' : ($statusColor === 'red' ? 'bg-red-50' : 'bg-amber-50');
+                                $statusColorText = $statusColor === 'emerald' ? 'text-emerald-700' : ($statusColor === 'red' ? 'text-red-700' : 'text-amber-700');
+                                $statusColorDot = $statusColor === 'emerald' ? 'bg-emerald-500' : ($statusColor === 'red' ? 'bg-red-500' : 'bg-amber-500');
+                            @endphp
+                            <span class="inline-flex items-center gap-1.5 rounded-full {{ $statusColorBg }} px-2.5 py-1 text-xs font-semibold {{ $statusColorText }}">
+                                <span class="h-1.5 w-1.5 rounded-full {{ $statusColorDot }}"></span>{{ $expense->payment_status_label }}
+                            </span>
                         </td>
                         <td class="px-5 py-4 text-right whitespace-nowrap" onclick="event.stopPropagation()">
                             <div class="flex items-center justify-end gap-2">
@@ -317,17 +318,16 @@
                         @endif
                     </div>
                     <div class="mt-1.5 flex flex-wrap items-center gap-1">
-                        @if ($expense->is_paid)
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
-                                Ödendi
-                            </span>
-                        @else
-                            <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
-                                <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
-                                Bekliyor
-                            </span>
-                        @endif
+                        @php
+                            $statusColor = $expense->payment_status_color;
+                            $statusColorBg = $statusColor === 'emerald' ? 'bg-emerald-50' : ($statusColor === 'red' ? 'bg-red-50' : 'bg-amber-50');
+                            $statusColorText = $statusColor === 'emerald' ? 'text-emerald-700' : ($statusColor === 'red' ? 'text-red-700' : 'text-amber-700');
+                            $statusColorDot = $statusColor === 'emerald' ? 'bg-emerald-600' : ($statusColor === 'red' ? 'bg-red-600' : 'bg-amber-600');
+                        @endphp
+                        <span class="inline-flex items-center gap-1.5 rounded-md {{ $statusColorBg }} px-2 py-1 text-xs font-semibold {{ $statusColorText }}">
+                            <span class="h-1.5 w-1.5 rounded-full {{ $statusColorDot }}"></span>
+                            {{ $expense->payment_status_label }}
+                        </span>
                         @if ($expense->is_imported)
                             <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
                         @endif

@@ -167,8 +167,17 @@ class ReportController extends Controller
         $rows = $months->map(function ($month) use ($payments, $expenses) {
             $income  = (float) ($payments[$month] ?? 0);
             $expense = (float) ($expenses[$month] ?? 0);
+            
+            $carbonDate = Carbon::createFromFormat('Y-m', $month);
+            $turkishMonths = [
+                'January' => 'Ocak', 'February' => 'Şubat', 'March' => 'Mart', 'April' => 'Nisan',
+                'May' => 'Mayıs', 'June' => 'Haziran', 'July' => 'Temmuz', 'August' => 'Ağustos',
+                'September' => 'Eylül', 'October' => 'Ekim', 'November' => 'Kasım', 'December' => 'Aralık'
+            ];
+            $monthName = $turkishMonths[$carbonDate->format('F')] ?? $carbonDate->format('F');
+            
             return [
-                'month'   => Carbon::createFromFormat('Y-m', $month)->translatedFormat('F Y'),
+                'month'   => $monthName . ' ' . $carbonDate->format('Y'),
                 'income'  => $income,
                 'expense' => $expense,
                 'net'     => $income - $expense,
@@ -251,7 +260,16 @@ class ReportController extends Controller
         $rows = $months->map(function ($month) use ($payments, $expenses) {
             $income  = (float)($payments[$month] ?? 0);
             $expense = (float)($expenses[$month] ?? 0);
-            return ['month' => Carbon::createFromFormat('Y-m', $month)->translatedFormat('F Y'), 'income' => $income, 'expense' => $expense, 'net' => $income - $expense];
+            
+            $carbonDate = Carbon::createFromFormat('Y-m', $month);
+            $turkishMonths = [
+                'January' => 'Ocak', 'February' => 'Şubat', 'March' => 'Mart', 'April' => 'Nisan',
+                'May' => 'Mayıs', 'June' => 'Haziran', 'July' => 'Temmuz', 'August' => 'Ağustos',
+                'September' => 'Eylül', 'October' => 'Ekim', 'November' => 'Kasım', 'December' => 'Aralık'
+            ];
+            $monthName = $turkishMonths[$carbonDate->format('F')] ?? $carbonDate->format('F');
+            
+            return ['month' => $monthName . ' ' . $carbonDate->format('Y'), 'income' => $income, 'expense' => $expense, 'net' => $income - $expense];
         });
 
         return [

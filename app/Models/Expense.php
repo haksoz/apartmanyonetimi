@@ -76,4 +76,37 @@ class Expense extends Model
     {
         return 'GDR';
     }
+
+    public function getPaymentStatusAttribute(): string
+    {
+        if ($this->is_paid) {
+            return 'paid';
+        }
+        
+        if ($this->due_date && $this->due_date->isPast()) {
+            return 'overdue';
+        }
+        
+        return 'pending';
+    }
+
+    public function getPaymentStatusLabelAttribute(): string
+    {
+        return match($this->payment_status) {
+            'paid' => 'Ödendi',
+            'overdue' => 'Ödenmedi',
+            'pending' => 'Bekliyor',
+            default => 'Bilinmiyor',
+        };
+    }
+
+    public function getPaymentStatusColorAttribute(): string
+    {
+        return match($this->payment_status) {
+            'paid' => 'emerald',
+            'overdue' => 'red',
+            'pending' => 'amber',
+            default => 'slate',
+        };
+    }
 }

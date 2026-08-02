@@ -62,6 +62,9 @@
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-6">
         <div class="px-5 py-4 border-b border-slate-100">
             <h2 class="text-sm font-semibold text-slate-700">Aylık Döküm</h2>
+            <p class="text-xs text-slate-400 mt-1">
+                <strong>Not:</strong> Tahsilat, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır. Tahsis durumuna bakılmaksızın hesaplanır.
+            </p>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">

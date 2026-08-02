@@ -139,6 +139,11 @@
             const descriptionInput = document.getElementById('description');
             let isDueDateManuallySet = !!dueDateInput?.value;
 
+            // Edit sayfasında açıklama önerisini durdur
+            if (descriptionInput) {
+                descriptionInput.dataset.userEdited = '1';
+            }
+
             const months = {
                 '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
                 '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
@@ -197,8 +202,7 @@
             });
 
             categorySelect?.addEventListener('change', () => {
-                descriptionInput.dataset.userEdited = '';
-                updateDescription();
+                // Edit sayfasında kategori değişiminde açıklama önerme
             });
 
             descriptionInput?.addEventListener('input', () => {

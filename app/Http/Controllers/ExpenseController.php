@@ -130,7 +130,11 @@ class ExpenseController extends Controller
 
             ->when($filterStatus === 'paid',    fn ($q) => $q->where('is_paid', true))
 
-            ->when($filterStatus === 'unpaid',  fn ($q) => $q->where('is_paid', false))
+            ->when($filterStatus === 'overdue', fn ($q) => $q->where('is_paid', false)->where('due_date', '<', now()))
+
+            ->when($filterStatus === 'pending', fn ($q) => $q->where('is_paid', false)->where(function ($q) {
+                $q->whereNull('due_date')->orWhere('due_date', '>=', now());
+            }))
 
             ->when($filterCategory, fn ($q) => $q->where('category_id', $filterCategory))
 

@@ -109,7 +109,7 @@ class DashboardController extends Controller
 
         // Gider ödeme durumu (tüm zamanlar)
         $expensePaid   = (float) Expense::where('apartment_id', $id)->where('is_paid', true)->sum('amount');
-        $expenseUnpaid = (float) Expense::where('apartment_id', $id)->where('is_paid', false)->sum('remaining_amount');
+        $expenseUnpaid = (float) Expense::where('apartment_id', $id)->where('is_paid', false)->sum('amount');
 
         // Kasa
         $cashIncome  = (float) CashTransaction::where('apartment_id', $id)->where('type', 'income')->sum('amount');
