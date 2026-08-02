@@ -214,6 +214,8 @@ class ExpenseController extends Controller
 
             ->where('is_hidden', false)
 
+            ->where('is_active', true)
+
             ->orderBy('type')
 
             ->orderBy('name')

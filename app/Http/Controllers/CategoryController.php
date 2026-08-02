@@ -19,6 +19,7 @@ class CategoryController extends Controller
 
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
+            ->orderBy('is_system', 'desc')
             ->orderBy('type')
             ->orderBy('name')
             ->get();
