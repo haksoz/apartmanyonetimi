@@ -180,9 +180,9 @@
                 <div class="flex items-center justify-end mb-4 shrink-0">
                     <button type="button" onclick="toggleSidebar()" class="hidden lg:flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors" title="Menüyü Daralt/Genişlet">
                         <svg id="collapse-icon" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.75 4.5L11.25 12l7.5 7.5m-13.5-15l7.5 7.5-7.5 7.5"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 4.5l-7.5 7.5 7.5 7.5m6-15l-7.5 7.5 7.5 7.5"/>
                         </svg>
-                        <span class="sidebar-text text-sm">Daralt</span>
+                        <span class="sidebar-text text-base font-medium">Daralt</span>
                     </button>
 
                     <button type="button" onclick="closeMobileSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-500">
@@ -542,9 +542,9 @@
                 const icon = document.getElementById('collapse-icon');
                 if (icon) {
                     if (isCollapsed) {
-                        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5"/>';
+                        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.75 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5"/>';
                     } else {
-                        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.75 4.5L11.25 12l7.5 7.5m-13.5-15l7.5 7.5-7.5 7.5"/>';
+                        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 4.5l-7.5 7.5 7.5 7.5m6-15l-7.5 7.5 7.5 7.5"/>';
                     }
                 }
             }
@@ -601,7 +601,7 @@
                 const isCollapsed = document.documentElement.classList.contains('sidebar-collapsed');
                 const icon = document.getElementById('collapse-icon');
                 if (icon && isCollapsed) {
-                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5"/>';
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.75 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5"/>';
                 }
             });
         </script>
