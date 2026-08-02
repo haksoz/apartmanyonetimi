@@ -177,15 +177,15 @@
         <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 pt-20 pb-6 px-4 sidebar-transition z-30 lg:z-30 -translate-x-full lg:translate-x-0 flex flex-col overflow-hidden">
             @auth
                 {{-- Sidebar Header: collapse (desktop) + close (mobile) --}}
-                <div class="flex items-center justify-between mb-4 shrink-0">
+                <div class="flex items-center justify-end mb-4 shrink-0">
                     <button type="button" onclick="toggleSidebar()" class="hidden lg:flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors" title="Menüyü Daralt/Genişlet">
                         <svg id="collapse-icon" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.75 4.5L11.25 12l7.5 7.5m-13.5-15l7.5 7.5-7.5 7.5"/>
                         </svg>
                         <span class="sidebar-text text-sm">Daralt</span>
                     </button>
 
-                    <button type="button" onclick="closeMobileSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-500 ml-auto">
+                    <button type="button" onclick="closeMobileSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-500">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -542,9 +542,9 @@
                 const icon = document.getElementById('collapse-icon');
                 if (icon) {
                     if (isCollapsed) {
-                        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>';
-                    } else {
                         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5"/>';
+                    } else {
+                        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.75 4.5L11.25 12l7.5 7.5m-13.5-15l7.5 7.5-7.5 7.5"/>';
                     }
                 }
             }
@@ -601,7 +601,7 @@
                 const isCollapsed = document.documentElement.classList.contains('sidebar-collapsed');
                 const icon = document.getElementById('collapse-icon');
                 if (icon && isCollapsed) {
-                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>';
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5"/>';
                 }
             });
         </script>
