@@ -37,8 +37,19 @@
                 @foreach ($managers as $manager)
                     <tr class="hover:bg-slate-50">
                         <td class="px-4 py-3">
-                            <div class="font-medium text-slate-900">{{ $manager->name }}</div>
-                            <div class="text-xs text-slate-500">{{ $manager->email }}</div>
+                            <div class="flex items-center gap-2">
+                                <div>
+                                    <div class="font-medium text-slate-900">{{ $manager->name }}</div>
+                                    <div class="text-xs text-slate-500">{{ $manager->email }}</div>
+                                </div>
+                                @if ($manager->pending_orders_count > 0)
+                                    <span title="Bekleyen sipariş var" class="text-amber-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </span>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-slate-700">
                             <div>{{ $manager->subscription?->package?->name ?? 'Paket yok' }}</div>

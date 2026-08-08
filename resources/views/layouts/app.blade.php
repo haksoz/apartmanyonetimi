@@ -248,6 +248,12 @@
                                 </svg>
                                 <span class="sidebar-text">Paketler</span>
                             </a>
+                            <a href="{{ route('admin.bank-accounts.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.bank-accounts.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.07 0-4.166.173-6.25.582V21M3 21h18M12 6.75h.008v.008H12V6.75z"/>
+                                </svg>
+                                <span class="sidebar-text">Banka Bilgileri</span>
+                            </a>
 
                             <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Sistem</div>
                             <a href="{{ route('admin.settings.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.settings.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
@@ -274,6 +280,13 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/>
                             </svg>
                             <span class="sidebar-text">Apartmanlarım</span>
+                        </a>
+                        <a href="{{ route('subscriber.subscriptions.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('subscriber.subscriptions.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.207.03.411.049.62.049a3.79 3.79 0 003.629-2.95 60.104 60.104 0 003.139-11.15 3.79 3.79 0 00-3.629-2.95 60.07 60.07 0 01-15.797 2.101 3.79 3.79 0 00-3.629 2.95A60.104 60.104 0 002.25 18.75z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 9.75a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            <span class="sidebar-text">Siparişlerim</span>
                         </a>
                     @endif
 

@@ -29,6 +29,7 @@ class AdminManagerController extends Controller
                 });
             })
             ->with('subscription.package')
+            ->withCount(['subscriptions as pending_orders_count' => fn ($query) => $query->pending()])
             ->latest()
             ->paginate(20);
 
@@ -213,8 +214,19 @@ class AdminManagerController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $paymentMethod = $validated['payment_method'];
-        $referenceCode = $validated['reference_code'] ?? null;
+        $hasReceipt = ! empty($subscription->receipt_reference) || ! empty($subscription->receipt_path);
+
+        if ($hasReceipt) {
+            if ($subscription->payment_method === 'kredi_kartı') {
+                return back()->withErrors(['payment_method' => 'Kredi kartı ödemesi henüz onaylanamaz.']);
+            }
+
+            $paymentMethod = $subscription->payment_method ?? 'havale';
+            $referenceCode = $subscription->receipt_reference ?? $validated['reference_code'] ?? null;
+        } else {
+            $paymentMethod = $validated['payment_method'];
+            $referenceCode = $validated['reference_code'] ?? null;
+        }
 
         if ($paymentMethod === 'nakit' && empty($referenceCode)) {
             $referenceCode = 'NKT-' . now()->format('Ymd-His') . '-' . strtoupper(Str::random(4));

@@ -219,6 +219,62 @@ class ManagerSubscriptionOrderTest extends TestCase
         $this->assertEquals('HVL-2026-001', $payment->reference_code);
     }
 
+    public function test_approval_uses_existing_receipt_reference_when_not_provided(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $manager = User::factory()->withSubscription()->create();
+        $package = Package::factory()->create(['monthly_price' => 150]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.managers.subscription.order', $manager), [
+                'order' => [
+                    'package_id' => $package->id,
+                    'period' => 'monthly',
+                    'price' => 150,
+                ],
+                'is_paid' => '0',
+            ]);
+
+        $pending = $manager->fresh()->subscriptions()->pending()->first();
+        $pending->update(['receipt_reference' => 'USR-DEKONT-123']);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.managers.subscription.approve', [$manager, $pending]), [
+                'payment_method' => 'havale',
+            ]);
+
+        $payment = $pending->fresh()->payments()->first();
+        $this->assertNotNull($payment);
+        $this->assertEquals('havale', $payment->payment_method);
+        $this->assertEquals('USR-DEKONT-123', $payment->reference_code);
+    }
+
+    public function test_show_page_displays_approval_icon_when_receipt_submitted(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $manager = User::factory()->withSubscription()->create();
+        $package = Package::factory()->create(['monthly_price' => 150]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.managers.subscription.order', $manager), [
+                'order' => [
+                    'package_id' => $package->id,
+                    'period' => 'monthly',
+                    'price' => 150,
+                ],
+                'is_paid' => '0',
+            ]);
+
+        $pending = $manager->fresh()->subscriptions()->pending()->first();
+        $pending->update(['receipt_reference' => 'DEKONT-ABC']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.managers.show', $manager))
+            ->assertOk()
+            ->assertSeeText('Onay Bekliyor')
+            ->assertSeeText('DEKONT-ABC');
+    }
+
     public function test_approved_order_inherits_package_features(): void
     {
         $admin = User::factory()->admin()->create();
@@ -297,5 +353,27 @@ class ManagerSubscriptionOrderTest extends TestCase
         $this->assertEquals(UserSubscription::STATUS_CANCELLED, $pending->status);
         $this->assertNotNull($pending->ended_at);
         $this->assertEquals('Kart hatası nedeniyle reddedildi.', $pending->notes);
+    }
+
+    public function test_admin_index_shows_pending_order_icon(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $manager = User::factory()->withSubscription()->create();
+        $package = Package::factory()->create(['monthly_price' => 150]);
+
+        UserSubscription::factory()->create([
+            'user_id' => $manager->id,
+            'package_id' => $package->id,
+            'period' => 'monthly',
+            'price' => 150,
+            'status' => UserSubscription::STATUS_PENDING,
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.managers.index'))
+            ->assertOk()
+            ->assertSee($manager->name)
+            ->assertSee('Bekleyen sipariş var');
     }
 }

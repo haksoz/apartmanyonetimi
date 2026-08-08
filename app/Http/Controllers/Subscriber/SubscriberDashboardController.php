@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Package;
 use App\Models\Payment;
 use App\Models\SystemSetting;
+use App\Models\UserSubscription;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 
@@ -23,7 +24,6 @@ class SubscriberDashboardController extends Controller
         $apartmentIds = $apartments->pluck('id')->toArray();
 
         $recentPayments = collect();
-        $upcomingPayment = null;
 
         if ($apartmentIds) {
             $recentPayments = Payment::query()
@@ -34,8 +34,23 @@ class SubscriberDashboardController extends Controller
                 ->get();
         }
 
+        $upcomingPayment = null;
+        $upcomingPaymentState = null;
+
         if ($subscription && ! $subscription->isExpired()) {
-            $upcomingPayment = $subscription;
+            if ($subscription->expires_at !== null && $subscription->expires_at->lessThanOrEqualTo(now()->addDays(3))) {
+                $upcomingPayment = $subscription;
+                $upcomingPaymentState = 'due_soon';
+            }
+        } elseif ($subscription && $subscription->isExpired()) {
+            $lastFinished = $user->subscriptions()
+                ->where('status', UserSubscription::STATUS_CANCELLED)
+                ->whereNotNull('ended_at')
+                ->orderByDesc('ended_at')
+                ->first();
+
+            $upcomingPayment = $lastFinished ?? $subscription;
+            $upcomingPaymentState = 'expired';
         }
 
         // Check if user is on trial
@@ -54,6 +69,7 @@ class SubscriberDashboardController extends Controller
             'currentApartmentModel',
             'recentPayments',
             'upcomingPayment',
+            'upcomingPaymentState',
             'isTrial',
             'fallbackPackage',
             'packages'

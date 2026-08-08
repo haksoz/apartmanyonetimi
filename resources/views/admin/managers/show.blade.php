@@ -457,7 +457,16 @@
                                 </td>
                                 <td class="px-4 py-3">
                                     @if ($subscription->isPending())
-                                        <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">Ödeme Bekliyor</span>
+                                        @if ($subscription->receipt_path || $subscription->receipt_reference)
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800" title="Müşteri dekont/referans gönderdi, onay bekleniyor">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                                </svg>
+                                                Onay Bekliyor
+                                            </span>
+                                        @else
+                                            <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Ödeme Bekliyor</span>
+                                        @endif
                                     @elseif ($subscription->is_active)
                                         <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Aktif</span>
                                     @elseif ($subscription->isCancelled())
@@ -497,24 +506,53 @@
                             @csrf
                             @method('PATCH')
 
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700">Ödeme Yöntemi</label>
-                                <div class="mt-2 flex gap-4">
-                                    <label class="flex items-center gap-2">
-                                        <input type="radio" name="payment_method" value="havale" checked class="border-slate-300 text-emerald-600 focus:ring-emerald-500" data-modal="{{ $subscription->id }}">
-                                        <span class="text-sm text-slate-700">Havale</span>
-                                    </label>
-                                    <label class="flex items-center gap-2">
-                                        <input type="radio" name="payment_method" value="nakit" class="border-slate-300 text-emerald-600 focus:ring-emerald-500" data-modal="{{ $subscription->id }}">
-                                        <span class="text-sm text-slate-700">Nakit</span>
-                                    </label>
+                            @if ($subscription->receipt_reference || $subscription->receipt_path)
+                                <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                                    <p class="font-semibold">Müşteri ödeme bilgisi gönderdi</p>
+                                    <p class="mt-1">Ödeme yöntemi: <span class="font-medium text-slate-900">{{ $subscription->payment_method === 'kredi_kartı' ? 'Kredi Kartı' : 'Havale / EFT' }}</span></p>
+                                    @if ($subscription->receipt_reference)
+                                        <p class="mt-1 font-mono text-slate-900">{{ $subscription->receipt_reference }}</p>
+                                    @endif
+                                    @if ($subscription->receipt_path)
+                                        <a href="{{ Storage::url($subscription->receipt_path) }}" target="_blank" class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a1.125 1.125 0 011.125 1.125V17.25z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 7.5h-15a1.5 1.5 0 00-1.5 1.5v12a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5v-12a1.5 1.5 0 00-1.5-1.5z"/>
+                                            </svg>
+                                            Dekontu Görüntüle
+                                        </a>
+                                    @endif
+                                    <p class="mt-2 text-xs">Bilgileri onaylayıp aboneliği aktif edebilir veya vazgeçebilirsiniz.</p>
                                 </div>
-                            </div>
 
-                            <div>
-                                <label for="ref-code-{{ $subscription->id }}" class="ref-label block text-sm font-medium text-slate-700">Dekont / Referans Numarası</label>
-                                <input type="text" name="reference_code" id="ref-code-{{ $subscription->id }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                            </div>
+                                @if ($subscription->payment_method === 'kredi_kartı')
+                                    <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                                        Kredi kartı ödeme altyapısı henüz aktif değil. Bu sipariş şu an onaylanamaz.
+                                    </div>
+                                @else
+                                    <input type="hidden" name="payment_method" value="{{ $subscription->payment_method }}">
+                                    <input type="hidden" name="reference_code" value="{{ $subscription->receipt_reference }}">
+                                @endif
+                            @else
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Ödeme Yöntemi</label>
+                                    <div class="mt-2 flex gap-4">
+                                        <label class="flex items-center gap-2">
+                                            <input type="radio" name="payment_method" value="havale" checked class="border-slate-300 text-emerald-600 focus:ring-emerald-500" data-modal="{{ $subscription->id }}">
+                                            <span class="text-sm text-slate-700">Havale</span>
+                                        </label>
+                                        <label class="flex items-center gap-2">
+                                            <input type="radio" name="payment_method" value="nakit" class="border-slate-300 text-emerald-600 focus:ring-emerald-500" data-modal="{{ $subscription->id }}">
+                                            <span class="text-sm text-slate-700">Nakit</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="ref-code-{{ $subscription->id }}" class="ref-label block text-sm font-medium text-slate-700">Dekont / Referans Numarası</label>
+                                    <input type="text" name="reference_code" id="ref-code-{{ $subscription->id }}" value="{{ old('reference_code', $subscription->receipt_reference) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
+                                </div>
+                            @endif
 
                             <div>
                                 <label class="block text-sm font-medium text-slate-700">Notlar</label>
@@ -523,7 +561,9 @@
 
                             <div class="flex justify-end gap-2 pt-2">
                                 <button type="button" class="close-approve-modal rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Vazgeç</button>
-                                <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Onayla ve Aktif Et</button>
+                                @if ($subscription->payment_method !== 'kredi_kartı')
+                                    <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Onayla ve Aktif Et</button>
+                                @endif
                             </div>
                         </form>
                     </div>
@@ -555,77 +595,148 @@
 
         @foreach ($manager->subscriptions as $subscription)
             <div id="detail-modal-{{ $subscription->id }}" class="detail-modal fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-                <div class="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
-                    <h3 class="text-lg font-semibold text-slate-900">Sipariş Detayı</h3>
-                    <p class="mt-1 text-sm text-slate-600">{{ $subscription->package->name }} - {{ number_format($subscription->price, 2) }} ₺</p>
-
-                    <div class="mt-4 grid grid-cols-2 gap-4 text-sm">
+                <div class="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+                    <div class="mb-4 flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
                         <div>
-                            <span class="text-slate-500">Paket</span>
-                            <p class="font-medium text-slate-900">{{ $subscription->package->name }}</p>
+                            <h3 class="text-lg font-semibold text-slate-900">Sipariş Detayı</h3>
+                            <p class="mt-1 text-sm text-slate-500">Sipariş No: <span class="font-mono font-medium text-slate-700">{{ $subscription->order_number ?? '-' }}</span></p>
                         </div>
                         <div>
-                            <span class="text-slate-500">Dönem</span>
-                            <p class="font-medium text-slate-900 capitalize">{{ $subscription->period }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500">Fiyat</span>
-                            <p class="font-medium text-slate-900">{{ number_format($subscription->price, 2) }} ₺</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500">Ödenen Toplam</span>
-                            <p class="font-medium text-slate-900">{{ number_format($subscription->totalPaid(), 2) }} ₺</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500">Başlangıç</span>
-                            <p class="font-medium text-slate-900">{{ $subscription->started_at?->format('d.m.Y') ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500">Bitiş</span>
-                            <p class="font-medium text-slate-900">{{ $subscription->expires_at?->format('d.m.Y') ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500">İptal/Bitiş Tarihi</span>
-                            <p class="font-medium text-slate-900">{{ $subscription->ended_at?->format('d.m.Y') ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500">Tür</span>
-                            <p class="font-medium text-slate-900">{{ $subscription->is_trial ? 'Deneme' : 'Ücretli' }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500">Durum</span>
-                            <p class="font-medium text-slate-900">
-                                @if ($subscription->isPending())
-                                    Ödeme Bekliyor
-                                @elseif ($subscription->is_active)
-                                    Aktif
-                                @elseif ($subscription->isCancelled())
-                                    İptal
+                            @if ($subscription->isPending())
+                                @if ($subscription->receipt_path || $subscription->receipt_reference)
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                        </svg>
+                                        Onay Bekliyor
+                                    </span>
                                 @else
-                                    Pasif
+                                    <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Ödeme Bekliyor</span>
                                 @endif
-                            </p>
-                        </div>
-                        <div class="col-span-2">
-                            <span class="text-slate-500">Notlar</span>
-                            <p class="font-medium text-slate-900">{{ $subscription->notes ?? '-' }}</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-4">
-                        <h4 class="text-sm font-semibold text-slate-700">Özellikler</h4>
-                        <ul class="mt-1 space-y-1 text-sm text-slate-700">
-                            <li>Otomatik aidat planlama: {{ $subscription->feature_auto_dues ? 'Evet' : 'Hayır' }}</li>
-                            <li>Kullanıcı portalı: {{ $subscription->feature_user_portal ? 'Evet' : 'Hayır' }}</li>
-                            <li>Hesap ekstresi ve raporlar: {{ $subscription->feature_reports ? 'Evet' : 'Hayır' }}</li>
-                            <li>Çoklu apartman yönetimi: {{ $subscription->feature_multi_apartment ? 'Evet' : 'Hayır' }}</li>
-                            @if ($subscription->feature_multi_apartment && $subscription->multi_apartment_limit_override)
-                                <li>Çoklu apartman limiti: {{ $subscription->multi_apartment_limit_override }}</li>
+                            @elseif ($subscription->is_active)
+                                <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Aktif</span>
+                            @elseif ($subscription->isCancelled())
+                                <span class="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">İptal</span>
+                            @else
+                                <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Pasif</span>
                             @endif
-                        </ul>
+                        </div>
                     </div>
 
-                    <div class="mt-6 flex justify-end">
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Paket & Ödeme</h4>
+                            <div class="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                                <div>
+                                    <span class="text-slate-500">Paket</span>
+                                    <p class="font-medium text-slate-900">{{ $subscription->package->name }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500">Dönem</span>
+                                    <p class="font-medium text-slate-900 capitalize">{{ $subscription->period }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500">Fiyat</span>
+                                    <p class="font-medium text-slate-900">{{ number_format($subscription->price, 2) }} ₺</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500">Ödenen Toplam</span>
+                                    <p class="font-medium text-slate-900">{{ number_format($subscription->totalPaid(), 2) }} ₺</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500">Ödeme Yöntemi</span>
+                                    <p class="font-medium text-slate-900">{{ $subscription->payment_method === 'kredi_kartı' ? 'Kredi Kartı' : 'Havale / EFT' }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500">Tür</span>
+                                    <p class="font-medium text-slate-900">{{ $subscription->is_trial ? 'Deneme' : 'Ücretli' }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Tarihler</h4>
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <span class="text-slate-500">Başlangıç</span>
+                                    <p class="font-medium text-slate-900">{{ $subscription->started_at?->format('d.m.Y') ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500">Bitiş</span>
+                                    <p class="font-medium text-slate-900">{{ $subscription->expires_at?->format('d.m.Y') ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500">İptal/Bitiş</span>
+                                    <p class="font-medium text-slate-900">{{ $subscription->ended_at?->format('d.m.Y') ?? '-' }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-xl border border-slate-200 bg-white p-4">
+                            <h4 class="mb-2 text-sm font-semibold text-slate-700">Dekont / Referans</h4>
+                            @if ($subscription->receipt_reference)
+                                <p class="font-mono text-sm font-medium text-slate-900">{{ $subscription->receipt_reference }}</p>
+                            @else
+                                <p class="text-sm text-slate-500">Henüz referans girilmemiş.</p>
+                            @endif
+                            @if ($subscription->receipt_path)
+                                <a href="{{ Storage::url($subscription->receipt_path) }}" target="_blank" class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-emerald-600 hover:text-emerald-700">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a1.125 1.125 0 011.125 1.125V17.25z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 7.5h-15a1.5 1.5 0 00-1.5 1.5v12a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5v-12a1.5 1.5 0 00-1.5-1.5z"/>
+                                    </svg>
+                                    Dekontu Görüntüle
+                                </a>
+                            @else
+                                <p class="mt-1 text-sm text-slate-500">Henüz dekont yüklenmemiş.</p>
+                            @endif
+                        </div>
+
+                        <div>
+                            <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Özellikler</h4>
+                            <ul class="grid grid-cols-2 gap-2 text-sm text-slate-700">
+                                <li class="flex items-center gap-2">
+                                    <span class="h-2 w-2 rounded-full {{ $subscription->feature_auto_dues ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
+                                    Otomatik aidat planlama
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <span class="h-2 w-2 rounded-full {{ $subscription->feature_user_portal ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
+                                    Kullanıcı portalı
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <span class="h-2 w-2 rounded-full {{ $subscription->feature_reports ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
+                                    Hesap ekstresi ve raporlar
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <span class="h-2 w-2 rounded-full {{ $subscription->feature_multi_apartment ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
+                                    Çoklu apartman yönetimi
+                                </li>
+                                @if ($subscription->feature_multi_apartment && $subscription->multi_apartment_limit_override)
+                                    <li class="col-span-2 flex items-center gap-2">
+                                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                                        Çoklu apartman limiti: {{ $subscription->multi_apartment_limit_override }}
+                                    </li>
+                                @endif
+                            </ul>
+                        </div>
+
+                        @if ($subscription->notes)
+                            <div>
+                                <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Notlar</h4>
+                                <p class="text-sm text-slate-700">{{ $subscription->notes }}</p>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                        @if ($subscription->isPending())
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="open-approve-modal rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" data-modal-target="approve-modal-{{ $subscription->id }}">Onayla</button>
+                                <button type="button" class="open-reject-modal rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" data-modal-target="reject-modal-{{ $subscription->id }}">Reddet</button>
+                            </div>
+                        @else
+                            <div></div>
+                        @endif
                         <button type="button" class="close-detail-modal rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Kapat</button>
                     </div>
                 </div>

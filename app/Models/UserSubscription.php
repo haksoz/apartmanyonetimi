@@ -23,6 +23,7 @@ class UserSubscription extends Model
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $fillable = [
+        'order_number',
         'user_id',
         'package_id',
         'period',
@@ -39,6 +40,9 @@ class UserSubscription extends Model
         'feature_multi_apartment',
         'multi_apartment_limit_override',
         'status',
+        'payment_method',
+        'receipt_path',
+        'receipt_reference',
     ];
 
     protected $casts = [

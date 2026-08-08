@@ -143,36 +143,44 @@
                 </div>
 
                 <div class="mt-4">
-                    <a href="{{ route('landing') }}#pricing" class="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Abonelik Yenile / Yükselt</a>
+                    <a href="{{ route('subscriber.subscriptions.create', ['type' => 'renew']) }}" class="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Abonelik Yenile / Yükselt</a>
                 </div>
             @endif
         </div>
 
         {{-- Yaklaşan Ödeme --}}
+        @if ($upcomingPayment)
         <div class="rounded-xl border border-slate-200 bg-white p-6">
             <div class="flex items-center gap-3">
-                <div class="rounded-lg bg-amber-50 p-3">
-                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="rounded-lg {{ $upcomingPaymentState === 'expired' ? 'bg-red-50' : 'bg-amber-50' }} p-3">
+                    <svg class="w-6 h-6 {{ $upcomingPaymentState === 'expired' ? 'text-red-600' : 'text-amber-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
                 <div>
-                    <div class="text-sm font-medium text-slate-500">Yaklaşan Ödeme</div>
-                    @if ($upcomingPayment)
-                        <div class="text-lg font-semibold text-slate-900">{{ number_format($upcomingPayment->price, 2) }} ₺</div>
-                        <div class="text-sm text-slate-600">{{ $upcomingPayment->expires_at?->format('d.m.Y') ?? '-' }} tarihinde</div>
-                    @else
-                        <div class="text-lg font-semibold text-slate-900">Yaklaşan ödeme yok</div>
-                    @endif
+                    <div class="text-sm font-medium text-slate-500">
+                        @if ($upcomingPaymentState === 'expired')
+                            Aboneliğiniz Sona Erdi
+                        @else
+                            Yaklaşan Ödeme
+                        @endif
+                    </div>
+                    <div class="text-lg font-semibold text-slate-900">{{ number_format($upcomingPayment->price, 2) }} ₺</div>
+                    <div class="text-sm text-slate-600">
+                        @if ($upcomingPaymentState === 'expired')
+                            Kullanmaya devam etmek için ödeme yapın
+                        @else
+                            {{ $upcomingPayment->expires_at?->format('d.m.Y') ?? '-' }} tarihinde
+                        @endif
+                    </div>
                 </div>
             </div>
 
-            @if ($upcomingPayment)
-                <div class="mt-4">
-                    <a href="{{ route('landing') }}#pricing" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Ödeme yap →</a>
-                </div>
-            @endif
+            <div class="mt-4">
+                <a href="{{ route('subscriber.subscriptions.create', ['type' => 'renew']) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Ödeme yap →</a>
+            </div>
         </div>
+        @endif
 
         {{-- Apartmanlar --}}
         <div class="rounded-xl border border-slate-200 bg-white p-6">
@@ -287,38 +295,33 @@
 
                         <div class="mt-6">
                             @if ($isCurrent)
-                                <div class="w-full rounded-xl border-2 border-emerald-200 bg-emerald-50 py-2.5 text-center text-sm font-semibold text-emerald-700">
-                                    Mevcut Paketiniz
-                                </div>
+                                <a href="{{ route('subscriber.subscriptions.create', ['package_id' => $package->id, 'type' => 'renew']) }}"
+                                   class="block w-full rounded-xl border-2 border-emerald-200 bg-emerald-50 py-2.5 text-center text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors">
+                                    Aynı Paketle Yenile
+                                </a>
                             @else
-                                <button
-                                    type="button"
-                                    onclick="document.getElementById('contact-modal').classList.remove('hidden')"
-                                    class="w-full rounded-xl {{ $isRecommended ? 'bg-slate-900 text-white hover:bg-slate-800' : 'border-2 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50' }} py-2.5 text-sm font-semibold transition-colors">
-                                    {{ $isFallback ? 'Bu Paketi Seç' : ($subscription && !$subscription->isExpired() && !$isTrial ? 'Geç' : 'Bu Paketi Seç') }}
-                                </button>
+                                @php
+                                    $canUpgrade = $subscription && !$subscription->isExpired() && !$isTrial && $package->monthly_price > $subscription->package->monthly_price;
+                                @endphp
+                                @if ($canUpgrade)
+                                    <a href="{{ route('subscriber.subscriptions.create', ['package_id' => $package->id, 'type' => 'upgrade']) }}"
+                                       class="block w-full rounded-xl {{ $isRecommended ? 'bg-slate-900 text-white hover:bg-slate-800' : 'border-2 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50' }} py-2.5 text-center text-sm font-semibold transition-colors">
+                                        Yükselt
+                                    </a>
+                                @elseif (! $subscription || $subscription->isExpired() || $isTrial)
+                                    <a href="{{ route('subscriber.subscriptions.create', ['package_id' => $package->id, 'type' => 'renew']) }}"
+                                       class="block w-full rounded-xl {{ $isRecommended ? 'bg-slate-900 text-white hover:bg-slate-800' : 'border-2 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50' }} py-2.5 text-center text-sm font-semibold transition-colors">
+                                        Bu Paketi Seç
+                                    </a>
+                                @else
+                                    <div class="w-full rounded-xl border-2 border-slate-100 bg-slate-50 py-2.5 text-center text-sm font-semibold text-slate-400 cursor-not-allowed">
+                                        Alt Paket
+                                    </div>
+                                @endif
                             @endif
                         </div>
                     </div>
                 @endforeach
-            </div>
-        </div>
-
-        {{-- İletişim Modal (placeholder — ödeme entegrasyonu gelince değişecek) --}}
-        <div id="contact-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="max-w-sm w-full mx-4 rounded-2xl bg-white p-6 shadow-xl">
-                <h3 class="text-lg font-bold text-slate-900">Paket Seçimi</h3>
-                <p class="mt-2 text-sm text-slate-600">
-                    Paket satın alma işlemi için lütfen bizimle iletişime geçin. En kısa sürede size yardımcı olacağız.
-                </p>
-                <div class="mt-5 flex gap-3">
-                    <a href="mailto:destek@kapitalonline.com.tr" class="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-emerald-700">
-                        E-posta Gönder
-                    </a>
-                    <button type="button" onclick="document.getElementById('contact-modal').classList.add('hidden')" class="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                        Kapat
-                    </button>
-                </div>
             </div>
         </div>
     @endif

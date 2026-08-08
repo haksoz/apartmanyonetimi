@@ -9,12 +9,14 @@ use App\Http\Controllers\ApartmentSwitchController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminImpersonateController;
 use App\Http\Controllers\Admin\AdminManagerController;
+use App\Http\Controllers\Admin\AdminBankAccountController;
 use App\Http\Controllers\Admin\AdminPackageController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Subscriber\SubscriberApartmentController;
 use App\Http\Controllers\Subscriber\SubscriberApartmentCreateController;
 use App\Http\Controllers\Subscriber\SubscriberDashboardController;
+use App\Http\Controllers\Subscriber\SubscriberSubscriptionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CashBoxController;
 use App\Http\Controllers\CashController;
@@ -200,6 +202,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('packages', AdminPackageController::class);
     Route::patch('packages/{package}/features', [AdminPackageController::class, 'updateFeatures'])->name('packages.features.update');
 
+    Route::resource('bank-accounts', AdminBankAccountController::class);
+
     Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');
     Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
 
@@ -224,4 +228,13 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
     // Apartment editing for subscribers
     Route::get('apartments/{apartment}/edit', [ApartmentController::class, 'edit'])->name('apartments.edit');
     Route::put('apartments/{apartment}', [ApartmentController::class, 'update'])->name('apartments.update');
+
+    // Subscription renewal / upgrade orders
+    Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
+        Route::get('/', [SubscriberSubscriptionController::class, 'index'])->name('index');
+        Route::get('create', [SubscriberSubscriptionController::class, 'create'])->name('create');
+        Route::post('/', [SubscriberSubscriptionController::class, 'store'])->name('store');
+        Route::get('{subscription}/receipt', [SubscriberSubscriptionController::class, 'receipt'])->name('receipt');
+        Route::post('{subscription}/payment-info', [SubscriberSubscriptionController::class, 'paymentInfo'])->name('payment-info');
+    });
 });

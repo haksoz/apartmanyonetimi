@@ -20,6 +20,7 @@ class UserSubscriptionFactory extends Factory
         $package = Package::factory()->create();
 
         return [
+            'order_number' => 'SIP-' . now()->format('y') . '-' . strtoupper(fake()->bothify('??????')),
             'user_id' => User::factory(),
             'package_id' => $package->id,
             'period' => $period,
