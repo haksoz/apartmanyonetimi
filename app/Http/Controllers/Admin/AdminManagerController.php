@@ -242,6 +242,35 @@ class AdminManagerController extends Controller
         return back()->with('status', 'Ödeme onaylandı ve abonelik aktif edildi.');
     }
 
+    public function rejectSubscriptionOrder(Request $request, User $manager, UserSubscription $subscription)
+    {
+        if ($subscription->user_id !== $manager->id) {
+            return back()->withErrors(['subscription' => 'Abonelik bu kullanıcıya ait değil.']);
+        }
+
+        if (! $subscription->isPending()) {
+            return back()->withErrors(['subscription' => 'Bu abonelik zaten onaylı veya iptal edilmiş.']);
+        }
+
+        $validated = $request->validate([
+            'rejection_notes' => ['nullable', 'string'],
+        ]);
+
+        $notes = $subscription->notes;
+        if (! empty($validated['rejection_notes'])) {
+            $notes = $validated['rejection_notes'];
+        }
+
+        $subscription->update([
+            'status' => UserSubscription::STATUS_CANCELLED,
+            'is_active' => false,
+            'ended_at' => now(),
+            'notes' => $notes,
+        ]);
+
+        return back()->with('status', 'Sipariş reddedildi.');
+    }
+
     public function updateQuota(Request $request, User $manager)
     {
         $validated = $request->validate([

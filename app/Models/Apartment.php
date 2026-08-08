@@ -17,6 +17,8 @@ class Apartment extends Model
         'user_id',
         'name',
         'address',
+        'province',
+        'district',
         'unit_count',
         'manager_unit_id',
         'is_active',

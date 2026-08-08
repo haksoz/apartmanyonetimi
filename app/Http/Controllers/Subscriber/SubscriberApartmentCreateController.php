@@ -32,6 +32,8 @@ class SubscriberApartmentCreateController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string'],
+            'province' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
             'unit_count' => ['required', 'integer', 'min:1', 'max:500'],
             'account_opening_date' => ['required', 'date'],
         ]);
@@ -49,6 +51,8 @@ class SubscriberApartmentCreateController extends Controller
                 'user_id' => $user->id,
                 'name' => $validated['name'],
                 'address' => $validated['address'] ?? null,
+                'province' => $validated['province'] ?? null,
+                'district' => $validated['district'] ?? null,
                 'unit_count' => $validated['unit_count'],
             ]);
 

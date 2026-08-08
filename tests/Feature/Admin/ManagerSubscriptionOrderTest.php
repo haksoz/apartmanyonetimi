@@ -267,4 +267,35 @@ class ManagerSubscriptionOrderTest extends TestCase
             ->assertStatus(200)
             ->assertSee('checked', false);
     }
+
+    public function test_admin_can_reject_pending_order(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $manager = User::factory()->withSubscription()->create();
+        $package = Package::factory()->create(['monthly_price' => 150]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.managers.subscription.order', $manager), [
+                'order' => [
+                    'package_id' => $package->id,
+                    'period' => 'monthly',
+                    'price' => 150,
+                ],
+                'is_paid' => '0',
+            ]);
+
+        $pending = $manager->fresh()->subscriptions()->pending()->first();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.managers.subscription.reject', [$manager, $pending]), [
+                'rejection_notes' => 'Kart hatası nedeniyle reddedildi.',
+            ])
+            ->assertRedirect();
+
+        $pending->refresh();
+        $this->assertFalse($pending->is_active);
+        $this->assertEquals(UserSubscription::STATUS_CANCELLED, $pending->status);
+        $this->assertNotNull($pending->ended_at);
+        $this->assertEquals('Kart hatası nedeniyle reddedildi.', $pending->notes);
+    }
 }

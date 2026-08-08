@@ -20,6 +20,31 @@
                 @error('address') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
             </div>
             <div>
+                @php
+                    $provinces = explode(',', 'Adana,Adıyaman,Afyonkarahisar,Ağrı,Amasya,Ankara,Antalya,Artvin,Aydın,Balıkesir,'
+                        . 'Bilecik,Bingöl,Bitlis,Bolu,Burdur,Bursa,Çanakkale,Çankırı,Çorum,Denizli,'
+                        . 'Diyarbakır,Edirne,Elazığ,Erzincan,Erzurum,Eskişehir,Gaziantep,Giresun,Gümüşhane,Hakkari,'
+                        . 'Hatay,Isparta,Mersin,İstanbul,İzmir,Kars,Kastamonu,Kayseri,Kırklareli,Kırşehir,'
+                        . 'Kocaeli,Konya,Kütahya,Malatya,Manisa,Kahramanmaraş,Mardin,Muğla,Muş,Nevşehir,'
+                        . 'Niğde,Ordu,Rize,Sakarya,Samsun,Siirt,Sinop,Sivas,Tekirdağ,Tokat,'
+                        . 'Trabzon,Tunceli,Şanlıurfa,Uşak,Van,Yozgat,Zonguldak,Aksaray,Bayburt,Karaman,'
+                        . 'Kırıkkale,Batman,Şırnak,Bartın,Ardahan,Iğdır,Yalova,Karabük,Kilis,Osmaniye,Düzce');
+                @endphp
+                <label class="text-sm font-medium text-slate-700">İl</label>
+                <select name="province" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
+                    <option value="" disabled {{ old('province') ? '' : 'selected' }}>İl seçin</option>
+                    @foreach ($provinces as $province)
+                        <option value="{{ $province }}" {{ old('province') == $province ? 'selected' : '' }}>{{ $province }}</option>
+                    @endforeach
+                </select>
+                @error('province') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">İlçe</label>
+                <input name="district" value="{{ old('district') }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
+                @error('district') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+            </div>
+            <div>
                 <label class="text-sm font-medium text-slate-700">Daire Sayısı</label>
                 <input type="number" name="unit_count" value="{{ old('unit_count') }}" min="1" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" required>
                 @error('unit_count') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror

@@ -358,6 +358,64 @@
                         }
                     });
                 });
+
+            document.querySelectorAll('.open-reject-modal').forEach(button => {
+                button.addEventListener('click', function() {
+                    const modal = document.getElementById(this.dataset.modalTarget);
+                    if (modal) {
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.close-reject-modal').forEach(button => {
+                button.addEventListener('click', function() {
+                    const modal = this.closest('.reject-modal');
+                    if (modal) {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.reject-modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.open-detail-modal').forEach(button => {
+                button.addEventListener('click', function() {
+                    const modal = document.getElementById(this.dataset.modalTarget);
+                    if (modal) {
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.close-detail-modal').forEach(button => {
+                button.addEventListener('click', function() {
+                    const modal = this.closest('.detail-modal');
+                    if (modal) {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.detail-modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }
+                });
+            });
             });
         </script>
     </div>
@@ -409,10 +467,12 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-right">
+                                    <button type="button" class="open-detail-modal text-sm font-semibold text-slate-600 hover:text-slate-800" data-modal-target="detail-modal-{{ $subscription->id }}">Detay</button>
                                     @if ($subscription->isPending())
-                                        <button type="button" class="open-approve-modal text-sm font-semibold text-emerald-600 hover:text-emerald-700" data-modal-target="approve-modal-{{ $subscription->id }}">Onayla</button>
+                                        <button type="button" class="open-approve-modal ml-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700" data-modal-target="approve-modal-{{ $subscription->id }}">Onayla</button>
+                                        <button type="button" class="open-reject-modal ml-2 text-sm font-semibold text-red-600 hover:text-red-700" data-modal-target="reject-modal-{{ $subscription->id }}">Reddet</button>
                                     @elseif (! $subscription->is_active && ! $subscription->isCancelled() && ! $subscription->is_trial)
-                                        <form method="POST" action="{{ route('admin.managers.subscription.reactivate', [$manager, $subscription]) }}" class="inline" onsubmit="return confirm('Bu abonelik geri yüklenecek. Emin misiniz?')">
+                                        <form method="POST" action="{{ route('admin.managers.subscription.reactivate', [$manager, $subscription]) }}" class="inline ml-2" onsubmit="return confirm('Bu abonelik geri yüklenecek. Emin misiniz?')">
                                             @csrf
                                             @method('PATCH')
                                             <button type="submit" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Geri Yükle</button>
@@ -468,7 +528,108 @@
                         </form>
                     </div>
                 </div>
+
+                <div id="reject-modal-{{ $subscription->id }}" class="reject-modal fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+                    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+                        <h3 class="text-lg font-semibold text-slate-900">Siparişi Reddet</h3>
+                        <p class="mt-1 text-sm text-slate-600">{{ $subscription->package->name }} - {{ number_format($subscription->price, 2) }} ₺</p>
+
+                        <form method="POST" action="{{ route('admin.managers.subscription.reject', [$manager, $subscription]) }}" class="mt-4 space-y-4">
+                            @csrf
+                            @method('PATCH')
+
+                            <div>
+                                <label for="reject-notes-{{ $subscription->id }}" class="block text-sm font-medium text-slate-700">Reddetme Nedeni (Opsiyonel)</label>
+                                <textarea name="rejection_notes" id="reject-notes-{{ $subscription->id }}" rows="3" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm"></textarea>
+                            </div>
+
+                            <div class="flex justify-end gap-2 pt-2">
+                                <button type="button" class="close-reject-modal rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                                <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Reddet</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             @endif
+        @endforeach
+
+        @foreach ($manager->subscriptions as $subscription)
+            <div id="detail-modal-{{ $subscription->id }}" class="detail-modal fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+                <div class="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
+                    <h3 class="text-lg font-semibold text-slate-900">Sipariş Detayı</h3>
+                    <p class="mt-1 text-sm text-slate-600">{{ $subscription->package->name }} - {{ number_format($subscription->price, 2) }} ₺</p>
+
+                    <div class="mt-4 grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-slate-500">Paket</span>
+                            <p class="font-medium text-slate-900">{{ $subscription->package->name }}</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Dönem</span>
+                            <p class="font-medium text-slate-900 capitalize">{{ $subscription->period }}</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Fiyat</span>
+                            <p class="font-medium text-slate-900">{{ number_format($subscription->price, 2) }} ₺</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Ödenen Toplam</span>
+                            <p class="font-medium text-slate-900">{{ number_format($subscription->totalPaid(), 2) }} ₺</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Başlangıç</span>
+                            <p class="font-medium text-slate-900">{{ $subscription->started_at?->format('d.m.Y') ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Bitiş</span>
+                            <p class="font-medium text-slate-900">{{ $subscription->expires_at?->format('d.m.Y') ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">İptal/Bitiş Tarihi</span>
+                            <p class="font-medium text-slate-900">{{ $subscription->ended_at?->format('d.m.Y') ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Tür</span>
+                            <p class="font-medium text-slate-900">{{ $subscription->is_trial ? 'Deneme' : 'Ücretli' }}</p>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">Durum</span>
+                            <p class="font-medium text-slate-900">
+                                @if ($subscription->isPending())
+                                    Ödeme Bekliyor
+                                @elseif ($subscription->is_active)
+                                    Aktif
+                                @elseif ($subscription->isCancelled())
+                                    İptal
+                                @else
+                                    Pasif
+                                @endif
+                            </p>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-slate-500">Notlar</span>
+                            <p class="font-medium text-slate-900">{{ $subscription->notes ?? '-' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h4 class="text-sm font-semibold text-slate-700">Özellikler</h4>
+                        <ul class="mt-1 space-y-1 text-sm text-slate-700">
+                            <li>Otomatik aidat planlama: {{ $subscription->feature_auto_dues ? 'Evet' : 'Hayır' }}</li>
+                            <li>Kullanıcı portalı: {{ $subscription->feature_user_portal ? 'Evet' : 'Hayır' }}</li>
+                            <li>Hesap ekstresi ve raporlar: {{ $subscription->feature_reports ? 'Evet' : 'Hayır' }}</li>
+                            <li>Çoklu apartman yönetimi: {{ $subscription->feature_multi_apartment ? 'Evet' : 'Hayır' }}</li>
+                            @if ($subscription->feature_multi_apartment && $subscription->multi_apartment_limit_override)
+                                <li>Çoklu apartman limiti: {{ $subscription->multi_apartment_limit_override }}</li>
+                            @endif
+                        </ul>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button type="button" class="close-detail-modal rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Kapat</button>
+                    </div>
+                </div>
+            </div>
         @endforeach
     </div>
 
