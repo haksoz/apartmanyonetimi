@@ -31,6 +31,11 @@ class DashboardController extends Controller
             return redirect()->route('onboarding.show');
         }
 
+        if ($nextStep = $apartment->nextSetupStep()) {
+            return redirect()->route('apartments.wizard.'.$nextStep, $apartment)
+                ->with('status', 'Lütfen apartman kurulumunu tamamlayın.');
+        }
+
         $id = $apartment->id;
 
         // --- Özet rakamlar ---

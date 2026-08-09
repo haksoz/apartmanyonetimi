@@ -87,6 +87,7 @@ class SubscriberApartmentCreateController extends Controller
         // Set the newly created apartment as current
         $currentApartment->setFor($user, $apartment->id);
 
-        return redirect()->route('dashboard')->with('status', 'Apartman ve daire hesapları oluşturuldu.');
+        return redirect()->route('apartments.wizard.cash-box', $apartment)
+            ->with('status', 'Apartman oluşturuldu. Şimdi kasanızı oluşturun.');
     }
 }

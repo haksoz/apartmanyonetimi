@@ -19,6 +19,7 @@ class SubscriberApartmentSessionTest extends TestCase
             'user_id' => $user->id,
             'name' => 'Seçili Apartman',
             'unit_count' => 1,
+            'setup_completed_at' => now(),
         ]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
 
@@ -38,6 +39,7 @@ class SubscriberApartmentSessionTest extends TestCase
             'user_id' => $user->id,
             'name' => 'Seçili Apartman',
             'unit_count' => 1,
+            'setup_completed_at' => now(),
         ]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
 
@@ -58,11 +60,13 @@ class SubscriberApartmentSessionTest extends TestCase
             'user_id' => $user->id,
             'name' => 'Birinci Apartman',
             'unit_count' => 1,
+            'setup_completed_at' => now(),
         ]);
         $second = Apartment::create([
             'user_id' => $user->id,
             'name' => 'İkinci Apartman',
             'unit_count' => 1,
+            'setup_completed_at' => now(),
         ]);
         $first->members()->attach($user->id, ['role' => 'owner']);
         $second->members()->attach($user->id, ['role' => 'owner']);

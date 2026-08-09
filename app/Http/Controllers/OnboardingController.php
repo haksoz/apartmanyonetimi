@@ -47,7 +47,7 @@ class OnboardingController extends Controller
             ])->withInput();
         }
 
-        DB::transaction(function () use ($validated, $user, $currentApartment) {
+        $apartment = DB::transaction(function () use ($validated, $user, $currentApartment) {
             $apartment = \App\Models\Apartment::create([
                 'user_id'    => $user->id,
                 'name'       => $validated['name'],
@@ -117,8 +117,11 @@ class OnboardingController extends Controller
             }
 
             $currentApartment->setFor($user, $apartment->id);
+
+            return $apartment;
         });
 
-        return redirect()->route('dashboard')->with('status', 'Apartmanınız oluşturuldu. Hoş geldiniz!');
+        return redirect()->route('apartments.wizard.cash-box', $apartment)
+            ->with('status', 'Apartmanınız oluşturuldu. Şimdi kasanızı oluşturun.');
     }
 }

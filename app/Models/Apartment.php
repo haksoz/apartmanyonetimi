@@ -23,6 +23,8 @@ class Apartment extends Model
         'manager_unit_id',
         'is_active',
         'code',
+        'setup_units_completed_at',
+        'setup_completed_at',
     ];
 
     protected static function boot(): void
@@ -47,6 +49,8 @@ class Apartment extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'setup_units_completed_at' => 'datetime',
+        'setup_completed_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
@@ -67,6 +71,16 @@ class Apartment extends Model
     public function accounts(): HasMany
     {
         return $this->hasMany(Account::class);
+    }
+
+    public function cashBoxes(): HasMany
+    {
+        return $this->hasMany(CashBox::class);
+    }
+
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
     }
 
     /**
@@ -114,5 +128,27 @@ class Apartment extends Model
         return $this->belongsToMany(User::class)
             ->withPivot('role', 'is_active')
             ->withTimestamps();
+    }
+
+    public function isSetupCompleted(): bool
+    {
+        return $this->setup_completed_at !== null;
+    }
+
+    public function nextSetupStep(): ?string
+    {
+        if ($this->setup_completed_at !== null) {
+            return null;
+        }
+
+        if (! $this->cashBoxes()->exists()) {
+            return 'cash-box';
+        }
+
+        if ($this->setup_units_completed_at === null) {
+            return 'units';
+        }
+
+        return 'categories';
     }
 }

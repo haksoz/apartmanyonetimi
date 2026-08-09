@@ -16,6 +16,7 @@ use App\Models\PaymentAllocation;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
 use App\Models\UnitOwnerHistory;
+use App\Support\CurrentApartment;
 use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -67,7 +68,7 @@ class ApartmentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, CurrentApartment $currentApartment)
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -86,7 +87,7 @@ class ApartmentController extends Controller
             ])->withInput();
         }
 
-        DB::transaction(function () use ($validated, $user) {
+        $apartment = DB::transaction(function () use ($validated, $user) {
             $apartment = Apartment::create([
                 'user_id' => $user->id,
                 'name' => $validated['name'],
@@ -120,10 +121,14 @@ class ApartmentController extends Controller
                     'occupant_account_id' => $ownerAccount->id,
                 ]);
             }
+
+            return $apartment;
         });
 
-        $redirectRoute = auth()->user()->isSubscriber() ? 'subscriber.dashboard' : 'apartments.index';
-        return redirect()->route($redirectRoute)->with('status', 'Apartman ve daire hesapları oluşturuldu.');
+        $currentApartment->setFor($user, $apartment->id);
+
+        return redirect()->route('apartments.wizard.cash-box', $apartment)
+            ->with('status', 'Apartman oluşturuldu. Şimdi kasanızı oluşturun.');
     }
 
     /**

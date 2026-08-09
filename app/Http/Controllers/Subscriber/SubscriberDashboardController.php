@@ -21,6 +21,11 @@ class SubscriberDashboardController extends Controller
         $apartments = $currentApartment->availableFor($user);
         $currentApartmentModel = $currentApartment->getFor($user);
 
+        if ($currentApartmentModel && ($nextStep = $currentApartmentModel->nextSetupStep())) {
+            return redirect()->route('apartments.wizard.'.$nextStep, $currentApartmentModel)
+                ->with('status', 'Lütfen apartman kurulumunu tamamlayın.');
+        }
+
         $apartmentIds = $apartments->pluck('id')->toArray();
 
         $recentPayments = collect();

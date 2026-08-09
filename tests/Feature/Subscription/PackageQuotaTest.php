@@ -32,14 +32,16 @@ class PackageQuotaTest extends TestCase
         $package = Package::factory()->create(['apartment_limit' => 1]);
         $user = User::factory()->withSubscription($package)->create();
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->post(route('onboarding.store'), [
                 'name' => 'Akbey Apartmanı',
                 'address' => 'Adres',
                 'unit_count' => 2,
                 'manager_type' => 'external',
-            ])
-            ->assertRedirect(route('dashboard'));
+            ]);
+
+        $apartment = Apartment::where('name', 'Akbey Apartmanı')->firstOrFail();
+        $response->assertRedirect(route('apartments.wizard.cash-box', $apartment));
 
         $this->assertDatabaseCount('apartments', 1);
     }
@@ -70,15 +72,17 @@ class PackageQuotaTest extends TestCase
         $this->createOwnedApartment($user);
         $this->createOwnedApartment($user);
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->post(route('apartments.store'), [
                 'name' => 'Üçüncü Apartman',
                 'address' => 'Adres',
                 'unit_count' => 2,
                 'manager_unit_no' => 1,
                 'account_opening_date' => now()->format('Y-m-d'),
-            ])
-            ->assertRedirect(route('apartments.index'));
+            ]);
+
+        $apartment = Apartment::where('name', 'Üçüncü Apartman')->firstOrFail();
+        $response->assertRedirect(route('apartments.wizard.cash-box', $apartment));
 
         $this->assertDatabaseCount('apartments', 3);
     }

@@ -5,6 +5,7 @@ use App\Http\Controllers\AccountUserController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ApartmentController;
 use App\Http\Controllers\ApartmentSelectionController;
+use App\Http\Controllers\ApartmentWizardController;
 use App\Http\Controllers\ApartmentSwitchController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminImpersonateController;
@@ -52,6 +53,18 @@ Route::middleware('auth')->group(function () {
     // Apartment creation - no apartment required
     Route::get('apartments/create', [ApartmentController::class, 'create'])->name('apartments.create');
     Route::post('apartments', [ApartmentController::class, 'store'])->name('apartments.store');
+
+    // Apartment setup wizard
+    Route::prefix('apartments/{apartment}/wizard')->name('apartments.wizard.')->group(function () {
+        Route::get('cash-box', [ApartmentWizardController::class, 'cashBoxStep'])->name('cash-box');
+        Route::post('cash-box', [ApartmentWizardController::class, 'storeCashBox'])->name('cash-box.store');
+        Route::get('units', [ApartmentWizardController::class, 'unitsStep'])->name('units');
+        Route::post('units', [ApartmentWizardController::class, 'storeUnits'])->name('units.store');
+        Route::post('units/skip', [ApartmentWizardController::class, 'skipUnits'])->name('units.skip');
+        Route::get('categories', [ApartmentWizardController::class, 'categoriesStep'])->name('categories');
+        Route::post('categories', [ApartmentWizardController::class, 'storeCategory'])->name('categories.store');
+        Route::post('finish', [ApartmentWizardController::class, 'finish'])->name('finish');
+    });
 });
 
 Route::middleware(['auth', 'apartment'])->group(function () {

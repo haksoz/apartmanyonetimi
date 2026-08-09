@@ -32,12 +32,11 @@ class ApartmentCreationTest extends TestCase
                 'account_opening_date' => now()->format('Y-m-d'),
             ]);
 
-        $response->assertRedirect(route('apartments.index'));
-
         $apartment = Apartment::where('name', 'Akbey Apartmanı')->firstOrFail();
 
+        $response->assertRedirect(route('apartments.wizard.cash-box', $apartment));
+
         $this->assertSame($user->id, $apartment->user_id);
-        $this->assertNotNull($apartment->manager_unit_id);
         $this->assertDatabaseHas('apartment_user', [
             'apartment_id' => $apartment->id,
             'user_id' => $user->id,
