@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ExpenseDocument extends Model
 {
+    use SoftDeletes;
     public const TYPE_INVOICE_IMAGE = 'invoice_image';
     public const TYPE_INVOICE_PDF = 'invoice_pdf';
     public const TYPE_RECEIPT = 'receipt';
@@ -14,6 +16,7 @@ class ExpenseDocument extends Model
     protected $fillable = [
         'expense_id',
         'document_type',
+        'sequence',
         'original_name',
         'file_path',
         'mime_type',

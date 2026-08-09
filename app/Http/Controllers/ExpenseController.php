@@ -651,7 +651,11 @@ class ExpenseController extends Controller
 
         }
 
-        return redirect()->route('expenses.index')->with('status', 'Gider kaydı güncellendi.');
+        $message = $request->hasFile('document')
+            ? 'Gider kaydı güncellendi ve doküman yüklendi.'
+            : 'Gider kaydı güncellendi.';
+
+        return redirect()->route('expenses.show', $expense)->with('status', $message);
 
     }
 
@@ -1102,7 +1106,7 @@ class ExpenseController extends Controller
 
         abort_unless($document->expense_id === $expense->id, 404);
 
-        return Storage::disk('public')->download($document->file_path, $document->original_name);
+        return Storage::disk('public')->download($document->file_path, basename($document->file_path));
     }
 
     private function storeDocumentForExpense(Request $request, Expense $expense): void
@@ -1112,11 +1116,37 @@ class ExpenseController extends Controller
         $documentType = str_starts_with($mime, 'image/')
             ? ExpenseDocument::TYPE_INVOICE_IMAGE
             : ExpenseDocument::TYPE_INVOICE_PDF;
-        $path = $file->store("expense_documents/{$expense->apartment_id}/{$expense->id}", 'public');
+
+        foreach ($expense->documents as $document) {
+            Storage::disk('public')->delete($document->file_path);
+            $document->delete();
+        }
+
+        $reference = $expense->reference_number ?: $expense->generateReferenceNumber();
+        if (empty($expense->reference_number)) {
+            $expense->update(['reference_number' => $reference]);
+        }
+
+        $lastSequence = ExpenseDocument::where('expense_id', $expense->id)->withTrashed()->max('sequence') ?? 0;
+        $sequence = $lastSequence + 1;
+
+        $filename = sprintf(
+            '%s-%02d.%s',
+            $reference,
+            $sequence,
+            $file->guessExtension() ?? $file->getClientOriginalExtension()
+        );
+
+        $path = $file->storeAs(
+            "expense_documents/{$expense->apartment_id}/{$expense->id}",
+            $filename,
+            'public'
+        );
 
         ExpenseDocument::create([
             'expense_id' => $expense->id,
             'document_type' => $documentType,
+            'sequence' => $sequence,
             'original_name' => $file->getClientOriginalName(),
             'file_path' => $path,
             'mime_type' => $mime,

@@ -300,7 +300,7 @@ class ExpensePageTest extends TestCase
                 'description' => 'Bakım faturası',
                 'is_paid' => '1',
             ])
-            ->assertRedirect(route('expenses.index'));
+            ->assertRedirect(route('expenses.show', $expense));
 
         $this->assertDatabaseHas('expenses', [
             'id' => $expense->id,

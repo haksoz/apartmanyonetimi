@@ -134,16 +134,12 @@
                     @foreach ($expense->documents as $document)
                         <div class="flex items-center justify-between gap-3 px-4 py-3">
                             <div class="min-w-0">
-                                <div class="text-sm font-medium text-slate-900">{{ $document->original_name }}</div>
+                                <div class="text-sm font-medium text-slate-900">{{ basename($document->file_path) }}</div>
                                 <div class="text-xs text-slate-500 truncate">Doküman</div>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
                                 <a href="{{ route('expenses.documents.download', [$expense, $document]) }}" class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">İndir</a>
-                                <form method="POST" action="{{ route('expenses.documents.destroy', [$expense, $document]) }}" onsubmit="return confirm('Doküman silinsin mi?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
-                                </form>
+                                <button type="button" data-delete-url="{{ route('expenses.documents.destroy', [$expense, $document]) }}" class="delete-document-btn rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
                             </div>
                         </div>
                     @endforeach
@@ -151,7 +147,7 @@
             @endif
 
             <div>
-                <label for="document" class="mb-2 block text-sm font-medium text-slate-600">Yeni Dosya / Fotoğraf</label>
+                <label for="document" class="mb-2 block text-sm font-medium text-slate-600">Dosya / Fotoğraf Değiştir</label>
                 <input id="document" name="document" type="file" accept="image/*,.pdf,application/pdf" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-200">
                 <p class="mt-1 text-xs text-slate-500">Mobilden fatura/fiş fotoğrafı çekebilir veya PDF yükleyebilirsiniz. Maks. 10 MB.</p>
                 @error('document')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -161,6 +157,11 @@
         <div class="flex justify-end">
             <button type="submit" class="w-full md:w-auto rounded-xl bg-slate-950 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800">Güncelle</button>
         </div>
+    </form>
+
+    <form id="delete-document-form" method="POST" action="" class="hidden">
+        @csrf
+        @method('DELETE')
     </form>
 
     <script>
@@ -245,6 +246,17 @@
             // Init
             syncPeriodFromDate();
             syncDueDate();
+
+            document.querySelectorAll('.delete-document-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const url = button.dataset.deleteUrl;
+                    if (!url || !confirm('Doküman silinsin mi?')) return;
+
+                    const form = document.getElementById('delete-document-form');
+                    form.action = url;
+                    form.submit();
+                });
+            });
         })();
     </script>
 @endsection

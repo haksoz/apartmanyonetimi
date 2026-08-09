@@ -99,7 +99,7 @@ class ExpenseDocumentTest extends TestCase
                 'period_month' => '2026-06',
                 'document' => $file,
             ])
-            ->assertRedirect(route('expenses.index'));
+            ->assertRedirect(route('expenses.show', $expense));
 
         $expense->refresh();
         $this->assertCount(1, $expense->documents);
@@ -159,7 +159,7 @@ class ExpenseDocumentTest extends TestCase
             ->delete(route('expenses.documents.destroy', [$expense, $document]))
             ->assertRedirect(route('expenses.show', $expense));
 
-        $this->assertDatabaseMissing('expense_documents', ['id' => $document->id]);
+        $this->assertSoftDeleted($document);
         Storage::disk('public')->assertMissing($path);
     }
 
@@ -242,7 +242,72 @@ class ExpenseDocumentTest extends TestCase
             ->actingAs($user)
             ->get(route('expenses.show', $expense))
             ->assertStatus(200)
-            ->assertSee('fatura.pdf')
+            ->assertSee(basename($path))
             ->assertSee('Doküman');
+    }
+
+    public function test_document_filename_uses_expense_reference_number(): void
+    {
+        [$user, $apartment, $expense] = $this->setupExpense();
+
+        $this->assertNotNull($expense->reference_number);
+
+        $file = UploadedFile::fake()->image('fatura.jpg');
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('expenses.documents.store', $expense), [
+                'document' => $file,
+            ])
+            ->assertRedirect(route('expenses.show', $expense));
+
+        $expense->refresh();
+        $document = $expense->documents->first();
+
+        $this->assertNotNull($document);
+        $this->assertStringEndsWith(
+            $expense->reference_number . '-01.jpg',
+            $document->file_path
+        );
+    }
+
+    public function test_uploading_new_document_replaces_existing_one(): void
+    {
+        [$user, $apartment, $expense] = $this->setupExpense();
+
+        $firstFile = UploadedFile::fake()->image('fatura.jpg');
+        $secondFile = UploadedFile::fake()->create('fatura.pdf', 100, 'application/pdf');
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('expenses.documents.store', $expense), [
+                'document' => $firstFile,
+            ])
+            ->assertRedirect(route('expenses.show', $expense));
+
+        $expense->refresh();
+        $firstDocument = $expense->documents->first();
+        $firstPath = $firstDocument->file_path;
+
+        $this->assertCount(1, $expense->documents);
+        Storage::disk('public')->assertExists($firstPath);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('expenses.documents.store', $expense), [
+                'document' => $secondFile,
+            ])
+            ->assertRedirect(route('expenses.show', $expense));
+
+        $expense->refresh();
+
+        $this->assertCount(1, $expense->documents);
+        Storage::disk('public')->assertMissing($firstPath);
+        $this->assertSoftDeleted($firstDocument);
+        $this->assertEquals(ExpenseDocument::TYPE_INVOICE_PDF, $expense->documents->first()->document_type);
+        $this->assertStringEndsWith(
+            $expense->reference_number . '-02.pdf',
+            $expense->documents->first()->file_path
+        );
     }
 }
