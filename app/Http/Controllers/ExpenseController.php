@@ -18,6 +18,8 @@ use App\Models\Category;
 
 use App\Models\Expense;
 
+use App\Models\ExpenseDocument;
+
 use App\Models\Payment;
 
 use App\Support\CurrentApartment;
@@ -25,6 +27,8 @@ use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 
 use Illuminate\Support\Facades\DB;
+
+use Illuminate\Support\Facades\Storage;
 
 use Illuminate\Validation\Rule;
 
@@ -334,6 +338,8 @@ class ExpenseController extends Controller
 
             'is_paid' => ['nullable', 'boolean'],
 
+            'document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+
         ];
 
 
@@ -383,7 +389,9 @@ class ExpenseController extends Controller
 
 
 
-        DB::transaction(function () use ($apartment, $validated, $category, $request, $isPaid) {
+        $expense = null;
+
+        DB::transaction(function () use ($apartment, $validated, $category, $request, $isPaid, &$expense) {
 
             $expense = Expense::create([
 
@@ -523,6 +531,14 @@ class ExpenseController extends Controller
 
 
 
+        if ($request->hasFile('document') && $expense) {
+
+            $this->storeDocumentForExpense($request, $expense);
+
+        }
+
+
+
         return redirect()->route('expenses.index')->with('status', 'Gider kaydı oluşturuldu.');
 
     }
@@ -543,6 +559,7 @@ class ExpenseController extends Controller
 
         $expense->load([
             'paymentAllocations.payment' => fn ($q) => $q->withCount('allocations'),
+            'documents',
         ]);
 
         return view('expenses.show', compact('expense'));
@@ -628,6 +645,12 @@ class ExpenseController extends Controller
 
         });
 
+        if ($request->hasFile('document')) {
+
+            $this->storeDocumentForExpense($request, $expense);
+
+        }
+
         return redirect()->route('expenses.index')->with('status', 'Gider kaydı güncellendi.');
 
     }
@@ -667,6 +690,11 @@ class ExpenseController extends Controller
             $expense->delete();
 
         });
+
+        // Dosyaları fiziksel olarak sil
+        foreach ($expense->documents as $document) {
+            Storage::disk('public')->delete($document->file_path);
+        }
 
 
 
@@ -994,6 +1022,8 @@ class ExpenseController extends Controller
 
             'is_paid' => ['nullable', 'boolean'],
 
+            'document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+
         ]);
 
     }
@@ -1041,11 +1071,60 @@ class ExpenseController extends Controller
         return sprintf('TDR-%s-%s-%05d', $apartmentCode, $year, $nextNum);
     }
 
+    public function storeDocument(Request $request, string $id)
+    {
+        $expense = $this->findExpense($id);
+
+        $request->validate([
+            'document' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+        ]);
+
+        $this->storeDocumentForExpense($request, $expense);
+
+        return redirect()->route('expenses.show', $expense)->with('status', 'Doküman eklendi.');
+    }
+
+    public function destroyDocument(string $id, ExpenseDocument $document)
+    {
+        $expense = $this->findExpense($id);
+
+        abort_unless($document->expense_id === $expense->id, 404);
+
+        Storage::disk('public')->delete($document->file_path);
+        $document->delete();
+
+        return redirect()->route('expenses.show', $expense)->with('status', 'Doküman silindi.');
+    }
+
+    public function downloadDocument(string $id, ExpenseDocument $document)
+    {
+        $expense = $this->findExpense($id);
+
+        abort_unless($document->expense_id === $expense->id, 404);
+
+        return Storage::disk('public')->download($document->file_path, $document->original_name);
+    }
+
+    private function storeDocumentForExpense(Request $request, Expense $expense): void
+    {
+        $file = $request->file('document');
+        $mime = $file->getMimeType();
+        $documentType = str_starts_with($mime, 'image/')
+            ? ExpenseDocument::TYPE_INVOICE_IMAGE
+            : ExpenseDocument::TYPE_INVOICE_PDF;
+        $path = $file->store("expense_documents/{$expense->apartment_id}/{$expense->id}", 'public');
+
+        ExpenseDocument::create([
+            'expense_id' => $expense->id,
+            'document_type' => $documentType,
+            'original_name' => $file->getClientOriginalName(),
+            'file_path' => $path,
+            'mime_type' => $mime,
+            'size' => $file->getSize(),
+        ]);
+    }
+
 }
-
-
-
-
 
 
 

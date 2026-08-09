@@ -215,6 +215,40 @@
 
 
 
+    {{-- Documents Card --}}
+    <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-slate-950">Dokümanlar</h2>
+            <a href="{{ route('expenses.edit', $expense) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">+ Doküman Ekle</a>
+        </div>
+
+        @if ($expense->documents->isEmpty())
+            <div class="py-6 text-sm text-slate-500">Bu giderde henüz doküman yok.</div>
+        @else
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                @foreach ($expense->documents as $document)
+                    <div class="rounded-xl border border-slate-200 p-4 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-sm font-semibold text-slate-900">{{ $document->original_name }}</div>
+                            <div class="text-xs text-slate-500 truncate">Doküman</div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            @if ($document->isImage())
+                                <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($document->file_path) }}" target="_blank" class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">Görüntüle</a>
+                            @endif
+                            <a href="{{ route('expenses.documents.download', [$expense, $document]) }}" class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">İndir</a>
+                            <form method="POST" action="{{ route('expenses.documents.destroy', [$expense, $document]) }}" onsubmit="return confirm('Doküman silinsin mi?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="rounded-lg border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                            </form>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
     {{-- Payment Allocations Card --}}
 
     <div class="rounded-2xl bg-white p-6 shadow-sm mb-6">

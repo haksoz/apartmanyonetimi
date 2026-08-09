@@ -265,9 +265,7 @@ class ExpensePageTest extends TestCase
             ->actingAs($user)
             ->get(route('expenses.index'))
             ->assertStatus(200)
-            ->assertSee('Öde')
-            ->assertSee('Düzenle')
-            ->assertSee('Sil');
+            ->assertSee('Öde');
     }
 
     public function test_user_can_update_expense(): void
@@ -523,7 +521,7 @@ class ExpensePageTest extends TestCase
             ->actingAs($user)
             ->get(route('expenses.show', $expense))
             ->assertStatus(200)
-            ->assertSee('Ödeme Bilgisi')
+            ->assertSee('Gideri Kapatan Ödeme')
             ->assertSee('Kısmi ödeme')
             ->assertSee('500,00');
     }

@@ -72,6 +72,11 @@ class Expense extends Model
         return $this->hasMany(PaymentAllocation::class);
     }
 
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ExpenseDocument::class)->orderBy('created_at', 'desc');
+    }
+
     protected function getReferencePrefix(): string
     {
         return 'GDR';

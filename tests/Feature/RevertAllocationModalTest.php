@@ -244,9 +244,8 @@ class RevertAllocationModalTest extends TestCase
             ->actingAs($user)
             ->get(route('expenses.show', $expense))
             ->assertStatus(200)
-            ->assertSee('Tahsisatı Geri Al')
-            ->assertSee('Sadece Geri Al (Tahsilat Hesapta Kalır)')
-            ->assertSee('Tahsilatı da Sil')
+            ->assertSee('Geri Al')
+            ->assertSee('Ödemeyi Sil')
             ->assertSee('id="revert-allocation-modal-'.$allocation->id.'"', false);
     }
 

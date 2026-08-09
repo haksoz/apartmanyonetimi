@@ -89,6 +89,9 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
     Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');
     Route::delete('expenses/{expense}/payment', [ExpenseController::class, 'destroyPayment'])->name('expenses.payment.destroy');
+    Route::post('expenses/{expense}/documents', [ExpenseController::class, 'storeDocument'])->name('expenses.documents.store');
+    Route::delete('expenses/{expense}/documents/{document}', [ExpenseController::class, 'destroyDocument'])->name('expenses.documents.destroy');
+    Route::get('expenses/{expense}/documents/{document}/download', [ExpenseController::class, 'downloadDocument'])->name('expenses.documents.download');
 
     // Aidatlar - Üye ve Yönetici erişimi
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');

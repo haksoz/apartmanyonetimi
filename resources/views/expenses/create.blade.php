@@ -12,7 +12,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('expenses.store') }}" class="space-y-4">
+    <form method="POST" action="{{ route('expenses.store') }}" enctype="multipart/form-data" class="space-y-4">
         @csrf
         <input id="period_month" name="period_month" type="hidden" value="{{ old('period_month', now()->format('Y-m')) }}">
 
@@ -94,6 +94,17 @@
                     </select>
                     @error('cash_box_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
+            </div>
+        </div>
+
+        {{-- Dokümanlar --}}
+        <div class="rounded-2xl bg-white p-6 shadow-sm">
+            <h3 class="text-sm font-semibold text-slate-700 mb-4">Doküman</h3>
+            <div>
+                <label for="document" class="mb-2 block text-sm font-medium text-slate-600">Dosya / Fotoğraf</label>
+                <input id="document" name="document" type="file" accept="image/*,.pdf,application/pdf" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-200">
+                <p class="mt-1 text-xs text-slate-500">Mobilden fatura/fiş fotoğrafı çekebilir veya PDF yükleyebilirsiniz. Maks. 10 MB.</p>
+                @error('document')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
         </div>
 
