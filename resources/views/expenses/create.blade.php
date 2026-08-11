@@ -1,11 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
-    {{-- Header --}}
+    @php
+        $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
+    @endphp
+
+    {{-- Breadcrumb + Hızlı Buton --}}
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-950">Gider Ekle</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }} için yeni gider kaydı oluşturun.</p>
+        <div class="flex items-center gap-2 text-sm text-slate-400">
+            <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+            @if ($selectedAccount)
+                <span>/</span>
+                <a href="{{ route('accounts.show', $selectedAccount) }}" class="text-slate-500 hover:text-slate-600">
+                    @if ($selectedAccount->unit)
+                        Daire {{ str_pad($selectedAccount->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                    @else
+                        {{ $selectedAccount->type_label }}
+                    @endif
+                </a>
+            @endif
         </div>
         <div class="flex gap-2">
             <a href="{{ route('expenses.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Giderlere Dön</a>
@@ -17,7 +30,10 @@
         <input id="period_month" name="period_month" type="hidden" value="{{ old('period_month', now()->format('Y-m')) }}">
 
         <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <div class="grid gap-5 md:grid-cols-2">
+            <h1 class="text-2xl font-bold text-slate-950">Gider Ekle</h1>
+            <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }} için yeni gider kaydı oluşturun.</p>
+
+            <div class="mt-5 grid gap-5 border-t border-slate-100 pt-5 md:grid-cols-2">
                 <div>
                     <div class="mb-2 flex items-center justify-between">
                         <label for="account_id" class="text-sm font-medium text-slate-600">Hesap / Tedarikçi</label>

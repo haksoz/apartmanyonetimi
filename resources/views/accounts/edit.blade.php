@@ -22,7 +22,6 @@
                     Hesabı Sil
                 </button>
             </form>
-            <a href="{{ route('accounts.show', $account) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detaya Dön</a>
             @if ($account->type === App\Models\Account::TYPE_OWNER)
                 <button type="button" onclick="openTerminateModal('owner', {{ $account->id }}, '{{ $account->name }}')" 
                     class="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600">
@@ -35,6 +34,7 @@
                     Kiralamayı Sonlandır
                 </button>
             @endif
+            <a href="{{ route('accounts.show', $account) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Hesaba Dön</a>
         </div>
     </div>
 

@@ -1,24 +1,32 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
-        <div>
-            <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
-                <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
-                <span>/</span>
-                <a href="{{ route('accounts.show', $account) }}" class="hover:text-slate-600">{{ $account->name }}</a>
-            </div>
-            <h1 class="text-2xl font-bold text-slate-950">Tedarikçiye Ödeme Yap</h1>
-            <p class="mt-1 text-sm text-slate-500">Yeni ödeme kaydı oluşturun.</p>
+    {{-- Breadcrumb + Hızlı Buton --}}
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center gap-2 text-sm text-slate-400">
+            <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+            <span>/</span>
+            <a href="{{ route('accounts.show', $account) }}" class="text-slate-500 hover:text-slate-600">
+                @if ($account->unit)
+                    Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @else
+                    {{ $account->type_label }}
+                @endif
+            </a>
         </div>
-        <a href="{{ route('accounts.show', $account) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri Dön</a>
+        <div class="flex gap-2">
+            <a href="{{ route('accounts.show', $account) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Geri Dön</a>
+        </div>
     </div>
 
     <form id="supplier-payment-form" method="POST" action="{{ route('accounts.supplier-payment.store', $account) }}" class="rounded-2xl bg-white p-6 shadow-sm">
         @csrf
 
+        <h1 class="text-2xl font-bold text-slate-950">Tedarikçiye Ödeme Yap</h1>
+        <p class="mt-1 text-sm text-slate-500">Yeni ödeme kaydı oluşturun.</p>
+
         @if ($errors->any())
-            <div class="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div class="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 <ul class="list-disc list-inside space-y-1">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -27,7 +35,7 @@
             </div>
         @endif
 
-        <div class="grid gap-5 lg:grid-cols-2">
+        <div class="mt-5 grid gap-5 border-t border-slate-100 pt-5 lg:grid-cols-2">
             <div>
                 <label for="account_id" class="mb-2 block text-sm font-semibold text-slate-700">Cari/Hesap</label>
                 <select id="account_id" disabled

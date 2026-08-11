@@ -21,7 +21,11 @@
             @endif
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('dues.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Aidatlara Dön</a>
+            @if ($selectedAccount)
+                <a href="{{ route('accounts.show', $selectedAccount) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Hesaba Dön</a>
+            @else
+                <a href="{{ route('dues.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Aidatlara Dön</a>
+            @endif
         </div>
     </div>
 
