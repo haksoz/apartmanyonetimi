@@ -4,42 +4,32 @@
 
 @section('content')
 
-    <div class="mb-6 flex flex-row items-center justify-between gap-4">
-
-        <div>
-
-            <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
-                <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
-                <span>/</span>
-                <span class="text-slate-500">{{ $account->type_label }}</span>
-            </div>
+    <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
+        <div class="flex items-center gap-2 min-w-0 overflow-x-auto">
+            <a href="{{ route('accounts.index') }}" class="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
+                Hesaplar
+            </a>
+            <span class="text-slate-400">/</span>
+            <a href="{{ route('accounts.show', $account) }}" class="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50">
+                @if ($account->unit)
+                    Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @else
+                    {{ $account->type_label }}
+                @endif
+            </a>
 
             @if (!$account->is_active)
-                <div class="mt-1">
-                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
-                </div>
+                <span class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
             @endif
-
         </div>
 
-        {{-- Masaüstü butonlar --}}
-        <div class="hidden lg:flex flex-wrap gap-2">
-            @include('accounts._actions', ['account' => $account, 'mobile' => false])
+        {{-- Hesap Sekmeleri --}}
+        <div class="flex items-center justify-end gap-2 shrink-0">
+            @php
+                $showTransfer = in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && ($account->dues->isNotEmpty() || $importedDues->isNotEmpty()) && $transferableAccounts->isNotEmpty();
+            @endphp
+            @include('accounts._tabs', ['account' => $account, 'active' => 'overview', 'withOverview' => false, 'showTransfer' => $showTransfer])
         </div>
-
-        {{-- Mobil işlemler menüsü --}}
-        <details class="lg:hidden relative group">
-            <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-                İşlem
-            </summary>
-            <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
-                @include('accounts._actions', ['account' => $account, 'mobile' => true])
-            </div>
-        </details>
-
     </div>
 
 
@@ -2027,7 +2017,7 @@
 
                     <button type="button" onclick="document.getElementById('transfer-dues-modal').classList.add('hidden')"
 
-                            class="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                            class="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
 
                 </div>
 

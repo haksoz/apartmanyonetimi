@@ -1,12 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
-    {{-- Breadcrumb + İşlemler --}}
-    <div class="mb-6 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-2 text-sm text-slate-400">
-            <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
-            <span>/</span>
-            <a href="{{ route('accounts.show', $account) }}" class="text-slate-500 hover:text-slate-600">
+    {{-- Breadcrumb + Hesap Sekmeleri --}}
+    <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
+        <div class="flex items-center gap-2 min-w-0 overflow-x-auto">
+            <a href="{{ route('accounts.index') }}" class="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
+                Hesaplar
+            </a>
+            <span class="text-slate-400">/</span>
+            <a href="{{ route('accounts.show', $account) }}" class="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50">
                 @if ($account->unit)
                     Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
                 @else
@@ -15,23 +17,9 @@
             </a>
         </div>
 
-        {{-- Masaüstü butonlar --}}
-        <div class="hidden lg:flex flex-wrap gap-2">
-            @include('accounts._statement-actions', ['account' => $account, 'dateFrom' => $dateFrom, 'dateTo' => $dateTo, 'mobile' => false])
+        <div class="flex items-center justify-end gap-2 shrink-0">
+            @include('accounts._tabs', ['account' => $account, 'active' => 'statement', 'withOverview' => false])
         </div>
-
-        {{-- Mobil işlemler menüsü --}}
-        <details class="lg:hidden relative group">
-            <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-                İşlem
-            </summary>
-            <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
-                @include('accounts._statement-actions', ['account' => $account, 'dateFrom' => $dateFrom, 'dateTo' => $dateTo, 'mobile' => true])
-            </div>
-        </details>
     </div>
 
     {{-- Başlık + Tarih Filtresi --}}
@@ -211,6 +199,13 @@
                 </p>
             </div>
         @endif
+    </div>
+
+    <div class="mt-4 flex justify-end">
+        <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+           class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+            Excel'e Aktar
+        </a>
     </div>
 
 

@@ -5,29 +5,37 @@
         $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
     @endphp
 
-    {{-- Breadcrumb + Hızlı Buton --}}
-    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div class="flex items-center gap-2 text-sm text-slate-400">
-            <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
-            @if ($selectedAccount)
-                <span>/</span>
-                <a href="{{ route('accounts.show', $selectedAccount) }}" class="text-slate-500 hover:text-slate-600">
+    @if ($selectedAccount)
+        {{-- Breadcrumb + Hesap Sekmeleri --}}
+        <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
+            <div class="flex items-center gap-2 min-w-0 overflow-x-auto">
+                <a href="{{ route('accounts.index') }}" class="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
+                    Hesaplar
+                </a>
+                <span class="text-slate-400">/</span>
+                <a href="{{ route('accounts.show', $selectedAccount) }}" class="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50">
                     @if ($selectedAccount->unit)
                         Daire {{ str_pad($selectedAccount->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
                     @else
                         {{ $selectedAccount->type_label }}
                     @endif
                 </a>
-            @endif
+            </div>
+
+            <div class="flex items-center justify-end gap-2 shrink-0">
+                @include('accounts._tabs', ['account' => $selectedAccount, 'active' => 'payment', 'withOverview' => false])
+            </div>
         </div>
-        <div class="flex gap-2">
-            @if ($selectedAccount)
-                <a href="{{ route('accounts.show', $selectedAccount) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Hesaba Dön</a>
-            @else
-                <a href="{{ route('accounts.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Hesaplara Dön</a>
-            @endif
+    @else
+        <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
+            <a href="{{ route('accounts.index') }}" class="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
+                Hesaplar
+            </a>
+            <div class="flex gap-2">
+                <a href="{{ route('accounts.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Hesaplara Dön</a>
+            </div>
         </div>
-    </div>
+    @endif
 
     <form id="payment-create-form" method="POST" action="{{ route('payments.store') }}" class="rounded-2xl bg-white p-6 shadow-sm">
         @csrf
