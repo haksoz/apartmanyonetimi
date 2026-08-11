@@ -14,14 +14,6 @@
                 <span class="text-slate-500">{{ $account->type_label }}</span>
             </div>
 
-            <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">
-                @if ($account->unit)
-                    Daire No: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                @else
-                    {{ $account->name }}
-                @endif
-            </h1>
-
             @if (!$account->is_active)
                 <div class="mt-1">
                     <span class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
@@ -58,8 +50,13 @@
         <div class="p-4 md:p-6 border-b border-slate-100">
             {{-- Hesap adı --}}
             <div class="mb-5">
-                <div class="text-xs text-slate-500 mb-1">Hesap Adı</div>
-                <div class="text-2xl font-bold text-slate-900">{{ $account->name }}</div>
+                <div class="text-2xl font-bold text-slate-900">
+                    @if ($account->unit)
+                        Daire: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }} - {{ $account->name }}
+                    @else
+                        {{ $account->name }}
+                    @endif
+                </div>
             </div>
 
             <details class="group">
@@ -97,6 +94,22 @@
                         <div class="font-semibold text-slate-900">{{ $account->unit->share_coefficient }}</div>
                     </div>
                     @endif
+                @endif
+
+                {{-- Telefon --}}
+                @if ($account->phone)
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-slate-500">Telefon</div>
+                    <div class="font-semibold text-slate-900">{{ $account->phone }}</div>
+                </div>
+                @endif
+
+                {{-- E-posta --}}
+                @if ($account->email)
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-slate-500">E-posta</div>
+                    <div class="font-semibold text-slate-900">{{ $account->email }}</div>
+                </div>
                 @endif
 
                 {{-- Portal erişimi --}}

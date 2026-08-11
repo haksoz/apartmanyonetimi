@@ -1,15 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
-    {{-- Header --}}
+    {{-- Breadcrumb + Hızlı Butonlar --}}
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <p class="text-sm text-slate-500 mb-1">Hesaplar / {{ $account->type_label }}</p>
-            <h1 class="text-2xl font-bold text-slate-950">Tüm Hareketler</h1>
-            <p class="mt-1 text-sm text-slate-500">
-                {{ $account->name }}
-                @if($account->unit) &mdash; Daire No: {{ $account->unit->unit_no }} @endif
-            </p>
+        <div class="flex items-center gap-2 text-sm text-slate-400">
+            <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+            <span>/</span>
+            <a href="{{ route('accounts.show', $account) }}" class="text-slate-500 hover:text-slate-600">
+                @if ($account->unit)
+                    Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @else
+                    {{ $account->type_label }}
+                @endif
+            </a>
         </div>
         <div class="flex gap-2 flex-wrap">
             <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
@@ -23,32 +26,41 @@
         </div>
     </div>
 
-    {{-- Tarih Filtresi --}}
-    <form method="GET" action="{{ route('accounts.statement', $account) }}"
-          class="rounded-2xl bg-white p-5 shadow-sm mb-6">
-        <div class="flex flex-col md:flex-row gap-4 items-end">
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-slate-500 mb-1.5">Başlangıç Tarihi</label>
-                <input type="date" name="date_from" value="{{ $dateFrom }}"
-                       class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-slate-950 focus:outline-none">
+    {{-- Başlık + Tarih Filtresi --}}
+    <div class="rounded-2xl bg-white shadow-sm p-4 md:p-6 mb-6">
+        <h1 class="text-2xl font-bold text-slate-950">Tüm Hareketler</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            {{ $account->name }}
+            @if($account->unit) &mdash; Daire No: {{ $account->unit->unit_no }} @endif
+        </p>
+
+        <form method="GET" action="{{ route('accounts.statement', $account) }}" class="mt-5 border-t border-slate-100 pt-5">
+            <div class="flex flex-col gap-4 md:flex-row md:items-end">
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-500 mb-1.5">Başlangıç Tarihi</label>
+                    <input type="date" name="date_from" value="{{ $dateFrom }}"
+                           class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-slate-950 focus:outline-none">
+                </div>
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-500 mb-1.5">Bitiş Tarihi</label>
+                    <input type="date" name="date_to" value="{{ $dateTo }}"
+                           class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-slate-950 focus:outline-none">
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit"
+                            class="flex-1 md:flex-none rounded-xl bg-slate-950 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 whitespace-nowrap">
+                        Filtrele
+                    </button>
+                    @if($dateFrom || $dateTo)
+                        <a href="{{ route('accounts.statement', $account) }}"
+                           class="flex-1 md:flex-none text-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 whitespace-nowrap">
+                            Temizle
+                        </a>
+                    @endif
+                </div>
             </div>
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-slate-500 mb-1.5">Bitiş Tarihi</label>
-                <input type="date" name="date_to" value="{{ $dateTo }}"
-                       class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-slate-950 focus:outline-none">
-            </div>
-            <button type="submit"
-                    class="rounded-xl bg-slate-950 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 whitespace-nowrap">
-                Filtrele
-            </button>
-            @if($dateFrom || $dateTo)
-                <a href="{{ route('accounts.statement', $account) }}"
-                   class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 whitespace-nowrap">
-                    Temizle
-                </a>
-            @endif
-        </div>
-    </form>
+        </form>
+    </div>
 
 
     {{-- Hareketler Tablosu --}}

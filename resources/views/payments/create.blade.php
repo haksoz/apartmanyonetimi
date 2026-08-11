@@ -1,18 +1,37 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-950">Ödeme Al / Tahsilat Ekle</h1>
-            <p class="mt-1 text-sm text-slate-500">Yeni ödeme kaydı oluşturun. İsterseniz hemen borçlara tahsis edebilir ya da sonra yapabilirsiniz.</p>
+    @php
+        $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
+    @endphp
+
+    {{-- Breadcrumb + Hızlı Buton --}}
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center gap-2 text-sm text-slate-400">
+            <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+            @if ($selectedAccount)
+                <span>/</span>
+                <a href="{{ route('accounts.show', $selectedAccount) }}" class="text-slate-500 hover:text-slate-600">
+                    @if ($selectedAccount->unit)
+                        Daire {{ str_pad($selectedAccount->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                    @else
+                        {{ $selectedAccount->type_label }}
+                    @endif
+                </a>
+            @endif
         </div>
-        <a href="{{ route('accounts.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Hesaplara Dön</a>
+        <div class="flex gap-2">
+            <a href="{{ route('accounts.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Hesaplara Dön</a>
+        </div>
     </div>
 
     <form id="payment-create-form" method="POST" action="{{ route('payments.store') }}" class="rounded-2xl bg-white p-6 shadow-sm">
         @csrf
 
-        <div class="grid gap-5 lg:grid-cols-2">
+        <h1 class="text-2xl font-bold text-slate-950">Ödeme Al / Tahsilat Ekle</h1>
+        <p class="mt-1 text-sm text-slate-500">Yeni ödeme kaydı oluşturun. İsterseniz hemen borçlara tahsis edebilir ya da sonra yapabilirsiniz.</p>
+
+        <div class="mt-5 grid gap-5 border-t border-slate-100 pt-5 lg:grid-cols-2">
             <div>
                 <label for="account_id" class="mb-2 block text-sm font-semibold text-slate-700">Cari/Hesap</label>
                 <select id="account_id" name="{{ $selectedAccountId ? null : 'account_id' }}" required

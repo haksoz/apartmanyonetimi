@@ -1,11 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
-    {{-- Header --}}
+    @php
+        $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
+    @endphp
+
+    {{-- Breadcrumb + Hızlı Buton --}}
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-950">Borçlandır</h1>
-            <p class="mt-1 text-sm text-slate-500">Tek hesaba birebir borçlandırma oluşturun.</p>
+        <div class="flex items-center gap-2 text-sm text-slate-400">
+            <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+            @if ($selectedAccount)
+                <span>/</span>
+                <a href="{{ route('accounts.show', $selectedAccount) }}" class="text-slate-500 hover:text-slate-600">
+                    @if ($selectedAccount->unit)
+                        Daire {{ str_pad($selectedAccount->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                    @else
+                        {{ $selectedAccount->type_label }}
+                    @endif
+                </a>
+            @endif
         </div>
         <div class="flex gap-2">
             <a href="{{ route('dues.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Aidatlara Dön</a>
@@ -19,9 +32,12 @@
         <input type="hidden" name="target_audience" value="tenant_priority">
         <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
 
-        {{-- Main Fields --}}
+        {{-- Başlık + Ana Alanlar --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <div class="grid gap-5 md:grid-cols-2">
+            <h1 class="text-2xl font-bold text-slate-950">Borçlandır</h1>
+            <p class="mt-1 text-sm text-slate-500">Tek hesaba birebir borçlandırma oluşturun.</p>
+
+            <div class="mt-5 grid gap-5 border-t border-slate-100 pt-5 md:grid-cols-2">
                 <div>
                     <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Hesap / Kiracı-Katmaliki</label>
                     <select id="account_id" name="account_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">

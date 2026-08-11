@@ -1,10 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
+    {{-- Breadcrumb + Hızlı Butonlar --}}
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-950">Hesabı Düzenle</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ $account->name }} hesabını güncelleyin.</p>
+        <div class="flex items-center gap-2 text-sm text-slate-400">
+            <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+            <span>/</span>
+            <a href="{{ route('accounts.show', $account) }}" class="text-slate-500 hover:text-slate-600">
+                @if ($account->unit)
+                    Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @else
+                    {{ $account->type_label }}
+                @endif
+            </a>
         </div>
         <div class="flex flex-wrap gap-2">
             <form method="POST" action="{{ route('accounts.destroy', $account) }}" class="inline" onsubmit="return confirm('Bu hesabı silmek istediğinize emin misiniz? Hesapta hareket varsa silinemez.')">
@@ -28,6 +36,12 @@
                 </button>
             @endif
         </div>
+    </div>
+
+    {{-- Başlık Kartı --}}
+    <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-4">
+        <h1 class="text-2xl font-bold text-slate-950">Hesabı Düzenle</h1>
+        <p class="mt-1 text-sm text-slate-500">{{ $account->name }} hesabını güncelleyin.</p>
     </div>
 
     @include('accounts.form', [

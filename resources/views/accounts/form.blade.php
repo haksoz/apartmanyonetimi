@@ -6,9 +6,8 @@
 
     @php $activeTenantAssignment = $account?->activeTenantAssignment; @endphp
 
-    {{-- Hesap Türü & Daire --}}
+    {{-- Hesap Türü, Daire & Kişisel Bilgiler --}}
     <div class="rounded-2xl bg-white p-6 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-700 mb-4">Hesap Türü &amp; Daire</h3>
         <div class="grid gap-5 md:grid-cols-2">
             <div>
                 <label for="type" class="mb-2 block text-sm font-medium text-slate-600">Hesap Türü</label>
@@ -46,13 +45,7 @@
                 @endif
                 @error('unit_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
-        </div>
-    </div>
 
-    {{-- Kişisel Bilgiler --}}
-    <div class="rounded-2xl bg-white p-6 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-700 mb-4">Kişisel Bilgiler</h3>
-        <div class="grid gap-5 md:grid-cols-2">
             <div class="md:col-span-2">
                 <label for="name" class="mb-2 block text-sm font-medium text-slate-600">Adı Soyadı / Ünvan</label>
                 <input id="name" name="name" value="{{ old('name', $account?->name) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">

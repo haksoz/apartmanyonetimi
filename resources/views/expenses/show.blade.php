@@ -233,7 +233,7 @@
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
                             @if ($document->isImage())
-                                <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($document->file_path) }}" target="_blank" class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">Görüntüle</a>
+                                <button type="button" onclick="openImagePreview('{{ \Illuminate\Support\Facades\Storage::disk('public')->url($document->file_path) }}')" class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">Görüntüle</button>
                             @endif
                             <a href="{{ route('expenses.documents.download', [$expense, $document]) }}" class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">İndir</a>
                         </div>
@@ -435,6 +435,37 @@
             });
         </script>
     @endif
+
+    {{-- Image Preview Modal --}}
+    <div id="image-preview-modal" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+        <button type="button" onclick="closeImagePreview()" aria-label="Kapat"
+                class="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <img id="image-preview-img" src="" alt="Doküman önizleme" class="max-h-full max-w-full rounded-xl object-contain">
+    </div>
+
+    <script>
+        function openImagePreview(url) {
+            document.getElementById('image-preview-img').src = url;
+            document.getElementById('image-preview-modal').classList.remove('hidden');
+        }
+
+        function closeImagePreview() {
+            document.getElementById('image-preview-modal').classList.add('hidden');
+            document.getElementById('image-preview-img').src = '';
+        }
+
+        document.getElementById('image-preview-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeImagePreview();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeImagePreview();
+        });
+    </script>
 
 @endsection
 
