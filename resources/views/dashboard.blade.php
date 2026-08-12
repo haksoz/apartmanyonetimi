@@ -30,8 +30,32 @@
         </div>
     </div>
 
+    {{-- Hızlı Erişim Butonları --}}
+    @php
+        $quickActions = collect([
+            ['label' => 'Gider Ekle', 'route' => route('expenses.create'), 'show' => true],
+            ['label' => 'Aidat Ekle', 'route' => route('dues.create'), 'show' => true],
+            ['label' => 'Hesaplar', 'route' => route('accounts.index'), 'show' => $navIsOwner],
+            ['label' => 'Kasa', 'route' => route('cash.index'), 'show' => $navIsOwner],
+        ])->where('show', true)->values();
+    @endphp
+    <div class="grid gap-0 mb-6 {{ $quickActions->count() === 2 ? 'grid-cols-2' : 'grid-cols-3 sm:grid-cols-4' }}">
+        @foreach ($quickActions as $i => $action)
+            <a href="{{ $action['route'] }}"
+               class="relative items-center justify-center min-h-[3.5rem] w-full bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-colors border border-slate-300 px-2 sm:px-3 truncate
+                      {{ $i > 0 ? 'border-l-0' : '' }}
+                      {{ $loop->first ? 'rounded-l-2xl' : '' }}
+                      {{ $loop->last ? 'rounded-r-2xl' : '' }}
+                      {{ $action['label'] === 'Kasa' ? 'hidden sm:flex' : 'flex' }}
+                      {{ $action['label'] === 'Hesaplar' ? 'rounded-r-2xl sm:rounded-r-none' : '' }}">
+                {{ $action['label'] }}
+            </a>
+        @endforeach
+    </div>
+
     {{-- Özet Kartlar --}}
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    {{-- Masaüstü: 3 ayrı kart --}}
+    <div class="hidden sm:grid sm:grid-cols-3 gap-4 mb-6">
         <div class="rounded-2xl bg-white p-5 shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Kasa Bakiyesi</div>
             <div class="mt-2 text-2xl font-bold {{ $cashBalance >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
@@ -48,11 +72,29 @@
         </div>
     </div>
 
+    {{-- Mobil: Birleşik minimal kart --}}
+    <div class="rounded-2xl bg-white shadow-sm sm:hidden mb-6">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 last:border-0">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Kasa Bakiyesi</span>
+            <span class="text-lg font-bold {{ $cashBalance >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                {{ number_format($cashBalance, 2, ',', '.') }} TL
+            </span>
+        </div>
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 last:border-0">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ödenmemiş Gider</span>
+            <span class="text-lg font-bold text-red-600">{{ number_format($expenseUnpaid, 2, ',', '.') }} TL</span>
+        </div>
+        <div class="flex items-center justify-between px-5 py-4">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Tahsil Edilmemiş Aidat</span>
+            <span class="text-lg font-bold text-amber-600">{{ number_format($uncollectedDues, 2, ',', '.') }} TL</span>
+        </div>
+    </div>
+
     {{-- Grafikler - Üst Satır --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
 
         {{-- Aidat Durum Pastası --}}
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <div class="rounded-2xl bg-white p-4 sm:p-6 shadow-sm">
             <h3 class="text-sm font-semibold text-slate-700 mb-1">Aidat Durumu</h3>
 
             {{-- Tür filtre butonları --}}
@@ -71,7 +113,7 @@
 
             @php $dueTotal = $duePaid + $dueUnpaid + $duePartial + $dueOverdue; @endphp
             @if ($dueTotal > 0 || count($dueByType) > 0)
-                <div class="relative flex justify-center">
+                <div class="relative hidden sm:flex justify-center">
                     <canvas id="duePieChart" width="180" height="180"></canvas>
                 </div>
                 <div class="mt-4 space-y-2">
@@ -98,11 +140,11 @@
         </div>
 
         {{-- Gider Kategorileri Pastası --}}
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <div class="rounded-2xl bg-white p-4 sm:p-6 shadow-sm">
             <h3 class="text-sm font-semibold text-slate-700 mb-1">Gider Dağılımı</h3>
             <p class="text-xs text-slate-400 mb-4">Tüm zamanlar, kategorilere göre</p>
             @if ($expenseByCategory->isNotEmpty())
-                <div class="relative flex justify-center">
+                <div class="relative hidden sm:flex justify-center">
                     <canvas id="expensePieChart" width="180" height="180"></canvas>
                 </div>
                 <div class="mt-4 space-y-1.5">
@@ -122,11 +164,11 @@
         </div>
 
         {{-- Kasa Gelir/Gider Pastası --}}
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <div class="rounded-2xl bg-white p-4 sm:p-6 shadow-sm">
             <h3 class="text-sm font-semibold text-slate-700 mb-1">Kasa Akışı</h3>
             <p class="text-xs text-slate-400 mb-4">Toplam gelir ve gider</p>
             @if ($cashIncome + $cashExpense > 0)
-                <div class="relative flex justify-center">
+                <div class="relative hidden sm:flex justify-center">
                     <canvas id="cashPieChart" width="180" height="180"></canvas>
                 </div>
                 <div class="mt-4 space-y-2">
