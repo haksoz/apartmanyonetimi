@@ -34,7 +34,7 @@
     @php
         $quickActions = collect([
             ['label' => 'Gider Ekle', 'route' => route('expenses.create'), 'show' => true],
-            ['label' => 'Aidat Ekle', 'route' => route('dues.create'), 'show' => true],
+            ['label' => 'Aidat Ekle', 'route' => route('dues.index'), 'show' => true],
             ['label' => 'Hesaplar', 'route' => route('accounts.index'), 'show' => $navIsOwner],
             ['label' => 'Kasa', 'route' => route('cash.index'), 'show' => $navIsOwner],
         ])->where('show', true)->values();
