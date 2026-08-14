@@ -466,7 +466,7 @@
 
         {{-- Main Content --}}
         <main class="pt-16 lg:pl-72 sidebar-transition min-h-screen flex flex-col">
-            <div class="mx-auto max-w-7xl w-full px-4 py-8 sm:px-6 lg:px-8 flex-1">
+            <div class="mx-auto max-w-7xl w-full px-2 py-8 sm:px-6 lg:px-8 flex-1">
                 @if (session('impersonate_admin_id'))
                     <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center justify-between">
                         <div>

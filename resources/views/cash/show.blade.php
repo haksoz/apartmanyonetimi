@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <div class="max-w-2xl rounded-2xl bg-white p-6 shadow-sm">
+    <div class="max-w-2xl rounded-2xl bg-white py-6 px-3 md:p-6 shadow-sm">
         <dl class="grid gap-4 text-sm md:grid-cols-2">
             @if ($transaction->reference_number)
                 <div>

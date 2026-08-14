@@ -15,7 +15,7 @@
     </div>
 
     {{-- Summary Cards --}}
-    <div class="mb-6 grid grid-cols-3 gap-2 rounded-2xl bg-white p-4 shadow-sm md:gap-4 md:bg-transparent md:p-0 md:shadow-none">
+    <div class="mb-6 grid grid-cols-3 gap-2 rounded-2xl bg-white py-4 px-3 shadow-sm md:gap-4 md:bg-transparent md:p-0 md:shadow-none">
         <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gelir</div>
             <div class="mt-1 text-sm font-bold text-emerald-600 tabular-nums md:mt-2 md:text-xl">{{ number_format($income, 2, ',', '.') }} TL</div>
@@ -32,7 +32,7 @@
 
     {{-- Info --}}
     @if ($cashBox->bank_name || $cashBox->iban || $cashBox->account_number)
-    <div class="mb-6 rounded-2xl bg-white p-6 shadow-sm">
+    <div class="mb-6 rounded-2xl bg-white py-6 px-3 md:p-6 shadow-sm">
         <div class="grid gap-4 md:grid-cols-3 text-sm">
             @if ($cashBox->bank_name)
             <div>
@@ -57,7 +57,7 @@
     @endif
 
     {{-- Transactions Table --}}
-    <div class="rounded-2xl bg-white p-6 shadow-sm">
+    <div class="rounded-2xl bg-white py-6 px-3 md:p-6 shadow-sm">
         <h2 class="mb-4 text-base font-semibold text-slate-950">Hareketler</h2>
         @if ($transactions->isEmpty())
             <div class="py-6 text-sm text-slate-500">Bu kasaya ait henüz hareket yok.</div>
@@ -113,7 +113,7 @@
             {{-- Mobile Cards --}}
             <div class="md:hidden space-y-4">
                 @foreach ($transactions as $t)
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <div class="text-xs text-slate-500">{{ $t->transaction_date->format('d.m.Y') }}</div>

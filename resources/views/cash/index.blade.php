@@ -13,7 +13,7 @@
     </div>
 
     {{-- Summary Cards --}}
-    <div class="mb-6 grid grid-cols-3 gap-2 rounded-2xl bg-white p-4 shadow-sm md:gap-4 md:bg-transparent md:p-0 md:shadow-none">
+    <div class="mb-6 grid grid-cols-3 gap-2 rounded-2xl bg-white py-4 px-3 shadow-sm md:gap-4 md:bg-transparent md:p-0 md:shadow-none">
         <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Toplam Gelir</div>
             <div class="mt-1 text-sm font-bold text-emerald-600 tabular-nums md:mt-2 md:text-xl">{{ number_format($income, 2, ',', '.') }} TL</div>
@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <div class="mb-6 rounded-2xl bg-white p-6 shadow-sm">
+    <div class="mb-6 rounded-2xl bg-white py-6 px-3 md:p-6 shadow-sm">
         <h2 class="mb-4 text-lg font-semibold text-slate-950">Kasalar</h2>
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             @forelse ($cashBoxes as $cashBox)
@@ -37,7 +37,7 @@
                     $cashBoxExpense = $cashBox->transactions->where('type', 'expense')->sum('amount');
                     $cashBoxBalance = $cashBoxIncome - $cashBoxExpense;
                 @endphp
-                <div class="rounded-2xl border border-slate-200 p-4">
+                <div class="rounded-2xl border border-slate-200 py-4 px-3 md:p-4">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <div class="font-semibold text-slate-950">{{ $cashBox->name }}</div>
