@@ -301,6 +301,7 @@ class DueController extends Controller
                 Rule::exists('accounts', 'id')->where('apartment_id', $apartment->id),
             ],
             'individual_amount' => ['required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL, 'nullable', 'numeric', 'min:0.01'],
+            'round_to_integer' => ['nullable', 'boolean'],
         ]);
 
         // Period formdan gönderilmemişse oluşturulma tarihinden otomatik belirle
@@ -327,11 +328,16 @@ class DueController extends Controller
             ->all();
         $sourceAmount = $this->sourceAmount($apartment->id, $validated, $selectedExpenseIds);
 
+        $roundToInteger = filter_var($validated['round_to_integer'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($roundToInteger) {
+            $sourceAmount = ceil($sourceAmount);
+        }
+
         if ($sourceAmount <= 0) {
             return back()->withErrors(['source_amount' => 'Borçlandırılacak toplam tutar sıfırdan büyük olmalıdır.'])->withInput();
         }
 
-        DB::transaction(function () use ($apartment, $validated, $selectedExpenseIds, $sourceAmount) {
+        DB::transaction(function () use ($apartment, $validated, $selectedExpenseIds, $sourceAmount, $roundToInteger) {
             $batch = DueBatch::create([
                 'apartment_id' => $apartment->id,
                 'due_type' => $validated['due_type'],
@@ -398,13 +404,21 @@ class DueController extends Controller
 
             $distributionType = $validated['distribution_type'];
             $lastIndex = count($unitAccounts) - 1;
+            $billedTotal = 0.0;
 
             if ($distributionType === DueBatch::DISTRIBUTION_EQUAL) {
-                $amountPerUnit = round($sourceAmount / count($unitAccounts), 2);
+                $amountPerUnit = $roundToInteger
+                    ? (int) ceil($sourceAmount / count($unitAccounts))
+                    : round($sourceAmount / count($unitAccounts), 2);
                 $allocated = 0;
                 foreach ($unitAccounts as $index => $item) {
-                    $amount = $index === $lastIndex ? round($sourceAmount - $allocated, 2) : $amountPerUnit;
-                    $allocated += $amount;
+                    $amount = $roundToInteger
+                        ? $amountPerUnit
+                        : ($index === $lastIndex ? round($sourceAmount - $allocated, 2) : $amountPerUnit);
+                    if (! $roundToInteger) {
+                        $allocated += $amount;
+                    }
+                    $billedTotal += $amount;
                     $this->createDue($batch, $item['unit'], $item['account'], $amount, $validated);
                 }
             } else {
@@ -417,11 +431,18 @@ class DueController extends Controller
 
                 if ($totalWeight <= 0) {
                     // Ağırlık bilgisi yoksa eşit dağıt
-                    $amountPerUnit = round($sourceAmount / count($unitAccounts), 2);
+                    $amountPerUnit = $roundToInteger
+                        ? (int) ceil($sourceAmount / count($unitAccounts))
+                        : round($sourceAmount / count($unitAccounts), 2);
                     $allocated = 0;
                     foreach ($unitAccounts as $index => $item) {
-                        $amount = $index === $lastIndex ? round($sourceAmount - $allocated, 2) : $amountPerUnit;
-                        $allocated += $amount;
+                        $amount = $roundToInteger
+                            ? $amountPerUnit
+                            : ($index === $lastIndex ? round($sourceAmount - $allocated, 2) : $amountPerUnit);
+                        if (! $roundToInteger) {
+                            $allocated += $amount;
+                        }
+                        $billedTotal += $amount;
                         $this->createDue($batch, $item['unit'], $item['account'], $amount, $validated);
                     }
                 } else {
@@ -430,13 +451,20 @@ class DueController extends Controller
                         $weight = $distributionType === DueBatch::DISTRIBUTION_SQUARE_METERS
                             ? (float) ($item['unit']->square_meters ?? 0)
                             : (float) ($item['unit']->share_coefficient ?? 0);
-                        $amount = $index === $lastIndex
-                            ? round($sourceAmount - $allocated, 2)
-                            : round($sourceAmount * $weight / $totalWeight, 2);
-                        $allocated += $amount;
+                        $amount = $roundToInteger
+                            ? (int) ceil($sourceAmount * $weight / $totalWeight)
+                            : ($index === $lastIndex ? round($sourceAmount - $allocated, 2) : round($sourceAmount * $weight / $totalWeight, 2));
+                        if (! $roundToInteger) {
+                            $allocated += $amount;
+                        }
+                        $billedTotal += $amount;
                         $this->createDue($batch, $item['unit'], $item['account'], $amount, $validated);
                     }
                 }
+            }
+
+            if ($roundToInteger) {
+                $batch->update(['source_amount' => $billedTotal]);
             }
         });
 

@@ -140,11 +140,17 @@
             {{-- Distribution Type Selection --}}
             <div class="mb-4">
                 <label class="mb-2 block text-sm font-medium text-slate-600">Dağıtım Yöntemi</label>
-                <select name="distribution_type" id="distribution_type" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                    <option value="equal" @selected(old('distribution_type', 'equal') === 'equal')>Eşit dağıtım</option>
-                    <option value="square_meters" @selected(old('distribution_type') === 'square_meters')>Metrekareye göre</option>
-                    <option value="share_coefficient" @selected(old('distribution_type') === 'share_coefficient')>Pay çarpanına göre</option>
-                </select>
+                <div class="flex flex-wrap md:flex-nowrap items-center gap-3">
+                    <select name="distribution_type" id="distribution_type" class="w-full md:w-1/2 rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                        <option value="equal" @selected(old('distribution_type', 'equal') === 'equal')>Eşit dağıtım</option>
+                        <option value="square_meters" @selected(old('distribution_type') === 'square_meters')>Metrekareye göre</option>
+                        <option value="share_coefficient" @selected(old('distribution_type') === 'share_coefficient')>Pay çarpanına göre</option>
+                    </select>
+                    <div class="shrink-0 flex items-center gap-2">
+                        <input type="checkbox" id="round_to_integer" name="round_to_integer" value="1" @checked(old('round_to_integer')) class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                        <label for="round_to_integer" class="text-sm text-slate-600 whitespace-nowrap">Tamsayıya yuvarla</label>
+                    </div>
+                </div>
                 @error('distribution_type')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
@@ -232,6 +238,18 @@
         </div>
     </form>
 
+    {{-- Missing Unit Data Modal --}}
+    <div id="missing-data-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 class="text-lg font-bold text-slate-950">Hesaplama Yapılamıyor</h3>
+            <p id="missing-data-message" class="mt-2 text-sm text-slate-600"></p>
+            <div class="mt-6 flex flex-col gap-2">
+                <a href="{{ route('units.index') }}" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-emerald-700">Daire Ayarlarına Git</a>
+                <button type="button" id="close-missing-data-modal" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Kapat</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         (() => {
             const units = {{ $units }};
@@ -250,6 +268,12 @@
             let isDueDateManuallySet = false;
 
             const calcSummary = document.getElementById('calc-summary');
+            const roundToInteger = document.getElementById('round_to_integer');
+            const distSelect = document.getElementById('distribution_type');
+            const missingDataModal = document.getElementById('missing-data-modal');
+            const missingDataMessage = document.getElementById('missing-data-message');
+            const closeMissingDataModal = document.getElementById('close-missing-data-modal');
+            let lastDistributionType = distSelect?.value || 'equal';
             const calcBtn = document.getElementById('calc-btn');
             const expenseList = document.getElementById('expense-list');
             const expenseListEmpty = document.getElementById('expense-list-empty');
@@ -260,8 +284,8 @@
             let currentExpenses = [];
             let selectedExpenseIds = new Set();
 
-            const formatMoney = (amount) => {
-                return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' TL';
+            const formatMoney = (amount, fractionDigits = 2) => {
+                return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits }).format(amount) + ' TL';
             };
 
             const calculateSelectedTotal = () => {
@@ -272,6 +296,32 @@
                     }
                 });
                 return total;
+            };
+
+            const getRoundedTotal = (total) => {
+                const distType = document.getElementById('distribution_type')?.value;
+                if (!total || total <= 0 || !unitsData.length) return 0;
+
+                const activeUnits = unitsData.filter(u => {
+                    if (distType === 'square_meters') return u.sqm > 0;
+                    if (distType === 'share_coefficient') return u.coef > 0;
+                    return true;
+                });
+                if (activeUnits.length === 0) return 0;
+
+                const totalWeight = activeUnits.reduce((s, u) => {
+                    if (distType === 'square_meters') return s + u.sqm;
+                    if (distType === 'share_coefficient') return s + u.coef;
+                    return s + 1;
+                }, 0);
+
+                const baseTotal = Math.ceil(total);
+                let sum = 0;
+                activeUnits.forEach(u => {
+                    const w = distType === 'equal' ? 1 : (distType === 'square_meters' ? u.sqm : u.coef);
+                    sum += Math.ceil(baseTotal * w / totalWeight);
+                });
+                return sum;
             };
 
             const updateCalculation = () => {
@@ -300,8 +350,10 @@
                         calcSummary.classList.add('hidden');
                     }
                 } else if (units > 0 && total > 0) {
-                    const perUnit = total / units;
-                    calcSummary.textContent = `Toplam: ${formatMoney(total)} / Daire: ${formatMoney(perUnit)}`;
+                    const round = roundToInteger?.checked;
+                    const displayTotal = round ? getRoundedTotal(total) : total;
+                    const displayPerUnit = round ? Math.ceil(displayTotal / units) : (total / units);
+                    calcSummary.textContent = `Toplam: ${formatMoney(displayTotal, round ? 0 : 2)} / Daire: ${formatMoney(displayPerUnit, round ? 0 : 2)}`;
                     calcSummary.classList.remove('hidden');
                 } else {
                     calcSummary.classList.add('hidden');
@@ -343,7 +395,10 @@
                 const warningEl = document.getElementById('preview-warning');
                 const totalLbl = document.getElementById('preview-total-label');
 
-                if (!total || total <= 0 || !unitsData.length) {
+                const round = roundToInteger?.checked;
+                const baseTotal = round ? Math.ceil(total) : total;
+
+                if (!baseTotal || baseTotal <= 0 || !unitsData.length) {
                     previewEl.classList.add('hidden');
                     return;
                 }
@@ -375,14 +430,18 @@
 
                 let shares = [];
                 let allocated = 0;
-                activeUnits.forEach((u, idx) => {
+                activeUnits.forEach(u => {
                     const w = distType === 'equal' ? 1 : (distType === 'square_meters' ? u.sqm : u.coef);
-                    const share = idx === activeUnits.length - 1
-                        ? Math.round((total - allocated) * 100) / 100
-                        : Math.round(total * w / totalWeight * 100) / 100;
+                    const share = round
+                        ? Math.ceil(baseTotal * w / totalWeight)
+                        : (u === activeUnits[activeUnits.length - 1]
+                            ? Math.round((baseTotal - allocated) * 100) / 100
+                            : Math.round(baseTotal * w / totalWeight * 100) / 100);
                     allocated += share;
                     shares.push({ unit: u, w, share });
                 });
+
+                const totalToUse = round ? allocated : baseTotal;
 
                 const groups = {};
                 shares.forEach(s => {
@@ -400,12 +459,12 @@
                         : g.w.toLocaleString('tr-TR') + ' çarpan';
                     html += `<div class="flex items-center justify-between px-4 py-3 text-sm">
                         <div class="text-slate-700"><span class="font-medium">${weightLabel}</span> &mdash; <span class="text-slate-500">${g.count} daire</span></div>
-                        <div class="font-bold text-slate-900 tabular-nums">${formatMoney(g.share)} / daire</div>
+                        <div class="font-bold text-slate-900 tabular-nums">${formatMoney(g.share, round ? 0 : 2)} / daire</div>
                     </div>`;
                 });
 
                 groupsEl.innerHTML = html;
-                totalLbl.textContent = formatMoney(total) + ' · ' + activeUnits.length + ' daire';
+                totalLbl.textContent = formatMoney(totalToUse, round ? 0 : 2) + ' · ' + activeUnits.length + ' daire';
                 previewEl.classList.remove('hidden');
             };
 
@@ -514,7 +573,28 @@
             sourceRadios.forEach(radio => radio.addEventListener('change', toggleFields));
             sourceAmount.addEventListener('input', updateCalculation);
             fixedAmount?.addEventListener('input', updateCalculation);
-            document.getElementById('distribution_type')?.addEventListener('change', updateCalculation);
+            const handleDistChange = () => {
+                const newType = distSelect?.value;
+                const hasMissing = newType === 'square_meters'
+                    ? unitsData.some(u => !u.sqm || u.sqm <= 0)
+                    : (newType === 'share_coefficient' ? unitsData.some(u => !u.coef || u.coef <= 0) : false);
+                if (hasMissing) {
+                    const label = newType === 'square_meters' ? 'metrekare' : 'pay çarpanı';
+                    missingDataMessage.textContent = `${label.charAt(0).toUpperCase() + label.slice(1)} dağıtımı yapabilmek için tüm dairelerin ${label} bilgisi girilmiş olmalıdır.`;
+                    missingDataModal?.classList.remove('hidden');
+                    distSelect.value = lastDistributionType;
+                    return;
+                }
+                lastDistributionType = newType;
+                updateCalculation();
+            };
+
+            distSelect?.addEventListener('change', handleDistChange);
+            roundToInteger?.addEventListener('change', updateCalculation);
+
+            closeMissingDataModal?.addEventListener('click', () => {
+                missingDataModal?.classList.add('hidden');
+            });
 
             // Initialize
             toggleFields();
