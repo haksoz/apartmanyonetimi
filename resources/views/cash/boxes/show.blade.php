@@ -15,18 +15,18 @@
     </div>
 
     {{-- Summary Cards --}}
-    <div class="mb-6 grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Toplam Gelir</div>
-            <div class="mt-2 text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($income, 2, ',', '.') }} TL</div>
+    <div class="mb-6 grid grid-cols-3 gap-2 rounded-2xl bg-white p-4 shadow-sm md:gap-4 md:bg-transparent md:p-0 md:shadow-none">
+        <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gelir</div>
+            <div class="mt-1 text-sm font-bold text-emerald-600 tabular-nums md:mt-2 md:text-xl">{{ number_format($income, 2, ',', '.') }} TL</div>
         </div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Toplam Gider</div>
-            <div class="mt-2 text-xl font-bold text-red-600 tabular-nums">{{ number_format($expense, 2, ',', '.') }} TL</div>
+        <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gider</div>
+            <div class="mt-1 text-sm font-bold text-red-600 tabular-nums md:mt-2 md:text-xl">{{ number_format($expense, 2, ',', '.') }} TL</div>
         </div>
-        <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bakiye</div>
-            <div class="mt-2 text-xl font-bold tabular-nums {{ $balance >= 0 ? 'text-slate-900' : 'text-red-600' }}">{{ number_format($balance, 2, ',', '.') }} TL</div>
+            <div class="mt-1 text-sm font-bold tabular-nums md:mt-2 md:text-xl {{ $balance >= 0 ? 'text-slate-900' : 'text-red-600' }}">{{ number_format($balance, 2, ',', '.') }} TL</div>
         </div>
     </div>
 
@@ -62,7 +62,8 @@
         @if ($transactions->isEmpty())
             <div class="py-6 text-sm text-slate-500">Bu kasaya ait henüz hareket yok.</div>
         @else
-            <div class="overflow-hidden rounded-xl border border-slate-200">
+            {{-- Desktop Table --}}
+            <div class="hidden md:block overflow-hidden rounded-xl border border-slate-200">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-left">
                         <tr>
@@ -107,6 +108,52 @@
                         @endforeach
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Mobile Cards --}}
+            <div class="md:hidden space-y-4">
+                @foreach ($transactions as $t)
+                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="text-xs text-slate-500">{{ $t->transaction_date->format('d.m.Y') }}</div>
+                            <div class="mt-1 text-sm font-semibold text-slate-900">
+                                {{ $t->description ?: ($t->type === 'income' ? 'Gelir' : 'Gider') }}
+                            </div>
+                            @if ($t->reference_number)
+                                <div class="text-xs text-slate-400 mt-0.5">{{ $t->reference_number }}</div>
+                            @endif
+                        </div>
+                        <a href="{{ $t->detail_url }}" class="shrink-0 whitespace-nowrap rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
+                    </div>
+                    <div class="mt-2 text-xs text-slate-500">
+                        @if ($t->account) {{ $t->account->name }} @endif
+                        @if ($t->account && $t->category) · @endif
+                        @if ($t->category) {{ $t->category->name }} @endif
+                        @if (!$t->account && !$t->category) - @endif
+                    </div>
+                    <div class="mt-3 grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                            <div class="text-xs text-slate-500">Gelir</div>
+                            <div class="font-semibold text-emerald-600">
+                                {{ $t->type === 'income' ? number_format($t->amount, 2, ',', '.') . ' TL' : '-' }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-500">Gider</div>
+                            <div class="font-semibold text-red-600">
+                                {{ $t->type === 'expense' ? number_format($t->amount, 2, ',', '.') . ' TL' : '-' }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-500">Bakiye</div>
+                            <div class="font-semibold {{ $t->running_balance >= 0 ? 'text-slate-900' : 'text-red-600' }}">
+                                {{ number_format($t->running_balance, 2, ',', '.') }} TL
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
             </div>
         @endif
     </div>

@@ -12,20 +12,19 @@
         </div>
     </div>
 
-    <div class="mb-6 rounded-2xl bg-white p-5 shadow-sm">
-        <div class="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-4 md:divide-x md:divide-slate-100">
-            <div class="flex items-center justify-between md:flex-col md:justify-center md:text-center px-2">
-                <div class="text-sm text-slate-500">Gelir</div>
-                <div class="text-lg md:text-2xl font-bold text-emerald-600">{{ number_format($income, 2, ',', '.') }} TL</div>
-            </div>
-            <div class="flex items-center justify-between md:flex-col md:justify-center md:text-center px-2">
-                <div class="text-sm text-slate-500">Gider</div>
-                <div class="text-lg md:text-2xl font-bold text-red-600">{{ number_format($expense, 2, ',', '.') }} TL</div>
-            </div>
-            <div class="flex items-center justify-between md:flex-col md:justify-center md:text-center px-2">
-                <div class="text-sm text-slate-500">Bakiye</div>
-                <div class="text-lg md:text-2xl font-bold text-slate-900">{{ number_format($balance, 2, ',', '.') }} TL</div>
-            </div>
+    {{-- Summary Cards --}}
+    <div class="mb-6 grid grid-cols-3 gap-2 rounded-2xl bg-white p-4 shadow-sm md:gap-4 md:bg-transparent md:p-0 md:shadow-none">
+        <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Toplam Gelir</div>
+            <div class="mt-1 text-sm font-bold text-emerald-600 tabular-nums md:mt-2 md:text-xl">{{ number_format($income, 2, ',', '.') }} TL</div>
+        </div>
+        <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Toplam Gider</div>
+            <div class="mt-1 text-sm font-bold text-red-600 tabular-nums md:mt-2 md:text-xl">{{ number_format($expense, 2, ',', '.') }} TL</div>
+        </div>
+        <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Toplam Bakiye</div>
+            <div class="mt-1 text-sm font-bold tabular-nums md:mt-2 md:text-xl {{ $balance >= 0 ? 'text-slate-900' : 'text-red-600' }}">{{ number_format($balance, 2, ',', '.') }} TL</div>
         </div>
     </div>
 

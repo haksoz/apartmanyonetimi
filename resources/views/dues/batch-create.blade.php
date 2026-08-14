@@ -16,7 +16,7 @@
         @csrf
 
         {{-- Source Selection - Side by Side with Icons --}}
-        <div class="flex gap-3">
+        <div class="flex flex-col gap-3 md:flex-row">
             <label class="cursor-pointer flex-1">
                 <input type="radio" name="source_type" value="fixed" class="peer sr-only" @checked(old('source_type', 'fixed') === 'fixed')>
                 <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
@@ -75,12 +75,12 @@
             {{-- Period Selection --}}
             <div class="mb-4">
                 <label class="mb-2 block text-sm font-medium text-slate-600">Gider Dönemi</label>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-3">
                     <input id="source_period" name="source_period" type="month" value="{{ old('source_period', now()->format('Y-m')) }}" class="w-40 md:w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none">
                     <button type="button" id="calc-btn" class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 whitespace-nowrap">
                         Giderleri Getir
                     </button>
-                    <div id="expense-total-display" class="hidden flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2">
+                    <div id="expense-total-display" class="hidden w-full md:w-auto flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2">
                         <span class="text-xs text-emerald-600">Toplam:</span>
                         <span id="expense-total-amount" class="text-sm font-bold text-emerald-700">0,00 TL</span>
                     </div>
