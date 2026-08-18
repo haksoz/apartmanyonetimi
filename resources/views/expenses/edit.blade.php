@@ -32,20 +32,8 @@
             <div class="grid gap-5 md:grid-cols-2">
                 <div>
                     <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Hesap / Tedarikçi</label>
-                    @if ($expense->is_paid)
-                        <input type="hidden" name="account_id" value="{{ $expense->account_id }}">
-                        <div class="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500 cursor-not-allowed">{{ $expense->account?->name ?? 'Hesap seçilmedi' }}</div>
-                    @else
-                        <select id="account_id" name="account_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                            @if (!$expense->account_id)
-                                <option value="">Hesap seçmeden kaydet</option>
-                            @endif
-                            @foreach ($accounts as $account)
-                                <option value="{{ $account->id }}" @selected((string) old('account_id', $expense->account_id) === (string) $account->id)>{{ $account->name }} ({{ $account->type_label }})</option>
-                            @endforeach
-                        </select>
-                        @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                    @endif
+                    <input type="hidden" name="account_id" value="{{ $expense->account_id }}">
+                    <div class="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500 cursor-not-allowed">{{ $expense->account?->name ?? 'Hesap seçilmedi' }}</div>
                 </div>
 
                 <div>
@@ -102,29 +90,6 @@
             </div>
         </div>
 
-        {{-- Ödeme Bilgisi --}}
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Ödeme Bilgisi</h3>
-            @if ($expense->is_paid)
-                <input type="hidden" name="is_paid" value="1">
-                @php $paymentTx = $expense->transactions->firstWhere('type', 'debit'); @endphp
-                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
-                    <div class="flex items-center gap-2 font-semibold text-emerald-700 mb-2">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        Ödendi
-                    </div>
-                    @if ($paymentTx)
-                        <div class="text-slate-600">Ödeme Tarihi: <span class="font-medium text-slate-900">{{ $paymentTx->transaction_date->format('d.m.Y') }}</span></div>
-                    @endif
-                </div>
-            @else
-                <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700 cursor-pointer">
-                    <input type="checkbox" name="is_paid" value="1" @checked(old('is_paid', $expense->is_paid)) class="rounded border-slate-300">
-                    Bu gider ödendi
-                </label>
-            @endif
-        </div>
-
         {{-- Dokümanlar --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
             <h3 class="text-sm font-semibold text-slate-700 mb-4">Dokümanlar</h3>
@@ -152,6 +117,29 @@
                 <p class="mt-1 text-xs text-slate-500">Mobilden fatura/fiş fotoğrafı çekebilir veya PDF yükleyebilirsiniz. Maks. 10 MB.</p>
                 @error('document')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
+        </div>
+
+        {{-- Ödeme Bilgisi --}}
+        <div class="rounded-2xl bg-white p-6 shadow-sm">
+            <h3 class="text-sm font-semibold text-slate-700 mb-4">Ödeme Bilgisi</h3>
+            @if ($expense->is_paid)
+                <input type="hidden" name="is_paid" value="1">
+                @php $paymentTx = $expense->transactions->firstWhere('type', 'debit'); @endphp
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
+                    <div class="flex items-center gap-2 font-semibold text-emerald-700 mb-2">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Ödendi
+                    </div>
+                    @if ($paymentTx)
+                        <div class="text-slate-600">Ödeme Tarihi: <span class="font-medium text-slate-900">{{ $paymentTx->transaction_date->format('d.m.Y') }}</span></div>
+                    @endif
+                </div>
+            @else
+                <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700 cursor-pointer">
+                    <input type="checkbox" name="is_paid" value="1" @checked(old('is_paid', $expense->is_paid)) class="rounded border-slate-300">
+                    Bu gider ödendi
+                </label>
+            @endif
         </div>
 
         <div class="flex justify-end">
