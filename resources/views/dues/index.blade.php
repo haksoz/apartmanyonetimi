@@ -8,10 +8,6 @@
             <p class="mt-1 text-sm text-slate-500">Tekil veya toplu aidat tahakkukları burada yönetilecek.</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('dues.export', array_merge(request()->query(), [])) }}"
-               class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 text-center">
-                Excel'e Aktar
-            </a>
             @if($isOwner)
                 <a href="{{ route('dues.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 text-center">Borçlandır</a>
                 <a href="{{ route('dues.batch.create') }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 text-center">Toplu Borçlandır</a>
@@ -434,7 +430,22 @@
                     @if ($due->due_date)
                         <div class="text-xs mt-1 {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500' }}">Son Ödeme: {{ $due->due_date->format('d.m.Y') }} · {{ $due->due_type_label }}{{ $due->category ? ' / '.$due->category->name : '' }}</div>
                     @endif
-                    <div class="mt-1.5 flex flex-wrap items-center gap-1">
+                    @if ($due->is_imported)
+                        <div class="mt-1.5">
+                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                        </div>
+                    @endif
+                </a>
+
+                {{-- Parça 2: Tutarlar | Parça 3: Tahsil Et --}}
+                <div class="mt-2 flex items-end justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('dues.show', $due) }}" class="block">
+                            <div class="font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
+                            @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
+                                <div class="text-xs text-amber-600 font-semibold">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                            @endif
+                        </a>
                         @if ($due->computed_status === 'overdue')
                             <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
                                 <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
@@ -456,20 +467,7 @@
                                 Bekliyor
                             </span>
                         @endif
-                        @if ($due->is_imported)
-                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
-                        @endif
                     </div>
-                </a>
-
-                {{-- Parça 2: Tutarlar | Parça 3: Tahsil Et --}}
-                <div class="mt-2 flex items-end justify-between gap-2">
-                    <a href="{{ route('dues.show', $due) }}" class="block">
-                        <div class="font-bold text-slate-900">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
-                        @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
-                            <div class="text-xs text-amber-600 font-semibold">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
-                        @endif
-                    </a>
                     @if ($due->computed_status !== 'paid')
                         <button type="button"
                                 onclick="openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"

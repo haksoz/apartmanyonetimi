@@ -5,7 +5,7 @@
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-950">Giderler</h1>
-            <p class="mt-1 text-sm text-slate-500">Apartman giderleri ve tedarikçi hesap bağlantıları burada yönetilecek.</p>
+            <p class="mt-1 text-sm text-slate-500">Apartman gider yönetimi</p>
         </div>
         @if($isOwner)
         <div class="flex gap-2 flex-wrap">
@@ -317,7 +317,22 @@
                             <span>{{ $expense->account->name }}</span>
                         @endif
                     </div>
-                    <div class="mt-1.5 flex flex-wrap items-center gap-1">
+                    @if ($expense->is_imported)
+                        <div class="mt-1.5">
+                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                        </div>
+                    @endif
+                </a>
+
+                {{-- Parça 2: Tutarlar | Parça 3: Öde butonu --}}
+                <div class="mt-2 flex items-end justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('expenses.show', $expense) }}" class="block">
+                            <div class="font-bold text-slate-900">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
+                            @if (!$expense->is_paid)
+                                <div class="text-xs text-amber-600 font-semibold">Kalan: {{ number_format($expense->remaining_amount ?? $expense->amount, 2, ',', '.') }} TL</div>
+                            @endif
+                        </a>
                         @php
                             $statusColor = $expense->payment_status_color;
                             $statusColorBg = $statusColor === 'emerald' ? 'bg-emerald-50' : ($statusColor === 'red' ? 'bg-red-50' : 'bg-amber-50');
@@ -328,20 +343,7 @@
                             <span class="h-1.5 w-1.5 rounded-full {{ $statusColorDot }}"></span>
                             {{ $expense->payment_status_label }}
                         </span>
-                        @if ($expense->is_imported)
-                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
-                        @endif
                     </div>
-                </a>
-
-                {{-- Parça 2: Tutarlar | Parça 3: Öde butonu --}}
-                <div class="mt-2 flex items-end justify-between gap-2">
-                    <a href="{{ route('expenses.show', $expense) }}" class="block">
-                        <div class="font-bold text-slate-900">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
-                        @if (!$expense->is_paid)
-                            <div class="text-xs text-amber-600 font-semibold">Kalan: {{ number_format($expense->remaining_amount ?? $expense->amount, 2, ',', '.') }} TL</div>
-                        @endif
-                    </a>
                     @if (!$expense->is_paid)
                         <button type="button"
                                 onclick="openExpensePaymentModal({{ $expense->id }}, {{ $expense->amount }}, '{{ addslashes($expense->description ?: $expense->category) }}', '{{ addslashes($expense->category ?: '-') }}', '{{ addslashes($expense->account?->name ?: '-') }}')"

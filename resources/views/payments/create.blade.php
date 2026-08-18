@@ -126,9 +126,9 @@
             <div id="fifo-content" class="hidden flex-1 overflow-y-auto px-6 py-4">
 
                 {{-- FIFO / Temizle butonları --}}
-                <div class="flex items-center gap-2 mb-4">
+                <div class="flex items-center justify-between mb-4">
                     <button type="button" id="fifo-btn-auto" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                        Eskiden Yeniye Otomatik Dağıt (FIFO)
+                        Eskiden Yeniye Dağıt
                     </button>
                     <button type="button" id="fifo-btn-clear" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                         Temizle
@@ -140,8 +140,9 @@
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50 text-left text-slate-500">
                             <tr>
-                                <th class="px-4 py-3">Tarih</th>
-                                <th class="px-4 py-3">Açıklama</th>
+                                <th class="sm:hidden px-4 py-3">Tarih / Açıklama</th>
+                                <th class="hidden sm:table-cell px-4 py-3">Tarih</th>
+                                <th class="hidden sm:table-cell px-4 py-3">Açıklama</th>
                                 <th class="hidden sm:table-cell px-4 py-3 text-right">Kalan</th>
                                 <th class="px-4 py-3 text-right">
                                     <span class="hidden sm:inline">Tahsis</span>
@@ -333,8 +334,15 @@
                     tr.className = 'divide-x-0';
                     const remainingFormatted = due.remaining_amount.toLocaleString('tr-TR', {minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL';
                     tr.innerHTML = `
-                        <td class="px-4 py-3 text-slate-700 whitespace-nowrap">${due.due_date}</td>
-                        <td class="px-4 py-3 text-slate-700">
+                        <td class="px-4 py-3 sm:hidden">
+                            <div class="text-slate-700 font-medium whitespace-nowrap">${due.due_date}</div>
+                            <div class="text-slate-700">
+                                ${due.description}
+                                ${due.is_imported ? '<span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>' : ''}
+                            </div>
+                        </td>
+                        <td class="hidden sm:table-cell px-4 py-3 text-slate-700 whitespace-nowrap">${due.due_date}</td>
+                        <td class="hidden sm:table-cell px-4 py-3 text-slate-700">
                             ${due.description}
                             ${due.is_imported ? '<span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>' : ''}
                         </td>
@@ -342,12 +350,12 @@
                         <td class="px-4 py-3 text-right">
                             <div class="sm:hidden mb-2 text-right font-semibold text-slate-900 whitespace-nowrap">${remainingFormatted}</div>
                             <input type="hidden" name="_popup_alloc_due_id_${idx}" data-due-id="${due.id}">
-                            <div class="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
+                            <div class="flex flex-col sm:flex-row items-end sm:items-baseline justify-end gap-2">
                                 <input
                                     type="number" min="0" step="0.01" max="${due.remaining_amount}"
                                     data-alloc data-remaining="${due.remaining_amount}" data-idx="${idx}"
                                     value="${due.suggested_amount > 0 ? due.suggested_amount.toFixed(2) : ''}"
-                                    class="w-full sm:w-28 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none"
+                                    class="w-full sm:w-28 rounded-xl border border-slate-300 px-3 py-2 text-sm text-right focus:border-slate-950 focus:outline-none"
                                 >
                                 <button type="button" data-fill="${idx}" class="text-xs text-slate-500 hover:underline whitespace-nowrap">Tamamı</button>
                             </div>

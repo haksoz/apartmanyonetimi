@@ -31,7 +31,7 @@
         </p>
 
         <form method="GET" action="{{ route('accounts.statement', $account) }}" class="mt-5 border-t border-slate-100 pt-5">
-            <div class="flex flex-col gap-4 md:flex-row md:items-end">
+            <div class="flex flex-row flex-wrap items-end gap-4">
                 <div class="flex-1">
                     <label class="block text-xs font-medium text-slate-500 mb-1.5">Başlangıç Tarihi</label>
                     <input type="date" name="date_from" value="{{ $dateFrom }}"
@@ -42,7 +42,7 @@
                     <input type="date" name="date_to" value="{{ $dateTo }}"
                            class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-slate-950 focus:outline-none">
                 </div>
-                <div class="flex gap-2">
+                <div class="w-full md:w-auto flex gap-2">
                     <button type="submit"
                             class="flex-1 md:flex-none rounded-xl bg-slate-950 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 whitespace-nowrap">
                         Filtrele
@@ -84,31 +84,56 @@
                 <table class="min-w-full divide-y divide-slate-100 text-sm">
                     <thead class="bg-slate-50 text-left text-slate-500">
                         <tr>
-                            <th class="px-5 py-3 font-medium">Tarih</th>
-                            <th class="px-5 py-3 font-medium">Açıklama</th>
-                            <th class="px-5 py-3 text-right font-medium">Borç</th>
-                            <th class="px-5 py-3 text-right font-medium">Alacak</th>
-                            <th class="px-5 py-3 text-right font-medium">Bakiye</th>
+                            <th class="px-2.5 py-3 font-medium">
+                                <span class="sm:hidden">Tarih / Açıklama</span>
+                                <span class="hidden sm:inline">Tarih</span>
+                            </th>
+                            <th class="px-2.5 py-3 font-medium hidden sm:table-cell">Açıklama</th>
+                            <th class="px-2.5 py-3 text-left sm:text-right font-medium">
+                                <span class="sm:hidden">Tutar</span>
+                                <span class="hidden sm:inline">Borç</span>
+                            </th>
+                            <th class="px-2.5 py-3 text-right font-medium hidden sm:table-cell">Alacak</th>
+                            <th class="px-2.5 py-3 text-right font-medium hidden sm:table-cell">Bakiye</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @if($dateFrom)
                             <tr class="bg-slate-50 font-medium">
-                                <td class="px-5 py-3.5 text-slate-500">{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }}</td>
-                                <td class="px-5 py-3.5 text-slate-600">Dönem Açılış Bakiyesi</td>
-                                <td class="px-5 py-3.5 text-right {{ $openingBalance > 0 ? 'text-red-600' : 'text-slate-400' }}">
-                                    {{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' TL' : '—' }}
+                                <td class="px-2.5 py-3.5 text-slate-500">
+                                    <div class="sm:hidden">
+                                        <div class="whitespace-nowrap">{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }}</div>
+                                        <div class="mt-1 text-slate-600">Dönem Açılış Bakiyesi</div>
+                                    </div>
+                                    <div class="hidden sm:block whitespace-nowrap">{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }}</div>
                                 </td>
-                                <td class="px-5 py-3.5 text-right {{ $openingBalance < 0 ? 'text-emerald-600' : 'text-slate-400' }}">
+                                <td class="px-2.5 py-3.5 text-slate-600 hidden sm:table-cell">Dönem Açılış Bakiyesi</td>
+                                <td class="px-2.5 py-3.5 text-left sm:text-right">
+                                    <div class="sm:hidden text-xs space-y-1">
+                                        <div class="{{ $openingBalance > 0 ? 'text-red-600' : 'text-slate-400' }}">
+                                            <span class="text-slate-500">Borç:</span>
+                                            {{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' TL' : '—' }}
+                                        </div>
+                                        <div class="{{ $openingBalance < 0 ? 'text-emerald-600' : 'text-slate-400' }}">
+                                            <span class="text-slate-500">Alacak:</span>
+                                            {{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' TL' : '—' }}
+                                        </div>
+
+                                    </div>
+                                    <div class="hidden sm:block {{ $openingBalance > 0 ? 'text-red-600' : 'text-slate-400' }}">
+                                        {{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' TL' : '—' }}
+                                    </div>
+                                </td>
+                                <td class="px-2.5 py-3.5 text-right hidden sm:table-cell {{ $openingBalance < 0 ? 'text-emerald-600' : 'text-slate-400' }}">
                                     {{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' TL' : '—' }}
                                 </td>
-                                <td class="px-5 py-3.5 text-right {{ $openingBalance > 0 ? 'text-red-600' : ($openingBalance < 0 ? 'text-emerald-600' : 'text-slate-600') }}">
+                                <td class="px-2.5 py-3.5 text-right hidden sm:table-cell {{ $openingBalance > 0 ? 'text-red-600' : ($openingBalance < 0 ? 'text-emerald-600' : 'text-slate-600') }}">
                                     {{ number_format(abs($openingBalance), 2, ',', '.') }} TL
                                     @if($openingBalance != 0)
                                         <span class="text-xs font-normal">{{ $openingBalance > 0 ? 'B' : 'A' }}</span>
                                     @endif
                                 </td>
-                                <td class="px-5 py-3.5 text-right text-slate-400"></td>
+                                <td class="px-2.5 py-3.5 text-right text-slate-400"></td>
                             </tr>
                         @endif
                         @foreach($transactions as $t)
@@ -124,32 +149,65 @@
                                     $detailUrl = route('expenses.show', $t->transactionable_id);
                             @endphp
                             <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
-                                    {{ $t->transaction_date?->format('d.m.Y') }}
+                                <td class="px-2.5 py-3.5 text-slate-600 {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
+                                    <div class="sm:hidden">
+                                        <div class="whitespace-nowrap text-slate-600">{{ $t->transaction_date?->format('d.m.Y') }}</div>
+                                        <div class="mt-1 text-slate-700">
+                                            {{ $t->description ?: ucfirst($t->type) }}
+                                            @if($t->is_imported)
+                                                <span class="ml-1 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">İçe Aktarıldı</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="hidden sm:block whitespace-nowrap text-slate-600">{{ $t->transaction_date?->format('d.m.Y') }}</div>
                                 </td>
-                                <td class="px-5 py-3.5 text-slate-700 {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
+                                <td class="px-2.5 py-3.5 text-slate-700 hidden sm:table-cell {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                                     {{ $t->description ?: ucfirst($t->type) }}
                                     @if($t->is_imported)
                                         <span class="ml-1 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">İçe Aktarıldı</span>
                                     @endif
                                 </td>
-                                <td class="px-5 py-3.5 text-right font-semibold text-red-600 tabular-nums whitespace-nowrap {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
-                                    {{ $debit  ? number_format($debit,  2, ',', '.') . ' TL' : '—' }}
+                                <td class="px-2.5 py-3.5 text-left sm:text-right tabular-nums {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
+                                    <div class="sm:hidden text-xs space-y-1">
+                                        <div class="font-semibold {{ $debit ? 'text-red-600' : 'text-slate-400' }}">
+                                            <span class="text-slate-500">Borç:</span>
+                                            {{ $debit  ? number_format($debit,  2, ',', '.') . ' TL' : '—' }}
+                                        </div>
+                                        <div class="font-semibold {{ $credit ? 'text-emerald-600' : 'text-slate-400' }}">
+                                            <span class="text-slate-500">Alacak:</span>
+                                            {{ $credit ? number_format($credit, 2, ',', '.') . ' TL' : '—' }}
+                                        </div>
+
+                                    </div>
+                                    <div class="hidden sm:block font-semibold text-red-600">
+                                        {{ $debit  ? number_format($debit,  2, ',', '.') . ' TL' : '—' }}
+                                    </div>
                                 </td>
-                                <td class="px-5 py-3.5 text-right font-semibold text-emerald-600 tabular-nums whitespace-nowrap {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
+                                <td class="px-2.5 py-3.5 text-right font-semibold text-emerald-600 tabular-nums whitespace-nowrap hidden sm:table-cell {{ $detailUrl ? 'cursor-pointer' : '' }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                                     {{ $credit ? number_format($credit, 2, ',', '.') . ' TL' : '—' }}
                                 </td>
-                                <td class="px-5 py-3.5 text-right font-bold tabular-nums whitespace-nowrap {{ $detailUrl ? 'cursor-pointer' : '' }} {{ $t->running_balance > 0 ? 'text-red-600' : ($t->running_balance < 0 ? 'text-emerald-600' : 'text-slate-600') }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
+                                <td class="px-2.5 py-3.5 text-right font-bold tabular-nums whitespace-nowrap hidden sm:table-cell {{ $detailUrl ? 'cursor-pointer' : '' }} {{ $t->running_balance > 0 ? 'text-red-600' : ($t->running_balance < 0 ? 'text-emerald-600' : 'text-slate-600') }}" @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                                     {{ number_format(abs($t->running_balance), 2, ',', '.') }} TL
                                     @if($t->running_balance != 0)
                                         <span class="text-xs font-normal">{{ $t->running_balance > 0 ? 'B' : 'A' }}</span>
                                     @endif
                                 </td>
-                                <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                                <td class="px-1 py-3.5 text-right whitespace-nowrap sm:px-5">
                                     @if(($t->transactionable_type ?? '') === \App\Models\Payment::class && $t->allocations->isNotEmpty())
                                         <button type="button" data-toggle-alloc="alloc-{{ $t->id }}"
-                                                class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                                            {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Bağlı Giderler' : 'Bağlı Borçlar' }}
+                                                class="rounded-lg border border-slate-200 p-1 text-slate-600 hover:bg-slate-50 inline-flex items-center sm:px-2 sm:py-1.5">
+                                            <span class="sm:hidden icon-collapsed">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                            </span>
+                                            <span class="hidden sm:hidden icon-expanded">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                            </span>
+                                            <span class="hidden sm:inline text-xs font-semibold text-collapsed">
+                                                {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Bağlı Giderler' : 'Bağlı Borçlar' }}
+                                            </span>
+                                            <span class="hidden text-xs font-semibold text-expanded">
+                                                Gizle
+                                            </span>
                                         </button>
                                     @endif
                                 </td>
@@ -158,28 +216,41 @@
                             @if($t->allocations->isNotEmpty())
                                 @foreach($t->allocations as $a)
                                     <tr class="bg-slate-50 text-xs alloc-{{ $t->id }} hidden" data-parent="alloc-{{ $t->id }}">
-                                        <td class="px-5 py-2"></td>
+                                        <td class="px-2.5 py-2 text-slate-500 sm:hidden">
+                                            {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Bağlı Gider' : 'Bağlı Borç' }}
+                                            @if($a->due)
+                                                <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-700 hover:text-emerald-600">{{ $a->due->description ?: 'Aidat' }}</a>
+                                            @elseif($a->expense)
+                                                <a href="{{ route('expenses.show', $a->expense) }}" class="font-medium text-slate-700 hover:text-emerald-600">{{ $a->expense->description ?: ($a->expense->category ?: 'Gider') }}</a>
+                                            @endif
+                                        </td>
                                         @if($a->due)
-                                            <td class="px-5 py-2 text-slate-500">
+                                            <td class="px-2.5 py-2 text-slate-500 hidden sm:table-cell">
                                                 {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Bağlı Gider' : 'Bağlı Borç' }}
                                                 <a href="{{ route('dues.show', $a->due) }}" class="font-medium text-slate-700 hover:text-emerald-600">{{ $a->due->description ?: 'Aidat' }}</a>
                                             </td>
-                                            <td class="px-5 py-2 text-right">—</td>
-                                            <td class="px-5 py-2 text-right">—</td>
-                                            <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
-                                            <td class="px-5 py-2 text-right">
-                                                <a href="{{ route('dues.show', $a->due) }}" class="rounded-lg border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">Aidat Detay</a>
+                                            <td class="px-2.5 py-2 text-left sm:text-right">
+                                                <div class="sm:hidden text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</div>
+                                                <div class="hidden sm:block text-right">—</div>
+                                            </td>
+                                            <td class="px-2.5 py-2 text-right hidden sm:table-cell">—</td>
+                                            <td class="px-2.5 py-2 text-right hidden sm:table-cell text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
+                                            <td class="px-2.5 py-2 text-right">
+                                                <a href="{{ route('dues.show', $a->due) }}" class="rounded-lg border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 inline-flex items-center gap-1"><span class="sm:hidden inline-flex items-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span><span class="hidden sm:inline">Detay</span></a>
                                             </td>
                                         @elseif($a->expense)
-                                            <td class="px-5 py-2 text-slate-500">
+                                            <td class="px-2.5 py-2 text-slate-500 hidden sm:table-cell">
                                                 {{ $account->type === \App\Models\Account::TYPE_SUPPLIER ? 'Bağlı Gider' : 'Bağlı Borç' }}
                                                 <a href="{{ route('expenses.show', $a->expense) }}" class="font-medium text-slate-700 hover:text-emerald-600">{{ $a->expense->description ?: ($a->expense->category ?: 'Gider') }}</a>
                                             </td>
-                                            <td class="px-5 py-2 text-right">—</td>
-                                            <td class="px-5 py-2 text-right">—</td>
-                                            <td class="px-5 py-2 text-right text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
-                                            <td class="px-5 py-2 text-right">
-                                                <a href="{{ route('expenses.show', $a->expense) }}" class="rounded-lg border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">Gider Detay</a>
+                                            <td class="px-2.5 py-2 text-left sm:text-right">
+                                                <div class="sm:hidden text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</div>
+                                                <div class="hidden sm:block text-right">—</div>
+                                            </td>
+                                            <td class="px-2.5 py-2 text-right hidden sm:table-cell">—</td>
+                                            <td class="px-2.5 py-2 text-right hidden sm:table-cell text-emerald-600 font-medium tabular-nums">{{ number_format($a->amount, 2, ',', '.') }} TL</td>
+                                            <td class="px-2.5 py-2 text-right">
+                                                <a href="{{ route('expenses.show', $a->expense) }}" class="rounded-lg border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 inline-flex items-center gap-1"><span class="sm:hidden inline-flex items-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span><span class="hidden sm:inline">Detay</span></a>
                                             </td>
                                         @endif
                                     </tr>
@@ -217,8 +288,10 @@
             const key = btn.getAttribute('data-toggle-alloc');
             document.querySelectorAll('[data-parent="' + key + '"]').forEach(r => r.classList.toggle('hidden'));
             const open = Array.from(document.querySelectorAll('[data-parent="' + key + '"]')).some(r => !r.classList.contains('hidden'));
-            const isSupplier = btn.closest('table')?.closest('[data-account-type]')?.getAttribute('data-account-type') === 'supplier';
-            btn.textContent = open ? 'Gizle' : (isSupplier ? 'Bağlı Giderler' : 'Bağlı Borçlar');
+            btn.querySelector('.icon-collapsed').classList.toggle('hidden', open);
+            btn.querySelector('.icon-expanded').classList.toggle('hidden', !open);
+            btn.querySelector('.text-collapsed').classList.toggle('sm:inline', !open);
+            btn.querySelector('.text-expanded').classList.toggle('sm:inline', open);
         });
 
     </script>
