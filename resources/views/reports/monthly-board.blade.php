@@ -209,7 +209,7 @@
     @php $expenseTotal = (float) $expenseByCategory->sum(); @endphp
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden mt-6">
         <div class="px-5 py-4 border-b border-slate-100">
-            <h2 class="text-sm font-semibold text-slate-700">Gider Kategorileri — {{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }}</h2>
+            <h2 class="text-sm font-semibold text-slate-700">{{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }} Kategori Bazlı GİDERLER</h2>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">

@@ -29,7 +29,10 @@ class AdminManagerController extends Controller
                 });
             })
             ->with('subscription.package')
-            ->withCount(['subscriptions as pending_orders_count' => fn ($query) => $query->pending()])
+            ->withCount([
+                'subscriptions as pending_orders_count' => fn ($query) => $query->pending(),
+                'ownedApartments',
+            ])
             ->latest()
             ->paginate(20);
 
@@ -373,7 +376,21 @@ class AdminManagerController extends Controller
             'notes' => $validated['cancellation_notes'] ?? null,
         ]);
 
-        return back()->with('status', 'Abonelik iptal edildi.');
+        return back()->with('status', 'Abonelik sonlandırıldı.');
+    }
+
+    public function destroy(User $manager)
+    {
+        if ($manager->role !== User::ROLE_MANAGER) {
+            abort(404);
+        }
+
+        $name = $manager->name;
+        $manager->delete();
+
+        return redirect()
+            ->route('admin.managers.index')
+            ->with('status', $name.' ve abonelik kaydı silindi.');
     }
 
     private function closeActiveSubscription(User $manager): void

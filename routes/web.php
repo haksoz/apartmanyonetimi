@@ -40,7 +40,7 @@ Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('login', [AuthController::class, 'login']);
     Route::get('register/{package?}', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('register', [AuthController::class, 'register']);
+    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 });
 
 Route::middleware('auth')->group(function () {
@@ -214,6 +214,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('managers/{manager}/subscription/{subscription}/reject', [AdminManagerController::class, 'rejectSubscriptionOrder'])->name('managers.subscription.reject');
     Route::patch('managers/{manager}/subscription/{subscription}/reactivate', [AdminManagerController::class, 'reactivateSubscription'])->name('managers.subscription.reactivate');
     Route::post('managers/{manager}/subscription/cancel', [AdminManagerController::class, 'cancelSubscription'])->name('managers.subscription.cancel');
+    Route::delete('managers/{manager}', [AdminManagerController::class, 'destroy'])->name('managers.destroy');
     Route::patch('managers/{manager}/quota', [AdminManagerController::class, 'updateQuota'])->name('managers.quota.update');
     Route::post('managers/{manager}/trial-extend', [AdminManagerController::class, 'extendTrial'])->name('managers.trial.extend');
 

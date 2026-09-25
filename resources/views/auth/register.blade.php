@@ -32,6 +32,18 @@
                 <input id="password_confirmation" name="password_confirmation" type="password" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
             </div>
 
+            <div class="absolute -left-[9999px] h-0 overflow-hidden" aria-hidden="true">
+                <label for="company">Şirket</label>
+                <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
+            </div>
+
+            <div>
+                <label for="human_answer" class="text-sm font-medium text-slate-700">Güvenlik sorusu: {{ $challengeA }} + {{ $challengeB }} = ?</label>
+                <input id="human_answer" name="human_answer" type="number" inputmode="numeric" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
+                @error('human_answer')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                @error('company')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
             <button type="submit" class="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Ücretsiz Başla</button>
         </form>
 

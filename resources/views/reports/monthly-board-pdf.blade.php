@@ -88,7 +88,7 @@
 
     @if(!empty($showExpenses) && $expenseByCategory->count())
     @php $expenseTotal = (float) $expenseByCategory->sum(); @endphp
-    <h2 style="margin-top: 16px;">Gider Kategorileri — {{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }}</h2>
+    <h2 style="margin-top: 16px;">{{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }} Kategori Bazlı GİDERLER</h2>
     <table>
         <thead>
             <tr>

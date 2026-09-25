@@ -9,10 +9,17 @@
             <h1 class="mt-2 text-2xl font-bold text-slate-900">{{ $manager->name }}</h1>
             <p class="text-sm text-slate-500">{{ $manager->email }}</p>
         </div>
-        <form method="POST" action="{{ route('admin.impersonate.start', $manager) }}">
-            @csrf
-            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Bu Kullanıcı Olarak Giriş Yap</button>
-        </form>
+        <div class="flex flex-wrap items-center gap-2">
+            <form method="POST" action="{{ route('admin.impersonate.start', $manager) }}">
+                @csrf
+                <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Bu Kullanıcı Olarak Giriş Yap</button>
+            </form>
+            <form method="POST" action="{{ route('admin.managers.destroy', $manager) }}" onsubmit="return confirm(@js($manager->ownedApartments()->count() > 0 ? $manager->name.' silinecek. Apartmanları ve içindeki tüm kayıtlar da silinir.' : $manager->name.' ve abonelik kaydı silinecek. Emin misiniz?'))">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Kullanıcıyı Sil</button>
+            </form>
+        </div>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2">
@@ -49,12 +56,12 @@
                     </div>
                 @endif
 
-                @if (! $manager->subscription->is_trial)
-                    <form method="POST" action="{{ route('admin.managers.subscription.cancel', $manager) }}" class="mt-4" onsubmit="return confirm('Abonelik iptal edilecek. Emin misiniz?')">
+                @if ($manager->subscription)
+                    <form method="POST" action="{{ route('admin.managers.subscription.cancel', $manager) }}" class="mt-4" onsubmit="return confirm('Abonelik sonlandırılacak. Emin misiniz?')">
                         @csrf
                         <div class="flex gap-2">
-                            <input type="text" name="cancellation_notes" placeholder="İptal nedeni (opsiyonel)" class="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
-                            <button type="submit" class="rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-100">İptal Et</button>
+                            <input type="text" name="cancellation_notes" placeholder="Sonlandırma nedeni (opsiyonel)" class="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+                            <button type="submit" class="rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-100">Sonlandır</button>
                         </div>
                     </form>
                 @endif

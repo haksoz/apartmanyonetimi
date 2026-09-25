@@ -1528,7 +1528,7 @@ class ReportController extends Controller
             $expenseTotal = (float) $expenseByCategory->sum();
             $row += 1;
             $sheet->mergeCells("A{$row}:C{$row}");
-            $sheet->setCellValue("A{$row}", 'GİDER KATEGORİLERİ — ' . $trMonths[$parsedMonth->month] . ' ' . $parsedMonth->year);
+            $sheet->setCellValue("A{$row}", $trMonths[$parsedMonth->month] . ' ' . $parsedMonth->year . ' Kategori Bazlı GİDERLER');
             $this->applyHeaderStyle($sheet, "A{$row}:C{$row}");
             $row++;
             $sheet->fromArray(['Kategori', 'Tutar (₺)', 'Pay %'], null, 'A' . $row);

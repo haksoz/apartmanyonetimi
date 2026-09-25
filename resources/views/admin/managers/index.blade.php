@@ -10,6 +10,10 @@
         </div>
     </div>
 
+    @if (session('status'))
+        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('status') }}</div>
+    @endif
+
     <div class="mb-6">
         <form method="GET" action="{{ route('admin.managers.index') }}" class="flex gap-3">
             <input type="text" name="search" value="{{ $search }}" placeholder="Ad veya e-posta ara" class="w-full max-w-md rounded-xl border border-slate-300 px-4 py-2 text-sm">
@@ -78,7 +82,20 @@
                             {{ $quota->maxFor($manager) ?? 'Sınırsız' }}
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.managers.show', $manager) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
+                            <div class="flex justify-end gap-3">
+                                @if ($manager->subscription)
+                                    <form method="POST" action="{{ route('admin.managers.subscription.cancel', $manager) }}" onsubmit="return confirm('Abonelik sonlandırılacak. Emin misiniz?')">
+                                        @csrf
+                                        <button type="submit" class="text-sm font-semibold text-red-600 hover:text-red-700">Sonlandır</button>
+                                    </form>
+                                @endif
+                                <form method="POST" action="{{ route('admin.managers.destroy', $manager) }}" onsubmit="return confirm(@js($manager->owned_apartments_count > 0 ? $manager->name.' silinecek. '.$manager->owned_apartments_count.' apartmanı ve içindeki tüm kayıtlar da silinir.' : $manager->name.' ve abonelik kaydı silinecek. Emin misiniz?'))">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-sm font-semibold text-red-600 hover:text-red-700">Sil</button>
+                                </form>
+                                <a href="{{ route('admin.managers.show', $manager) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
+                            </div>
                         </td>
                     </tr>
                 @endforeach
