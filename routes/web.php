@@ -93,6 +93,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('annual-activity/export/{type}', [ReportController::class, 'annualActivityExport'])->name('annual-activity.export');
         Route::get('budget', [ReportController::class, 'budget'])->name('budget');
         Route::get('budget/export/{type}', [ReportController::class, 'budgetExport'])->name('budget.export');
+        Route::get('expenses', [ReportController::class, 'expenses'])->name('expenses');
+        Route::get('expenses/export/{type}', [ReportController::class, 'expensesExport'])->name('expenses.export');
         Route::get('monthly-board', [ReportController::class, 'monthlyBoard'])->name('monthly-board');
         Route::get('monthly-board/export/{type}', [ReportController::class, 'monthlyBoardExport'])->name('monthly-board.export');
     });

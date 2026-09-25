@@ -1,41 +1,16 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ isset($title) ? $title : 'Aylık Aidat Pano Tablosu' }}</title>
-    <style>
-        * { box-sizing: border-box; }
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #334155; margin: 10mm; }
-        h2 { font-size: 13px; margin: 0 0 6px; color: #334155; }
-        .meta { font-size: 9px; color: #94a3b8; margin-bottom: 10px; text-align: right; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: left; }
-        th { background: #f1f5f9; color: #475569; font-size: 10px; font-weight: 600; text-transform: uppercase; }
-        td { vertical-align: top; }
-        .text-right { text-align: right !important; }
-        .text-center { text-align: center !important; }
-        tfoot td { background: #f8fafc; font-weight: 600; }
-        .text-red { color: #ef4444; }
-        .text-green { color: #10b981; }
-        .text-muted { color: #94a3b8; }
-        .text-small { font-size: 9px; color: #94a3b8; }
-    </style>
-</head>
-<body>
+@extends('layouts.report-pdf')
+
+@section('title', $title ?? 'Aylık Aidat Pano Tablosu')
+
+@section('content')
     @php
         $trMonthsH = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
-    @endphp
-    <h2>{{ isset($title) ? $title : 'Aylık Aidat Tablosu' }}</h2>
-    <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı</div>
-
-    @php
         $totalBorç = 0;
         $totalÖdenen = 0;
         $pastRemainingAll = 0;
         $selectedAmountAll = 0;
         $remainingAll = 0;
-        foreach($accounts as $account) {
+        foreach ($accounts as $account) {
             $data = $accountData[$account->id];
             $totalBorç   += $data['selectedAmount'];
             $totalÖdenen += $data['paid'];
@@ -44,6 +19,8 @@
             $remainingAll += $data['remaining'];
         }
     @endphp
+    <h2>{{ $title ?? 'Aylık Aidat Tablosu' }}</h2>
+    <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı</div>
 
     <table>
         <thead>
@@ -58,9 +35,7 @@
         </thead>
         <tbody>
             @forelse($accounts as $account)
-                @php
-                    $data = $accountData[$account->id];
-                @endphp
+                @php $data = $accountData[$account->id]; @endphp
                 <tr>
                     <td>{{ $account->unit?->unit_no }}</td>
                     <td>{{ $account->name }}{{ $showAccountType && $account->type === 'owner' ? ' (Kat Maliki)' : ($showAccountType && $account->type === 'tenant' ? ' (Kiracı)' : '') }}</td>
@@ -85,35 +60,4 @@
             </tr>
         </tfoot>
     </table>
-
-    @if(!empty($showExpenses) && $expenseByCategory->count())
-    @php $expenseTotal = (float) $expenseByCategory->sum(); @endphp
-    <h2 style="margin-top: 16px;">{{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }} Kategori Bazlı GİDERLER</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Kategori</th>
-                <th class="text-right">Tutar (₺)</th>
-                <th class="text-right">Pay %</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($expenseByCategory as $cat => $total)
-                <tr>
-                    <td>{{ $cat }}</td>
-                    <td class="text-right text-red">{{ number_format($total, 2, ',', '.') }} ₺</td>
-                    <td class="text-right">{{ $expenseTotal > 0 ? number_format(($total / $expenseTotal) * 100, 1) : '0' }}%</td>
-                </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr>
-                <td>TOPLAM</td>
-                <td class="text-right text-red">{{ number_format($expenseTotal, 2, ',', '.') }} ₺</td>
-                <td class="text-right">100%</td>
-            </tr>
-        </tfoot>
-    </table>
-    @endif
-</body>
-</html>
+@endsection

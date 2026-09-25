@@ -101,15 +101,20 @@ class ReportController extends Controller
         ]);
     }
 
-    private function pdfResponse(string $viewName, array $data, string $filename): Response
+    private function pdfResponse(string $viewName, array $data, string $filename, bool $landscape = false): Response
     {
         $tempPath = sys_get_temp_dir() . '/' . uniqid('pdf_', true) . '.pdf';
         $filename .= '-' . now()->format('Ymd-Hi');
 
-        Pdf::view($viewName, array_merge($data, ['pdfMode' => true]))
+        $pdf = Pdf::view($viewName, array_merge($data, ['pdfMode' => true]))
             ->format('a4')
-            ->margins(10, 10, 10, 10)
-            ->save($tempPath);
+            ->margins(10, 10, 10, 10);
+
+        if ($landscape) {
+            $pdf->landscape();
+        }
+
+        $pdf->save($tempPath);
 
         return response()->file($tempPath, [
             'Content-Type' => 'application/pdf',
@@ -155,7 +160,7 @@ class ReportController extends Controller
         $data = $this->incomeExpenseData($apartment, $request);
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.income-expense', array_merge($data, ['apartment' => $apartment]), 'gelir-gider-raporu');
+            return $this->pdfResponse('reports.income-expense-pdf', array_merge($data, ['apartment' => $apartment]), 'gelir-gider-raporu');
         }
 
         // Excel
@@ -379,7 +384,7 @@ class ReportController extends Controller
         $total = $dues->sum('remaining_amount');
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.debt-list', ['apartment' => $apartment, 'dues' => $dues, 'total' => $total, 'units' => collect(), 'filterUnit' => null, 'filterStatus' => $request->input('status', 'unpaid'), 'filterStartDate' => $request->input('start_date'), 'filterEndDate' => $request->input('end_date')], 'borclar-listesi');
+            return $this->pdfResponse('reports.debt-list-items-pdf', ['apartment' => $apartment, 'dues' => $dues, 'total' => $total], 'borclar-listesi');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -464,7 +469,7 @@ class ReportController extends Controller
             ->filter(fn($a) => $a->total_receivable > 0);
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.receivable-list', ['apartment' => $apartment, 'accounts' => $accounts, 'filterAccountType' => $filterAccountType], 'alacak-listesi');
+            return $this->pdfResponse('reports.receivable-list-pdf', ['apartment' => $apartment, 'accounts' => $accounts], 'alacak-listesi');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -780,7 +785,7 @@ class ReportController extends Controller
         $monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.due-collection', compact('apartment', 'accounts', 'months', 'matrix', 'monthNames', 'year', 'availableYears'), 'aidat-tahsilat-raporu');
+            return $this->pdfResponse('reports.due-collection-pdf', compact('apartment', 'accounts', 'months', 'matrix', 'monthNames', 'year'), 'aidat-tahsilat-raporu', true);
         }
 
         $spreadsheet = new Spreadsheet();
@@ -919,7 +924,7 @@ class ReportController extends Controller
         $avgDays      = $dues->count() ? round($dues->avg('days_overdue')) : 0;
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.overdue', ['apartment' => $apartment, 'dues' => $dues, 'units' => collect(), 'filterUnit' => null, 'filterAccount' => $filterAccount, 'totalOverdue' => $totalOverdue, 'avgDays' => $avgDays], 'gecikme-raporu');
+            return $this->pdfResponse('reports.overdue-pdf', ['apartment' => $apartment, 'dues' => $dues, 'totalOverdue' => $totalOverdue, 'avgDays' => $avgDays], 'gecikme-raporu');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -1132,7 +1137,7 @@ class ReportController extends Controller
         $monthNames = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.annual-activity', compact('apartment', 'year', 'availableYears', 'totalDues', 'collectedDues', 'pendingDues', 'totalExpenses', 'paidExpenses', 'unpaidExpenses', 'cashIn', 'cashOut', 'monthlyData', 'monthNames', 'expenseByCategory'), 'yillik-faaliyet-raporu');
+            return $this->pdfResponse('reports.annual-activity-pdf', compact('apartment', 'year', 'totalDues', 'collectedDues', 'pendingDues', 'totalExpenses', 'paidExpenses', 'unpaidExpenses', 'cashIn', 'cashOut', 'monthlyData', 'monthNames', 'expenseByCategory'), 'yillik-faaliyet-raporu');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -1242,7 +1247,7 @@ class ReportController extends Controller
         $totalActual = $rows->sum('actual');
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.budget', compact('apartment', 'year', 'availableYears', 'rows', 'totalActual'), 'butce-raporu');
+            return $this->pdfResponse('reports.budget-pdf', compact('apartment', 'year', 'rows', 'totalActual'), 'butce-raporu');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -1280,7 +1285,6 @@ class ReportController extends Controller
         $typeFilter   = $request->input('type_filter', 'resident');
         $statusFilter = $request->input('status_filter', 'active');
         $showAccountType = $request->boolean('show_account_type', false);
-        $showExpenses = $request->boolean('show_expenses');
 
         $accountsQuery = Account::where('accounts.apartment_id', $id)
             ->with('unit')
@@ -1370,7 +1374,6 @@ class ReportController extends Controller
         }
 
         $categoryList = Category::where('apartment_id', $id)->where('is_active', true)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->get();
-        $expenseByCategory = $this->expenseTotalsByCategory($id, $parsedMonth, $showExpenses);
 
         // Tüm aylar için selector
         $monthOptions = collect();
@@ -1380,8 +1383,7 @@ class ReportController extends Controller
 
         return view('reports.monthly-board', compact(
             'apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
-            'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'showAccountType',
-            'showExpenses', 'expenseByCategory'
+            'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'showAccountType'
         ));
     }
 
@@ -1395,7 +1397,6 @@ class ReportController extends Controller
         $typeFilter   = $request->input('type_filter', 'resident');
         $statusFilter = $request->input('status_filter', 'active');
         $showAccountType = $request->boolean('show_account_type', false);
-        $showExpenses = $request->boolean('show_expenses');
         try { $parsedMonth = Carbon::createFromFormat('Y-m', $month); } catch (\Exception $e) { $parsedMonth = now(); }
         $selectedMonthStr = $parsedMonth->format('Y-m');
 
@@ -1478,7 +1479,6 @@ class ReportController extends Controller
         }
 
         $categoryList = Category::where('apartment_id', $id)->where('is_active', true)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->get();
-        $expenseByCategory = $this->expenseTotalsByCategory($id, $parsedMonth, $showExpenses);
         $monthOptions = collect();
         $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
 
@@ -1489,8 +1489,7 @@ class ReportController extends Controller
         if ($type === 'pdf') {
             return $this->pdfResponse('reports.monthly-board-pdf', compact(
                 'apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
-                'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'title', 'trMonths', 'showAccountType',
-                'showExpenses', 'expenseByCategory'
+                'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'title', 'trMonths', 'showAccountType'
             ), 'aylik-aidat-pano-tablosu');
         }
 
@@ -1524,49 +1523,143 @@ class ReportController extends Controller
                 ->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
-        if ($showExpenses && $expenseByCategory->count()) {
-            $expenseTotal = (float) $expenseByCategory->sum();
-            $row += 1;
-            $sheet->mergeCells("A{$row}:C{$row}");
-            $sheet->setCellValue("A{$row}", $trMonths[$parsedMonth->month] . ' ' . $parsedMonth->year . ' Kategori Bazlı GİDERLER');
-            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}");
-            $row++;
-            $sheet->fromArray(['Kategori', 'Tutar (₺)', 'Pay %'], null, 'A' . $row);
-            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}", 'FF37474f');
-            $row++;
-            $categoryStart = $row;
-            foreach ($expenseByCategory as $cat => $total) {
-                $share = $expenseTotal > 0 ? round(((float) $total / $expenseTotal) * 100, 1) : 0;
-                $sheet->fromArray([$cat, (float) $total, $share], null, 'A' . $row);
-                $row++;
-            }
-            $sheet->getStyle('B' . $categoryStart . ':B' . ($row - 1))
-                ->getNumberFormat()
-                ->setFormatCode('#,##0.00 "₺"');
-        }
-
-        foreach (['A' => 28, 'B' => 24, 'C' => 16, 'D' => 16, 'E' => 16, 'F' => 16] as $col => $width) {
+        foreach (['A' => 10, 'B' => 24, 'C' => 16, 'D' => 16, 'E' => 16, 'F' => 16] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
         return $this->excelResponse($spreadsheet, 'aylik-aidat-pano-tablosu');
     }
 
-    private function expenseTotalsByCategory(int $apartmentId, Carbon $month, bool $show): \Illuminate\Support\Collection
+    // -------------------------------------------------------------------------
+    // GİDER RAPORU
+    // -------------------------------------------------------------------------
+
+    public function expenses(CurrentApartment $currentApartment, Request $request)
     {
-        if (! $show) {
-            return collect();
+        $apartment = $this->getApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
+
+        return view('reports.expenses', $this->expenseReportData($apartment, $request));
+    }
+
+    public function expensesExport(CurrentApartment $currentApartment, Request $request, string $type)
+    {
+        $apartment = $this->getApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
+
+        $data = $this->expenseReportData($apartment, $request);
+
+        if ($type === 'pdf') {
+            return $this->pdfResponse('reports.expenses-pdf', $data, 'gider-raporu');
         }
 
-        $start = $month->copy()->startOfMonth()->toDateString();
-        $end = $month->copy()->endOfMonth()->toDateString();
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet()->setTitle('Gider Raporu');
+        $lastCol = 'C';
+        $sheet->mergeCells("A1:{$lastCol}1");
+        $reportTitle = $data['basis'] === 'category' ? 'KATEGORİLİ GİDER RAPORU' : 'AÇIKLAMALI GİDER RAPORU';
+        $sheet->setCellValue('A1', $reportTitle . ' — ' . $data['apartment']->name);
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        return Expense::where('expenses.apartment_id', $apartmentId)
-            ->whereBetween('period_month', [$start, $end])
-            ->leftJoin('categories', fn ($j) => $j->on('categories.id', '=', 'expenses.category_id')->whereNull('categories.deleted_at'))
-            ->selectRaw("COALESCE(NULLIF(categories.name,''), NULLIF(expenses.category,''), 'Diğer') as cat, SUM(expenses.amount) as total")
-            ->groupBy('cat')
-            ->orderByDesc('total')
-            ->pluck('total', 'cat');
+        $sheet->mergeCells("A2:{$lastCol}2");
+        $sheet->setCellValue('A2', $data['rangeLabel']);
+        $sheet->getStyle('A2')->getFont()->setBold(true);
+        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        if ($data['basis'] === 'category') {
+            $sheet->fromArray(['Kategori', 'Tutar (₺)', 'Pay %'], null, 'A4');
+            $this->applyHeaderStyle($sheet, 'A4:C4');
+            $row = 5;
+            foreach ($data['categories'] as $item) {
+                $share = $data['total'] > 0 ? round(($item['amount'] / $data['total']) * 100, 1) : 0;
+                $sheet->fromArray([$item['category'], $item['amount'], $share], null, 'A' . $row);
+                $sheet->getStyle('B' . $row)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+                $row++;
+            }
+            $sheet->fromArray(['TOPLAM', $data['total'], 100], null, 'A' . $row);
+            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}", 'FF7f1d1d');
+            $sheet->getStyle('B' . $row)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+            foreach (['A' => 32, 'B' => 18, 'C' => 12] as $col => $width) {
+                $sheet->getColumnDimension($col)->setWidth($width);
+            }
+        } else {
+            $sheet->fromArray(['Tarih', 'Açıklama', 'Tutar (₺)'], null, 'A4');
+            $this->applyHeaderStyle($sheet, 'A4:C4');
+            $row = 5;
+            foreach ($data['rows'] as $item) {
+                $sheet->fromArray([$item['date'], $item['description'], $item['amount']], null, 'A' . $row);
+                $sheet->getStyle('C' . $row)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+                $row++;
+            }
+            $sheet->fromArray(['', 'TOPLAM', $data['total']], null, 'A' . $row);
+            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}", 'FF7f1d1d');
+            $sheet->getStyle('C' . $row)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+            foreach (['A' => 14, 'B' => 48, 'C' => 16] as $col => $width) {
+                $sheet->getColumnDimension($col)->setWidth($width);
+            }
+        }
+
+        return $this->excelResponse($spreadsheet, 'gider-raporu');
+    }
+
+    private function expenseReportData($apartment, Request $request): array
+    {
+        $month = $request->input('month');
+        $month = is_string($month) && preg_match('/^\d{4}-\d{2}$/', $month) ? $month : null;
+
+        if ($month) {
+            $request->merge([
+                'period_from' => $month,
+                'period_to' => $month,
+            ]);
+        } elseif (! $request->hasAny(['date_from', 'date_to'])) {
+            $month = now()->format('Y-m');
+            $request->merge([
+                'period_from' => $month,
+                'period_to' => $month,
+            ]);
+        }
+
+        [$dateFrom, $dateTo, $periodFrom, $periodTo, $rangeLabel] = $this->resolveIncomeExpenseRange($request);
+        $basis = $request->input('basis') === 'category' ? 'category' : 'description';
+        $column = ($periodFrom || $periodTo) ? 'period_month' : 'expense_date';
+
+        $expenses = Expense::with('categoryRelation')
+            ->where('apartment_id', $apartment->id)
+            ->whereBetween($column, [$dateFrom, $dateTo])
+            ->orderBy('expense_date')
+            ->orderBy('id')
+            ->get();
+
+        $rows = $expenses->values()->map(function ($expense, $index) {
+            return [
+                'no' => $index + 1,
+                'date' => $expense->expense_date?->format('d.m.Y') ?? '—',
+                'description' => $expense->description ?: '—',
+                'category' => $expense->categoryRelation?->name ?: ($expense->category ?: 'Diğer'),
+                'amount' => (float) $expense->amount,
+            ];
+        });
+
+        $categories = $rows->groupBy('category')->map(function ($items, $category) {
+            return [
+                'category' => $category,
+                'count' => $items->count(),
+                'amount' => (float) $items->sum('amount'),
+            ];
+        })->sortByDesc('amount')->values();
+
+        return [
+            'apartment' => $apartment,
+            'basis' => $basis,
+            'rows' => $rows,
+            'categories' => $categories,
+            'total' => (float) $rows->sum('amount'),
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'month' => $month,
+            'rangeLabel' => $rangeLabel,
+        ];
     }
 }
