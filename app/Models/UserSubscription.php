@@ -108,4 +108,19 @@ class UserSubscription extends Model
     {
         return $this->status === self::STATUS_PENDING;
     }
+
+    public function hasFeature(string $key): bool
+    {
+        if (! $this->is_active || $this->isExpired()) {
+            return false;
+        }
+
+        return match ($key) {
+            'auto_dues' => (bool) $this->feature_auto_dues,
+            'user_portal' => (bool) $this->feature_user_portal,
+            'reports' => (bool) $this->feature_reports,
+            'multi_apartment' => (bool) $this->feature_multi_apartment,
+            default => false,
+        };
+    }
 }

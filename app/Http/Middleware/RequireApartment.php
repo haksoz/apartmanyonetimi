@@ -39,6 +39,14 @@ class RequireApartment
         } elseif ($apartment) {
             $member = $apartment->members()->withPivot('role')->whereKey($user->id)->first();
             $isOwnerOfCurrent = $member && $member->pivot->role === 'owner';
+
+            if (! $isOwnerOfCurrent) {
+                $portalOwner = $apartment->user;
+
+                if (! $portalOwner || ! $portalOwner->hasFeature('user_portal')) {
+                    abort(403, 'Yöneticiniz üye portalı erişimini kapatmış. Erişim için yöneticinizle iletişime geçin.');
+                }
+            }
         } else {
             // Henüz apartman seçilmemis; herhangi bir apartmanda owner mi?
             $isOwnerOfCurrent = $user->apartments()

@@ -75,7 +75,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     // Raporlar - Tüm kullanıcılar
-    Route::prefix('reports')->name('reports.')->group(function () {
+    Route::prefix('reports')->name('reports.')->middleware('feature:reports')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('income-expense', [ReportController::class, 'incomeExpense'])->name('income-expense');
         Route::get('income-expense/export/{type}', [ReportController::class, 'incomeExpenseExport'])->name('income-expense.export');
@@ -180,10 +180,12 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
         Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
         Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
-        Route::post('due-plans/{duePlan}/generate-month', [DuePlanController::class, 'generateMonth'])->name('due-plans.generate-month');
-        Route::post('due-plans/{duePlan}/regenerate-period', [DuePlanController::class, 'regeneratePeriod'])->name('due-plans.regenerate-period');
-        Route::patch('due-plans/{duePlan}/deactivate', [DuePlanController::class, 'deactivate'])->name('due-plans.deactivate');
-        Route::resource('due-plans', DuePlanController::class);
+        Route::middleware('feature:auto_dues')->group(function () {
+            Route::post('due-plans/{duePlan}/generate-month', [DuePlanController::class, 'generateMonth'])->name('due-plans.generate-month');
+            Route::post('due-plans/{duePlan}/regenerate-period', [DuePlanController::class, 'regeneratePeriod'])->name('due-plans.regenerate-period');
+            Route::patch('due-plans/{duePlan}/deactivate', [DuePlanController::class, 'deactivate'])->name('due-plans.deactivate');
+            Route::resource('due-plans', DuePlanController::class);
+        });
         Route::get('dues/batch/create', [DueController::class, 'createBatch'])->name('dues.batch.create');
         Route::delete('dues/bulk-destroy', [DueController::class, 'bulkDestroy'])->name('dues.bulk-destroy');
         Route::get('dues/{due}/edit', [DueController::class, 'edit'])->name('dues.edit');

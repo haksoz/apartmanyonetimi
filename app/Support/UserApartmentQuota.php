@@ -20,6 +20,10 @@ class UserApartmentQuota
             return 0;
         }
 
+        if ($subscription->hasFeature('multi_apartment')) {
+            return $subscription->multi_apartment_limit_override ?? $subscription->package->multi_apartment_limit;
+        }
+
         return $subscription->package->apartment_limit;
     }
 

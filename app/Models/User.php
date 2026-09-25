@@ -113,11 +113,11 @@ class User extends Authenticatable
     {
         $subscription = $this->subscription;
 
-        if (! $subscription || $subscription->isExpired()) {
+        if (! $subscription) {
             return false;
         }
 
-        return $subscription->package->hasFeature($key);
+        return $subscription->hasFeature($key);
     }
 
 }

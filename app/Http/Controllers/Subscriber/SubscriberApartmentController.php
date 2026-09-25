@@ -45,6 +45,10 @@ class SubscriberApartmentController extends Controller
             abort(403, 'Bu apartmana erişiminiz yok.');
         }
 
+        if (! $apartment->user || ! $apartment->user->hasFeature('auto_dues')) {
+            abort(403, 'Otomatik aidat planlama özelliği aboneliğinizde aktif değil.');
+        }
+
         $today = Carbon::today();
         $period = $today->format('Y-m');
 

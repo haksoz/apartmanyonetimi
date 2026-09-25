@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'        => \App\Http\Middleware\EnsureAdmin::class,
             'super_admin'  => \App\Http\Middleware\EnsureSuperAdmin::class,
             'subscriber'   => \App\Http\Middleware\EnsureSubscriber::class,
+            'feature'      => \App\Http\Middleware\EnsureSubscriptionFeature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
