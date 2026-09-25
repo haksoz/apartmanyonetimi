@@ -141,64 +141,9 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
-        $dateFrom = $request->input('date_from', now()->startOfYear()->format('Y-m-d'));
-        $dateTo   = $request->input('date_to', now()->format('Y-m-d'));
-
-        $id = $apartment->id;
-
-        // Tahsilat (Payments)
-        $payments = Payment::where('apartment_id', $id)
-            ->whereBetween('payment_date', [$dateFrom, $dateTo])
-            ->whereHas('account', fn($q) => $q->where('type', '!=', Account::TYPE_SUPPLIER))
-            ->selectRaw("DATE_FORMAT(payment_date, '%Y-%m') as month, SUM(amount) as total")
-            ->groupBy('month')->orderBy('month')
-            ->pluck('total', 'month');
-
-        // Giderler
-        $expenses = Expense::where('apartment_id', $id)
-            ->whereBetween('expense_date', [$dateFrom, $dateTo])
-            ->selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as month, SUM(amount) as total")
-            ->groupBy('month')->orderBy('month')
-            ->pluck('total', 'month');
-
-        // Tüm ayları birleştir
-        $months = collect(array_keys($payments->toArray() + $expenses->toArray()))->sort()->values();
-
-        $rows = $months->map(function ($month) use ($payments, $expenses) {
-            $income  = (float) ($payments[$month] ?? 0);
-            $expense = (float) ($expenses[$month] ?? 0);
-            
-            $carbonDate = Carbon::createFromFormat('Y-m', $month);
-            $turkishMonths = [
-                'January' => 'Ocak', 'February' => 'Şubat', 'March' => 'Mart', 'April' => 'Nisan',
-                'May' => 'Mayıs', 'June' => 'Haziran', 'July' => 'Temmuz', 'August' => 'Ağustos',
-                'September' => 'Eylül', 'October' => 'Ekim', 'November' => 'Kasım', 'December' => 'Aralık'
-            ];
-            $monthName = $turkishMonths[$carbonDate->format('F')] ?? $carbonDate->format('F');
-            
-            return [
-                'month'   => $monthName . ' ' . $carbonDate->format('Y'),
-                'income'  => $income,
-                'expense' => $expense,
-                'net'     => $income - $expense,
-            ];
-        });
-
-        $totalIncome  = $rows->sum('income');
-        $totalExpense = $rows->sum('expense');
-        $totalNet     = $totalIncome - $totalExpense;
-
-        // Kategori bazlı giderler
-        $expenseByCategory = Expense::where('expenses.apartment_id', $id)
-            ->whereBetween('expense_date', [$dateFrom, $dateTo])
-            ->leftJoin('categories', fn($j) => $j->on('categories.id', '=', 'expenses.category_id')->whereNull('categories.deleted_at'))
-            ->selectRaw("COALESCE(NULLIF(categories.name,''), NULLIF(expenses.category,''), 'Diğer') as cat, SUM(expenses.amount) as total")
-            ->groupBy('cat')->orderByDesc('total')
-            ->pluck('total', 'cat');
-
-        return view('reports.income-expense', compact(
-            'apartment', 'rows', 'totalIncome', 'totalExpense', 'totalNet',
-            'expenseByCategory', 'dateFrom', 'dateTo'
+        return view('reports.income-expense', array_merge(
+            ['apartment' => $apartment],
+            $this->incomeExpenseData($apartment, $request)
         ));
     }
 
@@ -221,10 +166,15 @@ class ReportController extends Controller
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        $sheet->fromArray(['Dönem', 'Tahsilat (₺)', 'Gider (₺)', 'Net (₺)'], null, 'A3');
-        $this->applyHeaderStyle($sheet, 'A3:D3');
+        $sheet->mergeCells('A2:D2');
+        $sheet->setCellValue('A2', $data['rangeLabel']);
+        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('A2')->getFont()->setBold(true);
 
-        $row = 4;
+        $sheet->fromArray(['Dönem', 'Tahsilat (₺)', 'Gider (₺)', 'Net (₺)'], null, 'A4');
+        $this->applyHeaderStyle($sheet, 'A4:D4');
+
+        $row = 5;
         foreach ($data['rows'] as $r) {
             $sheet->fromArray([$r['month'], $r['income'], $r['expense'], $r['net']], null, 'A' . $row);
             $row++;
@@ -232,7 +182,23 @@ class ReportController extends Controller
         $sheet->fromArray(['TOPLAM', $data['totalIncome'], $data['totalExpense'], $data['totalNet']], null, 'A' . $row);
         $this->applyHeaderStyle($sheet, "A{$row}:D{$row}", 'FF2e7d32');
 
-        foreach (['A' => 20, 'B' => 18, 'C' => 18, 'D' => 18] as $col => $width) {
+        if ($data['showCategories'] && $data['expenseByCategory']->count()) {
+            $row += 2;
+            $sheet->mergeCells("A{$row}:C{$row}");
+            $sheet->setCellValue("A{$row}", 'GİDER KATEGORİLERİ');
+            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}");
+            $row++;
+            $sheet->fromArray(['Kategori', 'Tutar (₺)', 'Pay %'], null, 'A' . $row);
+            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}", 'FF37474f');
+            $row++;
+            foreach ($data['expenseByCategory'] as $cat => $total) {
+                $share = $data['totalExpense'] > 0 ? round(($total / $data['totalExpense']) * 100, 1) : 0;
+                $sheet->fromArray([$cat, $total, $share], null, 'A' . $row);
+                $row++;
+            }
+        }
+
+        foreach (['A' => 28, 'B' => 18, 'C' => 18, 'D' => 18] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
@@ -241,8 +207,7 @@ class ReportController extends Controller
 
     private function incomeExpenseData($apartment, Request $request): array
     {
-        $dateFrom = $request->input('date_from', now()->startOfYear()->format('Y-m-d'));
-        $dateTo   = $request->input('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $periodFrom, $periodTo, $rangeLabel] = $this->resolveIncomeExpenseRange($request);
         $id       = $apartment->id;
 
         $payments = Payment::where('apartment_id', $id)
@@ -272,14 +237,75 @@ class ReportController extends Controller
             return ['month' => $monthName . ' ' . $carbonDate->format('Y'), 'income' => $income, 'expense' => $expense, 'net' => $income - $expense];
         });
 
+        $totalIncome  = $rows->sum('income');
+        $totalExpense = $rows->sum('expense');
+        $showCategories = $request->boolean('show_categories');
+
+        $expenseByCategory = $showCategories
+            ? Expense::where('expenses.apartment_id', $id)
+                ->whereBetween('expense_date', [$dateFrom, $dateTo])
+                ->leftJoin('categories', fn($j) => $j->on('categories.id', '=', 'expenses.category_id')->whereNull('categories.deleted_at'))
+                ->selectRaw("COALESCE(NULLIF(categories.name,''), NULLIF(expenses.category,''), 'Diğer') as cat, SUM(expenses.amount) as total")
+                ->groupBy('cat')->orderByDesc('total')
+                ->pluck('total', 'cat')
+            : collect();
+
         return [
             'rows' => $rows,
-            'totalIncome'  => $rows->sum('income'),
-            'totalExpense' => $rows->sum('expense'),
-            'totalNet'     => $rows->sum('income') - $rows->sum('expense'),
+            'totalIncome'  => $totalIncome,
+            'totalExpense' => $totalExpense,
+            'totalNet'     => $totalIncome - $totalExpense,
+            'showCategories' => $showCategories,
+            'expenseByCategory' => $expenseByCategory,
             'dateFrom' => $dateFrom,
             'dateTo'   => $dateTo,
+            'periodFrom' => $periodFrom,
+            'periodTo' => $periodTo,
+            'rangeLabel' => $rangeLabel,
         ];
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: string}
+     */
+    private function resolveIncomeExpenseRange(Request $request): array
+    {
+        $periodFrom = $request->input('period_from');
+        $periodTo   = $request->input('period_to');
+        $periodFrom = is_string($periodFrom) && preg_match('/^\d{4}-\d{2}$/', $periodFrom) ? $periodFrom : null;
+        $periodTo   = is_string($periodTo) && preg_match('/^\d{4}-\d{2}$/', $periodTo) ? $periodTo : null;
+
+        if ($periodFrom || $periodTo) {
+            $from = $periodFrom ?: $periodTo;
+            $to   = $periodTo ?: $periodFrom;
+            if ($from > $to) {
+                [$from, $to] = [$to, $from];
+            }
+            $periodFrom = $from;
+            $periodTo   = $to;
+            $dateFrom = Carbon::createFromFormat('Y-m-d', $from . '-01')->startOfMonth()->toDateString();
+            $dateTo   = Carbon::createFromFormat('Y-m-d', $to . '-01')->endOfMonth()->toDateString();
+        } else {
+            $dateFrom = $request->input('date_from', now()->startOfYear()->format('Y-m-d'));
+            $dateTo   = $request->input('date_to', now()->format('Y-m-d'));
+            try {
+                $dateFrom = Carbon::parse($dateFrom)->toDateString();
+                $dateTo   = Carbon::parse($dateTo)->toDateString();
+            } catch (\Exception) {
+                $dateFrom = now()->startOfYear()->toDateString();
+                $dateTo   = now()->toDateString();
+            }
+            if ($dateFrom > $dateTo) {
+                [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+            }
+        }
+
+        $rangeLabel = 'Tarih aralığı: '
+            . Carbon::parse($dateFrom)->format('d.m.Y')
+            . ' – '
+            . Carbon::parse($dateTo)->format('d.m.Y');
+
+        return [$dateFrom, $dateTo, $periodFrom, $periodTo, $rangeLabel];
     }
 
     // -------------------------------------------------------------------------
@@ -1254,6 +1280,7 @@ class ReportController extends Controller
         $typeFilter   = $request->input('type_filter', 'resident');
         $statusFilter = $request->input('status_filter', 'active');
         $showAccountType = $request->boolean('show_account_type', false);
+        $showExpenses = $request->boolean('show_expenses');
 
         $accountsQuery = Account::where('accounts.apartment_id', $id)
             ->with('unit')
@@ -1343,6 +1370,7 @@ class ReportController extends Controller
         }
 
         $categoryList = Category::where('apartment_id', $id)->where('is_active', true)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->get();
+        $expenseByCategory = $this->expenseTotalsByCategory($id, $parsedMonth, $showExpenses);
 
         // Tüm aylar için selector
         $monthOptions = collect();
@@ -1352,7 +1380,8 @@ class ReportController extends Controller
 
         return view('reports.monthly-board', compact(
             'apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
-            'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'showAccountType'
+            'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'showAccountType',
+            'showExpenses', 'expenseByCategory'
         ));
     }
 
@@ -1366,6 +1395,7 @@ class ReportController extends Controller
         $typeFilter   = $request->input('type_filter', 'resident');
         $statusFilter = $request->input('status_filter', 'active');
         $showAccountType = $request->boolean('show_account_type', false);
+        $showExpenses = $request->boolean('show_expenses');
         try { $parsedMonth = Carbon::createFromFormat('Y-m', $month); } catch (\Exception $e) { $parsedMonth = now(); }
         $selectedMonthStr = $parsedMonth->format('Y-m');
 
@@ -1448,6 +1478,7 @@ class ReportController extends Controller
         }
 
         $categoryList = Category::where('apartment_id', $id)->where('is_active', true)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->get();
+        $expenseByCategory = $this->expenseTotalsByCategory($id, $parsedMonth, $showExpenses);
         $monthOptions = collect();
         $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
 
@@ -1458,7 +1489,8 @@ class ReportController extends Controller
         if ($type === 'pdf') {
             return $this->pdfResponse('reports.monthly-board-pdf', compact(
                 'apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
-                'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'title', 'trMonths', 'showAccountType'
+                'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'title', 'trMonths', 'showAccountType',
+                'showExpenses', 'expenseByCategory'
             ), 'aylik-aidat-pano-tablosu');
         }
 
@@ -1492,10 +1524,49 @@ class ReportController extends Controller
                 ->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
-        foreach (['A' => 10, 'B' => 24, 'C' => 16, 'D' => 16, 'E' => 16, 'F' => 16] as $col => $width) {
+        if ($showExpenses && $expenseByCategory->count()) {
+            $expenseTotal = (float) $expenseByCategory->sum();
+            $row += 1;
+            $sheet->mergeCells("A{$row}:C{$row}");
+            $sheet->setCellValue("A{$row}", 'GİDER KATEGORİLERİ — ' . $trMonths[$parsedMonth->month] . ' ' . $parsedMonth->year);
+            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}");
+            $row++;
+            $sheet->fromArray(['Kategori', 'Tutar (₺)', 'Pay %'], null, 'A' . $row);
+            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}", 'FF37474f');
+            $row++;
+            $categoryStart = $row;
+            foreach ($expenseByCategory as $cat => $total) {
+                $share = $expenseTotal > 0 ? round(((float) $total / $expenseTotal) * 100, 1) : 0;
+                $sheet->fromArray([$cat, (float) $total, $share], null, 'A' . $row);
+                $row++;
+            }
+            $sheet->getStyle('B' . $categoryStart . ':B' . ($row - 1))
+                ->getNumberFormat()
+                ->setFormatCode('#,##0.00 "₺"');
+        }
+
+        foreach (['A' => 28, 'B' => 24, 'C' => 16, 'D' => 16, 'E' => 16, 'F' => 16] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
         return $this->excelResponse($spreadsheet, 'aylik-aidat-pano-tablosu');
+    }
+
+    private function expenseTotalsByCategory(int $apartmentId, Carbon $month, bool $show): \Illuminate\Support\Collection
+    {
+        if (! $show) {
+            return collect();
+        }
+
+        $start = $month->copy()->startOfMonth()->toDateString();
+        $end = $month->copy()->endOfMonth()->toDateString();
+
+        return Expense::where('expenses.apartment_id', $apartmentId)
+            ->whereBetween('period_month', [$start, $end])
+            ->leftJoin('categories', fn ($j) => $j->on('categories.id', '=', 'expenses.category_id')->whereNull('categories.deleted_at'))
+            ->selectRaw("COALESCE(NULLIF(categories.name,''), NULLIF(expenses.category,''), 'Diğer') as cat, SUM(expenses.amount) as total")
+            ->groupBy('cat')
+            ->orderByDesc('total')
+            ->pluck('total', 'cat');
     }
 }

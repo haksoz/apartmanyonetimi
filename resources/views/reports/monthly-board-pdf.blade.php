@@ -85,5 +85,35 @@
             </tr>
         </tfoot>
     </table>
+
+    @if(!empty($showExpenses) && $expenseByCategory->count())
+    @php $expenseTotal = (float) $expenseByCategory->sum(); @endphp
+    <h2 style="margin-top: 16px;">Gider Kategorileri — {{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }}</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Kategori</th>
+                <th class="text-right">Tutar (₺)</th>
+                <th class="text-right">Pay %</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($expenseByCategory as $cat => $total)
+                <tr>
+                    <td>{{ $cat }}</td>
+                    <td class="text-right text-red">{{ number_format($total, 2, ',', '.') }} ₺</td>
+                    <td class="text-right">{{ $expenseTotal > 0 ? number_format(($total / $expenseTotal) * 100, 1) : '0' }}%</td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>TOPLAM</td>
+                <td class="text-right text-red">{{ number_format($expenseTotal, 2, ',', '.') }} ₺</td>
+                <td class="text-right">100%</td>
+            </tr>
+        </tfoot>
+    </table>
+    @endif
 </body>
 </html>

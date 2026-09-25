@@ -13,12 +13,12 @@
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }}</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('reports.income-expense.export', ['type'=>'excel', 'date_from'=>$dateFrom, 'date_to'=>$dateTo]) }}"
+            <a href="{{ route('reports.income-expense.export', array_filter(['type'=>'excel', 'date_from'=>$dateFrom, 'date_to'=>$dateTo, 'period_from'=>$periodFrom, 'period_to'=>$periodTo, 'show_categories'=>$showCategories ? 1 : null])) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.income-expense.export', ['type'=>'pdf', 'date_from'=>$dateFrom, 'date_to'=>$dateTo]) }}"
+            <a href="{{ route('reports.income-expense.export', array_filter(['type'=>'pdf', 'date_from'=>$dateFrom, 'date_to'=>$dateTo, 'period_from'=>$periodFrom, 'period_to'=>$periodTo, 'show_categories'=>$showCategories ? 1 : null])) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
@@ -29,6 +29,14 @@
     {{-- Filtreler --}}
     <form method="GET" action="{{ route('reports.income-expense') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-3 items-end">
         <div>
+            <label class="block text-xs text-slate-500 mb-1">Başlangıç Dönemi</label>
+            <input type="month" name="period_from" value="{{ $periodFrom }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+        </div>
+        <div>
+            <label class="block text-xs text-slate-500 mb-1">Bitiş Dönemi</label>
+            <input type="month" name="period_to" value="{{ $periodTo }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+        </div>
+        <div>
             <label class="block text-xs text-slate-500 mb-1">Başlangıç Tarihi</label>
             <input type="date" name="date_from" value="{{ $dateFrom }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
         </div>
@@ -36,9 +44,49 @@
             <label class="block text-xs text-slate-500 mb-1">Bitiş Tarihi</label>
             <input type="date" name="date_to" value="{{ $dateTo }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
         </div>
+        <label class="flex items-center gap-2 pb-2 text-sm text-slate-700">
+            <input type="checkbox" name="show_categories" value="1" @checked($showCategories) class="rounded border-slate-300 text-slate-950 focus:ring-slate-300">
+            Kategoriye göre giderleri göster
+        </label>
         <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
+        <p class="w-full text-xs text-slate-400">Dönem seçildiğinde rapor o ayların tamamını kapsar. Tarih aralığı, dönem boşken kullanılır.</p>
     </form>
+    <script>
+        (function () {
+            const form = document.querySelector('form[action="{{ route('reports.income-expense') }}"]');
+            if (!form) return;
+            const periodFrom = form.querySelector('[name="period_from"]');
+            const periodTo = form.querySelector('[name="period_to"]');
+            const dateFrom = form.querySelector('[name="date_from"]');
+            const dateTo = form.querySelector('[name="date_to"]');
+
+            function monthBounds(value, edge) {
+                if (!value) return '';
+                const [year, month] = value.split('-').map(Number);
+                if (edge === 'start') return value + '-01';
+                const last = new Date(year, month, 0).getDate();
+                return value + '-' + String(last).padStart(2, '0');
+            }
+
+            function syncDatesFromPeriod() {
+                const start = periodFrom.value || periodTo.value;
+                const end = periodTo.value || periodFrom.value;
+                if (!start && !end) return;
+                const from = start <= end ? start : end;
+                const to = start <= end ? end : start;
+                dateFrom.value = monthBounds(from, 'start');
+                dateTo.value = monthBounds(to, 'end');
+            }
+
+            periodFrom.addEventListener('change', syncDatesFromPeriod);
+            periodTo.addEventListener('change', syncDatesFromPeriod);
+            dateFrom.addEventListener('input', function () { periodFrom.value = ''; periodTo.value = ''; });
+            dateTo.addEventListener('input', function () { periodFrom.value = ''; periodTo.value = ''; });
+        })();
+    </script>
     @endif
+
+    <p class="mb-4 text-sm font-medium text-slate-600">{{ $rangeLabel }}</p>
 
     {{-- Özet Kartlar --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -102,7 +150,7 @@
         </div>
     </div>
 
-    @if(isset($expenseByCategory) && $expenseByCategory->count())
+    @if($showCategories && $expenseByCategory->count())
     {{-- Kategori Bazlı Giderler --}}
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100">
