@@ -65,6 +65,40 @@
     @endif
 
     <div class="grid gap-6 lg:grid-cols-3">
+        {{-- Apartmanlar --}}
+        <div class="rounded-xl border border-slate-200 bg-white p-6">
+            <div class="flex items-center gap-3">
+                <div class="rounded-lg bg-slate-50 p-3">
+                    <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-sm font-medium text-slate-500">Apartmanlar</div>
+                    <div class="text-lg font-semibold text-slate-900">{{ $apartments->count() }}</div>
+                </div>
+            </div>
+
+            <p class="mt-3 text-sm text-slate-500">Yönetmek istediğiniz apartmanı seçiniz.</p>
+
+            <div class="mt-4 space-y-2">
+                @forelse ($apartments->take(5) as $apartment)
+                    <form method="POST" action="{{ route('subscriber.apartment.update') }}">
+                        @csrf
+                        <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
+                        <button type="submit" class="w-full flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-base font-semibold text-slate-900 text-left hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer">
+                            <span>{{ $apartment->name }}</span>
+                            @if ($currentApartmentModel && $currentApartmentModel->id === $apartment->id)
+                                <span class="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Seçili</span>
+                            @endif
+                        </button>
+                    </form>
+                @empty
+                    <p class="text-sm text-slate-500">Henüz apartman yok.</p>
+                @endforelse
+            </div>
+        </div>
+
         {{-- Abonelik Kartı --}}
         <div class="rounded-xl border border-slate-200 bg-white p-6">
             <div class="flex items-center gap-3">
@@ -181,40 +215,6 @@
             </div>
         </div>
         @endif
-
-        {{-- Apartmanlar --}}
-        <div class="rounded-xl border border-slate-200 bg-white p-6">
-            <div class="flex items-center gap-3">
-                <div class="rounded-lg bg-slate-50 p-3">
-                    <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/>
-                    </svg>
-                </div>
-                <div>
-                    <div class="text-sm font-medium text-slate-500">Apartmanlar</div>
-                    <div class="text-lg font-semibold text-slate-900">{{ $apartments->count() }}</div>
-                </div>
-            </div>
-
-            <p class="mt-3 text-sm text-slate-500">Yönetmek istediğiniz apartmanı seçiniz.</p>
-
-            <div class="mt-4 space-y-2">
-                @forelse ($apartments->take(5) as $apartment)
-                    <form method="POST" action="{{ route('subscriber.apartment.update') }}">
-                        @csrf
-                        <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
-                        <button type="submit" class="w-full flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-base font-semibold text-slate-900 text-left hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer">
-                            <span>{{ $apartment->name }}</span>
-                            @if ($currentApartmentModel && $currentApartmentModel->id === $apartment->id)
-                                <span class="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Seçili</span>
-                            @endif
-                        </button>
-                    </form>
-                @empty
-                    <p class="text-sm text-slate-500">Henüz apartman yok.</p>
-                @endforelse
-            </div>
-        </div>
     </div>
 
     {{-- Paket Seçim Bölümü --}}
