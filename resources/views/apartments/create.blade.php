@@ -50,6 +50,16 @@
                 <label class="text-sm font-medium text-slate-700">Daire Sayısı</label>
                 <input type="number" name="unit_count" value="{{ old('unit_count') }}" min="1" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" required>
                 @error('unit_count') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+                <p class="mt-1 text-xs text-slate-500">1–100 daire ücretsiz açılır. 101–150 daire için ücretli kullanım gerekir. 151 ve üzeri teklif fiyatı olmadan açılmaz.</p>
+            </div>
+            <div>
+                <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-4">
+                    <input type="checkbox" name="wants_paid" value="1" class="mt-1" {{ old('wants_paid') ? 'checked' : '' }}>
+                    <span>
+                        <span class="block text-sm font-semibold text-slate-900">Ücretli kullanım</span>
+                        <span class="block text-sm text-slate-500">Otomatik aidat, gelişmiş rapor ve belge yükleme bu apartman için ücretli plana bağlanır. 101 ve üzeri dairede bu seçim zorunludur.</span>
+                    </span>
+                </label>
             </div>
             <div>
                 <label class="text-sm font-medium text-slate-700">Daire Hesaplarının Açılış Tarihi</label>

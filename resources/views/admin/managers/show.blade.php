@@ -14,7 +14,7 @@
                 @csrf
                 <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Bu Kullanıcı Olarak Giriş Yap</button>
             </form>
-            <form method="POST" action="{{ route('admin.managers.destroy', $manager) }}" onsubmit="return confirm(@js($manager->ownedApartments()->count() > 0 ? $manager->name.' silinecek. Apartmanları ve içindeki tüm kayıtlar da silinir.' : $manager->name.' ve abonelik kaydı silinecek. Emin misiniz?'))">
+            <form method="POST" action="{{ route('admin.managers.destroy', $manager) }}" onsubmit="return confirm(@js($manager->name.' ve abonelik kaydı silinecek. Emin misiniz?'))">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Kullanıcıyı Sil</button>
@@ -22,786 +22,172 @@
         </div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-2">
-        <div class="rounded-xl border border-slate-200 bg-white p-6">
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-slate-900">Mevcut Abonelik</h2>
-                @if ($manager->subscription && $manager->subscription->is_trial && !$manager->subscription->isExpired())
-                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">Deneme Süreci</span>
-                @elseif ($manager->subscription && $manager->subscription->isExpired())
-                    <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">Süresi Dolmuş</span>
-                @elseif ($manager->subscription)
-                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">Aktif</span>
-                @endif
+    @if (session('status'))
+        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('status') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ $errors->first() }}</div>
+    @endif
+
+    <h2 class="text-lg font-semibold text-slate-900">Siparişler</h2>
+    <p class="mt-1 text-sm text-slate-500">Yalnızca bu müşterinin verdiği siparişler ve yaptığı ödemeler.</p>
+
+    @forelse ($orders as $subscription)
+        <section class="mt-4 rounded-xl border border-slate-200 bg-white p-6">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-base font-semibold text-slate-900">Dönem</h3>
+                    <p class="text-sm text-slate-500">Sipariş no {{ $subscription->order_number ?? '—' }}</p>
+                </div>
+                @include('admin.managers.partials.status', ['subscription' => $subscription])
             </div>
-            @if ($manager->subscription)
-                <div class="mt-4 space-y-2 text-sm">
-                    <div class="flex justify-between"><span class="text-slate-500">Paket</span><span class="font-medium text-slate-900">{{ $manager->subscription->package->name }}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Dönem</span><span class="font-medium text-slate-900 capitalize">{{ $manager->subscription->period }}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Fiyat</span><span class="font-medium text-slate-900">{{ number_format($manager->subscription->price, 2) }} ₺</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Ödenen Toplam</span><span class="font-medium text-slate-900">{{ number_format($manager->subscription->totalPaid(), 2) }} ₺</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Başlangıç</span><span class="font-medium text-slate-900">{{ $manager->subscription->started_at->format('d.m.Y') }}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Bitiş</span><span class="font-medium text-slate-900">{{ $manager->subscription->expires_at?->format('d.m.Y') ?? 'Süresiz' }}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Apartman Limiti</span><span class="font-medium text-slate-900">{{ $quota->currentCount($manager) }} / {{ $quota->maxFor($manager) ?? 'Sınırsız' }}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-500">Abonelik Türü</span><span class="font-medium text-slate-900">{{ $manager->subscription->is_trial ? 'Deneme' : 'Ücretli' }}</span></div>
+
+            <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <div><dt class="text-slate-500">Müşteri</dt><dd class="font-medium text-slate-900">{{ $manager->name }}</dd></div>
+                <div><dt class="text-slate-500">Dönem</dt><dd class="font-medium text-slate-900">{{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }}</dd></div>
+                <div><dt class="text-slate-500">Başlangıç</dt><dd class="font-medium text-slate-900">{{ $subscription->started_at?->format('d.m.Y') ?? '—' }}</dd></div>
+                <div><dt class="text-slate-500">Bitiş</dt><dd class="font-medium text-slate-900">{{ $subscription->expires_at?->format('d.m.Y') ?? '—' }}</dd></div>
+                <div><dt class="text-slate-500">Toplam</dt><dd class="font-medium text-slate-900">{{ number_format($subscription->price, 2, ',', '.') }} ₺</dd></div>
+                <div><dt class="text-slate-500">Ödeme yöntemi</dt><dd class="font-medium text-slate-900">{{ $subscription->payment_method === 'kredi_kartı' ? 'Kredi kartı' : ($subscription->payment_method === 'nakit' ? 'Nakit' : 'Havale / EFT') }}</dd></div>
+                <div class="sm:col-span-2">
+                    <dt class="text-slate-500">Dekont / referans</dt>
+                    <dd class="font-medium text-slate-900">
+                        {{ $subscription->receipt_reference ?: '—' }}
+                        @if ($subscription->receipt_path)
+                            <a href="{{ Storage::url($subscription->receipt_path) }}" target="_blank" class="ml-2 text-sm font-semibold text-emerald-700">Dekontu aç</a>
+                        @endif
+                    </dd>
                 </div>
-                @if ($manager->subscription->is_trial && $manager->subscription->expires_at && !$manager->subscription->isExpired())
-                    <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                        Deneme süreci <strong>{{ $manager->subscription->expires_at->format('d.m.Y') }}</strong> tarihinde sona eriyor
-                        ({{ $manager->subscription->expires_at->diffForHumans() }}).
-                    </div>
-                @elseif ($manager->subscription->is_trial && $manager->subscription->isExpired())
-                    <div class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                        Deneme süreci <strong>{{ $manager->subscription->expires_at->format('d.m.Y') }}</strong> tarihinde sona erdi.
-                    </div>
-                @endif
+            </dl>
 
-                @if ($manager->subscription)
-                    <form method="POST" action="{{ route('admin.managers.subscription.cancel', $manager) }}" class="mt-4" onsubmit="return confirm('Abonelik sonlandırılacak. Emin misiniz?')">
-                        @csrf
-                        <div class="flex gap-2">
-                            <input type="text" name="cancellation_notes" placeholder="Sonlandırma nedeni (opsiyonel)" class="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
-                            <button type="submit" class="rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-100">Sonlandır</button>
-                        </div>
-                    </form>
-                @endif
-            @else
-                <p class="mt-4 text-sm text-slate-500">Aktif abonelik yok.</p>
-            @endif
-
-            @if ($manager->subscription && $manager->subscription->is_trial)
-                <div class="mt-5 border-t border-slate-100 pt-5">
-                    <h3 class="text-sm font-semibold text-slate-700 mb-3">Deneme Süresini Uzat</h3>
-
-                    @if (session('status'))
-                        <div class="mb-3 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-700">{{ session('status') }}</div>
-                    @endif
-                    @error('trial')
-                        <div class="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{{ $message }}</div>
-                    @enderror
-
-                    {{-- Hızlı butonlar --}}
-                    <div class="flex gap-2 flex-wrap">
-                        @foreach ([30, 60, 90] as $days)
-                            <form method="POST" action="{{ route('admin.managers.trial.extend', $manager) }}">
-                                @csrf
-                                <input type="hidden" name="days" value="{{ $days }}">
-                                <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                                    +{{ $days }} gün
-                                </button>
-                            </form>
-                        @endforeach
-                    </div>
-
-                    {{-- Tarih seçici --}}
-                    <form method="POST" action="{{ route('admin.managers.trial.extend', $manager) }}" class="mt-3 flex gap-2 items-end">
-                        @csrf
-                        <div class="flex-1">
-                            <label class="block text-xs text-slate-500 mb-1">Bu tarihe kadar uzat</label>
-                            <input type="date" name="expires_at"
-                                min="{{ now()->addDay()->format('Y-m-d') }}"
-                                value="{{ $manager->subscription->expires_at?->format('Y-m-d') }}"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
-                        </div>
-                        <button type="submit" class="rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-amber-600">
-                            Uygula
-                        </button>
-                    </form>
-                </div>
-            @endif
-
-            @if ($manager->subscription)
-                <form method="POST" action="{{ route('admin.managers.subscription.update', $manager) }}" class="mt-6 space-y-4 border-t border-slate-100 pt-4">
-                    @csrf
-                    @method('PATCH')
-                    <h3 class="text-sm font-semibold text-slate-700 mb-3">Mevcut Aboneliği Güncelle</h3>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Özellikler</label>
-                        <div class="space-y-2">
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" name="feature_auto_dues" value="1" {{ old('feature_auto_dues', $manager->subscription->feature_auto_dues) ? 'checked' : '' }} class="rounded border-slate-300">
-                                <span class="text-sm text-slate-700">Otomatik aidat planlama</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" name="feature_user_portal" value="1" {{ old('feature_user_portal', $manager->subscription->feature_user_portal) ? 'checked' : '' }} class="rounded border-slate-300">
-                                <span class="text-sm text-slate-700">Kullanıcı portalı erişimi</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" name="feature_reports" value="1" {{ old('feature_reports', $manager->subscription->feature_reports) ? 'checked' : '' }} class="rounded border-slate-300">
-                                <span class="text-sm text-slate-700">Hesap ekstresi ve raporlar</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" name="feature_multi_apartment" value="1" {{ old('feature_multi_apartment', $manager->subscription->feature_multi_apartment) ? 'checked' : '' }} class="rounded border-slate-300">
-                                <span class="text-sm text-slate-700">Çoklu apartman yönetimi</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Çoklu Apartman Limiti (opsiyonel)</label>
-                        <input type="number" name="multi_apartment_limit_override" value="{{ old('multi_apartment_limit_override', $manager->subscription->multi_apartment_limit_override) }}" min="0" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                        <p class="mt-1 text-xs text-slate-500">Boş bırakılırsa paket limiti kullanılır</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Apartman Limiti Override (opsiyonel)</label>
-                        <input type="number" name="max_apartments" value="{{ old('max_apartments', $manager->quotaOverride?->max_apartments ?? $quota->maxFor($manager)) }}" min="0" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                        <p class="mt-1 text-xs text-slate-500">Boş bırakılırsa paket limiti kullanılır</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Notlar</label>
-                        <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">{{ old('notes', $manager->subscription->notes) }}</textarea>
-                    </div>
-
-                    <button type="submit" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Güncelle</button>
-                </form>
-            @endif
-        </div>
-
-        <div class="rounded-xl border border-slate-200 bg-white p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Yeni Paket Tanımla / Sipariş Düş</h2>
-
-            <form method="POST" action="{{ route('admin.managers.subscription.order', $manager) }}" class="mt-4 space-y-4">
-                @csrf
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Paket</label>
-                    <select name="order[package_id]" id="order_package_id" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                        @foreach ($packages as $package)
-                            <option value="{{ $package->id }}">{{ $package->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Dönem</label>
-                    <select name="order[period]" id="order_period" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                        <option value="monthly" selected>Aylık</option>
-                        <option value="yearly">Yıllık</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Fiyat</label>
-                    <input type="number" step="0.01" name="order[price]" id="order_price" value="" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                    <p class="mt-1 text-xs text-slate-500">Varsayılan paket fiyatı otomatik gelir; elle düzenlenebilir.</p>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Paket Özellikleri</label>
-                    <div id="order_package_info" class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                        Paket seçildiğinde özellikler burada görüntülenecek.
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <input type="hidden" name="is_paid" value="0">
-                    <input type="checkbox" name="is_paid" value="1" id="is_paid" class="rounded border-slate-300">
-                    <label for="is_paid" class="text-sm font-medium text-slate-700">Ödeme Alındı</label>
-                </div>
-
-                <div id="payment_fields" class="hidden space-y-4">
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-500">Ödeme Tarihi</label>
-                            <input type="date" name="payment_date" value="{{ old('payment_date', now()->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-500">Ödeme Yöntemi</label>
-                            <select name="payment_method" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                                <option value="havale">Havale/EFT</option>
-                                <option value="kredi_karti">Kredi Kartı</option>
-                                <option value="nakit">Nakit</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-500">Referans Kodu</label>
-                            <input type="text" name="reference_code" value="{{ old('reference_code') }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Notlar</label>
-                    <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">{{ old('notes') }}</textarea>
-                </div>
-
-                <button type="submit" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Sipariş Oluştur</button>
-            </form>
-        </div>
-
-        <script>
-            const packageFeatures = {!! json_encode($packageFeatures ?? []) !!};
-
-            document.addEventListener('DOMContentLoaded', function() {
-                const packageSelect = document.querySelector('select[name="order[package_id]"]');
-                const periodSelect = document.querySelector('select[name="order[period]"]');
-                const priceInput = document.querySelector('input[name="order[price]"]');
-                const infoBox = document.getElementById('order_package_info');
-                const isPaidCheckbox = document.getElementById('is_paid');
-                const paymentFields = document.getElementById('payment_fields');
-
-                function formatPrice(value) {
-                    return Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                }
-
-                function renderInfo(features) {
-                    if (! features || ! infoBox) {
-                        return;
-                    }
-
-                    const period = periodSelect ? periodSelect.value : 'monthly';
-                    const basePrice = period === 'yearly' ? features.yearly_price : features.monthly_price;
-
-                    infoBox.innerHTML = `
-                        <div class="grid gap-2">
-                            <div><span class="font-medium">Apartman limiti:</span> ${features.apartment_limit === 0 ? 'Sınırsız' : features.apartment_limit}</div>
-                            <div><span class="font-medium">Çoklu apartman:</span> ${features.feature_multi_apartment ? 'Evet' : 'Hayır'}</div>
-                            ${features.feature_multi_apartment ? `<div><span class="font-medium">Çoklu apartman limiti:</span> ${features.multi_apartment_limit === 0 ? 'Sınırsız' : features.multi_apartment_limit}</div>` : ''}
-                            <div><span class="font-medium">Otomatik aidat planlama:</span> ${features.feature_auto_dues ? 'Evet' : 'Hayır'}</div>
-                            <div><span class="font-medium">Kullanıcı portalı:</span> ${features.feature_user_portal ? 'Evet' : 'Hayır'}</div>
-                            <div><span class="font-medium">Raporlar:</span> ${features.feature_reports ? 'Evet' : 'Hayır'}</div>
-                            <div class="pt-2 border-t border-slate-200"><span class="font-medium">Varsayılan fiyat (${period === 'yearly' ? 'Yıllık' : 'Aylık'}):</span> ${formatPrice(basePrice)} ₺</div>
-                        </div>
-                    `;
-                }
-
-                function updatePrice(features) {
-                    if (! priceInput || ! periodSelect) {
-                        return;
-                    }
-
-                    const period = periodSelect.value;
-                    const price = period === 'yearly' ? features.yearly_price : features.monthly_price;
-                    priceInput.value = price;
-                }
-
-                function updatePackage() {
-                    if (! packageSelect) {
-                        return;
-                    }
-
-                    const packageId = parseInt(packageSelect.value);
-                    const features = packageFeatures[packageId];
-
-                    if (features) {
-                        updatePrice(features);
-                        renderInfo(features);
-                    }
-                }
-
-                if (packageSelect) {
-                    packageSelect.addEventListener('change', updatePackage);
-                    updatePackage();
-                }
-
-                if (periodSelect) {
-                    periodSelect.addEventListener('change', function() {
-                        const packageId = parseInt(packageSelect.value);
-                        const features = packageFeatures[packageId];
-                        if (features) {
-                            updatePrice(features);
-                            renderInfo(features);
-                        }
-                    });
-                }
-
-                if (isPaidCheckbox && paymentFields) {
-                    isPaidCheckbox.addEventListener('change', function() {
-                        paymentFields.classList.toggle('hidden', ! this.checked);
-                    });
-                }
-
-                document.querySelectorAll('.open-approve-modal').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const modal = document.getElementById(this.dataset.modalTarget);
-                        if (modal) {
-                            modal.classList.remove('hidden');
-                            modal.classList.add('flex');
-                        }
-                    });
-                });
-
-                document.querySelectorAll('.close-approve-modal').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const modal = this.closest('.approve-modal');
-                        if (modal) {
-                            modal.classList.add('hidden');
-                            modal.classList.remove('flex');
-                        }
-                    });
-                });
-
-                document.querySelectorAll('.approve-modal').forEach(modal => {
-                    modal.addEventListener('click', function(e) {
-                        if (e.target === modal) {
-                            modal.classList.add('hidden');
-                            modal.classList.remove('flex');
-                        }
-                    });
-                });
-
-                document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
-                    radio.addEventListener('change', function() {
-                        const modalId = this.dataset.modal;
-                        const refInput = document.getElementById('ref-code-' + modalId);
-                        const refLabel = modalId ? document.querySelector('#approve-modal-' + modalId + ' .ref-label') : null;
-                        if (! refInput || ! refLabel) {
-                            return;
-                        }
-
-                        if (this.value === 'nakit') {
-                            refLabel.textContent = 'Tahsilat Numarası';
-                            refInput.value = 'NKT-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-                            refInput.readOnly = true;
-                        } else {
-                            refLabel.textContent = 'Dekont / Referans Numarası';
-                            refInput.value = '';
-                            refInput.readOnly = false;
-                        }
-                    });
-                });
-
-            document.querySelectorAll('.open-reject-modal').forEach(button => {
-                button.addEventListener('click', function() {
-                    const modal = document.getElementById(this.dataset.modalTarget);
-                    if (modal) {
-                        modal.classList.remove('hidden');
-                        modal.classList.add('flex');
-                    }
-                });
-            });
-
-            document.querySelectorAll('.close-reject-modal').forEach(button => {
-                button.addEventListener('click', function() {
-                    const modal = this.closest('.reject-modal');
-                    if (modal) {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                    }
-                });
-            });
-
-            document.querySelectorAll('.reject-modal').forEach(modal => {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === modal) {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                    }
-                });
-            });
-
-            document.querySelectorAll('.open-detail-modal').forEach(button => {
-                button.addEventListener('click', function() {
-                    const modal = document.getElementById(this.dataset.modalTarget);
-                    if (modal) {
-                        modal.classList.remove('hidden');
-                        modal.classList.add('flex');
-                    }
-                });
-            });
-
-            document.querySelectorAll('.close-detail-modal').forEach(button => {
-                button.addEventListener('click', function() {
-                    const modal = this.closest('.detail-modal');
-                    if (modal) {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                    }
-                });
-            });
-
-            document.querySelectorAll('.detail-modal').forEach(modal => {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === modal) {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                    }
-                });
-            });
-            });
-        </script>
-    </div>
-
-    <div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 class="text-lg font-semibold text-slate-900">Sipariş Geçmişi</h2>
-        @if ($manager->subscriptions->isEmpty())
-            <p class="mt-4 text-sm text-slate-500">Henüz sipariş kaydı yok.</p>
-        @else
-            <div class="mt-4 overflow-x-auto">
+            <h4 class="mt-6 text-sm font-semibold text-slate-900">Apartman hizmet kalemleri</h4>
+            <div class="mt-3 overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Paket</th>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Dönem</th>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Başlangıç</th>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Bitiş</th>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Tür</th>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
-                            <th class="px-4 py-3 text-right font-semibold text-slate-700">İşlem</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Apartman</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Daire</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Bant</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Sınır</th>
+                            <th class="px-3 py-2 text-right font-semibold text-slate-700">Liste</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Kampanya</th>
+                            <th class="px-3 py-2 text-right font-semibold text-slate-700">Tutar</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-200">
-                        @foreach ($manager->subscriptions as $subscription)
-                            <tr class="hover:bg-slate-50">
-                                <td class="px-4 py-3">
-                                    <div class="font-medium text-slate-900">{{ $subscription->package->name }}</div>
-                                    <div class="text-xs text-slate-500">Fiyat: {{ number_format($subscription->price, 2) }} ₺</div>
-                                </td>
-                                <td class="px-4 py-3 capitalize">{{ $subscription->period }}</td>
-                                <td class="px-4 py-3">{{ $subscription->started_at?->format('d.m.Y') ?? '-' }}</td>
-                                <td class="px-4 py-3">{{ $subscription->expires_at?->format('d.m.Y') ?? '-' }}</td>
-                                <td class="px-4 py-3">
-                                    @if ($subscription->is_trial)
-                                        <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Deneme</span>
-                                    @else
-                                        <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Ücretli</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3">
-                                    @if ($subscription->isPending())
-                                        @if ($subscription->receipt_path || $subscription->receipt_reference)
-                                            <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800" title="Müşteri dekont/referans gönderdi, onay bekleniyor">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                                </svg>
-                                                Onay Bekliyor
-                                            </span>
-                                        @else
-                                            <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Ödeme Bekliyor</span>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach ($subscription->items as $item)
+                            <tr>
+                                <td class="px-3 py-2 font-medium text-slate-900">{{ $item->apartment_name }}</td>
+                                <td class="px-3 py-2">{{ $item->unit_count }}</td>
+                                <td class="px-3 py-2">{{ $item->band_label }}</td>
+                                <td class="px-3 py-2">{{ $item->band_min_units }}–{{ $item->band_max_units ?? '∞' }}</td>
+                                <td class="px-3 py-2 text-right">{{ $item->list_amount !== null ? number_format($item->list_amount, 0, ',', '.').' ₺' : '—' }}</td>
+                                <td class="px-3 py-2">
+                                    @if ($item->campaign_name)
+                                        {{ $item->campaign_name }}
+                                        @if ($item->discount_amount)
+                                            · −{{ number_format($item->discount_amount, 0, ',', '.') }} ₺
                                         @endif
-                                    @elseif ($subscription->is_active)
-                                        <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Aktif</span>
-                                    @elseif ($subscription->isCancelled())
-                                        <span class="inline-flex rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700">İptal</span>
                                     @else
-                                        <span class="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">Pasif</span>
+                                        —
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-right">
-                                    <button type="button" class="open-detail-modal text-sm font-semibold text-slate-600 hover:text-slate-800" data-modal-target="detail-modal-{{ $subscription->id }}">Detay</button>
-                                    @if ($subscription->isPending())
-                                        <button type="button" class="open-approve-modal ml-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700" data-modal-target="approve-modal-{{ $subscription->id }}">Onayla</button>
-                                        <button type="button" class="open-reject-modal ml-2 text-sm font-semibold text-red-600 hover:text-red-700" data-modal-target="reject-modal-{{ $subscription->id }}">Reddet</button>
-                                    @elseif (! $subscription->is_active && ! $subscription->isCancelled() && ! $subscription->is_trial)
-                                        <form method="POST" action="{{ route('admin.managers.subscription.reactivate', [$manager, $subscription]) }}" class="inline ml-2" onsubmit="return confirm('Bu abonelik geri yüklenecek. Emin misiniz?')">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Geri Yükle</button>
-                                        </form>
-                                    @endif
-                                </td>
+                                <td class="px-3 py-2 text-right font-medium">{{ number_format($item->amount, 0, ',', '.') }} ₺</td>
                             </tr>
                         @endforeach
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="6" class="px-3 py-2 text-right font-semibold text-slate-700">Toplam</td>
+                            <td class="px-3 py-2 text-right font-semibold text-slate-900">{{ number_format($subscription->items->sum('amount'), 0, ',', '.') }} ₺</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
-        @endif
 
-        @foreach ($manager->subscriptions as $subscription)
-            @if ($subscription->isPending())
-                <div id="approve-modal-{{ $subscription->id }}" class="approve-modal fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-                    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-                        <h3 class="text-lg font-semibold text-slate-900">Siparişi Onayla</h3>
-                        <p class="mt-1 text-sm text-slate-600">{{ $subscription->package->name }} - {{ number_format($subscription->price, 2) }} ₺</p>
-
-                        <form method="POST" action="{{ route('admin.managers.subscription.approve', [$manager, $subscription]) }}" class="mt-4 space-y-4">
-                            @csrf
-                            @method('PATCH')
-
-                            @if ($subscription->receipt_reference || $subscription->receipt_path)
-                                <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                                    <p class="font-semibold">Müşteri ödeme bilgisi gönderdi</p>
-                                    <p class="mt-1">Ödeme yöntemi: <span class="font-medium text-slate-900">{{ $subscription->payment_method === 'kredi_kartı' ? 'Kredi Kartı' : 'Havale / EFT' }}</span></p>
-                                    @if ($subscription->receipt_reference)
-                                        <p class="mt-1 font-mono text-slate-900">{{ $subscription->receipt_reference }}</p>
-                                    @endif
-                                    @if ($subscription->receipt_path)
-                                        <a href="{{ Storage::url($subscription->receipt_path) }}" target="_blank" class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a1.125 1.125 0 011.125 1.125V17.25z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 7.5h-15a1.5 1.5 0 00-1.5 1.5v12a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5v-12a1.5 1.5 0 00-1.5-1.5z"/>
-                                            </svg>
-                                            Dekontu Görüntüle
-                                        </a>
-                                    @endif
-                                    <p class="mt-2 text-xs">Bilgileri onaylayıp aboneliği aktif edebilir veya vazgeçebilirsiniz.</p>
-                                </div>
-
-                                @if ($subscription->payment_method === 'kredi_kartı')
-                                    <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                                        Kredi kartı ödeme altyapısı henüz aktif değil. Bu sipariş şu an onaylanamaz.
-                                    </div>
-                                @else
-                                    <input type="hidden" name="payment_method" value="{{ $subscription->payment_method }}">
-                                    <input type="hidden" name="reference_code" value="{{ $subscription->receipt_reference }}">
-                                @endif
-                            @else
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">Ödeme Yöntemi</label>
-                                    <div class="mt-2 flex gap-4">
-                                        <label class="flex items-center gap-2">
-                                            <input type="radio" name="payment_method" value="havale" checked class="border-slate-300 text-emerald-600 focus:ring-emerald-500" data-modal="{{ $subscription->id }}">
-                                            <span class="text-sm text-slate-700">Havale</span>
-                                        </label>
-                                        <label class="flex items-center gap-2">
-                                            <input type="radio" name="payment_method" value="nakit" class="border-slate-300 text-emerald-600 focus:ring-emerald-500" data-modal="{{ $subscription->id }}">
-                                            <span class="text-sm text-slate-700">Nakit</span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label for="ref-code-{{ $subscription->id }}" class="ref-label block text-sm font-medium text-slate-700">Dekont / Referans Numarası</label>
-                                    <input type="text" name="reference_code" id="ref-code-{{ $subscription->id }}" value="{{ old('reference_code', $subscription->receipt_reference) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
-                                </div>
-                            @endif
-
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700">Notlar</label>
-                                <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">{{ $subscription->notes }}</textarea>
-                            </div>
-
-                            <div class="flex justify-end gap-2 pt-2">
-                                <button type="button" class="close-approve-modal rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Vazgeç</button>
-                                @if ($subscription->payment_method !== 'kredi_kartı')
-                                    <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Onayla ve Aktif Et</button>
-                                @endif
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <div id="reject-modal-{{ $subscription->id }}" class="reject-modal fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-                    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-                        <h3 class="text-lg font-semibold text-slate-900">Siparişi Reddet</h3>
-                        <p class="mt-1 text-sm text-slate-600">{{ $subscription->package->name }} - {{ number_format($subscription->price, 2) }} ₺</p>
-
-                        <form method="POST" action="{{ route('admin.managers.subscription.reject', [$manager, $subscription]) }}" class="mt-4 space-y-4">
-                            @csrf
-                            @method('PATCH')
-
-                            <div>
-                                <label for="reject-notes-{{ $subscription->id }}" class="block text-sm font-medium text-slate-700">Reddetme Nedeni (Opsiyonel)</label>
-                                <textarea name="rejection_notes" id="reject-notes-{{ $subscription->id }}" rows="3" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm"></textarea>
-                            </div>
-
-                            <div class="flex justify-end gap-2 pt-2">
-                                <button type="button" class="close-reject-modal rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Vazgeç</button>
-                                <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Reddet</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            @endif
-        @endforeach
-
-        @foreach ($manager->subscriptions as $subscription)
-            <div id="detail-modal-{{ $subscription->id }}" class="detail-modal fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-                <div class="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-                    <div class="mb-4 flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
-                        <div>
-                            <h3 class="text-lg font-semibold text-slate-900">Sipariş Detayı</h3>
-                            <p class="mt-1 text-sm text-slate-500">Sipariş No: <span class="font-mono font-medium text-slate-700">{{ $subscription->order_number ?? '-' }}</span></p>
-                        </div>
-                        <div>
-                            @if ($subscription->isPending())
-                                @if ($subscription->receipt_path || $subscription->receipt_reference)
-                                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                        </svg>
-                                        Onay Bekliyor
-                                    </span>
-                                @else
-                                    <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Ödeme Bekliyor</span>
-                                @endif
-                            @elseif ($subscription->is_active)
-                                <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Aktif</span>
-                            @elseif ($subscription->isCancelled())
-                                <span class="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">İptal</span>
-                            @else
-                                <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Pasif</span>
-                            @endif
-                        </div>
-                    </div>
-
-                    <div class="space-y-6">
-                        <div>
-                            <h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Paket & Ödeme</h4>
-                            <div class="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
-                                <div>
-                                    <span class="text-slate-500">Paket</span>
-                                    <p class="font-medium text-slate-900">{{ $subscription->package->name }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-slate-500">Dönem</span>
-                                    <p class="font-medium text-slate-900 capitalize">{{ $subscription->period }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-slate-500">Fiyat</span>
-                                    <p class="font-medium text-slate-900">{{ number_format($subscription->price, 2) }} ₺</p>
-                                </div>
-                                <div>
-                                    <span class="text-slate-500">Ödenen Toplam</span>
-                                    <p class="font-medium text-slate-900">{{ number_format($subscription->totalPaid(), 2) }} ₺</p>
-                                </div>
-                                <div>
-                                    <span class="text-slate-500">Ödeme Yöntemi</span>
-                                    <p class="font-medium text-slate-900">{{ $subscription->payment_method === 'kredi_kartı' ? 'Kredi Kartı' : 'Havale / EFT' }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-slate-500">Tür</span>
-                                    <p class="font-medium text-slate-900">{{ $subscription->is_trial ? 'Deneme' : 'Ücretli' }}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Tarihler</h4>
-                            <div class="grid grid-cols-3 gap-4 text-sm">
-                                <div>
-                                    <span class="text-slate-500">Başlangıç</span>
-                                    <p class="font-medium text-slate-900">{{ $subscription->started_at?->format('d.m.Y') ?? '-' }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-slate-500">Bitiş</span>
-                                    <p class="font-medium text-slate-900">{{ $subscription->expires_at?->format('d.m.Y') ?? '-' }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-slate-500">İptal/Bitiş</span>
-                                    <p class="font-medium text-slate-900">{{ $subscription->ended_at?->format('d.m.Y') ?? '-' }}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="rounded-xl border border-slate-200 bg-white p-4">
-                            <h4 class="mb-2 text-sm font-semibold text-slate-700">Dekont / Referans</h4>
-                            @if ($subscription->receipt_reference)
-                                <p class="font-mono text-sm font-medium text-slate-900">{{ $subscription->receipt_reference }}</p>
-                            @else
-                                <p class="text-sm text-slate-500">Henüz referans girilmemiş.</p>
-                            @endif
-                            @if ($subscription->receipt_path)
-                                <a href="{{ Storage::url($subscription->receipt_path) }}" target="_blank" class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-emerald-600 hover:text-emerald-700">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a1.125 1.125 0 011.125 1.125V17.25z"/>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 7.5h-15a1.5 1.5 0 00-1.5 1.5v12a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5v-12a1.5 1.5 0 00-1.5-1.5z"/>
-                                    </svg>
-                                    Dekontu Görüntüle
-                                </a>
-                            @else
-                                <p class="mt-1 text-sm text-slate-500">Henüz dekont yüklenmemiş.</p>
-                            @endif
-                        </div>
-
-                        <div>
-                            <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Özellikler</h4>
-                            <ul class="grid grid-cols-2 gap-2 text-sm text-slate-700">
-                                <li class="flex items-center gap-2">
-                                    <span class="h-2 w-2 rounded-full {{ $subscription->feature_auto_dues ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
-                                    Otomatik aidat planlama
-                                </li>
-                                <li class="flex items-center gap-2">
-                                    <span class="h-2 w-2 rounded-full {{ $subscription->feature_user_portal ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
-                                    Kullanıcı portalı
-                                </li>
-                                <li class="flex items-center gap-2">
-                                    <span class="h-2 w-2 rounded-full {{ $subscription->feature_reports ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
-                                    Hesap ekstresi ve raporlar
-                                </li>
-                                <li class="flex items-center gap-2">
-                                    <span class="h-2 w-2 rounded-full {{ $subscription->feature_multi_apartment ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
-                                    Çoklu apartman yönetimi
-                                </li>
-                                @if ($subscription->feature_multi_apartment && $subscription->multi_apartment_limit_override)
-                                    <li class="col-span-2 flex items-center gap-2">
-                                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                                        Çoklu apartman limiti: {{ $subscription->multi_apartment_limit_override }}
-                                    </li>
-                                @endif
-                            </ul>
-                        </div>
-
-                        @if ($subscription->notes)
-                            <div>
-                                <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Notlar</h4>
-                                <p class="text-sm text-slate-700">{{ $subscription->notes }}</p>
-                            </div>
-                        @endif
-                    </div>
-
-                    <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-                        @if ($subscription->isPending())
-                            <div class="flex items-center gap-2">
-                                <button type="button" class="open-approve-modal rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" data-modal-target="approve-modal-{{ $subscription->id }}">Onayla</button>
-                                <button type="button" class="open-reject-modal rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" data-modal-target="reject-modal-{{ $subscription->id }}">Reddet</button>
-                            </div>
-                        @else
-                            <div></div>
-                        @endif
-                        <button type="button" class="close-detail-modal rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Kapat</button>
-                    </div>
-                </div>
-            </div>
-        @endforeach
-    </div>
-
-    <div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 class="text-lg font-semibold text-slate-900">Ödeme Kayıtları</h2>
-        @php
-            $allPayments = $manager->subscriptions->flatMap->payments->sortByDesc('payment_date');
-        @endphp
-        @if ($allPayments->isEmpty())
-            <p class="mt-4 text-sm text-slate-500">Henüz ödeme kaydı yok.</p>
-        @else
-            <div class="mt-4 overflow-x-auto">
-                <table class="min-w-full text-sm">
+            <h4 class="mt-6 text-sm font-semibold text-slate-900">Ödemeler</h4>
+            @if ($subscription->payments->isEmpty())
+                <p class="mt-2 text-sm text-slate-500">Henüz tahsilat yok. Bekleyen ödeme sipariş durumundadır.</p>
+            @else
+                <table class="mt-3 min-w-full text-sm">
                     <thead class="bg-slate-50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Paket</th>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Tutar</th>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Tarih</th>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Yöntem</th>
-                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Referans</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Tarih</th>
+                            <th class="px-3 py-2 text-right font-semibold text-slate-700">Tutar</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Yöntem</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Referans</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Durum</th>
+                            <th class="px-3 py-2 text-left font-semibold text-slate-700">Dekont</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-200">
-                        @foreach ($allPayments as $payment)
-                            <tr class="hover:bg-slate-50">
-                                <td class="px-4 py-3">{{ $payment->subscription->package->name }}</td>
-                                <td class="px-4 py-3 font-medium">{{ number_format($payment->amount, 2) }} ₺</td>
-                                <td class="px-4 py-3">{{ $payment->payment_date->format('d.m.Y') }}</td>
-                                <td class="px-4 py-3 capitalize">{{ $payment->payment_method }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ $payment->reference_code ?? '-' }}</td>
+                    <tbody>
+                        @foreach ($subscription->payments as $payment)
+                            <tr>
+                                <td class="px-3 py-2">{{ $payment->payment_date?->format('d.m.Y') }}</td>
+                                <td class="px-3 py-2 text-right">{{ number_format($payment->amount, 2, ',', '.') }} ₺</td>
+                                <td class="px-3 py-2">{{ $payment->payment_method }}</td>
+                                <td class="px-3 py-2">{{ $payment->reference_code ?? '—' }}</td>
+                                <td class="px-3 py-2">Tahsil edildi</td>
+                                <td class="px-3 py-2">
+                                    @if ($subscription->receipt_path)
+                                        <a href="{{ Storage::url($subscription->receipt_path) }}" target="_blank" class="font-semibold text-emerald-700">Dekont</a>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
-            </div>
-        @endif
-    </div>
+            @endif
 
-    <div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 class="text-lg font-semibold text-slate-900">Apartmanlar</h2>
-        @if ($apartments->isEmpty())
-            <p class="mt-4 text-sm text-slate-500">Henüz apartman yok.</p>
-        @else
-            <ul class="mt-4 divide-y divide-slate-100">
-                @foreach ($apartments as $apartment)
-                    <li class="py-3 flex items-center justify-between">
-                        <div>
-                            <div class="font-medium text-slate-900">{{ $apartment->name }}</div>
-                            <div class="text-xs text-slate-500">Rol: {{ $apartment->pivot->role }} | {{ $apartment->pivot->is_active ? 'Aktif' : 'Pasif' }}</div>
-                        </div>
-                        <a href="{{ route('apartments.show', $apartment) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Görüntüle</a>
-                    </li>
-                @endforeach
-            </ul>
-        @endif
-    </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+                @if ($subscription->isPending())
+                    @include('admin.managers.partials.approve', ['manager' => $manager, 'subscription' => $subscription])
+                @elseif ($subscription->isCovering())
+                    <form method="POST" action="{{ route('admin.managers.subscription.cancel', [$manager, $subscription]) }}" onsubmit="return confirm('Bu dönem sonlandırılacak. Emin misiniz?')">
+                        @csrf
+                        <button class="rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700">Dönemi sonlandır</button>
+                    </form>
+                @elseif (! $subscription->is_active && ! $subscription->isCancelled())
+                    <form method="POST" action="{{ route('admin.managers.subscription.reactivate', [$manager, $subscription]) }}">
+                        @csrf
+                        @method('PATCH')
+                        <button class="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-700">Geri yükle</button>
+                    </form>
+                @endif
+            </div>
+        </section>
+    @empty
+        <p class="mt-4 text-sm text-slate-500">Bu müşterinin apartman hizmet siparişi yok.</p>
+    @endforelse
+
+    @if ($legacyOrders->isNotEmpty())
+        <h2 class="mt-8 text-lg font-semibold text-slate-900">Eski paket kayıtları</h2>
+        <p class="mt-1 text-sm text-slate-500">Bu kayıtlar ücretli apartman hakkı vermez.</p>
+        <div class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Kayıt</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Dönem</th>
+                        <th class="px-4 py-3 text-right font-semibold text-slate-700">Tutar</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    @foreach ($legacyOrders as $subscription)
+                        <tr>
+                            <td class="px-4 py-3">Eski paket kaydı · {{ $subscription->package?->name ?? 'Paket' }}</td>
+                            <td class="px-4 py-3">{{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }}</td>
+                            <td class="px-4 py-3 text-right">{{ number_format($subscription->price, 2, ',', '.') }} ₺</td>
+                            <td class="px-4 py-3">
+                                @include('admin.managers.partials.status', ['subscription' => $subscription])
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 @endsection

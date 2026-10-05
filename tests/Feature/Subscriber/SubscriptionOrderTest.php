@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Subscriber;
 
+use App\Models\Apartment;
 use App\Models\BankAccount;
 use App\Models\Package;
+use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,119 +32,148 @@ class SubscriptionOrderTest extends TestCase
             ->assertDontSeeText('Yaklaşan Ödeme');
     }
 
-    public function test_upcoming_payment_card_shown_three_days_before_expiry(): void
+    public function test_apartment_card_shows_renewal_when_coverage_ends_within_three_days(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
         $manager = User::factory()->withSubscription($package, 'monthly')->create();
-
         $expiry = now()->addDays(2);
         $manager->subscription->update([
             'expires_at' => $expiry,
-            'price' => 100,
+            'price' => 150,
+            'status' => UserSubscription::STATUS_ACTIVE,
+            'is_active' => true,
+        ]);
+        $apartment = Apartment::factory()->forUser($manager)->create([
+            'name' => 'Süreli Apartman',
+            'unit_count' => 10,
+            'billing_plan' => 'paid',
+            'setup_completed_at' => now(),
+        ]);
+        $apartment->members()->attach($manager->id, ['role' => 'owner', 'is_active' => true]);
+        SubscriptionItem::create([
+            'subscription_id' => $manager->subscription->id,
+            'apartment_id' => $apartment->id,
+            'apartment_name' => $apartment->name,
+            'unit_count' => 10,
+            'band_label' => '1–14 daire',
+            'band_min_units' => 1,
+            'amount' => 150,
+            'currency' => 'TRY',
+            'plan' => SubscriptionItem::PLAN_PAID,
+            'status' => SubscriptionItem::STATUS_ACTIVE,
+            'started_at' => now()->subDay(),
+            'expires_at' => $expiry,
         ]);
 
         $this->actingAs($manager)
             ->get(route('subscriber.dashboard'))
             ->assertOk()
-            ->assertSeeText('Yaklaşan Ödeme')
-            ->assertSeeText($expiry->format('d.m.Y'));
+            ->assertSee('Süreli Apartman')
+            ->assertSee('Ücretli')
+            ->assertSee('Yenileme yaklaşıyor')
+            ->assertSee($expiry->format('d.m.Y'));
     }
 
-    public function test_upcoming_payment_card_changes_title_after_expiration(): void
+    public function test_expired_coverage_leaves_the_apartment_on_the_free_card(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
         $manager = User::factory()->withSubscription($package, 'monthly')->create();
-
-        $expiredSubscription = $manager->subscription;
-        $expiredSubscription->update([
+        $manager->subscription->update([
             'expires_at' => now()->subDay(),
             'is_active' => false,
             'status' => UserSubscription::STATUS_CANCELLED,
             'ended_at' => now(),
-            'price' => 100,
         ]);
-
-        // Create new active subscription so user has one
-        UserSubscription::factory()->create([
-            'user_id' => $manager->id,
-            'package_id' => $package->id,
-            'period' => 'monthly',
-            'price' => 100,
-            'is_active' => true,
-            'status' => UserSubscription::STATUS_ACTIVE,
-            'expires_at' => now()->subDay(),
+        $apartment = Apartment::factory()->forUser($manager)->create([
+            'name' => 'Süresi Bitmiş Apartman',
+            'unit_count' => 10,
+            'billing_plan' => 'free',
+            'setup_completed_at' => now(),
         ]);
+        $apartment->members()->attach($manager->id, ['role' => 'owner', 'is_active' => true]);
 
         $this->actingAs($manager)
             ->get(route('subscriber.dashboard'))
             ->assertOk()
-            ->assertSeeText('Aboneliğiniz Sona Erdi')
-            ->assertSeeText('Kullanmaya devam etmek için ödeme yapın');
+            ->assertSee('Süresi Bitmiş Apartman')
+            ->assertSee('Ücretsiz')
+            ->assertSee('Ücretliye geç')
+            ->assertDontSee('Aboneliğiniz Sona Erdi');
     }
 
-    public function test_upgrade_page_lists_only_higher_packages(): void
+    public function test_order_page_lists_the_managers_apartments(): void
     {
-        $currentPackage = Package::factory()->create([
-            'monthly_price' => 100,
-            'sort_order' => 1,
-            'show_on_website' => true,
+        $package = Package::factory()->create();
+        $manager = User::factory()->withSubscription($package, 'monthly')->create();
+        $apartment = Apartment::factory()->forUser($manager)->create([
+            'name' => 'Sipariş Apartmanı',
+            'unit_count' => 10,
         ]);
-        $higherPackage = Package::factory()->create([
-            'monthly_price' => 200,
-            'sort_order' => 2,
-            'show_on_website' => true,
-        ]);
-        $lowerPackage = Package::factory()->create([
-            'monthly_price' => 50,
-            'sort_order' => 0,
-            'show_on_website' => true,
-        ]);
-
-        $manager = User::factory()->withSubscription($currentPackage, 'monthly')->create();
+        $apartment->members()->attach($manager->id, ['role' => 'owner', 'is_active' => true]);
 
         $this->actingAs($manager)
-            ->get(route('subscriber.subscriptions.create', ['type' => 'upgrade']))
+            ->get(route('subscriber.subscriptions.create'))
             ->assertOk()
-            ->assertSee($higherPackage->name)
-            ->assertDontSee($lowerPackage->name);
+            ->assertSee('Sipariş Apartmanı')
+            ->assertDontSee('Başlangıç');
     }
 
     public function test_subscriber_can_create_havale_order_without_reference(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
         $manager = User::factory()->withSubscription($package, 'monthly')->create();
+        $apartment = Apartment::factory()->forUser($manager)->create([
+            'name' => 'Havale Apartmanı',
+            'unit_count' => 10,
+        ]);
+        $apartment->members()->attach($manager->id, ['role' => 'owner', 'is_active' => true]);
+        \App\Models\Subscription::create([
+            'apartment_id' => $apartment->id,
+            'status' => \App\Models\Subscription::STATUS_ACTIVE,
+            'started_at' => now(),
+        ]);
 
         $this->actingAs($manager)
             ->post(route('subscriber.subscriptions.store'), [
-                'package_id' => $package->id,
+                'apartment_ids' => [$apartment->id],
                 'period' => 'yearly',
                 'payment_method' => 'havale',
             ])
             ->assertRedirect();
 
-        $pending = $manager->fresh()->subscriptions()->pending()->first();
+        $pending = $manager->fresh()->subscriptions()->pending()->with('items')->first();
         $this->assertNotNull($pending);
         $this->assertNotNull($pending->order_number);
         $this->assertStringStartsWith('SIP-', $pending->order_number);
-        $this->assertEquals($package->id, $pending->package_id);
         $this->assertEquals('yearly', $pending->period);
-        $this->assertEquals(1000, $pending->price);
+        $this->assertEquals(1500, (float) $pending->price);
         $this->assertNull($pending->receipt_reference);
         $this->assertEquals('havale', $pending->payment_method);
         $this->assertFalse($pending->is_active);
+        $this->assertSame('Havale Apartmanı', $pending->items->first()->apartment_name);
+        $this->assertEquals(1500, (float) $pending->items->first()->amount);
 
-        // Active subscription should remain unchanged
         $this->assertTrue($manager->fresh()->subscription->is_active);
+        $this->assertNotEquals($pending->id, $manager->fresh()->subscription->id);
     }
 
     public function test_subscriber_can_create_credit_card_pending_order(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
         $manager = User::factory()->withSubscription($package, 'monthly')->create();
+        $apartment = Apartment::factory()->forUser($manager)->create([
+            'unit_count' => 10,
+        ]);
+        $apartment->members()->attach($manager->id, ['role' => 'owner', 'is_active' => true]);
+        \App\Models\Subscription::create([
+            'apartment_id' => $apartment->id,
+            'status' => \App\Models\Subscription::STATUS_ACTIVE,
+            'started_at' => now(),
+        ]);
 
         $this->actingAs($manager)
             ->post(route('subscriber.subscriptions.store'), [
-                'package_id' => $package->id,
+                'apartment_ids' => [$apartment->id],
                 'period' => 'monthly',
                 'payment_method' => 'kredi_kartı',
             ])
@@ -152,7 +183,7 @@ class SubscriptionOrderTest extends TestCase
         $this->assertNotNull($pending);
         $this->assertNotNull($pending->order_number);
         $this->assertEquals('kredi_kartı', $pending->payment_method);
-        $this->assertEquals(100, $pending->price);
+        $this->assertEquals(150, (float) $pending->price);
         $this->assertFalse($pending->is_active);
     }
 
@@ -225,7 +256,7 @@ class SubscriptionOrderTest extends TestCase
         $this->actingAs($manager)
             ->get(route('subscriber.subscriptions.index'))
             ->assertOk()
-            ->assertSee($package->name)
+            ->assertSee('Eski paket kaydı')
             ->assertSee('Bekliyor');
     }
 

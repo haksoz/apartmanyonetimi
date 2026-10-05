@@ -24,7 +24,7 @@
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Sipariş No</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Tarih</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Paket</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Hizmet</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Dönem</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Tutar</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
@@ -37,7 +37,15 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-4 py-3 font-mono text-sm font-medium text-slate-900">{{ $subscription->order_number ?? '-' }}</td>
                             <td class="px-4 py-3 text-slate-700">{{ $subscription->created_at->format('d.m.Y H:i') }}</td>
-                            <td class="px-4 py-3 font-medium text-slate-900">{{ $subscription->package->name }}</td>
+                            <td class="px-4 py-3 font-medium text-slate-900">
+                                @if ($subscription->items->isNotEmpty())
+                                    @foreach ($subscription->items as $item)
+                                        <div>{{ $item->apartment_name }} · {{ $item->unit_count }} daire</div>
+                                    @endforeach
+                                @else
+                                    Eski paket kaydı
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-slate-700">{{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }}</td>
                             <td class="px-4 py-3 text-slate-700">{{ number_format($subscription->price, 2) }} ₺</td>
                             <td class="px-4 py-3">

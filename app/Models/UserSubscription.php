@@ -25,6 +25,7 @@ class UserSubscription extends Model
     protected $fillable = [
         'order_number',
         'user_id',
+        'subscription_id',
         'package_id',
         'period',
         'price',
@@ -64,9 +65,19 @@ class UserSubscription extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(Subscription::class);
+    }
+
     public function package(): BelongsTo
     {
         return $this->belongsTo(Package::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(SubscriptionItem::class, 'subscription_id');
     }
 
     public function payments(): HasMany
@@ -77,6 +88,26 @@ class UserSubscription extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeCovering(Builder $query): Builder
+    {
+        return $query->where('is_active', true)
+            ->where('status', self::STATUS_ACTIVE)
+            ->where(function (Builder $query) {
+                $query->whereNull('started_at')->orWhere('started_at', '<=', now());
+            })
+            ->where(function (Builder $query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            });
+    }
+
+    public function isCovering(): bool
+    {
+        return $this->is_active
+            && $this->status === self::STATUS_ACTIVE
+            && ($this->started_at === null || ! $this->started_at->isFuture())
+            && ($this->expires_at === null || $this->expires_at->isFuture());
     }
 
     public function scopePending(Builder $query): Builder

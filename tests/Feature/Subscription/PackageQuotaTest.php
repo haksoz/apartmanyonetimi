@@ -46,7 +46,7 @@ class PackageQuotaTest extends TestCase
         $this->assertDatabaseCount('apartments', 1);
     }
 
-    public function test_manager_cannot_exceed_apartment_quota(): void
+    public function test_manager_can_create_another_apartment_without_a_count_quota(): void
     {
         $package = Package::factory()->create(['apartment_limit' => 1]);
         $user = User::factory()->withSubscription($package)->create();
@@ -60,9 +60,9 @@ class PackageQuotaTest extends TestCase
                 'manager_unit_no' => 1,
                 'account_opening_date' => now()->format('Y-m-d'),
             ])
-            ->assertSessionHasErrors('quota');
+            ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseCount('apartments', 1);
+        $this->assertDatabaseCount('apartments', 2);
     }
 
     public function test_quota_override_allows_exceeding_package_limit(): void
@@ -87,7 +87,7 @@ class PackageQuotaTest extends TestCase
         $this->assertDatabaseCount('apartments', 3);
     }
 
-    public function test_onboarding_blocked_without_subscription(): void
+    public function test_onboarding_works_without_a_subscription(): void
     {
         $user = User::factory()->create(['role' => 'manager']);
 
@@ -98,6 +98,12 @@ class PackageQuotaTest extends TestCase
                 'unit_count' => 2,
                 'manager_type' => 'external',
             ])
-            ->assertSessionHasErrors('quota');
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('apartments', [
+            'name' => 'Yeni Apartman',
+            'billing_plan' => 'free',
+            'user_id' => $user->id,
+        ]);
     }
 }

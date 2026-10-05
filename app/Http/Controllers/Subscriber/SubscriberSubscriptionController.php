@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Subscriber;
 
 use App\Http\Controllers\Controller;
+use App\Models\Apartment;
 use App\Models\BankAccount;
-use App\Models\Package;
+use App\Models\SubscriptionItem;
+use App\Models\User;
 use App\Models\UserSubscription;
+use App\Support\PriceQuote;
+use App\Support\SubscriptionCheckout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -17,93 +21,68 @@ class SubscriberSubscriptionController extends Controller
     {
         $subscriptions = auth()->user()
             ->subscriptions()
-            ->with('package')
+            ->with(['items', 'package'])
             ->orderByDesc('created_at')
             ->paginate(15);
 
         return view('subscriber.subscriptions.index', compact('subscriptions'));
     }
 
-    public function create(Request $request)
+    public function create(PriceQuote $prices)
     {
-        $user = auth()->user();
-        $currentSubscription = $user->subscription?->load('package');
-        $requestedPackage = Package::where('is_active', true)->find($request->query('package_id'));
-        $type = in_array($request->query('type'), ['renew', 'upgrade']) ? $request->query('type') : 'renew';
+        $apartments = $this->ownedApartments(auth()->user())
+            ->get()
+            ->map(function (Apartment $apartment) use ($prices) {
+                $apartment->monthly_quote = $prices->forUnits((int) $apartment->unit_count, 'monthly', $apartment);
+                $apartment->yearly_quote = $prices->forUnits((int) $apartment->unit_count, 'yearly', $apartment);
+                $apartment->setAttribute(
+                    'commercial_covered',
+                    SubscriptionItem::query()->where('apartment_id', $apartment->id)->covering()->exists()
+                );
 
-        $packages = Package::where('is_active', true)
-            ->where('is_trial', false)
-            ->orderBy('sort_order')
-            ->orderBy('monthly_price')
-            ->get();
+                return $apartment;
+            });
 
-        if ($type === 'upgrade' && $currentSubscription?->package) {
-            $packages = $packages->filter(fn (Package $package) => $package->monthly_price > $currentSubscription->package->monthly_price);
-        }
-
-        return view('subscriber.subscriptions.create', compact(
-            'currentSubscription',
-            'requestedPackage',
-            'type',
-            'packages'
-        ));
+        return view('subscriber.subscriptions.create', compact('apartments'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, SubscriptionCheckout $checkout)
     {
         $validated = $request->validate([
-            'package_id' => ['required', Rule::exists('packages', 'id')->where('is_active', true)],
+            'apartment_ids' => ['required', 'array', 'min:1'],
+            'apartment_ids.*' => ['integer'],
             'period' => ['required', Rule::in(['monthly', 'yearly'])],
             'payment_method' => ['required', Rule::in(['havale', 'kredi_kartı'])],
             'reference_code' => ['nullable', 'string', 'max:255'],
             'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
         ]);
 
-        $isHavale = $validated['payment_method'] === 'havale';
-
         $user = auth()->user();
-        $package = Package::findOrFail($validated['package_id']);
-        $price = $validated['period'] === 'yearly' ? $package->yearly_price : $package->monthly_price;
+        $apartments = $this->ownedApartments($user)
+            ->whereIn('id', $validated['apartment_ids'])
+            ->get();
 
-        $defaultFeatureAutoDues = $package->features->where('feature_key', 'Otomatik aidat planlama')->first()?->is_enabled ?? false;
-        $defaultFeatureUserPortal = $package->features->where('feature_key', 'Kullanıcı portalı erişimi')->first()?->is_enabled ?? false;
-        $defaultFeatureReports = $package->features->where('feature_key', 'Hesap ekstresi ve raporlar')->first()?->is_enabled ?? false;
-        $defaultFeatureMultiApartment = $package->features->where('feature_key', 'Çoklu apartman yönetimi')->first()?->is_enabled ?? false;
+        if ($apartments->count() !== count($validated['apartment_ids'])) {
+            throw ValidationException::withMessages([
+                'apartment_ids' => 'Seçilen apartmanlardan biri size ait değil.',
+            ]);
+        }
 
         $receiptPath = null;
         if ($request->hasFile('receipt')) {
             $receiptPath = $request->file('receipt')->store("receipts/{$user->id}", 'public');
         }
 
-        $notes = $isHavale
-            ? 'Kullanıcı tarafından abone panelinden oluşturuldu (Havale/EFT).'
-            : 'Kullanıcı tarafından abone panelinden oluşturuldu (Kredi Kartı - ödeme bekleniyor).';
+        $subscription = $checkout->openPending(
+            $user,
+            $apartments,
+            $validated['period'],
+            $validated['payment_method'],
+            $receiptPath,
+            $validated['reference_code'] ?? null,
+        );
 
-        $orderNumber = $this->generateOrderNumber();
-
-        $subscription = UserSubscription::create([
-            'order_number' => $orderNumber,
-            'user_id' => $user->id,
-            'package_id' => $package->id,
-            'period' => $validated['period'],
-            'price' => $price,
-            'started_at' => now(),
-            'expires_at' => null,
-            'is_active' => false,
-            'is_trial' => false,
-            'status' => UserSubscription::STATUS_PENDING,
-            'notes' => $notes,
-            'feature_auto_dues' => $defaultFeatureAutoDues,
-            'feature_user_portal' => $defaultFeatureUserPortal,
-            'feature_reports' => $defaultFeatureReports,
-            'feature_multi_apartment' => $defaultFeatureMultiApartment,
-            'multi_apartment_limit_override' => $defaultFeatureMultiApartment ? $package->multi_apartment_limit : null,
-            'payment_method' => $validated['payment_method'],
-            'receipt_path' => $receiptPath,
-            'receipt_reference' => $validated['reference_code'] ?? null,
-        ]);
-
-        $message = $isHavale
+        $message = $validated['payment_method'] === 'havale'
             ? 'Siparişiniz alındı. Havale/EFT ödemesi için banka bilgilerini görüntüleyebilirsiniz.'
             : 'Siparişiniz alındı. Kredi kartı ödeme altyapısı entegre edildiğinde buradan ödemenizi tamamlayabileceksiniz.';
 
@@ -116,6 +95,7 @@ class SubscriberSubscriptionController extends Controller
         $this->authorizeSubscription($subscription);
 
         $accounts = BankAccount::active()->ordered()->get();
+        $subscription->load('items');
 
         return view('subscriber.subscriptions.receipt', compact('subscription', 'accounts'));
     }
@@ -160,15 +140,15 @@ class SubscriberSubscriptionController extends Controller
         }
     }
 
-    private function generateOrderNumber(): string
+    private function ownedApartments(User $user)
     {
-        $year = now()->format('y');
-
-        do {
-            $random = strtoupper(substr(uniqid('', true), -6));
-            $number = "SIP-{$year}-{$random}";
-        } while (UserSubscription::where('order_number', $number)->exists());
-
-        return $number;
+        return Apartment::query()
+            ->where('is_active', true)
+            ->whereHas('members', function ($query) use ($user) {
+                $query->whereKey($user->id)
+                    ->where('apartment_user.role', 'owner')
+                    ->where('apartment_user.is_active', true);
+            })
+            ->orderBy('name');
     }
 }

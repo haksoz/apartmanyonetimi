@@ -6,7 +6,7 @@
     <div class="mb-6 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-slate-900">Abonelikler</h1>
-            <p class="text-sm text-slate-500">Kullanıcı aboneliklerini ve apartman kotalarını takip et.</p>
+            <p class="text-sm text-slate-500">Satın alma ödeyen müşteriye aittir. Hizmetin konusu apartmandır.</p>
         </div>
     </div>
 
@@ -14,12 +14,17 @@
         <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('status') }}</div>
     @endif
 
-    <div class="mb-6">
+    @if ($errors->any())
+        <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ $errors->first() }}</div>
+    @endif
+
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <form method="GET" action="{{ route('admin.managers.index') }}" class="flex gap-3">
-            <input type="text" name="search" value="{{ $search }}" placeholder="Ad veya e-posta ara" class="w-full max-w-md rounded-xl border border-slate-300 px-4 py-2 text-sm">
+            <input type="hidden" name="view" value="items">
+            <input type="text" name="search" value="{{ $search }}" placeholder="Ad, e-posta, apartman veya sipariş no" class="w-full max-w-md rounded-xl border border-slate-300 px-4 py-2 text-sm">
             <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ara</button>
             @if ($search)
-                <a href="{{ route('admin.managers.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Sıfırla</a>
+                <a href="{{ route('admin.managers.index', ['view' => 'items']) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Sıfırla</a>
             @endif
         </form>
     </div>
@@ -28,82 +33,77 @@
         <table class="min-w-full text-sm">
             <thead class="bg-slate-50">
                 <tr>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Kullanıcı</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Paket</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Dönem</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Apartman</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Kota</th>
-                    <th class="px-4 py-3 text-right font-semibold text-slate-700">İşlem</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Abonelik No</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Güncel yönetici</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Ödeyen</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Plan</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Başlangıç</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Bitiş</th>
+                    <th class="px-4 py-3 text-right font-semibold text-slate-700">Tutar</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Sipariş no</th>
+                    <th class="px-4 py-3 text-right font-semibold text-slate-700">Detay</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-200">
-                @foreach ($managers as $manager)
-                    <tr class="hover:bg-slate-50">
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-2">
-                                <div>
-                                    <div class="font-medium text-slate-900">{{ $manager->name }}</div>
-                                    <div class="text-xs text-slate-500">{{ $manager->email }}</div>
-                                </div>
-                                @if ($manager->pending_orders_count > 0)
-                                    <span title="Bekleyen sipariş var" class="text-amber-600">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                    </span>
-                                @endif
-                            </div>
+                @forelse ($items as $item)
+                    @php
+                        $payer = $item->subscription?->user;
+                        $owners = $item->apartment?->members ?? collect();
+                        $planLabel = match ($item->plan) {
+                            \App\Models\SubscriptionItem::PLAN_PAID => 'Ücretli',
+                            \App\Models\SubscriptionItem::PLAN_FREE => 'Ücretsiz',
+                            default => '—',
+                        };
+                        $statusLabel = match ($item->status) {
+                            \App\Models\SubscriptionItem::STATUS_PENDING => 'Ödeme bekliyor',
+                            \App\Models\SubscriptionItem::STATUS_ACTIVE => 'Aktif',
+                            \App\Models\SubscriptionItem::STATUS_CANCELLED => 'İptal',
+                            default => '—',
+                        };
+                    @endphp
+                    <tr class="hover:bg-slate-50 align-top">
+                        <td class="px-4 py-3 font-medium text-slate-900">
+                            <a href="{{ route('admin.subscription-items.show', $item) }}" class="hover:text-emerald-700">{{ $item->apartment?->name ?? $item->apartment_name }}</a>
                         </td>
-                        <td class="px-4 py-3 text-slate-700">
-                            <div>{{ $manager->subscription?->package?->name ?? 'Paket yok' }}</div>
-                            @if ($manager->subscription && $manager->subscription->price == 0 && $manager->subscription->expires_at && !$manager->subscription->isExpired())
-                                <div class="text-xs text-amber-600 mt-0.5">{{ $manager->subscription->expires_at->format('d.m.Y') }}'de bitiyor</div>
-                            @endif
-                        </td>
+                        <td class="px-4 py-3 text-slate-700">{{ $item->apartmentSubscription?->subscription_no ?? '—' }}</td>
+                        <td class="px-4 py-3 text-slate-700">{{ $owners->pluck('name')->join(', ') ?: '—' }}</td>
                         <td class="px-4 py-3">
-                            @if ($manager->subscription && $manager->subscription->price == 0 && !$manager->subscription->isExpired())
-                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Deneme</span>
-                            @elseif ($manager->subscription && $manager->subscription->isExpired())
-                                <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Süresi Dolmuş</span>
-                            @elseif ($manager->subscription)
-                                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Aktif</span>
+                            @if ($payer)
+                                <a href="{{ route('admin.managers.show', $payer) }}" class="font-medium text-slate-900 hover:text-emerald-700">{{ $payer->name }}</a>
+                                <div class="text-xs text-slate-500">{{ $payer->email }}</div>
                             @else
-                                <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">Yok</span>
+                                —
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-slate-700 capitalize">
-                            {{ $manager->subscription?->period ?? '-' }}
+                        <td class="px-4 py-3">{{ $planLabel }}</td>
+                        <td class="px-4 py-3">{{ $item->started_at?->format('d.m.Y') ?? '—' }}</td>
+                        <td class="px-4 py-3">{{ $item->expires_at?->format('d.m.Y') ?? '—' }}</td>
+                        <td class="px-4 py-3 text-right">{{ number_format($item->amount, 0, ',', '.') }} ₺</td>
+                        <td class="px-4 py-3">
+                            @if ($item->status === \App\Models\SubscriptionItem::STATUS_ACTIVE)
+                                <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{{ $statusLabel }}</span>
+                            @elseif ($item->status === \App\Models\SubscriptionItem::STATUS_PENDING)
+                                <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{{ $statusLabel }}</span>
+                            @elseif ($item->status === \App\Models\SubscriptionItem::STATUS_CANCELLED)
+                                <span class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">{{ $statusLabel }}</span>
+                            @else
+                                <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{{ $statusLabel }}</span>
+                            @endif
                         </td>
-                        <td class="px-4 py-3 text-slate-700">
-                            {{ $quota->currentCount($manager) }}
-                        </td>
-                        <td class="px-4 py-3 text-slate-700">
-                            {{ $quota->maxFor($manager) ?? 'Sınırsız' }}
-                        </td>
+                        <td class="px-4 py-3">{{ $item->subscription?->order_number ?? '—' }}</td>
                         <td class="px-4 py-3 text-right">
-                            <div class="flex justify-end gap-3">
-                                @if ($manager->subscription)
-                                    <form method="POST" action="{{ route('admin.managers.subscription.cancel', $manager) }}" onsubmit="return confirm('Abonelik sonlandırılacak. Emin misiniz?')">
-                                        @csrf
-                                        <button type="submit" class="text-sm font-semibold text-red-600 hover:text-red-700">Sonlandır</button>
-                                    </form>
-                                @endif
-                                <form method="POST" action="{{ route('admin.managers.destroy', $manager) }}" onsubmit="return confirm(@js($manager->owned_apartments_count > 0 ? $manager->name.' silinecek. '.$manager->owned_apartments_count.' apartmanı ve içindeki tüm kayıtlar da silinir.' : $manager->name.' ve abonelik kaydı silinecek. Emin misiniz?'))">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-sm font-semibold text-red-600 hover:text-red-700">Sil</button>
-                                </form>
-                                <a href="{{ route('admin.managers.show', $manager) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
-                            </div>
+                            <a href="{{ route('admin.subscription-items.show', $item) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="11" class="px-4 py-8 text-center text-slate-500">Abonelik kalemi yok.</td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
-
-    <div class="mt-6">
-        {{ $managers->links() }}
-    </div>
+    <div class="mt-6">{{ $items->links() }}</div>
 @endsection

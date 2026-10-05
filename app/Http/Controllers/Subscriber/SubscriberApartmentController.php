@@ -45,7 +45,7 @@ class SubscriberApartmentController extends Controller
             abort(403, 'Bu apartmana erişiminiz yok.');
         }
 
-        if (! $apartment->user || ! $apartment->user->hasFeature('auto_dues')) {
+        if (! \App\Support\FeatureGate::allows($apartment, 'auto_dues')) {
             abort(403, 'Otomatik aidat planlama özelliği aboneliğinizde aktif değil.');
         }
 

@@ -8,7 +8,6 @@ use App\Models\Apartment;
 use App\Models\Category;
 use App\Models\Unit;
 use App\Support\CurrentApartment;
-use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,14 +15,6 @@ class SubscriberApartmentCreateController extends Controller
 {
     public function create()
     {
-        $user = auth()->user();
-        $subscription = $user->subscription;
-
-        // Check if user has an active subscription
-        if (!$subscription || $subscription->isExpired()) {
-            return redirect()->route('landing')->with('error', 'Apartman oluşturmak için aktif bir aboneliğiniz olmalıdır.');
-        }
-
         return view('apartments.create');
     }
 
@@ -39,14 +30,13 @@ class SubscriberApartmentCreateController extends Controller
         ]);
 
         $user = auth()->user();
+        $decision = app(\App\Support\ApartmentCommercial::class)->assess((int) $validated['unit_count'], $request->boolean('wants_paid'));
 
-        if (! app(UserApartmentQuota::class)->canCreate($user)) {
-            return back()->withErrors([
-                'quota' => 'Mevcut paketinizin apartman limitine ulaştınız. Daha fazla apartman eklemek için paketinizi yükseltin veya yönetici ile iletişime geçin.',
-            ])->withInput();
+        if (! $decision['allowed']) {
+            return back()->withErrors(['unit_count' => $decision['message']])->withInput();
         }
 
-        $apartment = DB::transaction(function () use ($validated, $user) {
+        $apartment = DB::transaction(function () use ($validated, $user, $decision) {
             $apartment = Apartment::create([
                 'user_id' => $user->id,
                 'name' => $validated['name'],
@@ -54,9 +44,11 @@ class SubscriberApartmentCreateController extends Controller
                 'province' => $validated['province'] ?? null,
                 'district' => $validated['district'] ?? null,
                 'unit_count' => $validated['unit_count'],
+                'billing_plan' => $decision['plan'],
             ]);
 
             $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
+            app(\App\Support\SubscriptionCheckout::class)->openFree($user, $apartment);
             Category::createDefaultsFor($apartment->id);
 
             for ($i = 1; $i <= $validated['unit_count']; $i++) {
@@ -86,6 +78,13 @@ class SubscriberApartmentCreateController extends Controller
 
         // Set the newly created apartment as current
         $currentApartment->setFor($user, $apartment->id);
+
+        if ($decision['plan'] === 'paid') {
+            $subscription = app(\App\Support\SubscriptionCheckout::class)->openPending($user, collect([$apartment]), 'monthly', 'havale');
+
+            return redirect()->route('subscriber.subscriptions.receipt', $subscription)
+                ->with('status', 'Apartman oluşturuldu. Ücretli kullanım için ödemenizi tamamlayın.');
+        }
 
         return redirect()->route('apartments.wizard.cash-box', $apartment)
             ->with('status', 'Apartman oluşturuldu. Şimdi kasanızı oluşturun.');

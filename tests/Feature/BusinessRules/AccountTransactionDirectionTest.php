@@ -167,6 +167,7 @@ class AccountTransactionDirectionTest extends TestCase
     {
         $user = $this->createOwnerUser();
         $apartment = $this->createApartmentFor($user);
+        $this->grantPaidFeatures($apartment);
         $unit = $this->createUnitFor($apartment);
         $account = $this->createOwnerAccount($apartment, $unit);
         $category = $this->createIncomeCategory($apartment);

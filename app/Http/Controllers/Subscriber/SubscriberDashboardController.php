@@ -3,20 +3,19 @@
 namespace App\Http\Controllers\Subscriber;
 
 use App\Http\Controllers\Controller;
-use App\Models\Package;
-use App\Models\Payment;
-use App\Models\SystemSetting;
+use App\Models\Apartment;
+use App\Models\SubscriptionItem;
 use App\Models\UserSubscription;
 use App\Support\CurrentApartment;
+use App\Support\PriceQuote;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class SubscriberDashboardController extends Controller
 {
-    public function __invoke(Request $request, CurrentApartment $currentApartment)
+    public function __invoke(Request $request, CurrentApartment $currentApartment, PriceQuote $prices)
     {
         $user = auth()->user();
-
-        $subscription = $user->subscription?->load('package');
 
         $apartments = $currentApartment->availableFor($user);
         $currentApartmentModel = $currentApartment->getFor($user);
@@ -26,58 +25,47 @@ class SubscriberDashboardController extends Controller
                 ->with('status', 'Lütfen apartman kurulumunu tamamlayın.');
         }
 
-        $apartmentIds = $apartments->pluck('id')->toArray();
+        $coverage = SubscriptionItem::query()
+            ->whereIn('apartment_id', $apartments->pluck('id'))
+            ->with('subscription.user')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('apartment_id');
 
-        $recentPayments = collect();
+        $ownerIds = Apartment::query()
+            ->whereIn('id', $apartments->pluck('id'))
+            ->whereHas('members', function ($query) use ($user) {
+                $query->whereKey($user->id)
+                    ->where('apartment_user.role', 'owner')
+                    ->where('apartment_user.is_active', true);
+            })
+            ->pluck('id');
 
-        if ($apartmentIds) {
-            $recentPayments = Payment::query()
-                ->whereIn('apartment_id', $apartmentIds)
-                ->with('apartment')
-                ->latest('payment_date')
-                ->limit(10)
-                ->get();
-        }
+        $apartments->each(function (Apartment $apartment) use ($coverage, $prices, $ownerIds) {
+            $items = $coverage->get($apartment->id, collect());
+            $apartment->setAttribute('commercial_active', $this->activeItem($items));
+            $apartment->setAttribute('commercial_pending', $this->pendingItem($items));
+            $apartment->setAttribute('can_purchase', $ownerIds->contains($apartment->id));
+            $apartment->setAttribute('monthly_quote', $prices->forUnits((int) $apartment->unit_count, 'monthly', $apartment));
+            $apartment->setAttribute('yearly_quote', $prices->forUnits((int) $apartment->unit_count, 'yearly', $apartment));
+        });
 
-        $upcomingPayment = null;
-        $upcomingPaymentState = null;
+        return view('subscriber.dashboard', compact('apartments', 'currentApartmentModel'));
+    }
 
-        if ($subscription && ! $subscription->isExpired()) {
-            if ($subscription->expires_at !== null && $subscription->expires_at->lessThanOrEqualTo(now()->addDays(3))) {
-                $upcomingPayment = $subscription;
-                $upcomingPaymentState = 'due_soon';
-            }
-        } elseif ($subscription && $subscription->isExpired()) {
-            $lastFinished = $user->subscriptions()
-                ->where('status', UserSubscription::STATUS_CANCELLED)
-                ->whereNotNull('ended_at')
-                ->orderByDesc('ended_at')
-                ->first();
+    private function activeItem(Collection $items): ?SubscriptionItem
+    {
+        return $items->first(function (SubscriptionItem $item) {
+            $subscription = $item->subscription;
 
-            $upcomingPayment = $lastFinished ?? $subscription;
-            $upcomingPaymentState = 'expired';
-        }
+            return $item->isCovering();
+        });
+    }
 
-        // Check if user is on trial
-        $isTrial = $subscription && $subscription->price == 0;
-        $fallbackPackage = SystemSetting::getFallbackPackage();
-
-        $packages = Package::where('is_active', true)
-            ->where('show_on_website', true)
-            ->orderBy('sort_order')
-            ->with('features')
-            ->get();
-
-        return view('subscriber.dashboard', compact(
-            'subscription',
-            'apartments',
-            'currentApartmentModel',
-            'recentPayments',
-            'upcomingPayment',
-            'upcomingPaymentState',
-            'isTrial',
-            'fallbackPackage',
-            'packages'
-        ));
+    private function pendingItem(Collection $items): ?SubscriptionItem
+    {
+        return $items->first(function (SubscriptionItem $item) {
+            return $item->subscription?->status === UserSubscription::STATUS_PENDING;
+        });
     }
 }

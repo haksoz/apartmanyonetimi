@@ -7,12 +7,15 @@ use App\Http\Controllers\ApartmentController;
 use App\Http\Controllers\ApartmentSelectionController;
 use App\Http\Controllers\ApartmentWizardController;
 use App\Http\Controllers\ApartmentSwitchController;
+use App\Http\Controllers\Admin\AdminArchivedApartmentController;
+use App\Http\Controllers\Admin\AdminCommercialController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminImpersonateController;
 use App\Http\Controllers\Admin\AdminManagerController;
 use App\Http\Controllers\Admin\AdminBankAccountController;
 use App\Http\Controllers\Admin\AdminPackageController;
 use App\Http\Controllers\Admin\AdminSettingsController;
+use App\Http\Controllers\Admin\AdminSubscriptionItemController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Subscriber\SubscriberApartmentController;
 use App\Http\Controllers\Subscriber\SubscriberApartmentCreateController;
@@ -75,28 +78,28 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     // Raporlar - Tüm kullanıcılar
-    Route::prefix('reports')->name('reports.')->middleware('feature:reports')->group(function () {
+        Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('income-expense', [ReportController::class, 'incomeExpense'])->name('income-expense');
-        Route::get('income-expense/export/{type}', [ReportController::class, 'incomeExpenseExport'])->name('income-expense.export');
+        Route::get('income-expense/export/{type}', [ReportController::class, 'incomeExpenseExport'])->middleware('feature.export')->name('income-expense.export');
         Route::get('debt-list', [ReportController::class, 'overdue2'])->name('debt-list');
-        Route::get('debt-list/export/{type}', [ReportController::class, 'overdue2Export'])->name('debt-list.export');
+        Route::get('debt-list/export/{type}', [ReportController::class, 'overdue2Export'])->middleware('feature.export')->name('debt-list.export');
         Route::get('receivable-list', [ReportController::class, 'receivableList'])->name('receivable-list');
-        Route::get('receivable-list/export/{type}', [ReportController::class, 'receivableListExport'])->name('receivable-list.export');
+        Route::get('receivable-list/export/{type}', [ReportController::class, 'receivableListExport'])->middleware('feature.export')->name('receivable-list.export');
         Route::get('account-statement', [ReportController::class, 'accountStatement'])->name('account-statement');
-        Route::get('account-statement/export/{type}', [ReportController::class, 'accountStatementExport'])->name('account-statement.export');
-        Route::get('due-collection', [ReportController::class, 'dueCollection'])->name('due-collection');
-        Route::get('due-collection/export/{type}', [ReportController::class, 'dueCollectionExport'])->name('due-collection.export');
-        Route::get('overdue', [ReportController::class, 'overdue'])->name('overdue');
-        Route::get('overdue/export/{type}', [ReportController::class, 'overdueExport'])->name('overdue.export');
-        Route::get('annual-activity', [ReportController::class, 'annualActivity'])->name('annual-activity');
-        Route::get('annual-activity/export/{type}', [ReportController::class, 'annualActivityExport'])->name('annual-activity.export');
-        Route::get('budget', [ReportController::class, 'budget'])->name('budget');
-        Route::get('budget/export/{type}', [ReportController::class, 'budgetExport'])->name('budget.export');
+        Route::get('account-statement/export/{type}', [ReportController::class, 'accountStatementExport'])->middleware('feature.export')->name('account-statement.export');
+        Route::get('due-collection', [ReportController::class, 'dueCollection'])->middleware('feature:report_due_matrix')->name('due-collection');
+        Route::get('due-collection/export/{type}', [ReportController::class, 'dueCollectionExport'])->middleware(['feature:report_due_matrix', 'feature.export'])->name('due-collection.export');
+        Route::get('overdue', [ReportController::class, 'overdue'])->middleware('feature:report_overdue')->name('overdue');
+        Route::get('overdue/export/{type}', [ReportController::class, 'overdueExport'])->middleware(['feature:report_overdue', 'feature.export'])->name('overdue.export');
+        Route::get('annual-activity', [ReportController::class, 'annualActivity'])->middleware('feature:report_annual')->name('annual-activity');
+        Route::get('annual-activity/export/{type}', [ReportController::class, 'annualActivityExport'])->middleware(['feature:report_annual', 'feature.export'])->name('annual-activity.export');
+        Route::get('budget', [ReportController::class, 'budget'])->middleware('feature:report_budget')->name('budget');
+        Route::get('budget/export/{type}', [ReportController::class, 'budgetExport'])->middleware(['feature:report_budget', 'feature.export'])->name('budget.export');
         Route::get('expenses', [ReportController::class, 'expenses'])->name('expenses');
-        Route::get('expenses/export/{type}', [ReportController::class, 'expensesExport'])->name('expenses.export');
-        Route::get('monthly-board', [ReportController::class, 'monthlyBoard'])->name('monthly-board');
-        Route::get('monthly-board/export/{type}', [ReportController::class, 'monthlyBoardExport'])->name('monthly-board.export');
+        Route::get('expenses/export/{type}', [ReportController::class, 'expensesExport'])->middleware('feature.export')->name('expenses.export');
+        Route::get('monthly-board', [ReportController::class, 'monthlyBoard'])->middleware('feature:report_monthly_board')->name('monthly-board');
+        Route::get('monthly-board/export/{type}', [ReportController::class, 'monthlyBoardExport'])->middleware(['feature:report_monthly_board', 'feature.export'])->name('monthly-board.export');
     });
 
     // Giderler - Üye ve Yönetici erişimi (tüm resource actions)
@@ -110,7 +113,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
     // Aidatlar - Üye ve Yönetici erişimi
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
-    Route::get('dues/export', [DueController::class, 'export'])->name('dues.export');
+        Route::get('dues/export', [DueController::class, 'export'])->middleware('feature.export')->name('dues.export');
     Route::get('dues/create', [DueController::class, 'create'])->name('dues.create');
     Route::post('dues', [DueController::class, 'store'])->name('dues.store');
     Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->name('dues.expenses.by-period');
@@ -134,7 +137,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
         Route::resource('accounts', AccountController::class);
         Route::get('accounts/{id}/statement', [AccountController::class, 'statement'])->name('accounts.statement');
-        Route::get('accounts/{id}/statement/export', [AccountController::class, 'statementExport'])->name('accounts.statement.export');
+        Route::get('accounts/{id}/statement/export', [AccountController::class, 'statementExport'])->middleware('feature.export')->name('accounts.statement.export');
 
         Route::delete('accounts/{id}/transactions/{transaction}', [AccountController::class, 'destroyTransaction'])->name('accounts.transactions.destroy');
         Route::post('accounts/imported-transactions', [AccountController::class, 'destroyAllImported'])->name('accounts.imported.destroy-all');
@@ -207,18 +210,23 @@ Route::post('admin/impersonate/leave', [AdminImpersonateController::class, 'leav
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/', AdminDashboardController::class)->name('dashboard');
+    Route::get('archived-apartments', [AdminArchivedApartmentController::class, 'index'])->name('archived-apartments.index');
 
     Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
+    Route::get('subscription-items/{subscriptionItem}', [AdminSubscriptionItemController::class, 'show'])->name('subscription-items.show');
     Route::get('managers/{manager}', [AdminManagerController::class, 'show'])->name('managers.show');
-    Route::patch('managers/{manager}/subscription', [AdminManagerController::class, 'updateCurrentSubscription'])->name('managers.subscription.update');
-    Route::post('managers/{manager}/subscription/order', [AdminManagerController::class, 'storeSubscriptionOrder'])->name('managers.subscription.order');
     Route::patch('managers/{manager}/subscription/{subscription}/approve', [AdminManagerController::class, 'approveSubscriptionOrder'])->name('managers.subscription.approve');
     Route::patch('managers/{manager}/subscription/{subscription}/reject', [AdminManagerController::class, 'rejectSubscriptionOrder'])->name('managers.subscription.reject');
     Route::patch('managers/{manager}/subscription/{subscription}/reactivate', [AdminManagerController::class, 'reactivateSubscription'])->name('managers.subscription.reactivate');
-    Route::post('managers/{manager}/subscription/cancel', [AdminManagerController::class, 'cancelSubscription'])->name('managers.subscription.cancel');
+    Route::post('managers/{manager}/subscription/{subscription}/cancel', [AdminManagerController::class, 'cancelSubscription'])->name('managers.subscription.cancel');
     Route::delete('managers/{manager}', [AdminManagerController::class, 'destroy'])->name('managers.destroy');
-    Route::patch('managers/{manager}/quota', [AdminManagerController::class, 'updateQuota'])->name('managers.quota.update');
-    Route::post('managers/{manager}/trial-extend', [AdminManagerController::class, 'extendTrial'])->name('managers.trial.extend');
+
+    Route::get('commercial', [AdminCommercialController::class, 'index'])->name('commercial.index');
+    Route::patch('commercial/bands/{band}', [AdminCommercialController::class, 'updateBand'])->name('commercial.bands.update');
+    Route::post('commercial/campaigns', [AdminCommercialController::class, 'storeCampaign'])->name('commercial.campaigns.store');
+    Route::patch('commercial/features/{feature}', [AdminCommercialController::class, 'updateFeature'])->name('commercial.features.update');
+    Route::patch('apartments/{apartment}/price', [AdminManagerController::class, 'updateApartmentPrice'])->name('apartments.price');
+    Route::post('apartments/{apartment}/complimentary', [AdminManagerController::class, 'grantComplimentary'])->name('apartments.complimentary');
 
     Route::resource('packages', AdminPackageController::class);
     Route::patch('packages/{package}/features', [AdminPackageController::class, 'updateFeatures'])->name('packages.features.update');

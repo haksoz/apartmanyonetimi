@@ -6,7 +6,6 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\Unit;
 use App\Support\CurrentApartment;
-use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -40,22 +39,23 @@ class OnboardingController extends Controller
         ]);
 
         $user = auth()->user();
+        $decision = app(\App\Support\ApartmentCommercial::class)->assess((int) $validated['unit_count'], $request->boolean('wants_paid'));
 
-        if (! app(UserApartmentQuota::class)->canCreate($user)) {
-            return back()->withErrors([
-                'quota' => 'Mevcut paketinizin apartman limitine ulaştınız. Daha fazla apartman eklemek için paketinizi yükseltin veya yönetici ile iletişime geçin.',
-            ])->withInput();
+        if (! $decision['allowed']) {
+            return back()->withErrors(['unit_count' => $decision['message']])->withInput();
         }
 
-        $apartment = DB::transaction(function () use ($validated, $user, $currentApartment) {
+        $apartment = DB::transaction(function () use ($validated, $user, $currentApartment, $decision) {
             $apartment = \App\Models\Apartment::create([
                 'user_id'    => $user->id,
                 'name'       => $validated['name'],
                 'address'    => $validated['address'] ?? null,
                 'unit_count' => $validated['unit_count'],
+                'billing_plan' => $decision['plan'],
             ]);
 
             $apartment->members()->attach($user->id, ['role' => 'owner']);
+            app(\App\Support\SubscriptionCheckout::class)->openFree($user, $apartment);
             Category::createDefaultsFor($apartment->id);
 
             $managerUnitId = null;
@@ -120,6 +120,13 @@ class OnboardingController extends Controller
 
             return $apartment;
         });
+
+        if ($decision['plan'] === 'paid' && $user->isSubscriber()) {
+            $subscription = app(\App\Support\SubscriptionCheckout::class)->openPending($user, collect([$apartment]), 'monthly', 'havale');
+
+            return redirect()->route('subscriber.subscriptions.receipt', $subscription)
+                ->with('status', 'Apartmanınız oluşturuldu. Ücretli kullanım için ödemenizi tamamlayın.');
+        }
 
         return redirect()->route('apartments.wizard.cash-box', $apartment)
             ->with('status', 'Apartmanınız oluşturuldu. Şimdi kasanızı oluşturun.');

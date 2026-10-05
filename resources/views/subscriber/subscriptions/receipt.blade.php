@@ -23,8 +23,14 @@
                     <p class="font-medium text-slate-900">{{ $subscription->order_number ?? '-' }}</p>
                 </div>
                 <div>
-                    <span class="text-slate-500">Paket</span>
-                    <p class="font-medium text-slate-900">{{ $subscription->package->name }}</p>
+                    <span class="text-slate-500">Hizmet</span>
+                    <p class="font-medium text-slate-900">
+                        @if ($subscription->items->isNotEmpty())
+                            {{ $subscription->items->count() }} apartman
+                        @else
+                            {{ $subscription->package?->name ?? 'Abonelik' }}
+                        @endif
+                    </p>
                 </div>
                 <div>
                     <span class="text-slate-500">Dönem</span>
@@ -64,6 +70,17 @@
                     <span class="text-slate-500">Yüklenen Dekont:</span>
                     <a href="{{ Storage::url($subscription->receipt_path) }}" target="_blank" class="font-medium text-emerald-600 hover:text-emerald-700">Görüntüle</a>
                 </div>
+            @endif
+
+            @if ($subscription->items->isNotEmpty())
+                <ul class="mt-4 divide-y divide-slate-100 text-sm">
+                    @foreach ($subscription->items as $item)
+                        <li class="flex items-center justify-between py-2">
+                            <span>{{ $item->apartment_name }} · {{ $item->unit_count }} daire · {{ $item->band_label }}</span>
+                            <span class="font-semibold">{{ number_format($item->amount, 2) }} ₺</span>
+                        </li>
+                    @endforeach
+                </ul>
             @endif
         </div>
 

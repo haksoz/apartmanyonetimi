@@ -32,7 +32,16 @@
             <input type="number" name="unit_count" value="{{ old('unit_count', 12) }}" min="1" max="500"
                 class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300" required>
             @error('unit_count') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
+            <p class="mt-1 text-xs text-slate-500">1–100 daire ücretsiz açılır. 101–150 daire için ücretli kullanım gerekir. 151 ve üzeri teklif fiyatı olmadan açılmaz.</p>
         </div>
+
+        <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-4">
+            <input type="checkbox" name="wants_paid" value="1" class="mt-1" {{ old('wants_paid') ? 'checked' : '' }}>
+            <span>
+                <span class="block text-sm font-semibold text-slate-900">Ücretli kullanım</span>
+                <span class="block text-sm text-slate-500">101 ve üzeri daire ücretsiz açılamaz. Ücretli özellikleri bu apartman için açmak istiyorsanız işaretleyin.</span>
+            </span>
+        </label>
 
         <div class="space-y-3 pt-2">
             <label class="text-sm font-medium text-slate-700">Bu apartmanı hangi sıfatla yönetiyorsunuz?</label>

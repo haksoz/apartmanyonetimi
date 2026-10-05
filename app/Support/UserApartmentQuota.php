@@ -47,12 +47,6 @@ class UserApartmentQuota
 
     public function canCreate(User $user): bool
     {
-        $max = $this->maxFor($user);
-
-        if ($max === null) {
-            return true;
-        }
-
-        return $this->currentCount($user) < $max;
+        return true;
     }
 }

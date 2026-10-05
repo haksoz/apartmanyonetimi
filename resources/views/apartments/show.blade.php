@@ -24,6 +24,87 @@
         <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Durum</div><div class="mt-2 text-2xl font-bold">{{ $apartment->is_active ? 'Aktif' : 'Pasif' }}</div></div>
     </div>
 
+    </div>
+
+    @if ($isOwner)
+        <div class="mb-8 rounded-2xl bg-white shadow-sm">
+            <div class="border-b border-slate-100 px-6 py-4">
+                <h2 class="text-base font-semibold text-slate-900">Hizmet geçmişi</h2>
+                <p class="mt-0.5 text-sm text-slate-500">Bu apartman için satın alınan hizmetler. Sipariş, satın alan müşteride kalır.</p>
+            </div>
+            <div class="px-6 py-4">
+                @if ($serviceHistory->isEmpty())
+                    <p class="text-sm text-slate-500">Henüz hizmet kaydı yok.</p>
+                @else
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-slate-500">
+                                <th class="py-2 pr-4 font-medium">Dönem</th>
+                                <th class="py-2 pr-4 font-medium">Ödeyen</th>
+                                <th class="py-2 pr-4 text-right font-medium">Tutar</th>
+                                <th class="py-2 font-medium">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach ($serviceHistory as $item)
+                                @php
+                                    $period = $item->subscription;
+                                    $payer = $period?->user;
+                                    $canOpenReceipt = auth()->user()->isAdmin() || auth()->id() === $payer?->id;
+                                @endphp
+                                <tr>
+                                    <td class="py-3 pr-4">
+                                        <div class="font-medium text-slate-900">{{ $period?->started_at?->format('Y') ?? '—' }}</div>
+                                        <div class="text-xs text-slate-500">{{ $period?->started_at?->format('d.m.Y') ?? '—' }} – {{ $period?->expires_at?->format('d.m.Y') ?? '—' }}</div>
+                                    </td>
+                                    <td class="py-3 pr-4">
+                                        <div>{{ $payer?->name ?? '—' }}</div>
+                                        @if ($period?->isCovering())
+                                            <p class="mt-1 text-xs text-slate-500">Bu hizmet {{ $apartment->name }} için {{ $payer?->name ?? 'müşteri' }} tarafından satın alınmıştır.</p>
+                                        @endif
+                                    </td>
+                                    <td class="py-3 pr-4 text-right">{{ number_format($item->amount, 0, ',', '.') }} ₺</td>
+                                    <td class="py-3">
+                                        @if ($period?->isPending())
+                                            Ödeme bekliyor
+                                        @elseif ($period?->isCovering())
+                                            Aktif
+                                        @elseif ($period?->isCancelled())
+                                            İptal
+                                        @else
+                                            Tamamlandı
+                                        @endif
+                                        @if ($canOpenReceipt && $period?->receipt_path)
+                                            <a href="{{ Storage::url($period->receipt_path) }}" target="_blank" class="mt-1 block text-xs font-semibold text-emerald-700">Dekont</a>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @endif
+
+                @if (auth()->user()->isAdmin())
+                    <form method="POST" action="{{ route('admin.apartments.price', $apartment) }}" class="mt-6 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
+                        @csrf
+                        @method('PATCH')
+                        <label class="text-xs font-medium text-slate-600">
+                            Aylık teklif (₺)
+                            <input type="number" step="0.01" min="0" name="custom_monthly_price" value="{{ $apartment->custom_monthly_price }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        </label>
+                        <label class="text-xs font-medium text-slate-600">
+                            Yıllık teklif (₺)
+                            <input type="number" step="0.01" min="0" name="custom_yearly_price" value="{{ $apartment->custom_yearly_price }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        </label>
+                        <div class="flex items-end">
+                            <button class="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">Teklif fiyatını kaydet</button>
+                        </div>
+                    </form>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- Ayar Bölümleri --}}
     <div class="space-y-6">
 

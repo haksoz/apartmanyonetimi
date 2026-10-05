@@ -49,13 +49,14 @@
             </div>
         @endif
 
-        <div class="mt-4">
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
             <a href="{{ route('current-apartment.select') }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Apartman Yönetimine Git →</a>
+            <a href="{{ route('admin.archived-apartments.index') }}" class="text-sm font-semibold text-slate-500 hover:text-slate-700">Silinmiş apartmanlar</a>
         </div>
     </div>
 
     <div class="mt-6 grid gap-6 lg:grid-cols-2">
-        <a href="{{ route('admin.managers.index') }}" class="rounded-xl border border-slate-200 bg-white p-6 hover:border-emerald-300 transition-colors">
+        <a href="{{ route('admin.managers.index', ['view' => 'items']) }}" class="rounded-xl border border-slate-200 bg-white p-6 hover:border-emerald-300 transition-colors">
             <div class="flex items-center gap-3">
                 <div class="rounded-lg bg-emerald-50 p-3">
                     <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,20 +66,6 @@
                 <div>
                     <div class="font-semibold text-slate-900">Abonelikler</div>
                     <div class="text-sm text-slate-500">Kullanıcı aboneliklerini ve kotalarını takip et.</div>
-                </div>
-            </div>
-        </a>
-
-        <a href="{{ route('admin.packages.index') }}" class="rounded-xl border border-slate-200 bg-white p-6 hover:border-emerald-300 transition-colors">
-            <div class="flex items-center gap-3">
-                <div class="rounded-lg bg-emerald-50 p-3">
-                    <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/>
-                    </svg>
-                </div>
-                <div>
-                    <div class="font-semibold text-slate-900">Paketler</div>
-                    <div class="text-sm text-slate-500">Üyelik paketlerini ve özellikleri yönet.</div>
                 </div>
             </div>
         </a>
