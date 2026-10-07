@@ -46,6 +46,7 @@ Route::view('sss', 'microsite.faq')->name('faq');
 
 Route::view('yasal/daire-sakini-verisi', 'legal.placeholder', [
     'title' => 'Daire Sakini Verisi',
+    'body' => 'legal.content.resident-data',
 ])->name('legal.resident-data');
 Route::view('yasal/uyelik-sozlesmesi', 'legal.placeholder', [
     'title' => 'Üyelik Sözleşmesi',

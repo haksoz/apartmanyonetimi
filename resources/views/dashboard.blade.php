@@ -20,14 +20,16 @@
         </div>
     @endif
 
-    {{-- Header --}}
-    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-950">Genel Bakış</h1>
-            <p class="mt-1 text-sm text-slate-500">
-                {{ $apartment->name }} — Tüm zamanlar
-            </p>
-        </div>
+    <div class="mb-6">
+        <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">{{ $apartment->name }}</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Hoş geldiniz, {{ auth()->user()->name }}.
+            @if ($managesOtherApartments)
+                Yönettiğiniz diğer apartmanlar için
+                <a href="{{ route('subscriber.dashboard', ['reset' => 1]) }}" class="font-semibold text-slate-800 underline">Abone Paneli</a>
+                üzerinden işlem yapabilirsiniz.
+            @endif
+        </p>
     </div>
 
     {{-- Hızlı Erişim Butonları --}}

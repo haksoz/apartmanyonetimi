@@ -1,0 +1,1 @@
+@include('legal.content.pending')

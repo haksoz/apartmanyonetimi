@@ -165,6 +165,14 @@ class DashboardController extends Controller
             ->whereDate('end_date', '>=', now())
             ->first();
 
+        $managesOtherApartments = $user->isSubscriber()
+            && $user->apartments()
+                ->where('apartments.id', '!=', $apartment->id)
+                ->where('apartments.is_active', true)
+                ->wherePivot('role', 'owner')
+                ->wherePivot('is_active', true)
+                ->exists();
+
         if ($plan && $this->isOwnerOf($apartment) && now()->day >= $plan->generate_day) {
             $period = now()->format('Y-m');
             $reconciliation = $aidatReconciliation->reconcile($plan, $period);
@@ -192,7 +200,8 @@ class DashboardController extends Controller
             'monthLabels', 'monthDueData', 'monthExpData',
             'accountTypes',
             'uncollectedDues',
-            'partialAidatConfirmation'
+            'partialAidatConfirmation',
+            'managesOtherApartments'
         ));
     }
 }

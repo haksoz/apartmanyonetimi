@@ -7,13 +7,13 @@ $steps = [
 ];
 @endphp
 
-<ol class="mb-8 flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm md:justify-start md:gap-8">
+<ol class="mb-3 flex items-center justify-center gap-6 rounded-2xl bg-white p-3 shadow-sm md:mb-4 md:justify-start md:gap-8 md:p-4">
     @foreach ($steps as $step => $label)
         @php
             $isActive = $step === $activeStep;
             $isCompleted = $step < $activeStep;
         @endphp
-        <li class="flex flex-1 items-center gap-3 md:flex-none">
+        <li class="flex items-center gap-3 md:flex-none">
             <span @class([
                 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
                 'bg-emerald-100 text-emerald-700' => $isCompleted,

@@ -78,8 +78,8 @@
                     </button>
                     {{-- Logo --}}
                     <a href="{{ auth()->user()->isSubscriber() ? route('subscriber.dashboard') : route('dashboard') }}" class="flex items-center gap-2">
-                        <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-8 w-auto">
-                        <span class="text-lg font-bold"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span>
+                        <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-10 w-auto sm:h-8">
+                        <span class="text-xl font-bold sm:text-lg"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span>
                     </a>
                 </div>
 
@@ -496,6 +496,8 @@
                         </form>
                     </div>
                 @endif
+
+                @yield('wizard_steps')
 
                 @if (session('status'))
                     <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('status') }}</div>

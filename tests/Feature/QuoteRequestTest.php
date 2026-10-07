@@ -283,6 +283,7 @@ class QuoteRequestTest extends TestCase
             'unit_count' => $unitCount,
             'account_opening_date' => now()->toDateString(),
             'accept_resident_data' => $resident ? '1' : '0',
+            'accept_privacy' => $resident ? '1' : '0',
         ];
     }
 }

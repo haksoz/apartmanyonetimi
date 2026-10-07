@@ -141,7 +141,7 @@ class ApartmentWizardController extends Controller
             return redirect()->route('dashboard');
         }
 
-        $categories = $apartment->categories()->orderBy('name')->get();
+        $categories = $apartment->categories()->orderedForDisplay()->get();
 
         return view('apartments.wizard.categories', [
             'apartment' => $apartment,

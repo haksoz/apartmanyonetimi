@@ -103,12 +103,12 @@
         const notice = document.getElementById('quote-notice');
         const resident = document.getElementById('resident-consent');
         if (!count || !notice || !resident) return;
-        const input = resident.querySelector('input[name="accept_resident_data"]');
+        const inputs = resident.querySelectorAll('input[type="checkbox"]');
         const sync = function () {
             const quote = Number(count.value) >= 101;
             notice.classList.toggle('hidden', !quote);
             resident.classList.toggle('hidden', quote);
-            if (input) input.required = !quote;
+            inputs.forEach(function (input) { input.required = !quote; });
         };
         count.addEventListener('input', sync);
         sync();

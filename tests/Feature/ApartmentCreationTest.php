@@ -31,6 +31,7 @@ class ApartmentCreationTest extends TestCase
                 'manager_unit_no' => 3,
                 'account_opening_date' => now()->format('Y-m-d'),
                 'accept_resident_data' => '1',
+                'accept_privacy' => '1',
             ]);
 
         $apartment = Apartment::where('name', 'Akbey Apartmanı')->firstOrFail();

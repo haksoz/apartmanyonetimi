@@ -39,6 +39,7 @@ class PackageQuotaTest extends TestCase
                 'unit_count' => 2,
                 'manager_type' => 'external',
                 'accept_resident_data' => '1',
+                'accept_privacy' => '1',
             ]);
 
         $apartment = Apartment::where('name', 'Akbey Apartmanı')->firstOrFail();
@@ -61,6 +62,7 @@ class PackageQuotaTest extends TestCase
                 'manager_unit_no' => 1,
                 'account_opening_date' => now()->format('Y-m-d'),
                 'accept_resident_data' => '1',
+                'accept_privacy' => '1',
             ])
             ->assertSessionHasNoErrors();
 
@@ -82,6 +84,7 @@ class PackageQuotaTest extends TestCase
                 'manager_unit_no' => 1,
                 'account_opening_date' => now()->format('Y-m-d'),
                 'accept_resident_data' => '1',
+                'accept_privacy' => '1',
             ]);
 
         $apartment = Apartment::where('name', 'Üçüncü Apartman')->firstOrFail();
@@ -101,6 +104,7 @@ class PackageQuotaTest extends TestCase
                 'unit_count' => 2,
                 'manager_type' => 'external',
                 'accept_resident_data' => '1',
+                'accept_privacy' => '1',
             ])
             ->assertSessionHasNoErrors();
 

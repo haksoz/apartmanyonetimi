@@ -72,12 +72,16 @@ class LegalConsentTest extends TestCase
             ->from(route('subscriber.apartments.create'))
             ->post(route('subscriber.apartments.store'), $payload)
             ->assertRedirect(route('subscriber.apartments.create'))
-            ->assertSessionHasErrors('accept_resident_data');
+            ->assertSessionHasErrors(['accept_resident_data', 'accept_privacy']);
 
         $this->assertDatabaseCount('apartments', 0);
 
         $this->actingAs($user)
             ->post(route('subscriber.apartments.store'), $payload + ['accept_resident_data' => '1'])
+            ->assertSessionHasErrors('accept_privacy');
+
+        $this->actingAs($user)
+            ->post(route('subscriber.apartments.store'), $payload + ['accept_resident_data' => '1', 'accept_privacy' => '1'])
             ->assertRedirect();
 
         $apartment = Apartment::where('name', 'Ücretsiz Blok')->firstOrFail();
@@ -85,6 +89,13 @@ class LegalConsentTest extends TestCase
             'user_id' => $user->id,
             'apartment_id' => $apartment->id,
             'document_key' => LegalConsent::RESIDENT_DATA,
+            'document_version' => '1',
+            'user_subscription_id' => null,
+        ]);
+        $this->assertDatabaseHas('legal_acceptances', [
+            'user_id' => $user->id,
+            'apartment_id' => $apartment->id,
+            'document_key' => LegalConsent::PRIVACY,
             'document_version' => '1',
             'user_subscription_id' => null,
         ]);
@@ -103,6 +114,7 @@ class LegalConsentTest extends TestCase
             'wants_paid' => '1',
             'accept_sales' => '1',
             'accept_resident_data' => '1',
+            'accept_privacy' => '1',
         ];
 
         $this->actingAs($user)

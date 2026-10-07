@@ -14,8 +14,8 @@
     <header class="bg-white border-b border-slate-100">
         <div class="max-w-md mx-auto px-4 py-2 flex items-center justify-center">
             <a href="{{ route('landing') }}" class="flex items-center gap-2">
-                <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-8 w-auto">
-                <span class="text-lg font-bold">
+                <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-10 w-auto sm:h-8">
+                <span class="text-xl font-bold sm:text-lg">
                     <span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span>
                 </span>
             </a>

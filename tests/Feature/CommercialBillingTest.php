@@ -109,6 +109,7 @@ class CommercialBillingTest extends TestCase
                 'unit_count' => 2,
                 'manager_type' => 'external',
                 'accept_resident_data' => '1',
+                'accept_privacy' => '1',
             ])
             ->assertSessionHasNoErrors();
 
@@ -119,6 +120,7 @@ class CommercialBillingTest extends TestCase
                 'unit_count' => 2,
                 'account_opening_date' => now()->format('Y-m-d'),
                 'accept_resident_data' => '1',
+                'accept_privacy' => '1',
             ])
             ->assertSessionHasNoErrors();
 
@@ -158,6 +160,7 @@ class CommercialBillingTest extends TestCase
                 'unit_count' => 10,
                 'account_opening_date' => now()->toDateString(),
                 'accept_resident_data' => '1',
+                'accept_privacy' => '1',
             ])
             ->assertSessionHasNoErrors();
 
@@ -321,6 +324,7 @@ class CommercialBillingTest extends TestCase
             'wants_paid' => $paid ? '1' : '0',
             'accept_sales' => $paid ? '1' : '0',
             'accept_resident_data' => '1',
+            'accept_privacy' => '1',
         ];
     }
 }

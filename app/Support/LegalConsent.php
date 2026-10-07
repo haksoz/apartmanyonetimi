@@ -46,6 +46,7 @@ class LegalConsent
     {
         return [
             'accept_resident_data' => ['accepted'],
+            'accept_privacy' => ['accepted'],
         ];
     }
 
@@ -53,6 +54,7 @@ class LegalConsent
     {
         return [
             'accept_resident_data.accepted' => 'Apartman açmak için daire sakini verisi bildirimini kabul edin.',
+            'accept_privacy.accepted' => 'Apartman açmak için gizlilik ve KVKK aydınlatmasını kabul edin.',
         ];
     }
 
@@ -82,6 +84,7 @@ class LegalConsent
     public function recordResidentData(User $user, Apartment $apartment, Request $request): void
     {
         $this->record($user, self::RESIDENT_DATA, null, $apartment->id, $request);
+        $this->record($user, self::PRIVACY, null, $apartment->id, $request);
     }
 
     public function recordSale(User $user, UserSubscription $order, Request $request): void
