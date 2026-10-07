@@ -52,7 +52,7 @@
                                 @if ($subscription->status === App\Models\UserSubscription::STATUS_PENDING && $subscription->hasPaymentProof())
                                     <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Onay bekliyor</span>
                                 @elseif ($subscription->status === App\Models\UserSubscription::STATUS_PENDING)
-                                    <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Bekliyor</span>
+                                    <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Ödeme bekliyor</span>
                                 @elseif ($subscription->status === App\Models\UserSubscription::STATUS_ACTIVE)
                                     <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Aktif</span>
                                 @elseif ($subscription->status === App\Models\UserSubscription::STATUS_CANCELLED)
@@ -94,7 +94,7 @@
                         @if ($subscription->status === App\Models\UserSubscription::STATUS_PENDING && $subscription->hasPaymentProof())
                             <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Onay bekliyor</span>
                         @elseif ($subscription->status === App\Models\UserSubscription::STATUS_PENDING)
-                            <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Bekliyor</span>
+                            <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">Ödeme bekliyor</span>
                         @elseif ($subscription->status === App\Models\UserSubscription::STATUS_ACTIVE)
                             <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Aktif</span>
                         @elseif ($subscription->status === App\Models\UserSubscription::STATUS_CANCELLED)

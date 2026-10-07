@@ -54,9 +54,11 @@ Route::view('yasal/uyelik-sozlesmesi', 'legal.placeholder', [
 ])->name('legal.membership');
 Route::view('yasal/mesafeli-satis-sozlesmesi', 'legal.placeholder', [
     'title' => 'Mesafeli Satış Sözleşmesi',
+    'body' => 'legal.content.distance-sales',
 ])->name('legal.distance-sales');
 Route::view('yasal/on-bilgilendirme-formu', 'legal.placeholder', [
     'title' => 'Ön Bilgilendirme Formu',
+    'body' => 'legal.content.pre-information',
 ])->name('legal.pre-information');
 Route::view('yasal/gizlilik-ve-kvkk', 'legal.placeholder', [
     'title' => 'Gizlilik ve KVKK',

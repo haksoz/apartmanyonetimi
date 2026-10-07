@@ -338,7 +338,7 @@ class SubscriptionOrderTest extends TestCase
             ->get(route('subscriber.subscriptions.index'))
             ->assertOk()
             ->assertSee('Eski paket kaydı')
-            ->assertSee('Bekliyor');
+            ->assertSee('Ödeme bekliyor');
     }
 
     public function test_subscriber_cannot_view_other_users_receipt(): void
