@@ -183,7 +183,7 @@ class QuoteRequestTest extends TestCase
         $this->actingAs($user)
             ->get(route('subscriber.dashboard'))
             ->assertOk()
-            ->assertSee('Ücretliye geç');
+            ->assertSee('Ücretliye Geç');
 
         $this->actingAs($user)
             ->post(route('subscriber.subscriptions.store'), [
@@ -223,7 +223,7 @@ class QuoteRequestTest extends TestCase
         $this->actingAs($user)
             ->get(route('subscriber.dashboard'))
             ->assertOk()
-            ->assertDontSee('Ücretliye geç')
+            ->assertDontSee('Ücretliye Geç')
             ->assertSee('Özel Teklif');
 
         $this->actingAs($user)

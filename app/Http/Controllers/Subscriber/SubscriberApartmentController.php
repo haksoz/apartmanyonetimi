@@ -8,15 +8,18 @@ use App\Models\Apartment;
 use App\Models\DuePlan;
 use App\Support\AidatPeriodReconciliation;
 use App\Support\CurrentApartment;
+use App\Support\PriceQuote;
+use App\Support\SubscriberApartmentOverview;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class SubscriberApartmentController extends Controller
 {
-    public function index(CurrentApartment $currentApartment)
+    public function index(CurrentApartment $currentApartment, PriceQuote $prices, SubscriberApartmentOverview $overview)
     {
-        $apartments = $currentApartment->availableFor(auth()->user())
-            ->load('user')
+        $user = auth()->user();
+        $apartments = $currentApartment->availableFor($user)
+            ->load(['user', 'managerUnit'])
             ->sortBy('name')
             ->values();
 
@@ -24,7 +27,10 @@ class SubscriberApartmentController extends Controller
             return redirect()->route('subscriber.apartments.create');
         }
 
-        return view('subscriber.apartments.index', compact('apartments'));
+        $overview->decorate($apartments, $user, $prices);
+        $currentApartmentModel = $currentApartment->getFor($user);
+
+        return view('subscriber.apartments.index', compact('apartments', 'currentApartmentModel'));
     }
 
     public function update(Request $request, CurrentApartment $currentApartment)

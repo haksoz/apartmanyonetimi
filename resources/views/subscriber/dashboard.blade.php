@@ -4,8 +4,8 @@
 
 @section('content')
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-slate-900">Abone Paneli</h1>
-        <p class="mt-1 text-sm text-slate-500">Her apartmanın kullanımı ayrıdır. Temel yönetim ücretsizdir; ücretli özellikler apartman kartından açılır.</p>
+        <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">Abone Paneli</h1>
+        <p class="mt-1 text-sm text-slate-500">Apartmanlarınızın kullanım durumu ve şu anda yapmanız gereken işlem burada.</p>
     </div>
 
     @if ($apartments->count() === 0)
@@ -28,11 +28,12 @@
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Henüz apartman yok.</div>
     @else
-        <div class="grid gap-6 md:grid-cols-2">
+        <div class="grid gap-4 md:grid-cols-2">
             @foreach ($apartments as $apartment)
                 @php
                     $active = $apartment->commercial_active;
                     $pending = $apartment->commercial_pending;
+                    $expired = $apartment->commercial_expired;
                     $monthly = $apartment->monthly_quote;
                     $yearly = $apartment->yearly_quote;
                     $ownActive = $active && (int) $active->subscription->user_id === (int) auth()->id();
@@ -40,55 +41,85 @@
                     $needsQuote = ($monthly['requires_quote'] ?? false) && ! $active;
                     $quoteScale = (int) $apartment->unit_count > 100;
                     $canPurchase = (bool) $apartment->can_purchase;
-                    $renewSoon = $active && $active->subscription?->expires_at && $active->subscription->expires_at->lessThanOrEqualTo(now()->addDays(3));
+                    $renewSoon = $active && $active->expires_at && $active->expires_at->lessThanOrEqualTo(now()->addDays(3));
+                    $daysLeft = $renewSoon ? (int) now()->startOfDay()->diffInDays($active->expires_at->copy()->startOfDay()) : null;
+                    $awaitingOwnPayment = $canPurchase && $ownPending && ! $active;
+                    $showPay = $canPurchase && ! $quoteScale && ! $needsQuote && ! $awaitingOwnPayment;
+                    $payLabel = ($active || $expired) ? 'Yenile' : 'Ücretliye Geç';
+                    $place = collect([$apartment->district, $apartment->province])->filter()->implode(' / ');
+                    if ($place === '' && $apartment->address) {
+                        $place = \Illuminate\Support\Str::limit($apartment->address, 48);
+                    }
+                    $periodLabel = $active?->subscription?->notes === 'Tanımlı süre'
+                        ? 'Tanımlı süre'
+                        : ($active?->subscription?->period === 'yearly' ? 'Yıllık' : 'Aylık');
+                    if ($quoteScale && ! $active && ! $pending) {
+                        $statusLabel = 'Özel Teklif';
+                        $statusClass = 'bg-slate-100 text-slate-700';
+                    } elseif ($pending && ! $active) {
+                        $statusLabel = 'Ödeme Bekliyor';
+                        $statusClass = 'bg-amber-50 text-amber-800';
+                    } elseif ($active) {
+                        $statusLabel = 'Ücretli Kullanım';
+                        $statusClass = 'bg-emerald-50 text-emerald-800';
+                    } elseif ($expired) {
+                        $statusLabel = 'Ücretli Kullanım Sona Erdi';
+                        $statusClass = 'bg-red-50 text-red-700';
+                    } else {
+                        $statusLabel = 'Ücretsiz Kullanım';
+                        $statusClass = 'bg-slate-100 text-slate-700';
+                    }
                 @endphp
-                <article class="flex flex-col rounded-2xl border border-slate-200 bg-white p-6">
+                <article class="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <h2 class="text-lg font-bold text-slate-900">{{ $apartment->name }}</h2>
-                            <p class="mt-1 text-sm text-slate-500">{{ $apartment->unit_count }} daire</p>
+                        <div class="min-w-0">
+                            <h2 class="text-lg font-bold text-slate-950">{{ $apartment->name }}</h2>
+                            <p class="mt-1 text-sm text-slate-500">{{ $apartment->unit_count }} daire{{ $place !== '' ? ' · '.$place : '' }}</p>
                         </div>
-                        @if ($active)
-                            <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Ücretli</span>
-                        @elseif ($pending)
-                            <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Ödeme bekliyor</span>
-                        @else
-                            <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Ücretsiz</span>
-                        @endif
+                        <span class="inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusClass }}">{{ $statusLabel }}</span>
                     </div>
 
-                    <div class="mt-4 flex-1 text-sm text-slate-600">
-                        @if (! $canPurchase)
-                            <p>{{ $active ? 'Ücretli kullanım açık.' : ($pending ? 'Ödeme bekleniyor.' : 'Temel kullanım açık.') }}</p>
+                    <div class="mt-4 flex-1 space-y-1 text-sm text-slate-600">
+                        @if ($quoteScale && ! $active && ! $pending)
+                            <p class="font-medium text-slate-800">Özel Teklif</p>
+                            <p>{{ \App\Support\ApartmentCommercial::QUOTE_MESSAGE }}</p>
+                        @elseif ($pending && ! $active && $ownPending)
+                            <p>Ücretli kullanım siparişiniz oluşturuldu. Ödeme bildiriminizi tamamlayın.</p>
+                        @elseif ($pending && ! $active)
+                            <p>Ödeme {{ $pending->subscription->user?->name }} siparişinde bekliyor.</p>
                         @elseif ($active && ! $ownActive)
                             <p>Bu hizmet {{ $apartment->name }} için {{ $active->subscription->user?->name }} tarafından satın alınmıştır.</p>
-                            <p class="mt-1">Bitiş {{ $active->subscription->expires_at?->format('d.m.Y') ?? 'süresiz' }}</p>
-                            @if ($renewSoon)
-                                <p class="mt-2 font-medium text-amber-700">Yenileme yaklaşıyor</p>
+                            <p>Paket: {{ $periodLabel }}</p>
+                            @if ($active->started_at)
+                                <p>Başlangıç {{ $active->started_at->format('d.m.Y') }}</p>
                             @endif
-                        @elseif ($active && $active->subscription?->notes === 'Tanımlı süre')
-                            <p>Tanımlı süre</p>
-                            <p class="mt-1">Bitiş {{ $active->subscription->expires_at?->format('d.m.Y') ?? 'süresiz' }}</p>
+                            <p>Bitiş {{ $active->expires_at?->format('d.m.Y') ?? 'süresiz' }}</p>
                         @elseif ($active)
-                            <p>{{ $active->subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }} · {{ number_format($active->amount, 0, ',', '.') }} ₺</p>
-                            <p class="mt-1">Bitiş {{ $active->subscription->expires_at?->format('d.m.Y') ?? 'süresiz' }}</p>
-                            @if ($renewSoon)
-                                <p class="mt-2 font-medium text-amber-700">Yenileme yaklaşıyor</p>
+                            <p>Paket: {{ $periodLabel }}</p>
+                            @if ($active->started_at)
+                                <p>Başlangıç {{ $active->started_at->format('d.m.Y') }}</p>
                             @endif
-                        @elseif ($pending && ! $ownPending)
-                            <p>Ödeme {{ $pending->subscription->user?->name }} siparişinde bekliyor.</p>
-                        @elseif ($pending)
-                            <p>{{ $pending->subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }} sipariş · {{ number_format($pending->amount, 0, ',', '.') }} ₺</p>
-                            <p class="mt-1">Havale onaylanınca ücretli özellikler açılır.</p>
-                        @elseif ($quoteScale && ! $active && ! $pending)
-                            <p class="font-medium text-slate-800">Özel Teklif</p>
-                            <p class="mt-1">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanmaktadır. Talebiniz alınmıştır. Temsilcimiz sizinle iletişime geçerek size özel teklifinizi paylaşacaktır.</p>
+                            <p>Bitiş {{ $active->expires_at?->format('d.m.Y') ?? 'süresiz' }}</p>
+                        @elseif ($expired)
+                            <p>Ücretli özelliklerin kullanımı sona erdi. Devam etmek için yeni bir dönem başlatabilirsiniz.</p>
+                            @if ($expired->expires_at)
+                                <p>Son bitiş {{ $expired->expires_at->format('d.m.Y') }}</p>
+                            @endif
                         @elseif ($needsQuote)
                             <p class="font-medium text-slate-800">Teklif gerekir</p>
-                            <p class="mt-1">{{ $monthly['message'] }}</p>
+                            <p>{{ $monthly['message'] }}</p>
                         @else
-                            <p>Temel kullanım açık.</p>
-                            <p class="mt-1">Aylık {{ number_format($monthly['amount'], 0, ',', '.') }} ₺ · Yıllık {{ number_format($yearly['amount'], 0, ',', '.') }} ₺</p>
+                            <p>AidatCep Temel yönetim açık.</p>
+                        @endif
+
+                        @if ($renewSoon)
+                            <p class="pt-1 font-medium text-amber-700">
+                                @if ($daysLeft < 1)
+                                    Paketinizin süresi bugün doluyor.
+                                @else
+                                    Paketinizin bitmesine {{ $daysLeft }} gün kaldı.
+                                @endif
+                            </p>
                         @endif
 
                         @if ($canPurchase && $ownPending && $active)
@@ -96,20 +127,34 @@
                         @endif
                     </div>
 
-                    @if ($currentApartmentModel && $currentApartmentModel->id === $apartment->id)
-                        <p class="mt-3 text-xs font-semibold text-emerald-700">Seçili</p>
+                    @if (! $active && ! $pending && ! $quoteScale && ! $needsQuote && isset($monthly['amount'], $yearly['amount']) && $monthly['amount'] !== null && $yearly['amount'] !== null)
+                        <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                            <p class="text-xs font-semibold text-emerald-800">AidatCep Ücretli Kullanım avantajlarından yararlanın.</p>
+                            <div class="mt-2 grid grid-cols-2 gap-2">
+                                <div class="rounded-lg bg-white px-2 py-1 text-center">
+                                    <p class="text-xs text-slate-500">Aylık</p>
+                                    <p class="text-sm font-semibold text-slate-950">{{ number_format($monthly['amount'], 0, ',', '.') }} ₺</p>
+                                </div>
+                                <div class="rounded-lg bg-white px-2 py-1 text-center">
+                                    <p class="text-xs text-slate-500">Yıllık</p>
+                                    <p class="text-sm font-semibold text-slate-950">{{ number_format($yearly['amount'], 0, ',', '.') }} ₺</p>
+                                </div>
+                            </div>
+                        </div>
                     @endif
 
-                    <div class="mt-5 flex flex-wrap items-center gap-2">
+                    <div class="mt-4 flex flex-wrap items-center gap-2">
+                        @if ($awaitingOwnPayment)
+                            <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600">Ödemeyi Tamamla</a>
+                        @endif
+
                         <form method="POST" action="{{ route('subscriber.apartment.update') }}">
                             @csrf
                             <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
-                            <button class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">Yönet</button>
+                            <button class="rounded-xl {{ $awaitingOwnPayment ? 'border border-slate-300 text-slate-800 hover:bg-slate-50' : 'bg-slate-900 text-white hover:bg-slate-800' }} px-3 py-2 text-sm font-semibold">Apartmanı Yönet</button>
                         </form>
 
-                        @if ($canPurchase && $ownPending && ! $active)
-                            <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600">Ödemeyi tamamla</a>
-                        @elseif ($canPurchase && ! $quoteScale && ! $needsQuote && ! ($pending && ! $active && $ownPending))
+                        @if ($showPay)
                             @php
                                 $payModalId = 'pay-method-modal-'.$apartment->id;
                                 $reopenPayModal = $errors->any() && in_array($apartment->id, array_map('intval', (array) old('apartment_ids', [])), true);
@@ -117,7 +162,7 @@
                             <form method="POST" action="{{ route('subscriber.subscriptions.store') }}">
                                 @csrf
                                 <input type="hidden" name="apartment_ids[]" value="{{ $apartment->id }}">
-                                <button type="button" onclick="document.getElementById('{{ $payModalId }}').classList.remove('hidden')" class="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">{{ $active ? 'Yenile' : 'Ücretliye geç' }}</button>
+                                <button type="button" onclick="document.getElementById('{{ $payModalId }}').classList.remove('hidden')" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">{{ $payLabel }}</button>
 
                                 <div id="{{ $payModalId }}" @class([
                                     'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',

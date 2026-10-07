@@ -72,7 +72,7 @@ class SubscriptionOrderTest extends TestCase
             ->assertOk()
             ->assertSee('Süreli Apartman')
             ->assertSee('Ücretli')
-            ->assertSee('Yenileme yaklaşıyor')
+            ->assertSee('Paketinizin bitmesine')
             ->assertSee($expiry->format('d.m.Y'));
     }
 
@@ -99,7 +99,7 @@ class SubscriptionOrderTest extends TestCase
             ->assertOk()
             ->assertSee('Süresi Bitmiş Apartman')
             ->assertSee('Ücretsiz')
-            ->assertSee('Ücretliye geç')
+            ->assertSee('Ücretliye Geç')
             ->assertSee('Nasıl ödemek istersiniz?')
             ->assertSee('Havale / EFT')
             ->assertSee('Kredi kartı')

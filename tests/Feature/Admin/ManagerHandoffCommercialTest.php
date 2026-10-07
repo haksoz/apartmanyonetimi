@@ -84,7 +84,7 @@ class ManagerHandoffCommercialTest extends TestCase
             ->get(route('subscriber.dashboard'))
             ->assertOk()
             ->assertSee('Bu hizmet C Apartmanı için Hasan Yonetici tarafından satın alınmıştır.')
-            ->assertDontSee('Ödemeyi tamamla');
+            ->assertDontSee('Ödemeyi Tamamla');
 
         $this->actingAs($mehmet)
             ->get(route('subscriber.subscriptions.index'))
