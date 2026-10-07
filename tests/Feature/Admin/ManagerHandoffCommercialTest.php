@@ -123,7 +123,7 @@ class ManagerHandoffCommercialTest extends TestCase
             ->assertOk()
             ->assertSee('Hasan Yonetici')
             ->assertSee('Mehmet Yonetici')
-            ->assertSee('900');
+            ->assertSee('Ücretli');
 
         $this->actingAs($mehmet)
             ->post(route('subscriber.subscriptions.store'), [

@@ -106,20 +106,69 @@
                         @if ($canPurchase && $ownPending && ! $active)
                             <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600">Ödemeyi tamamla</a>
                         @elseif ($canPurchase && ! $needsQuote && ! ($pending && ! $active && $ownPending))
-                            <form method="POST" action="{{ route('subscriber.subscriptions.store') }}" class="flex flex-wrap items-center gap-2">
+                            @php
+                                $payModalId = 'pay-method-modal-'.$apartment->id;
+                                $reopenPayModal = $errors->any() && in_array($apartment->id, array_map('intval', (array) old('apartment_ids', [])), true);
+                            @endphp
+                            <form method="POST" action="{{ route('subscriber.subscriptions.store') }}">
                                 @csrf
                                 <input type="hidden" name="apartment_ids[]" value="{{ $apartment->id }}">
-                                <input type="hidden" name="payment_method" value="havale">
-                                <select name="period" class="rounded-xl border border-slate-300 px-3 py-2 text-sm">
-                                    <option value="monthly">Aylık{{ isset($monthly['amount']) ? ' '.number_format($monthly['amount'], 0, ',', '.').' ₺' : '' }}</option>
-                                    <option value="yearly">Yıllık{{ isset($yearly['amount']) ? ' '.number_format($yearly['amount'], 0, ',', '.').' ₺' : '' }}</option>
-                                </select>
-                                <button class="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">{{ $active ? 'Yenile' : 'Ücretliye geç' }}</button>
+                                <button type="button" onclick="document.getElementById('{{ $payModalId }}').classList.remove('hidden')" class="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">{{ $active ? 'Yenile' : 'Ücretliye geç' }}</button>
+
+                                <div id="{{ $payModalId }}" @class([
+                                    'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',
+                                    'hidden' => ! $reopenPayModal,
+                                ])>
+                                    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="{{ $payModalId }}-title">
+                                        <h3 id="{{ $payModalId }}-title" class="text-lg font-bold text-slate-900">Nasıl ödemek istersiniz?</h3>
+                                        <p class="mt-2 text-sm text-slate-600">{{ $apartment->name }} için dönem ve ödeme yöntemini seçin. Sipariş, seçiminizden sonra açılır.</p>
+
+                                        <label class="mt-4 block text-sm font-medium text-slate-700">
+                                            Dönem
+                                            <select name="period" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-normal">
+                                                <option value="monthly" @selected(old('period', 'monthly') === 'monthly')>Aylık{{ isset($monthly['amount']) ? ' · '.number_format($monthly['amount'], 0, ',', '.').' ₺' : '' }}</option>
+                                                <option value="yearly" @selected(old('period') === 'yearly')>Yıllık{{ isset($yearly['amount']) ? ' · '.number_format($yearly['amount'], 0, ',', '.').' ₺' : '' }}</option>
+                                            </select>
+                                        </label>
+
+                                        <fieldset class="mt-4 space-y-2">
+                                            <legend class="text-sm font-medium text-slate-700">Ödeme yöntemi</legend>
+                                            <label class="mt-2 flex items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-800">
+                                                <input type="radio" name="payment_method" value="havale" class="mt-1" @checked(old('payment_method', 'havale') === 'havale')>
+                                                <span>
+                                                    <span class="font-semibold">Havale / EFT</span>
+                                                    <span class="mt-0.5 block text-slate-500">Banka bilgileri bir sonraki adımda gösterilir.</span>
+                                                </span>
+                                            </label>
+                                            <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-400">
+                                                <input type="radio" name="payment_method" value="kredi_kartı" class="mt-1" disabled>
+                                                <span>
+                                                    <span class="font-semibold">Kredi kartı</span>
+                                                    <span class="mt-0.5 block">Henüz aktif değil</span>
+                                                </span>
+                                            </label>
+                                        </fieldset>
+
+                                        <div class="mt-5 flex justify-end gap-3">
+                                            <button type="button" onclick="document.getElementById('{{ $payModalId }}').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                                            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Devam</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </form>
                         @endif
                     </div>
                 </article>
             @endforeach
         </div>
+        <script>
+            document.querySelectorAll('[id^="pay-method-modal-"]').forEach(function (modal) {
+                modal.addEventListener('click', function (event) {
+                    if (event.target === modal) {
+                        modal.classList.add('hidden');
+                    }
+                });
+            });
+        </script>
     @endif
 @endsection

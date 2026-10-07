@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Apartment;
+use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserSubscription;
@@ -20,9 +21,58 @@ class AdminManagerController extends Controller
     {
         $search = $request->query('search');
 
-        $items = SubscriptionItem::query()
+        $subscriptions = Subscription::query()
             ->with([
-                'apartmentSubscription',
+                'apartment.members' => function ($query) {
+                    $query->where('apartment_user.role', 'owner')
+                        ->where('apartment_user.is_active', true);
+                },
+                'items.subscription.user',
+                'items.apartment',
+            ])
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('subscription_no', 'like', "%{$search}%")
+                        ->orWhereHas('apartment', function ($query) use ($search) {
+                            $query->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('apartment.members', function ($query) use ($search) {
+                            $query->where(function ($query) use ($search) {
+                                $query->where('users.name', 'like', "%{$search}%")
+                                    ->orWhere('users.email', 'like', "%{$search}%");
+                            })->where('apartment_user.role', 'owner')
+                                ->where('apartment_user.is_active', true);
+                        })
+                        ->orWhereHas('items', function ($query) use ($search) {
+                            $query->where('status', '!=', SubscriptionItem::STATUS_CANCELLED)
+                                ->where(function ($query) use ($search) {
+                                    $query->where('apartment_name', 'like', "%{$search}%")
+                                        ->orWhereHas('apartment', function ($query) use ($search) {
+                                            $query->where('name', 'like', "%{$search}%");
+                                        })
+                                        ->orWhereHas('subscription.user', function ($query) use ($search) {
+                                            $query->where('name', 'like', "%{$search}%")
+                                                ->orWhere('email', 'like', "%{$search}%");
+                                        });
+                                });
+                        });
+                });
+            })
+            ->orderByRaw(
+                'CASE WHEN (select max(started_at) from subscription_items where apartment_subscription_id = subscriptions.id and status != ?) IS NULL THEN 1 ELSE 0 END',
+                [SubscriptionItem::STATUS_CANCELLED]
+            )
+            ->orderByRaw(
+                '(select max(started_at) from subscription_items where apartment_subscription_id = subscriptions.id and status != ?) desc',
+                [SubscriptionItem::STATUS_CANCELLED]
+            )
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
+
+        $legacyItems = SubscriptionItem::query()
+            ->whereNull('apartment_subscription_id')
+            ->with([
                 'subscription.user',
                 'apartment.members' => function ($query) {
                     $query->where('apartment_user.role', 'owner')
@@ -57,7 +107,7 @@ class AdminManagerController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.managers.index', compact('items', 'search'));
+        return view('admin.managers.index', compact('subscriptions', 'legacyItems', 'search'));
     }
 
     public function show(User $manager)
@@ -161,6 +211,7 @@ class AdminManagerController extends Controller
 
         $subscription->update([
             'status' => UserSubscription::STATUS_CANCELLED,
+            'cancelled_by' => UserSubscription::CANCELLED_BY_ADMIN,
             'is_active' => false,
             'ended_at' => now(),
             'notes' => $validated['rejection_notes'] ?? $subscription->notes,
@@ -211,6 +262,7 @@ class AdminManagerController extends Controller
         $subscription->update([
             'is_active' => false,
             'status' => UserSubscription::STATUS_CANCELLED,
+            'cancelled_by' => UserSubscription::CANCELLED_BY_ADMIN,
             'ended_at' => now(),
             'notes' => $validated['cancellation_notes'] ?? $subscription->notes,
         ]);

@@ -2,19 +2,37 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Package;
+use App\Models\PriceBand;
 use Illuminate\Http\Request;
 
 class LandingController extends Controller
 {
     public function __invoke(Request $request)
     {
-        $packages = Package::where('is_active', true)
-            ->where('show_on_website', true)
-            ->orderBy('sort_order')
-            ->with('features')
-            ->get();
+        return view('landing');
+    }
 
-        return view('landing', compact('packages'));
+    public function pricing()
+    {
+        return view('microsite.pricing', [
+            'priceBands' => $this->activePriceBands(),
+        ]);
+    }
+
+    private function activePriceBands()
+    {
+        $now = now();
+
+        return PriceBand::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($now) {
+                $query->whereNull('valid_from')->orWhere('valid_from', '<=', $now);
+            })
+            ->where(function ($query) use ($now) {
+                $query->whereNull('valid_until')->orWhere('valid_until', '>=', $now);
+            })
+            ->orderBy('sort_order')
+            ->orderBy('min_units')
+            ->get();
     }
 }

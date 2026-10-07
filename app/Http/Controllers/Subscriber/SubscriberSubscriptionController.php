@@ -5,13 +5,15 @@ namespace App\Http\Controllers\Subscriber;
 use App\Http\Controllers\Controller;
 use App\Models\Apartment;
 use App\Models\BankAccount;
+use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Support\ApartmentCoverage;
 use App\Support\PriceQuote;
 use App\Support\SubscriptionCheckout;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -21,6 +23,7 @@ class SubscriberSubscriptionController extends Controller
     {
         $subscriptions = auth()->user()
             ->subscriptions()
+            ->commercial()
             ->with(['items', 'package'])
             ->orderByDesc('created_at')
             ->paginate(15);
@@ -30,18 +33,32 @@ class SubscriberSubscriptionController extends Controller
 
     public function create(PriceQuote $prices)
     {
-        $apartments = $this->ownedApartments(auth()->user())
-            ->get()
-            ->map(function (Apartment $apartment) use ($prices) {
-                $apartment->monthly_quote = $prices->forUnits((int) $apartment->unit_count, 'monthly', $apartment);
-                $apartment->yearly_quote = $prices->forUnits((int) $apartment->unit_count, 'yearly', $apartment);
-                $apartment->setAttribute(
-                    'commercial_covered',
-                    SubscriptionItem::query()->where('apartment_id', $apartment->id)->covering()->exists()
-                );
+        $apartments = $this->ownedApartments(auth()->user())->get();
+        $ids = $apartments->pluck('id');
 
-                return $apartment;
-            });
+        $records = Subscription::query()
+            ->whereIn('apartment_id', $ids)
+            ->where('status', Subscription::STATUS_ACTIVE)
+            ->orderByDesc('id')
+            ->get()
+            ->unique('apartment_id')
+            ->keyBy('apartment_id');
+
+        $items = SubscriptionItem::query()
+            ->with('subscription')
+            ->whereIn('apartment_id', $ids)
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('apartment_id');
+
+        $apartments->each(function (Apartment $apartment) use ($prices, $records, $items) {
+            $apartment->monthly_quote = $prices->forUnits((int) $apartment->unit_count, 'monthly', $apartment);
+            $apartment->yearly_quote = $prices->forUnits((int) $apartment->unit_count, 'yearly', $apartment);
+            $apartment->setAttribute('offer', $this->offer(
+                $records->get($apartment->id),
+                $items->get($apartment->id, collect())
+            ));
+        });
 
         return view('subscriber.subscriptions.create', compact('apartments'));
     }
@@ -49,12 +66,14 @@ class SubscriberSubscriptionController extends Controller
     public function store(Request $request, SubscriptionCheckout $checkout)
     {
         $validated = $request->validate([
-            'apartment_ids' => ['required', 'array', 'min:1'],
+            'apartment_ids' => ['required', 'array', 'min:1', 'max:1'],
             'apartment_ids.*' => ['integer'],
             'period' => ['required', Rule::in(['monthly', 'yearly'])],
             'payment_method' => ['required', Rule::in(['havale', 'kredi_kartı'])],
             'reference_code' => ['nullable', 'string', 'max:255'],
             'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+        ], [
+            'apartment_ids.max' => 'Bir siparişte yalnızca bir apartman olabilir.',
         ]);
 
         $user = auth()->user();
@@ -65,6 +84,12 @@ class SubscriberSubscriptionController extends Controller
         if ($apartments->count() !== count($validated['apartment_ids'])) {
             throw ValidationException::withMessages([
                 'apartment_ids' => 'Seçilen apartmanlardan biri size ait değil.',
+            ]);
+        }
+
+        if ($validated['payment_method'] === 'kredi_kartı' && ($request->hasFile('receipt') || filled($validated['reference_code'] ?? null))) {
+            throw ValidationException::withMessages([
+                'payment_method' => 'Kredi kartı siparişine dekont veya referans eklenemez.',
             ]);
         }
 
@@ -94,8 +119,8 @@ class SubscriberSubscriptionController extends Controller
     {
         $this->authorizeSubscription($subscription);
 
+        $subscription->load(['items.apartment', 'items.apartmentSubscription', 'package']);
         $accounts = BankAccount::active()->ordered()->get();
-        $subscription->load('items');
 
         return view('subscriber.subscriptions.receipt', compact('subscription', 'accounts'));
     }
@@ -104,12 +129,30 @@ class SubscriberSubscriptionController extends Controller
     {
         $this->authorizeSubscription($subscription);
 
+        if (! $subscription->isPending()) {
+            throw ValidationException::withMessages([
+                'payment_info' => 'Ödeme bilgisi yalnızca bekleyen siparişe eklenebilir.',
+            ]);
+        }
+
+        if ($subscription->payment_method === 'kredi_kartı') {
+            throw ValidationException::withMessages([
+                'payment_info' => 'Kredi kartı siparişine dekont veya referans eklenemez.',
+            ]);
+        }
+
+        if ($subscription->hasPaymentProof()) {
+            throw ValidationException::withMessages([
+                'payment_info' => 'Ödeme bilgisi alındı. Dekont veya referans artık değiştirilemez.',
+            ]);
+        }
+
         $validated = $request->validate([
             'reference_code' => ['nullable', 'string', 'max:255'],
             'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
         ]);
 
-        if (empty($validated['reference_code']) && ! $request->hasFile('receipt')) {
+        if (! filled($validated['reference_code'] ?? null) && ! $request->hasFile('receipt')) {
             throw ValidationException::withMessages([
                 'payment_info' => 'Referans numarası veya dekont dosyası alanlarından en az biri doldurulmalıdır.',
             ]);
@@ -117,20 +160,109 @@ class SubscriberSubscriptionController extends Controller
 
         $data = [];
 
-        if (! empty($validated['reference_code'])) {
+        if (filled($validated['reference_code'] ?? null)) {
             $data['receipt_reference'] = $validated['reference_code'];
         }
 
         if ($request->hasFile('receipt')) {
-            if ($subscription->receipt_path) {
-                Storage::disk('public')->delete($subscription->receipt_path);
-            }
             $data['receipt_path'] = $request->file('receipt')->store('receipts/' . auth()->id(), 'public');
         }
 
         $subscription->update($data);
 
         return back()->with('status', 'Ödeme bilgileriniz başarıyla kaydedildi.');
+    }
+
+    public function cancel(UserSubscription $subscription)
+    {
+        $this->authorizeSubscription($subscription);
+
+        if (! $subscription->isPending()) {
+            throw ValidationException::withMessages([
+                'subscription' => 'Yalnızca ödeme bekleyen sipariş iptal edilebilir.',
+            ]);
+        }
+
+        if ($subscription->hasPaymentProof()) {
+            throw ValidationException::withMessages([
+                'subscription' => 'Ödeme bilgisi gönderildiği için sipariş iptal edilemez.',
+            ]);
+        }
+
+        $apartmentIds = $subscription->items()->pluck('apartment_id');
+
+        $subscription->items()->update([
+            'status' => SubscriptionItem::STATUS_CANCELLED,
+            'ended_at' => now(),
+        ]);
+
+        $subscription->update([
+            'status' => UserSubscription::STATUS_CANCELLED,
+            'cancelled_by' => UserSubscription::CANCELLED_BY_CUSTOMER,
+            'is_active' => false,
+            'ended_at' => now(),
+        ]);
+
+        ApartmentCoverage::sync($apartmentIds);
+
+        return redirect()
+            ->route('subscriber.subscriptions.create', ['type' => 'renew'])
+            ->with('status', 'Sipariş iptal edildi. Apartman için yeniden sipariş oluşturabilirsiniz.');
+    }
+
+    /**
+     * @param  Collection<int, SubscriptionItem>  $items
+     * @return array{action: string, record: ?Subscription, period: ?SubscriptionItem, order: ?UserSubscription}
+     */
+    private function offer(?Subscription $record, Collection $items): array
+    {
+        $pending = $items->first(function (SubscriptionItem $item) {
+            return $item->status === SubscriptionItem::STATUS_PENDING
+                && $item->subscription?->status === UserSubscription::STATUS_PENDING;
+        });
+
+        if ($pending) {
+            return [
+                'action' => 'pending',
+                'record' => $record,
+                'period' => null,
+                'order' => $pending->subscription,
+            ];
+        }
+
+        $covering = $items->first(fn (SubscriptionItem $item) => $item->isCovering());
+
+        if ($covering) {
+            return [
+                'action' => 'renew',
+                'record' => $record,
+                'period' => $covering,
+                'order' => null,
+            ];
+        }
+
+        $expired = $items->first(function (SubscriptionItem $item) {
+            return $item->plan === SubscriptionItem::PLAN_PAID
+                && $item->expires_at !== null
+                && $item->expires_at->lt(now())
+                && $item->status !== SubscriptionItem::STATUS_PENDING;
+        });
+
+        if ($expired) {
+            return [
+                'action' => 'restart',
+                'record' => $record,
+                'period' => $expired,
+                'order' => null,
+            ];
+        }
+
+        return [
+            'action' => 'upgrade',
+            'record' => $record,
+            'period' => null,
+            'order' => null,
+        ];
     }
 
     private function authorizeSubscription(UserSubscription $subscription): void

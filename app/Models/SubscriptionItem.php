@@ -7,9 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Bir sipariş başlığının içindeki apartman dönemi.
+ * Kalıcı aboneliğin bir dönemi.
  *
- * subscription() sipariş başlığıdır. Kalıcı abonelik apartmentSubscription() ilişkisindedir.
+ * Ücretsiz temel kullanımın siparişi yoktur; subscription_id boş kalabilir.
+ * Ücretli satın almada subscription() sipariş başlığıdır.
+ * Kalıcı abonelik apartmentSubscription() ilişkisindedir.
  * plan, started_at, expires_at, status ve ended_at bu dönemin kendi tarihleridir.
  * Ücretli özellik kapsamı bu alanlardan okunur. Sipariş başlığının tarihi kapsamı belirlemez.
  * Başlık yalnızca siparişin yürürlükte olup olmadığını doğrular.

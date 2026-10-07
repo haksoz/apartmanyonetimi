@@ -13,7 +13,7 @@
         <div class="space-y-5">
             <div>
                 <label for="name" class="mb-2 block text-sm font-semibold text-slate-700">Kasa Adı</label>
-                <input id="name" name="name" value="{{ old('name') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none" placeholder="Nakit Kasa">
+                <input id="name" name="name" value="{{ old('name', 'Nakit Kasa') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none" placeholder="Nakit Kasa">
                 @error('name')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 

@@ -44,6 +44,16 @@ class ApartmentWizardTest extends TestCase
         ]);
     }
 
+    public function test_cash_box_step_suggests_nakit_kasa(): void
+    {
+        [$user, $apartment] = $this->createOwnerWithApartment();
+
+        $this->actingAs($user)
+            ->get(route('apartments.wizard.cash-box', $apartment))
+            ->assertOk()
+            ->assertSee('value="Nakit Kasa"', false);
+    }
+
     public function test_cash_box_step_redirects_to_units_when_cash_box_exists(): void
     {
         [$user, $apartment] = $this->createOwnerWithApartment();

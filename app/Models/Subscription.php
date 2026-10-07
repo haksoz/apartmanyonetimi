@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -82,5 +83,65 @@ class Subscription extends Model
     public function userSubscriptions(): HasMany
     {
         return $this->hasMany(UserSubscription::class);
+    }
+
+    /**
+     * Ana listede gösterilecek dönem.
+     * Geçerli ücretli dönem, yoksa süresi dolmamış aktif dönem, yoksa bekleyen dönem.
+     * İptal edilmiş ve süresi dolmuş dönemler current kabul edilmez.
+     */
+    public function currentItem(): ?SubscriptionItem
+    {
+        $items = $this->loadedItems();
+
+        $covering = $items
+            ->filter(fn (SubscriptionItem $item) => $item->isCovering())
+            ->sortByDesc(fn (SubscriptionItem $item) => $item->started_at?->getTimestamp() ?? 0)
+            ->first();
+
+        if ($covering) {
+            return $covering;
+        }
+
+        $active = $items
+            ->filter(fn (SubscriptionItem $item) => $item->status === SubscriptionItem::STATUS_ACTIVE
+                && $item->ended_at === null
+                && ($item->expires_at === null || ! $item->expires_at->lt(now())))
+            ->sortByDesc(fn (SubscriptionItem $item) => sprintf(
+                '%d-%010d-%010d',
+                $item->plan === SubscriptionItem::PLAN_PAID ? 1 : 0,
+                $item->started_at?->getTimestamp() ?? 0,
+                $item->id
+            ))
+            ->first();
+
+        if ($active) {
+            return $active;
+        }
+
+        return $items
+            ->filter(fn (SubscriptionItem $item) => $item->status === SubscriptionItem::STATUS_PENDING && $item->ended_at === null)
+            ->sortByDesc(fn (SubscriptionItem $item) => $item->id)
+            ->first();
+    }
+
+    public function historyItems(): Collection
+    {
+        return $this->loadedItems()
+            ->sortByDesc(fn (SubscriptionItem $item) => sprintf(
+                '%010d-%010d',
+                $item->started_at?->getTimestamp() ?? 0,
+                $item->id
+            ))
+            ->values();
+    }
+
+    private function loadedItems(): Collection
+    {
+        if ($this->relationLoaded('items')) {
+            return $this->items;
+        }
+
+        return $this->items()->with('subscription.user')->get();
     }
 }

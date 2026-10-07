@@ -38,7 +38,8 @@ class PurchaseItemFlowTest extends TestCase
         $free->refresh();
         $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $free->status);
         $this->assertNull($free->ended_at);
-        $this->assertTrue($free->subscription->is_active);
+        $this->assertNull($free->subscription_id);
+        $this->assertSame(1, UserSubscription::query()->count());
 
         $record = $free->apartmentSubscription;
         $this->assertNotNull($record);
@@ -116,10 +117,12 @@ class PurchaseItemFlowTest extends TestCase
 
         $freeA->refresh();
         $freeB->refresh();
-        $this->assertSame(SubscriptionItem::STATUS_CANCELLED, $freeA->status);
-        $this->assertSame($paidA->started_at->format('Y-m-d H:i:s'), $freeA->ended_at->format('Y-m-d H:i:s'));
-        $this->assertSame(SubscriptionItem::STATUS_CANCELLED, $freeB->status);
-        $this->assertSame($paidB->started_at->format('Y-m-d H:i:s'), $freeB->ended_at->format('Y-m-d H:i:s'));
+        $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $freeA->status);
+        $this->assertNull($freeA->ended_at);
+        $this->assertNull($freeA->subscription_id);
+        $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $freeB->status);
+        $this->assertNull($freeB->ended_at);
+        $this->assertNull($freeB->subscription_id);
 
         $freeC->refresh();
         $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $freeC->status);
@@ -198,8 +201,9 @@ class PurchaseItemFlowTest extends TestCase
         $this->assertSame('2026-11-01 10:00:00', $paid->started_at->format('Y-m-d H:i:s'));
         $this->assertSame('2026-12-01 10:00:00', $paid->expires_at->format('Y-m-d H:i:s'));
         $this->assertNull($paid->ended_at);
-        $this->assertSame(SubscriptionItem::STATUS_CANCELLED, $free->status);
-        $this->assertSame($paid->started_at->format('Y-m-d H:i:s'), $free->ended_at->format('Y-m-d H:i:s'));
+        $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $free->status);
+        $this->assertNull($free->ended_at);
+        $this->assertNull($free->subscription_id);
 
         $payment = SubscriptionPayment::query()->where('subscription_id', $order->id)->firstOrFail();
         $this->assertSame($order->id, $payment->subscription_id);
@@ -350,7 +354,7 @@ class PurchaseItemFlowTest extends TestCase
         $free->refresh();
         $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $free->status);
         $this->assertNull($free->ended_at);
-        $this->assertTrue($free->subscription->fresh()->is_active);
+        $this->assertNull($free->subscription_id);
         $this->assertFalse(FeatureGate::allows($apartment, 'auto_dues', $user));
 
         $paid = $order->items()->firstOrFail()->fresh();
@@ -367,7 +371,7 @@ class PurchaseItemFlowTest extends TestCase
     {
         [$user, $apartment, $free] = $this->freeApartment('A Blok');
         $admin = User::factory()->admin()->create();
-        $package = Package::query()->where('slug', 'hizmet-bedeli')->firstOrFail();
+        $package = Package::factory()->create();
 
         $order = UserSubscription::factory()->create([
             'user_id' => $user->id,
@@ -408,12 +412,53 @@ class PurchaseItemFlowTest extends TestCase
         $this->assertTrue(FeatureGate::allows($apartment, 'auto_dues', $user));
 
         $free->refresh();
-        $this->assertSame(SubscriptionItem::STATUS_CANCELLED, $free->status);
+        $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $free->status);
+        $this->assertNull($free->subscription_id);
+        $this->assertNull($free->ended_at);
 
         $payment = SubscriptionPayment::query()->where('subscription_id', $order->id)->firstOrFail();
         $this->assertEquals(0, (float) $payment->amount);
         $this->assertFalse(Schema::hasColumn('subscription_payments', 'apartment_id'));
         $this->assertSame($order->id, $payment->subscription_id);
+    }
+
+    public function test_an_expired_paid_period_returns_to_the_existing_free_item_without_a_new_order(): void
+    {
+        $this->travelTo('2026-10-05 10:00:00');
+
+        [$user, $apartment, $free] = $this->freeApartment('A Blok');
+        $admin = User::factory()->admin()->create();
+        $record = $free->apartmentSubscription;
+        $originalStart = $record->started_at->format('Y-m-d H:i:s');
+        $order = $this->pendingOrder($user, [$apartment], 'monthly');
+
+        $this->actingAs($admin)
+            ->patch(route('admin.managers.subscription.approve', [$user, $order]), [
+                'payment_method' => 'havale',
+                'reference_code' => 'HVL-BITIS',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, UserSubscription::query()->count());
+        $this->assertTrue(FeatureGate::allows($apartment->fresh(), 'auto_dues', $user));
+
+        $this->travelTo('2026-12-01 10:00:00');
+
+        $free->refresh();
+        $record->refresh();
+        $paid = $order->items()->firstOrFail()->fresh();
+
+        $this->assertSame(1, UserSubscription::query()->count());
+        $this->assertSame(1, Subscription::query()->count());
+        $this->assertSame(2, SubscriptionItem::query()->count());
+        $this->assertSame($originalStart, $record->started_at->format('Y-m-d H:i:s'));
+        $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $free->status);
+        $this->assertNull($free->subscription_id);
+        $this->assertNull($free->ended_at);
+        $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $paid->status);
+        $this->assertFalse($paid->isCovering());
+        $this->assertFalse(FeatureGate::allows($apartment->fresh(), 'auto_dues', $user));
+        $this->assertTrue($record->currentItem()->is($free));
     }
 
     /**

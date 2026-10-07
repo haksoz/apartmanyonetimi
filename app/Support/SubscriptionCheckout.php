@@ -8,6 +8,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserSubscription;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -124,9 +125,18 @@ class SubscriptionCheckout
 
     public function activate(UserSubscription $subscription): void
     {
-        $expiresAt = $subscription->period === 'yearly' ? now()->addYear() : now()->addMonth();
+        $apartmentIds = $subscription->items()->pluck('apartment_id');
+        $anchor = SubscriptionItem::query()
+            ->whereIn('apartment_id', $apartmentIds)
+            ->where('plan', SubscriptionItem::PLAN_PAID)
+            ->where('status', SubscriptionItem::STATUS_ACTIVE)
+            ->where('expires_at', '>', now())
+            ->max('expires_at');
 
-        $startedAt = now();
+        $startedAt = $anchor ? Carbon::parse($anchor) : now();
+        $expiresAt = $subscription->period === 'yearly'
+            ? $startedAt->copy()->addYear()
+            : $startedAt->copy()->addMonth();
 
         $this->confirmApartmentSubscriptions($subscription);
 
@@ -145,17 +155,22 @@ class SubscriptionCheckout
             'ended_at' => null,
         ]);
 
-        $itemIds = $subscription->items()->pluck('id');
-        $apartmentIds = $subscription->items()->pluck('apartment_id');
+        if (! $startedAt->gt(now())) {
+            $itemIds = $subscription->items()->pluck('id');
 
-        SubscriptionItem::query()
-            ->whereIn('apartment_id', $apartmentIds)
-            ->where('status', SubscriptionItem::STATUS_ACTIVE)
-            ->whereNotIn('id', $itemIds)
-            ->update([
-                'status' => SubscriptionItem::STATUS_CANCELLED,
-                'ended_at' => $startedAt,
-            ]);
+            SubscriptionItem::query()
+                ->whereIn('apartment_id', $apartmentIds)
+                ->where('status', SubscriptionItem::STATUS_ACTIVE)
+                ->whereNotIn('id', $itemIds)
+                ->where(function ($query) {
+                    $query->where('plan', '!=', SubscriptionItem::PLAN_FREE)
+                        ->orWhereNotNull('subscription_id');
+                })
+                ->update([
+                    'status' => SubscriptionItem::STATUS_CANCELLED,
+                    'ended_at' => $startedAt,
+                ]);
+        }
 
         ApartmentCoverage::sync($apartmentIds);
     }
@@ -259,7 +274,7 @@ class SubscriptionCheckout
         });
     }
 
-    public function openFree(User $payer, Apartment $apartment): UserSubscription
+    public function openFree(User $payer, Apartment $apartment): Subscription
     {
         $isOwner = $apartment->members()
             ->where('users.id', $payer->id)
@@ -276,53 +291,35 @@ class SubscriptionCheckout
         $startedAt = now();
         $band = $this->prices->bandFor((int) $apartment->unit_count);
 
-        $apartmentSubscription = Subscription::create([
-            'apartment_id' => $apartment->id,
-            'status' => Subscription::STATUS_ACTIVE,
-            'started_at' => $startedAt,
-            'ended_at' => null,
-        ]);
+        return DB::transaction(function () use ($apartment, $startedAt, $band) {
+            $apartmentSubscription = Subscription::create([
+                'apartment_id' => $apartment->id,
+                'status' => Subscription::STATUS_ACTIVE,
+                'started_at' => $startedAt,
+                'ended_at' => null,
+            ]);
 
-        $subscription = UserSubscription::create([
-            'order_number' => $this->orderNumber(),
-            'user_id' => $payer->id,
-            'subscription_id' => $apartmentSubscription->id,
-            'package_id' => $this->carrierPackageId(),
-            'period' => UserSubscription::PERIOD_MONTHLY,
-            'price' => 0,
-            'started_at' => $startedAt,
-            'expires_at' => null,
-            'is_active' => true,
-            'is_trial' => false,
-            'status' => UserSubscription::STATUS_ACTIVE,
-            'notes' => 'Ücretsiz kullanım',
-            'feature_auto_dues' => false,
-            'feature_user_portal' => false,
-            'feature_reports' => false,
-            'feature_multi_apartment' => false,
-            'payment_method' => null,
-        ]);
+            SubscriptionItem::create([
+                'apartment_subscription_id' => $apartmentSubscription->id,
+                'subscription_id' => null,
+                'apartment_id' => $apartment->id,
+                'apartment_name' => $apartment->name,
+                'unit_count' => (int) $apartment->unit_count,
+                'price_band_id' => $band?->id,
+                'band_label' => $band?->label ?? 'Teklif',
+                'band_min_units' => $band?->min_units ?? (int) $apartment->unit_count,
+                'band_max_units' => $band?->max_units,
+                'amount' => 0,
+                'currency' => 'TRY',
+                'plan' => SubscriptionItem::PLAN_FREE,
+                'status' => SubscriptionItem::STATUS_ACTIVE,
+                'started_at' => $startedAt,
+                'expires_at' => null,
+                'ended_at' => null,
+            ]);
 
-        SubscriptionItem::create([
-            'apartment_subscription_id' => $apartmentSubscription->id,
-            'subscription_id' => $subscription->id,
-            'apartment_id' => $apartment->id,
-            'apartment_name' => $apartment->name,
-            'unit_count' => (int) $apartment->unit_count,
-            'price_band_id' => $band?->id,
-            'band_label' => $band?->label ?? 'Teklif',
-            'band_min_units' => $band?->min_units ?? (int) $apartment->unit_count,
-            'band_max_units' => $band?->max_units,
-            'amount' => 0,
-            'currency' => 'TRY',
-            'plan' => SubscriptionItem::PLAN_FREE,
-            'status' => SubscriptionItem::STATUS_ACTIVE,
-            'started_at' => $startedAt,
-            'expires_at' => null,
-            'ended_at' => null,
-        ]);
-
-        return $subscription;
+            return $apartmentSubscription;
+        });
     }
 
     private function carrierPackageId(): int

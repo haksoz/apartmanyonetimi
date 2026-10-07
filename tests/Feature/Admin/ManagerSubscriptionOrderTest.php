@@ -34,8 +34,8 @@ class ManagerSubscriptionOrderTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.managers.index'))
             ->assertOk()
-            ->assertSee('Abonelik kalemi yok.')
-            ->assertDontSee('Bekleyen sipariş var')
+            ->assertSee('Abonelik yok.')
+            ->assertDontSee('Bekleyen sipariş')
             ->assertDontSee($manager->name);
     }
 
@@ -77,8 +77,8 @@ class ManagerSubscriptionOrderTest extends TestCase
             ->get(route('admin.managers.index'))
             ->assertOk()
             ->assertSee('Küçük Apartman')
-            ->assertSee('150')
-            ->assertDontSee('Müşteriler')
+            ->assertDontSee('150')
+            ->assertDontSee('Müşteri yönetimi')
             ->assertDontSee('Apartmanlar');
 
         $this->actingAs($admin)
@@ -236,7 +236,7 @@ class ManagerSubscriptionOrderTest extends TestCase
             ->assertOk()
             ->assertSee('Aktif')
             ->assertSee('Ücretli')
-            ->assertSee('0 ₺')
+            ->assertDontSee('0 ₺')
             ->assertDontSee('Ücretli aç');
 
         $this->actingAs($admin)

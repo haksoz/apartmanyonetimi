@@ -234,11 +234,23 @@
                                     <span class="sidebar-text">Admin Kullanıcıları</span>
                                 </a>
                             @endif
-                            <a href="{{ route('admin.managers.index', ['view' => 'items']) }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.managers.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                            <a href="{{ route('admin.customers.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.customers.*') ? 'bg-sky-50 text-sky-800' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.592-2.641M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
+                                </svg>
+                                <span class="sidebar-text">Müşteriler</span>
+                            </a>
+                            <a href="{{ route('admin.managers.index', ['view' => 'items']) }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.managers.*') || request()->routeIs('admin.subscription-items.*') || request()->routeIs('admin.subscriptions.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.592-2.641m-3.958-5.599c.351.351.645.748.876 1.185M9 13.5V9.75a6 6 0 0112 0v3"/>
                                 </svg>
                                 <span class="sidebar-text">Abonelikler</span>
+                            </a>
+                            <a href="{{ route('admin.orders.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.orders.*') ? 'bg-amber-50 text-amber-800' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                <span class="sidebar-text">Siparişler</span>
                             </a>
 
                             <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Paket Yönetimi</div>
@@ -466,7 +478,7 @@
 
         {{-- Main Content --}}
         <main class="pt-16 lg:pl-72 sidebar-transition min-h-screen flex flex-col">
-            <div class="mx-auto max-w-7xl w-full px-2 py-8 sm:px-6 lg:px-8 flex-1">
+            <div class="mx-auto w-full px-2 py-8 sm:px-6 lg:px-8 flex-1 @yield('content_width', 'max-w-7xl')">
                 @if (session('impersonate_admin_id'))
                     <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center justify-between">
                         <div>

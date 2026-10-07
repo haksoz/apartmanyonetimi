@@ -9,9 +9,11 @@ use App\Http\Controllers\ApartmentWizardController;
 use App\Http\Controllers\ApartmentSwitchController;
 use App\Http\Controllers\Admin\AdminArchivedApartmentController;
 use App\Http\Controllers\Admin\AdminCommercialController;
+use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminImpersonateController;
 use App\Http\Controllers\Admin\AdminManagerController;
+use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminBankAccountController;
 use App\Http\Controllers\Admin\AdminPackageController;
 use App\Http\Controllers\Admin\AdminSettingsController;
@@ -38,6 +40,24 @@ use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', LandingController::class)->name('landing');
+Route::get('fiyatlandirma', [LandingController::class, 'pricing'])->name('pricing');
+Route::view('sss', 'microsite.faq')->name('faq');
+
+Route::view('yasal/mesafeli-satis-sozlesmesi', 'legal.placeholder', [
+    'title' => 'Mesafeli Satış Sözleşmesi',
+])->name('legal.distance-sales');
+Route::view('yasal/on-bilgilendirme-formu', 'legal.placeholder', [
+    'title' => 'Ön Bilgilendirme Formu',
+])->name('legal.pre-information');
+Route::view('yasal/gizlilik-ve-kvkk', 'legal.placeholder', [
+    'title' => 'Gizlilik ve KVKK',
+])->name('legal.privacy');
+Route::view('yasal/cerez-aydinlatma', 'legal.placeholder', [
+    'title' => 'Çerez Aydınlatma',
+])->name('legal.cookies');
+Route::view('yasal/iptal-ve-iade', 'legal.placeholder', [
+    'title' => 'İptal ve İade',
+])->name('legal.cancellation');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
@@ -212,7 +232,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/', AdminDashboardController::class)->name('dashboard');
     Route::get('archived-apartments', [AdminArchivedApartmentController::class, 'index'])->name('archived-apartments.index');
 
+    Route::get('customers', [AdminCustomerController::class, 'index'])->name('customers.index');
+    Route::get('customers/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
+    Route::patch('customers/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');
+    Route::patch('customers/{customer}/password', [AdminCustomerController::class, 'updatePassword'])->name('customers.password.update');
     Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
+    Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
+    Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::get('subscriptions/{subscription}', [AdminSubscriptionItemController::class, 'subscription'])->name('subscriptions.show');
     Route::get('subscription-items/{subscriptionItem}', [AdminSubscriptionItemController::class, 'show'])->name('subscription-items.show');
     Route::get('managers/{manager}', [AdminManagerController::class, 'show'])->name('managers.show');
     Route::patch('managers/{manager}/subscription/{subscription}/approve', [AdminManagerController::class, 'approveSubscriptionOrder'])->name('managers.subscription.approve');
@@ -264,6 +291,7 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
         Route::get('create', [SubscriberSubscriptionController::class, 'create'])->name('create');
         Route::post('/', [SubscriberSubscriptionController::class, 'store'])->name('store');
         Route::get('{subscription}/receipt', [SubscriberSubscriptionController::class, 'receipt'])->name('receipt');
+        Route::post('{subscription}/cancel', [SubscriberSubscriptionController::class, 'cancel'])->name('cancel');
         Route::post('{subscription}/payment-info', [SubscriberSubscriptionController::class, 'paymentInfo'])->name('payment-info');
     });
 });

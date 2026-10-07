@@ -4,8 +4,8 @@
 
 @section('content')
     <div class="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-sm">
-        <h1 class="text-2xl font-bold text-slate-950">Ücretsiz Deneme Başlatın</h1>
-        <p class="mt-2 text-sm text-slate-500">2 ay ücretsiz kullanın, ardından paketinizi seçin.</p>
+        <h1 class="text-2xl font-bold text-slate-950">Ücretsiz Hesabınızı Oluşturun</h1>
+        <p class="mt-2 text-sm text-slate-500">Hesabınızı oluşturun, apartmanınızı ekleyin ve temel özellikleri ücretsiz kullanmaya başlayın.</p>
 
         <form method="POST" action="{{ route('register') }}" class="mt-6 space-y-4">
             @csrf

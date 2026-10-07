@@ -22,6 +22,10 @@ class UserSubscription extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const CANCELLED_BY_CUSTOMER = 'customer';
+
+    public const CANCELLED_BY_ADMIN = 'admin';
+
     protected $fillable = [
         'order_number',
         'user_id',
@@ -41,6 +45,7 @@ class UserSubscription extends Model
         'feature_multi_apartment',
         'multi_apartment_limit_override',
         'status',
+        'cancelled_by',
         'payment_method',
         'receipt_path',
         'receipt_reference',
@@ -83,6 +88,20 @@ class UserSubscription extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(SubscriptionPayment::class, 'subscription_id');
+    }
+
+    /**
+     * Gerçek satın alma. Yalnızca ücretsiz temel kullanım kalemi taşıyan başlıklar sipariş değildir.
+     */
+    public function scopeCommercial(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query) {
+            $query->whereDoesntHave('items', function (Builder $query) {
+                $query->where('plan', SubscriptionItem::PLAN_FREE);
+            })->orWhereHas('items', function (Builder $query) {
+                $query->where('plan', '!=', SubscriptionItem::PLAN_FREE);
+            });
+        });
     }
 
     public function scopeActive(Builder $query): Builder
@@ -138,6 +157,11 @@ class UserSubscription extends Model
     public function isPending(): bool
     {
         return $this->status === self::STATUS_PENDING;
+    }
+
+    public function hasPaymentProof(): bool
+    {
+        return filled($this->receipt_path) || filled($this->receipt_reference);
     }
 
     public function hasFeature(string $key): bool

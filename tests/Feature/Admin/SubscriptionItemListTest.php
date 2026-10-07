@@ -60,7 +60,7 @@ class SubscriptionItemListTest extends TestCase
             ->get(route('admin.managers.index'))
             ->assertOk()
             ->assertSee('Sipariş no')
-            ->assertDontSee('Müşteriler')
+            ->assertDontSee('Müşteri yönetimi')
             ->assertDontSee('Apartmanlar')
             ->assertSee('Abonelik No')
             ->assertSee('Canli Apartman')
@@ -74,7 +74,7 @@ class SubscriptionItemListTest extends TestCase
             ->assertSee('01.03.2026')
             ->assertSee('15.04.2026')
             ->assertDontSee('01.01.2030')
-            ->assertSee('150')
+            ->assertDontSee('150')
             ->assertSee('Aktif')
             ->assertSee('SIP-26-ODEYEN')
             ->assertDontSee('Kurucu Kisi')
@@ -131,7 +131,7 @@ class SubscriptionItemListTest extends TestCase
         $this->assertNotSame('ABN-26-000001', 'SIP-26-309232');
         $this->assertNull($order->fresh()->subscription_id);
 
-        $this->actingAs($admin)
+        $html = $this->actingAs($admin)
             ->get(route('admin.managers.index', ['view' => 'items']))
             ->assertOk()
             ->assertSee('Abonelik No')
@@ -142,14 +142,20 @@ class SubscriptionItemListTest extends TestCase
             ->assertSee('Plan')
             ->assertSee('Başlangıç')
             ->assertSee('Bitiş')
-            ->assertSee('Tutar')
+            ->assertDontSee('Tutar')
             ->assertSee('Durum')
             ->assertSee('Detay')
             ->assertSee('ABN-26-000001')
-            ->assertSee('SIP-26-309232')
+            ->assertSee('Ücretli')
+            ->assertSee('01.11.2026')
+            ->assertSee('01.12.2026')
+            ->assertDontSee('SIP-26-309232')
             ->assertSee('SIP-26-ESKI')
-            ->assertSeeInOrder(['Bagli Apartman', 'ABN-26-000001', 'Bagli Yonetici', 'SIP-26-309232'])
-            ->assertSeeInOrder(['Eski Apartman', '—', 'Eski Yonetici', 'SIP-26-ESKI']);
+            ->assertSeeInOrder(['Bagli Apartman', 'ABN-26-000001', 'Bagli Yonetici', 'Bagli Odeyen'])
+            ->assertSeeInOrder(['Eski Apartman', '—', 'Eski Yonetici', 'SIP-26-ESKI'])
+            ->getContent();
+
+        $this->assertSame(2, substr_count($html, 'ABN-26-000001'));
     }
 
     public function test_one_order_with_two_apartments_and_past_items_are_separate_rows(): void
@@ -202,7 +208,7 @@ class SubscriptionItemListTest extends TestCase
             ->assertSee('SIP-26-ESKI')
             ->getContent();
 
-        $this->assertSame(2, substr_count($html, 'SIP-26-AB'));
+        $this->assertSame(4, substr_count($html, 'SIP-26-AB'));
     }
 
     public function test_items_view_omits_apartments_and_orders_without_items(): void
@@ -223,7 +229,7 @@ class SubscriptionItemListTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.managers.index', ['view' => 'items']))
             ->assertOk()
-            ->assertSee('Abonelik kalemi yok.')
+            ->assertSee('Abonelik yok.')
             ->assertDontSee('Kalemsiz Apartman')
             ->assertDontSee('SIP-LEGACY-ONLY');
     }
@@ -355,6 +361,207 @@ class SubscriptionItemListTest extends TestCase
             ->assertOk()
             ->assertSee('Kalem 01')
             ->assertDontSee('Kalem 21');
+    }
+
+    public function test_multiple_periods_of_one_subscription_are_a_single_list_row(): void
+    {
+        $this->travelTo('2026-10-05 12:00:00');
+
+        $admin = User::factory()->admin()->create();
+        $owner = User::factory()->create(['name' => 'Dertli Yonetici']);
+        $formerPayer = User::factory()->create(['name' => 'Eski Odeyen']);
+        $payer = User::factory()->create(['name' => 'Guncel Odeyen', 'email' => 'guncel-odeyen@example.com']);
+        $apartment = Apartment::factory()->forUser($owner)->create(['name' => 'Dertli Deliler']);
+        $apartment->members()->attach($owner->id, ['role' => 'owner', 'is_active' => true]);
+        $record = Subscription::create([
+            'apartment_id' => $apartment->id,
+            'subscription_no' => 'ABN-26-000001',
+            'status' => Subscription::STATUS_ACTIVE,
+            'started_at' => '2026-10-04 09:00:00',
+        ]);
+        $freeOrder = UserSubscription::factory()->create([
+            'user_id' => $formerPayer->id,
+            'subscription_id' => $record->id,
+            'order_number' => 'SIP-26-103224',
+            'status' => UserSubscription::STATUS_CANCELLED,
+            'is_active' => false,
+            'price' => 0,
+        ]);
+        $this->makeItem($freeOrder, $apartment, [
+            'apartment_subscription_id' => $record->id,
+            'plan' => SubscriptionItem::PLAN_FREE,
+            'status' => SubscriptionItem::STATUS_CANCELLED,
+            'amount' => 0,
+            'started_at' => '2026-10-04',
+            'expires_at' => '2026-10-05',
+            'ended_at' => '2026-10-05 10:00:00',
+        ]);
+        $paidOrder = UserSubscription::factory()->create([
+            'user_id' => $payer->id,
+            'subscription_id' => $record->id,
+            'order_number' => 'SIP-26-300918',
+            'status' => UserSubscription::STATUS_ACTIVE,
+            'is_active' => true,
+            'price' => 150,
+        ]);
+        $paid = $this->makeItem($paidOrder, $apartment, [
+            'apartment_subscription_id' => $record->id,
+            'plan' => SubscriptionItem::PLAN_PAID,
+            'status' => SubscriptionItem::STATUS_ACTIVE,
+            'amount' => 150,
+            'started_at' => '2026-10-05',
+            'expires_at' => '2026-11-05',
+        ]);
+
+        $html = $this->actingAs($admin)
+            ->get(route('admin.managers.index', ['view' => 'items']))
+            ->assertOk()
+            ->assertSee('Dertli Deliler')
+            ->assertSee('ABN-26-000001')
+            ->assertSee('Dertli Yonetici')
+            ->assertSee('Guncel Odeyen')
+            ->assertSee('Ücretli')
+            ->assertSee('05.10.2026')
+            ->assertSee('05.11.2026')
+            ->assertDontSee('150')
+            ->assertSee('Aktif')
+            ->assertDontSee('Ücretsiz')
+            ->assertDontSee('İptal')
+            ->assertDontSee('SIP-26-103224')
+            ->assertDontSee('SIP-26-300918')
+            ->assertDontSee('Bekleyen sipariş')
+            ->assertDontSee('Eski Odeyen')
+            ->assertDontSee('04.10.2026')
+            ->getContent();
+
+        $this->assertSame(2, substr_count($html, 'ABN-26-000001'));
+        $this->assertSame(2, substr_count($html, 'Dertli Deliler'));
+        $this->assertSame($paid->id, $record->currentItem()->id);
+
+        $this->actingAs($admin)
+            ->get(route('admin.managers.index', ['view' => 'items', 'search' => 'ABN-26-000001']))
+            ->assertOk()
+            ->assertSee('Dertli Deliler');
+
+        $this->actingAs($admin)
+            ->get(route('admin.managers.index', ['view' => 'items', 'search' => 'Dertli Deliler']))
+            ->assertOk()
+            ->assertSee('ABN-26-000001');
+
+        $this->actingAs($admin)
+            ->get(route('admin.managers.index', ['view' => 'items', 'search' => 'Dertli Yonetici']))
+            ->assertOk()
+            ->assertSee('ABN-26-000001');
+
+        $this->actingAs($admin)
+            ->get(route('admin.managers.index', ['view' => 'items', 'search' => 'Guncel Odeyen']))
+            ->assertOk()
+            ->assertSee('ABN-26-000001');
+
+        $this->actingAs($admin)
+            ->get(route('admin.managers.index', ['view' => 'items', 'search' => 'SIP-26-103224']))
+            ->assertOk()
+            ->assertDontSee('ABN-26-000001');
+
+        $this->actingAs($admin)
+            ->get(route('admin.managers.index', ['view' => 'items', 'search' => 'Eski Odeyen']))
+            ->assertOk()
+            ->assertDontSee('ABN-26-000001');
+
+        $this->actingAs($admin)
+            ->get(route('admin.subscriptions.show', $record))
+            ->assertOk()
+            ->assertSee('Abonelik Detayı')
+            ->assertSee('Dönem geçmişi')
+            ->assertSee('ABN-26-000001')
+            ->assertSee('04.10.2026')
+            ->assertSee('Ücretli')
+            ->assertSee('Ücretsiz')
+            ->assertSee('150')
+            ->assertSee('Ücretsiz · 0 ₺')
+            ->assertSee('Aktif')
+            ->assertSee('İptal')
+            ->assertSee('SIP-26-300918')
+            ->assertSee('SIP-26-103224')
+            ->assertSee('Guncel Odeyen')
+            ->assertSee('Eski Odeyen')
+            ->assertSeeInOrder(['Ücretli · 150 ₺', 'Ücretsiz · 0 ₺'])
+            ->assertSee('05.10.2026 - 05.11.2026')
+            ->assertSee('04.10.2026 - 05.10.2026')
+            ->assertSee(route('admin.orders.show', $paidOrder), false);
+
+        $legacy = $this->makeItem(
+            UserSubscription::factory()->create([
+                'user_id' => $payer->id,
+                'order_number' => 'SIP-26-LEGACY',
+            ]),
+            Apartment::factory()->forUser($payer)->create(['name' => 'Legacy Apartman']),
+            ['plan' => SubscriptionItem::PLAN_FREE, 'status' => SubscriptionItem::STATUS_ACTIVE]
+        );
+
+        $this->actingAs($admin)
+            ->get(route('admin.subscription-items.show', $legacy))
+            ->assertOk()
+            ->assertSee('Legacy Apartman')
+            ->assertSee('SIP-26-LEGACY')
+            ->assertDontSee('ABN-26-000001');
+    }
+
+    public function test_status_warns_when_an_active_subscription_has_a_pending_order(): void
+    {
+        $this->travelTo('2026-10-05 12:00:00');
+
+        $admin = User::factory()->admin()->create();
+        $owner = User::factory()->create(['name' => 'Dertli Yonetici']);
+        $payer = User::factory()->create(['name' => 'Guncel Odeyen']);
+        $apartment = Apartment::factory()->forUser($owner)->create(['name' => 'Dertli Deliler']);
+        $apartment->members()->attach($owner->id, ['role' => 'owner', 'is_active' => true]);
+        $record = Subscription::create([
+            'apartment_id' => $apartment->id,
+            'subscription_no' => 'ABN-26-000001',
+            'status' => Subscription::STATUS_ACTIVE,
+            'started_at' => '2026-10-04 09:00:00',
+        ]);
+        $paidOrder = UserSubscription::factory()->create([
+            'user_id' => $payer->id,
+            'subscription_id' => $record->id,
+            'order_number' => 'SIP-26-300918',
+            'status' => UserSubscription::STATUS_ACTIVE,
+            'is_active' => true,
+            'price' => 150,
+        ]);
+        $this->makeItem($paidOrder, $apartment, [
+            'apartment_subscription_id' => $record->id,
+            'plan' => SubscriptionItem::PLAN_PAID,
+            'status' => SubscriptionItem::STATUS_ACTIVE,
+            'amount' => 150,
+            'started_at' => '2026-10-05',
+            'expires_at' => '2026-11-05',
+        ]);
+        $pendingOrder = UserSubscription::factory()->create([
+            'user_id' => $payer->id,
+            'subscription_id' => $record->id,
+            'order_number' => 'SIP-26-BEKLEYEN',
+            'status' => UserSubscription::STATUS_PENDING,
+            'is_active' => false,
+            'price' => 150,
+        ]);
+        $this->makeItem($pendingOrder, $apartment, [
+            'apartment_subscription_id' => $record->id,
+            'plan' => SubscriptionItem::PLAN_PAID,
+            'status' => SubscriptionItem::STATUS_PENDING,
+            'amount' => 150,
+            'started_at' => null,
+            'expires_at' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.managers.index', ['view' => 'items']))
+            ->assertOk()
+            ->assertSee('Aktif')
+            ->assertSee('rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Bekleyen sipariş', false)
+            ->assertDontSee('SIP-26-BEKLEYEN')
+            ->assertDontSee('SIP-26-300918');
     }
 
     private function makeItem(UserSubscription $subscription, Apartment $apartment, array $overrides = []): SubscriptionItem

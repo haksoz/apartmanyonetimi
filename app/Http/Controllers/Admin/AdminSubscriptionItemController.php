@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 
 class AdminSubscriptionItemController extends Controller
@@ -11,6 +12,12 @@ class AdminSubscriptionItemController extends Controller
     {
         $subscriptionItem->load([
             'apartmentSubscription.items.subscription.user',
+            'apartmentSubscription.items.subscription.payments',
+            'apartmentSubscription.items.apartment',
+            'apartmentSubscription.apartment.members' => function ($query) {
+                $query->where('apartment_user.role', 'owner')
+                    ->where('apartment_user.is_active', true);
+            },
             'subscription.user',
             'subscription.payments',
             'apartment.members' => function ($query) {
@@ -20,18 +27,34 @@ class AdminSubscriptionItemController extends Controller
         ]);
 
         $record = $subscriptionItem->apartmentSubscription;
-        $period = $subscriptionItem;
 
-        if ($record) {
-            $period = $record->items->first(fn (SubscriptionItem $row) => $row->isCovering())
-                ?? $record->items->first(fn (SubscriptionItem $row) => $row->status === SubscriptionItem::STATUS_ACTIVE && $row->ended_at === null)
-                ?? $subscriptionItem;
-        }
+        return view('admin.subscription-items.show', $this->viewData($record, $subscriptionItem));
+    }
 
-        return view('admin.subscription-items.show', [
-            'item' => $subscriptionItem,
+    public function subscription(Subscription $subscription)
+    {
+        $subscription->load([
+            'apartment.members' => function ($query) {
+                $query->where('apartment_user.role', 'owner')
+                    ->where('apartment_user.is_active', true);
+            },
+            'items.subscription.user',
+            'items.subscription.payments',
+            'items.apartment',
+        ]);
+
+        return view('admin.subscription-items.show', $this->viewData($subscription, $subscription->currentItem()));
+    }
+
+    private function viewData(?Subscription $record, ?SubscriptionItem $opened): array
+    {
+        $period = $record?->currentItem() ?? $opened;
+
+        return [
+            'item' => $opened ?? $period,
             'record' => $record,
             'period' => $period,
-        ]);
+            'history' => $record ? $record->historyItems() : collect(),
+        ];
     }
 }

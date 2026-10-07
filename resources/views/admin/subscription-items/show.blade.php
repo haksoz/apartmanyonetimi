@@ -3,6 +3,9 @@
 @section('title', 'Abonelik Detayı')
 
 @section('content')
+    @if ($record)
+        @include('admin.subscription-items.record')
+    @else
     @php
         $subscription = $item->subscription;
         $payer = $period->subscription?->user ?? $subscription?->user;
@@ -96,8 +99,8 @@
             @if ($item->apartment)
                 <a href="{{ route('apartments.show', $item->apartment) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Apartman detayına git</a>
             @endif
-            @if ($payer)
-                <a href="{{ route('admin.managers.show', $payer) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sipariş detayına git</a>
+            @if ($subscription)
+                <a href="{{ route('admin.orders.show', $subscription) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sipariş detayına git</a>
             @endif
         </div>
 
@@ -240,4 +243,5 @@
             @endif
         </section>
     </div>
+    @endif
 @endsection

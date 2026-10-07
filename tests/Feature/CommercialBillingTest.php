@@ -7,6 +7,7 @@ use App\Models\PriceBand;
 use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
+use App\Models\UserSubscription;
 use App\Support\CurrentApartment;
 use App\Support\FeatureGate;
 use App\Support\SubscriptionCheckout;
@@ -78,11 +79,11 @@ class CommercialBillingTest extends TestCase
         $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $item->status);
         $this->assertEquals(0, (float) $item->amount);
         $this->assertNull($item->expires_at);
-        $this->assertSame(0, $item->subscription->payments()->count());
-        $this->assertSame('hizmet-bedeli', $item->subscription->package->slug);
+        $this->assertNull($item->subscription_id);
         $this->assertNull($item->ended_at);
         $this->assertNotNull($item->started_at);
         $this->assertSame(1, Subscription::query()->count());
+        $this->assertSame(0, UserSubscription::query()->count());
 
         $record = Subscription::query()->firstOrFail();
         $this->assertSame($apartment->id, $record->apartment_id);
@@ -91,9 +92,7 @@ class CommercialBillingTest extends TestCase
         $this->assertNotNull($record->uuid);
         $this->assertNull($record->ended_at);
         $this->assertTrue($record->started_at->equalTo($item->started_at));
-        $this->assertSame($record->id, $item->subscription->subscription_id);
         $this->assertSame($record->id, $item->apartment_subscription_id);
-        $this->assertSame($item->subscription->id, $item->subscription_id);
     }
 
     public function test_each_create_flow_opens_a_free_period_and_factory_does_not(): void
@@ -128,24 +127,21 @@ class CommercialBillingTest extends TestCase
         foreach (['Ilk Apartman', 'Ikinci Apartman', 'Ucuncu Apartman'] as $name) {
             $apartment = Apartment::where('name', $name)->firstOrFail();
             $item = SubscriptionItem::query()->where('apartment_id', $apartment->id)->firstOrFail();
-            $this->assertSame($user->id, $item->subscription->user_id);
+            $this->assertNull($item->subscription_id);
             $this->assertSame(SubscriptionItem::PLAN_FREE, $item->plan);
             $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $item->status);
             $this->assertNull($item->expires_at);
             $this->assertNull($item->ended_at);
             $this->assertNotNull($item->started_at);
-            $this->assertSame('0.00', $item->subscription->price);
-            $this->assertSame(0, $item->subscription->payments()->count());
-            $this->assertSame('hizmet-bedeli', $item->subscription->package->slug);
             $this->assertNotNull($item->apartmentSubscription);
             $this->assertSame($apartment->id, $item->apartmentSubscription->apartment_id);
-            $this->assertSame($item->apartmentSubscription->id, $item->subscription->subscription_id);
-            $this->assertSame($item->subscription->id, $item->subscription_id);
+            $this->assertSame($item->apartmentSubscription->id, $item->apartment_subscription_id);
             $this->assertNotNull($item->apartmentSubscription->subscription_no);
             $this->assertNotNull($item->apartmentSubscription->uuid);
         }
 
         $this->assertSame(3, Subscription::query()->count());
+        $this->assertSame(0, UserSubscription::query()->count());
     }
 
     public function test_admin_apartment_create_uses_the_shared_free_subscription(): void
@@ -165,19 +161,16 @@ class CommercialBillingTest extends TestCase
         $apartment = Apartment::where('name', 'Admin Apartmani')->firstOrFail();
         $record = Subscription::query()->firstOrFail();
         $item = SubscriptionItem::query()->where('apartment_id', $apartment->id)->firstOrFail();
-        $order = $item->subscription;
 
         $this->assertSame(1, Subscription::query()->count());
+        $this->assertSame(0, UserSubscription::query()->count());
         $this->assertSame($apartment->id, $record->apartment_id);
         $this->assertNotNull($record->subscription_no);
         $this->assertNotNull($record->uuid);
-        $this->assertSame($record->id, $order->subscription_id);
         $this->assertSame($record->id, $item->apartment_subscription_id);
-        $this->assertSame($order->id, $item->subscription_id);
+        $this->assertNull($item->subscription_id);
         $this->assertSame(SubscriptionItem::PLAN_FREE, $item->plan);
         $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $item->status);
-        $this->assertSame('Ücretsiz kullanım', $order->notes);
-        $this->assertSame(0, $order->payments()->count());
     }
 
     public function test_a_failed_apartment_create_rolls_back_the_free_subscription(): void
@@ -232,13 +225,14 @@ class CommercialBillingTest extends TestCase
         $this->assertEquals(0, (float) $free->amount);
         $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $free->status);
         $this->assertNull($free->ended_at);
+        $this->assertNull($free->subscription_id);
         $this->assertNotNull($free->apartment_subscription_id);
-        $this->assertSame($free->apartment_subscription_id, $free->subscription->subscription_id);
 
         $this->assertSame($free->apartment_subscription_id, $item->apartment_subscription_id);
-        $this->assertSame($free->subscription->subscription_id, $item->subscription->subscription_id);
+        $this->assertSame($free->apartment_subscription_id, $item->subscription->subscription_id);
         $this->assertSame($item->subscription->id, $item->subscription_id);
         $this->assertNotSame($free->subscription_id, $item->subscription_id);
+        $this->assertSame(1, UserSubscription::query()->count());
         $this->assertSame(1, Subscription::query()->count());
         $this->assertSame(0, $item->subscription->payments()->count());
     }
