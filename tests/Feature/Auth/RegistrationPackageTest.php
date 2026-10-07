@@ -34,6 +34,8 @@ class RegistrationPackageTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'human_answer' => 5,
+            'accept_membership' => '1',
+            'accept_privacy' => '1',
         ]);
 
         $response->assertRedirect(route('subscriber.dashboard'));

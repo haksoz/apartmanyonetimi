@@ -5,7 +5,7 @@
 @section('content')
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-slate-900">Fiyat ve özellikler</h1>
-        <p class="mt-1 text-sm text-slate-500">Daire bandı, kampanya ve özellik erişimi. 151+ fiyatı apartman kaydındaki teklif alanından girilir.</p>
+        <p class="mt-1 text-sm text-slate-500">Daire bandı, kampanya ve özellik erişimi. 101 ve üzeri daire teklif talebine gider. 151+ için kayıtlı özel fiyat, apartman kaydındaki teklif alanından girilir.</p>
     </div>
 
     @if (session('status'))

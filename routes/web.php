@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\AdminManagerController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminBankAccountController;
 use App\Http\Controllers\Admin\AdminPackageController;
+use App\Http\Controllers\Admin\AdminQuoteRequestController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Admin\AdminSubscriptionItemController;
 use App\Http\Controllers\Admin\AdminUserController;
@@ -43,6 +44,13 @@ Route::get('/', LandingController::class)->name('landing');
 Route::get('fiyatlandirma', [LandingController::class, 'pricing'])->name('pricing');
 Route::view('sss', 'microsite.faq')->name('faq');
 
+Route::view('yasal/daire-sakini-verisi', 'legal.placeholder', [
+    'title' => 'Daire Sakini Verisi',
+])->name('legal.resident-data');
+Route::view('yasal/uyelik-sozlesmesi', 'legal.placeholder', [
+    'title' => 'Üyelik Sözleşmesi',
+    'body' => 'legal.content.membership',
+])->name('legal.membership');
 Route::view('yasal/mesafeli-satis-sozlesmesi', 'legal.placeholder', [
     'title' => 'Mesafeli Satış Sözleşmesi',
 ])->name('legal.distance-sales');
@@ -51,6 +59,7 @@ Route::view('yasal/on-bilgilendirme-formu', 'legal.placeholder', [
 ])->name('legal.pre-information');
 Route::view('yasal/gizlilik-ve-kvkk', 'legal.placeholder', [
     'title' => 'Gizlilik ve KVKK',
+    'body' => 'legal.content.privacy',
 ])->name('legal.privacy');
 Route::view('yasal/cerez-aydinlatma', 'legal.placeholder', [
     'title' => 'Çerez Aydınlatma',
@@ -247,6 +256,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('managers/{manager}/subscription/{subscription}/reactivate', [AdminManagerController::class, 'reactivateSubscription'])->name('managers.subscription.reactivate');
     Route::post('managers/{manager}/subscription/{subscription}/cancel', [AdminManagerController::class, 'cancelSubscription'])->name('managers.subscription.cancel');
     Route::delete('managers/{manager}', [AdminManagerController::class, 'destroy'])->name('managers.destroy');
+
+    Route::get('quote-requests', [AdminQuoteRequestController::class, 'index'])->name('quote-requests.index');
+    Route::patch('quote-requests/{quoteRequest}', [AdminQuoteRequestController::class, 'update'])->name('quote-requests.update');
 
     Route::get('commercial', [AdminCommercialController::class, 'index'])->name('commercial.index');
     Route::patch('commercial/bands/{band}', [AdminCommercialController::class, 'updateBand'])->name('commercial.bands.update');

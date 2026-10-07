@@ -29,7 +29,7 @@ class SingleApartmentOrderTest extends TestCase
             ->assertSee('Ücretli Pakete Geç')
             ->assertSee('name="apartment_ids[]"', false)
             ->assertSee('type="radio"', false)
-            ->assertDontSee('type="checkbox"', false);
+            ->assertSee('name="accept_sales"', false);
 
         $this->assertNotSame($first->id, $second->id);
     }
@@ -62,6 +62,7 @@ class SingleApartmentOrderTest extends TestCase
                 'apartment_ids' => [$other->id],
                 'period' => 'monthly',
                 'payment_method' => 'havale',
+                'accept_sales' => '1',
             ])
             ->assertSessionHasErrors('apartment_ids');
 
@@ -322,6 +323,7 @@ class SingleApartmentOrderTest extends TestCase
             'apartment_ids' => [$apartment->id],
             'period' => 'monthly',
             'payment_method' => 'havale',
+            'accept_sales' => '1',
         ];
     }
 

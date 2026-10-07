@@ -11,6 +11,10 @@
         <p class="mt-2 text-sm text-slate-500">Yönetmeye başlamak için apartmanınızı tanımlayın.</p>
     </div>
 
+    @if (session('status'))
+        <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
+    @endif
+
     <form method="POST" action="{{ route('onboarding.store') }}" class="rounded-2xl bg-white p-6 shadow-sm space-y-5">
         @csrf
 
@@ -29,19 +33,16 @@
 
         <div>
             <label class="text-sm font-medium text-slate-700">Toplam Daire Sayısı <span class="text-red-500">*</span></label>
-            <input type="number" name="unit_count" value="{{ old('unit_count', 12) }}" min="1" max="500"
+            <input type="number" id="unit-count" name="unit_count" value="{{ old('unit_count', 12) }}" min="1" max="500"
                 class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300" required>
             @error('unit_count') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
-            <p class="mt-1 text-xs text-slate-500">1–100 daire ücretsiz açılır. 101–150 daire için ücretli kullanım gerekir. 151 ve üzeri teklif fiyatı olmadan açılmaz.</p>
+            <p class="mt-1 text-xs text-slate-500">1–100 daire ücretsiz açılır. 101 ve üzeri daire için özel teklif alınır.</p>
+            <p id="quote-notice" class="mt-3 hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanmaktadır. Talebiniz alınmıştır. Temsilcimiz sizinle iletişime geçerek size özel teklifinizi paylaşacaktır.</p>
         </div>
 
-        <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-4">
-            <input type="checkbox" name="wants_paid" value="1" class="mt-1" {{ old('wants_paid') ? 'checked' : '' }}>
-            <span>
-                <span class="block text-sm font-semibold text-slate-900">Ücretli kullanım</span>
-                <span class="block text-sm text-slate-500">101 ve üzeri daire ücretsiz açılamaz. Ücretli özellikleri bu apartman için açmak istiyorsanız işaretleyin.</span>
-            </span>
-        </label>
+        <div id="resident-consent">
+            @include('partials.accept-resident-data')
+        </div>
 
         <div class="space-y-3 pt-2">
             <label class="text-sm font-medium text-slate-700">Bu apartmanı hangi sıfatla yönetiyorsunuz?</label>
@@ -96,5 +97,21 @@
             }
         });
     });
+
+    (function () {
+        const count = document.getElementById('unit-count');
+        const notice = document.getElementById('quote-notice');
+        const resident = document.getElementById('resident-consent');
+        if (!count || !notice || !resident) return;
+        const input = resident.querySelector('input[name="accept_resident_data"]');
+        const sync = function () {
+            const quote = Number(count.value) >= 101;
+            notice.classList.toggle('hidden', !quote);
+            resident.classList.toggle('hidden', quote);
+            if (input) input.required = !quote;
+        };
+        count.addEventListener('input', sync);
+        sync();
+    })();
 </script>
 @endsection

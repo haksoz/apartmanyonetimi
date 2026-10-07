@@ -13,11 +13,14 @@ use App\Models\DueBatch;
 use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
+use App\Models\QuoteRequest;
 use App\Models\SubscriptionItem;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
 use App\Models\UnitOwnerHistory;
+use App\Support\ApartmentCommercial;
 use App\Support\CurrentApartment;
+use App\Support\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -72,11 +75,15 @@ class ApartmentController extends Controller
         ]);
 
         $user = auth()->user();
-        $decision = app(\App\Support\ApartmentCommercial::class)->assess((int) $validated['unit_count'], $request->boolean('wants_paid'));
+        $decision = app(ApartmentCommercial::class)->assess((int) $validated['unit_count']);
 
-        if (! $decision['allowed']) {
-            return back()->withErrors(['unit_count' => $decision['message']])->withInput();
+        if ($decision['quote']) {
+            QuoteRequest::record($user, $validated['name'], (int) $validated['unit_count']);
+
+            return back()->with('status', ApartmentCommercial::QUOTE_MESSAGE)->withInput();
         }
+
+        app(LegalConsent::class)->requireForApartment($request, false);
 
         $apartment = DB::transaction(function () use ($validated, $user, $decision) {
             $apartment = Apartment::create([
@@ -119,13 +126,7 @@ class ApartmentController extends Controller
         });
 
         $currentApartment->setFor($user, $apartment->id);
-
-        if ($decision['plan'] === 'paid' && $user->isSubscriber()) {
-            $subscription = app(\App\Support\SubscriptionCheckout::class)->openPending($user, collect([$apartment]), 'monthly', 'havale');
-
-            return redirect()->route('subscriber.subscriptions.receipt', $subscription)
-                ->with('status', 'Apartman oluşturuldu. Ücretli kullanım için ödemenizi tamamlayın.');
-        }
+        app(LegalConsent::class)->recordResidentData($user, $apartment, $request);
 
         return redirect()->route('apartments.wizard.cash-box', $apartment)
             ->with('status', 'Apartman oluşturuldu. Şimdi kasanızı oluşturun.');

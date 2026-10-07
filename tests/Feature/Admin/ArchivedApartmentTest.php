@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Apartment;
 use App\Models\User;
+use App\Support\SubscriptionCheckout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,6 +21,7 @@ class ArchivedApartmentTest extends TestCase
             'unit_count' => 10,
         ]);
         $active->members()->attach($manager->id, ['role' => 'owner', 'is_active' => true]);
+        app(SubscriptionCheckout::class)->openFree($manager, $active);
         $retired = Apartment::factory()->forUser($manager)->create([
             'name' => 'Silinmiş Apartman',
             'is_active' => false,
@@ -38,6 +40,7 @@ class ArchivedApartmentTest extends TestCase
                 'apartment_ids' => [Apartment::where('name', 'Silinmiş Apartman')->value('id')],
                 'period' => 'monthly',
                 'payment_method' => 'havale',
+                'accept_sales' => '1',
             ])
             ->assertSessionHasErrors('apartment_ids');
 

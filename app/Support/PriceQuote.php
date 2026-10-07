@@ -16,6 +16,10 @@ class PriceQuote
             return $this->quoteResult(null, null, true, 'Bu daire sayısı için tanımlı bir fiyat bandı yok.');
         }
 
+        if ($unitCount > ApartmentCommercial::FREE_UNIT_LIMIT && ! $band->is_quote) {
+            return $this->quoteResult($band, null, true, '101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanır.');
+        }
+
         if ($band->is_quote) {
             $custom = $period === 'yearly'
                 ? $apartment?->custom_yearly_price

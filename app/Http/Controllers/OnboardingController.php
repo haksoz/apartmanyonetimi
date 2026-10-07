@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\QuoteRequest;
 use App\Models\Unit;
+use App\Support\ApartmentCommercial;
 use App\Support\CurrentApartment;
+use App\Support\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -39,13 +42,17 @@ class OnboardingController extends Controller
         ]);
 
         $user = auth()->user();
-        $decision = app(\App\Support\ApartmentCommercial::class)->assess((int) $validated['unit_count'], $request->boolean('wants_paid'));
+        $decision = app(ApartmentCommercial::class)->assess((int) $validated['unit_count']);
 
-        if (! $decision['allowed']) {
-            return back()->withErrors(['unit_count' => $decision['message']])->withInput();
+        if ($decision['quote']) {
+            QuoteRequest::record($user, $validated['name'], (int) $validated['unit_count']);
+
+            return back()->with('status', ApartmentCommercial::QUOTE_MESSAGE)->withInput();
         }
 
-        $apartment = DB::transaction(function () use ($validated, $user, $currentApartment, $decision) {
+        app(LegalConsent::class)->requireForApartment($request, false);
+
+        $apartment = DB::transaction(function () use ($validated, $user, $currentApartment, $decision, $request) {
             $apartment = \App\Models\Apartment::create([
                 'user_id'    => $user->id,
                 'name'       => $validated['name'],
@@ -117,16 +124,10 @@ class OnboardingController extends Controller
             }
 
             $currentApartment->setFor($user, $apartment->id);
+            app(LegalConsent::class)->recordResidentData($user, $apartment, $request);
 
             return $apartment;
         });
-
-        if ($decision['plan'] === 'paid' && $user->isSubscriber()) {
-            $subscription = app(\App\Support\SubscriptionCheckout::class)->openPending($user, collect([$apartment]), 'monthly', 'havale');
-
-            return redirect()->route('subscriber.subscriptions.receipt', $subscription)
-                ->with('status', 'Apartmanınız oluşturuldu. Ücretli kullanım için ödemenizi tamamlayın.');
-        }
 
         return redirect()->route('apartments.wizard.cash-box', $apartment)
             ->with('status', 'Apartmanınız oluşturuldu. Şimdi kasanızı oluşturun.');

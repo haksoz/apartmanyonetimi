@@ -130,6 +130,7 @@ class ManagerHandoffCommercialTest extends TestCase
                 'apartment_ids' => [$apartment->id],
                 'period' => 'yearly',
                 'payment_method' => 'havale',
+                'accept_sales' => '1',
             ])
             ->assertRedirect();
 

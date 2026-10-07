@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -61,6 +62,11 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'human_answer' => ['required', 'integer'],
             'company' => ['prohibited'],
+            'accept_membership' => ['accepted'],
+            'accept_privacy' => ['accepted'],
+        ], [
+            'accept_membership.accepted' => 'Devam etmek için üyelik sözleşmesini kabul edin.',
+            'accept_privacy.accepted' => 'Devam etmek için gizlilik ve KVKK aydınlatmasını kabul edin.',
         ]);
 
         $challenge = session('register_challenge');
@@ -96,6 +102,9 @@ class AuthController extends Controller
             'password' => $validated['password'],
             'role' => 'manager',
         ]);
+
+        app(LegalConsent::class)->recordMembership($user, $request);
+        app(LegalConsent::class)->recordPrivacy($user, $request);
 
         Auth::login($user);
 

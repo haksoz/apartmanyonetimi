@@ -8,6 +8,7 @@ use App\Models\Package;
 use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Support\SubscriptionCheckout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -116,11 +117,13 @@ class SubscriptionOrderTest extends TestCase
             'unit_count' => 10,
         ]);
         $apartment->members()->attach($manager->id, ['role' => 'owner', 'is_active' => true]);
+        app(SubscriptionCheckout::class)->openFree($manager, $apartment);
 
         $this->actingAs($manager)
             ->get(route('subscriber.subscriptions.create'))
             ->assertOk()
             ->assertSee('Sipariş Apartmanı')
+            ->assertSee('Mesafeli satış sözleşmesini')
             ->assertDontSee('Başlangıç');
     }
 
@@ -145,6 +148,7 @@ class SubscriptionOrderTest extends TestCase
                 'apartment_ids' => [$apartment->id],
                 'period' => 'yearly',
                 'payment_method' => 'havale',
+                'accept_sales' => '1',
             ])
             ->assertOk()
             ->getContent();
@@ -186,6 +190,7 @@ class SubscriptionOrderTest extends TestCase
                 'apartment_ids' => [$apartment->id],
                 'period' => 'monthly',
                 'payment_method' => 'kredi_kartı',
+                'accept_sales' => '1',
             ])
             ->assertRedirect();
 

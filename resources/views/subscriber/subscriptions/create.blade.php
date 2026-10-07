@@ -42,23 +42,32 @@
                 @endforeach
             </div>
 
-            @if ($apartments->contains(fn ($apartment) => $apartment->offer['action'] !== 'pending' && $apartment->offer['record']))
+            @foreach ($apartments as $apartment)
+                @continue((int) $apartment->unit_count <= 100 || $apartment->offer['action'] === 'pending')
+                <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p class="font-semibold text-slate-900">{{ $apartment->name }}</p>
+                    <p class="mt-1">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanmaktadır. Talebiniz alınmıştır. Temsilcimiz sizinle iletişime geçerek size özel teklifinizi paylaşacaktır.</p>
+                </div>
+            @endforeach
+
+            @if ($apartments->contains(fn ($apartment) => $apartment->offer['action'] !== 'pending' && $apartment->offer['record'] && (int) $apartment->unit_count <= 100 && ! ($apartment->monthly_quote['requires_quote'] ?? false)))
             <form method="POST" action="{{ route('subscriber.subscriptions.store') }}" enctype="multipart/form-data" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
                 @csrf
                 <div class="space-y-3">
                     @foreach ($apartments as $apartment)
-                        @continue($apartment->offer['action'] === 'pending')
+                        @continue($apartment->offer['action'] === 'pending' || (int) $apartment->unit_count > 100)
                         @php
                             $monthly = $apartment->monthly_quote;
                             $yearly = $apartment->yearly_quote;
                             $offer = $apartment->offer;
-                            $actionLabel = match ($offer['action']) {
+                            $quoteScale = (int) $apartment->unit_count > 100;
+                            $actionLabel = $quoteScale ? 'Özel Teklif' : match ($offer['action']) {
                                 'renew' => 'Yenile',
                                 'restart' => 'Yeniden Başlat',
                                 'pending' => 'Ödeme bekliyor',
                                 default => 'Ücretli Pakete Geç',
                             };
-                            $selectable = (bool) $offer['record'];
+                            $selectable = (bool) $offer['record'] && ! $quoteScale && ! ($monthly['requires_quote'] ?? false);
                         @endphp
                         <div class="rounded-xl border border-slate-200 p-4">
                             <label class="flex items-start gap-3">
@@ -83,8 +92,8 @@
                                     @elseif ($offer['action'] === 'upgrade')
                                         <p class="mt-1 text-sm text-slate-600">Temel kullanım</p>
                                     @endif
-                                    @if ($monthly['requires_quote'])
-                                        <p class="mt-1 text-sm text-slate-700">Teklif gerekir</p>
+                                    @if ($quoteScale || $monthly['requires_quote'])
+                                        <p class="mt-1 text-sm text-slate-700">101 ve üzeri daire için özel teklif gerekir. Sipariş bu ekrandan açılamaz.</p>
                                     @elseif ($selectable)
                                         <p class="mt-1 text-sm text-slate-700">
                                             Aylık {{ number_format($monthly['amount'], 0, ',', '.') }} ₺
@@ -145,8 +154,11 @@
                     })();
                 </script>
 
-                <div class="mt-6 flex justify-end">
-                    <button class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Sipariş Oluştur</button>
+                <div class="mt-6 space-y-4">
+                    @include('partials.accept-sales')
+                    <div class="flex justify-end">
+                        <button class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Sipariş Oluştur</button>
+                    </div>
                 </div>
             </form>
             @endif

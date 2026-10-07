@@ -76,10 +76,11 @@ class LandingPageTest extends TestCase
         $pricing->assertSee($band->label);
         $pricing->assertSee('1.234,50 ₺');
         $pricing->assertSee('12.345,00 ₺');
-        $pricing->assertSee($quote->label);
-        $pricing->assertSee('Teklif');
+        $pricing->assertSee('101+ daire');
+        $pricing->assertSee('Özel Teklif');
+        $pricing->assertDontSee($quote->label);
         $pricing->assertSee('1–100 daire');
-        $pricing->assertSee('101–150 daire ücretsiz açılamaz');
+        $pricing->assertDontSee('101–150 daire ücretsiz açılamaz');
         $pricing->assertDontSee('99.999', false);
         $pricing->assertDontSee('88.888', false);
         $pricing->assertDontSee('Başlangıç');
@@ -113,6 +114,11 @@ class LandingPageTest extends TestCase
             ->assertOk()
             ->assertSee('Ücretsiz Hesabınızı Oluşturun')
             ->assertSee('temel özellikleri ücretsiz kullanmaya başlayın')
+            ->assertSee('Üyelik sözleşmesini')
+            ->assertSee('Gizlilik ve KVKK aydınlatmasını')
+            ->assertSee('name="accept_membership"', false)
+            ->assertSee('name="accept_privacy"', false)
+            ->assertSee('Okudum, kabul ediyorum')
             ->assertDontSee('Ücretsiz Deneme Başlatın')
             ->assertDontSee('2 ay ücretsiz')
             ->assertDontSee('paketinizi seçin');
@@ -121,6 +127,8 @@ class LandingPageTest extends TestCase
     public function test_legal_placeholders_are_public_and_contain_no_bank_details(): void
     {
         $routes = [
+            'legal.membership',
+            'legal.resident-data',
             'legal.distance-sales',
             'legal.pre-information',
             'legal.privacy',

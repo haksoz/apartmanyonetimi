@@ -38,6 +38,7 @@
                     $ownActive = $active && (int) $active->subscription->user_id === (int) auth()->id();
                     $ownPending = $pending && (int) $pending->subscription->user_id === (int) auth()->id();
                     $needsQuote = ($monthly['requires_quote'] ?? false) && ! $active;
+                    $quoteScale = (int) $apartment->unit_count > 100;
                     $canPurchase = (bool) $apartment->can_purchase;
                     $renewSoon = $active && $active->subscription?->expires_at && $active->subscription->expires_at->lessThanOrEqualTo(now()->addDays(3));
                 @endphp
@@ -79,6 +80,9 @@
                         @elseif ($pending)
                             <p>{{ $pending->subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }} sipariş · {{ number_format($pending->amount, 0, ',', '.') }} ₺</p>
                             <p class="mt-1">Havale onaylanınca ücretli özellikler açılır.</p>
+                        @elseif ($quoteScale && ! $active && ! $pending)
+                            <p class="font-medium text-slate-800">Özel Teklif</p>
+                            <p class="mt-1">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanmaktadır. Talebiniz alınmıştır. Temsilcimiz sizinle iletişime geçerek size özel teklifinizi paylaşacaktır.</p>
                         @elseif ($needsQuote)
                             <p class="font-medium text-slate-800">Teklif gerekir</p>
                             <p class="mt-1">{{ $monthly['message'] }}</p>
@@ -105,7 +109,7 @@
 
                         @if ($canPurchase && $ownPending && ! $active)
                             <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600">Ödemeyi tamamla</a>
-                        @elseif ($canPurchase && ! $needsQuote && ! ($pending && ! $active && $ownPending))
+                        @elseif ($canPurchase && ! $quoteScale && ! $needsQuote && ! ($pending && ! $active && $ownPending))
                             @php
                                 $payModalId = 'pay-method-modal-'.$apartment->id;
                                 $reopenPayModal = $errors->any() && in_array($apartment->id, array_map('intval', (array) old('apartment_ids', [])), true);
@@ -148,6 +152,10 @@
                                                 </span>
                                             </label>
                                         </fieldset>
+
+                                        <div class="mt-4">
+                                            @include('partials.accept-sales')
+                                        </div>
 
                                         <div class="mt-5 flex justify-end gap-3">
                                             <button type="button" onclick="document.getElementById('{{ $payModalId }}').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>

@@ -9,8 +9,10 @@ use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Support\ApartmentCommercial;
 use App\Support\ApartmentCoverage;
 use App\Support\PriceQuote;
+use App\Support\LegalConsent;
 use App\Support\SubscriptionCheckout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -72,8 +74,10 @@ class SubscriberSubscriptionController extends Controller
             'payment_method' => ['required', Rule::in(['havale', 'kredi_kartı'])],
             'reference_code' => ['nullable', 'string', 'max:255'],
             'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+            'accept_sales' => ['accepted'],
         ], [
             'apartment_ids.max' => 'Bir siparişte yalnızca bir apartman olabilir.',
+            'accept_sales.accepted' => 'Ücretli abonelik için mesafeli satış sözleşmesini ve ön bilgilendirme formunu kabul edin.',
         ]);
 
         $user = auth()->user();
@@ -84,6 +88,14 @@ class SubscriberSubscriptionController extends Controller
         if ($apartments->count() !== count($validated['apartment_ids'])) {
             throw ValidationException::withMessages([
                 'apartment_ids' => 'Seçilen apartmanlardan biri size ait değil.',
+            ]);
+        }
+
+        $oversized = $apartments->first(fn (Apartment $apartment) => (int) $apartment->unit_count > ApartmentCommercial::FREE_UNIT_LIMIT);
+
+        if ($oversized) {
+            throw ValidationException::withMessages([
+                'apartment_ids' => $oversized->name.' için özel teklif gerekir. Sipariş bu ekrandan açılamaz.',
             ]);
         }
 
@@ -106,6 +118,8 @@ class SubscriberSubscriptionController extends Controller
             $receiptPath,
             $validated['reference_code'] ?? null,
         );
+
+        app(LegalConsent::class)->recordSale($user, $subscription, $request);
 
         $message = $validated['payment_method'] === 'havale'
             ? 'Siparişiniz alındı. Havale/EFT ödemesi için banka bilgilerini görüntüleyebilirsiniz.'

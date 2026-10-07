@@ -8,6 +8,25 @@
     $formatTariff = function ($amount) {
         return number_format((float) $amount, 2, ',', '.').' ₺';
     };
+    $publicRows = [];
+    $quoteAdded = false;
+    foreach ($priceBands as $band) {
+        if ((int) $band->min_units > 100 || $band->is_quote) {
+            if (! $quoteAdded) {
+                $publicRows[] = ['label' => '101+ daire', 'monthly' => 'Özel Teklif', 'yearly' => 'Özel Teklif'];
+                $quoteAdded = true;
+            }
+            continue;
+        }
+        $label = ($band->max_units !== null && (int) $band->max_units > 100)
+            ? $band->min_units.'–100 daire'
+            : $band->label;
+        $publicRows[] = [
+            'label' => $label,
+            'monthly' => $band->monthly_price === null ? 'Özel Teklif' : $formatTariff($band->monthly_price),
+            'yearly' => $band->yearly_price === null ? 'Özel Teklif' : $formatTariff($band->yearly_price),
+        ];
+    }
 @endphp
 
 @include('microsite.partials.header')
@@ -25,7 +44,7 @@
                 <li>Sipariş veya abonelik ücreti olmadan başlangıç</li>
                 <li>Temel aidat, tahsilat, gider ve yönetim özellikleri</li>
             </ul>
-            <p class="mt-4 text-sm text-slate-600">101–150 daire ücretsiz açılamaz. 151 ve üzeri daire için teklif gerekir.</p>
+            <p class="mt-4 text-sm text-slate-600">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanır. Tutar sitede gösterilmez.</p>
         </div>
 
         <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
@@ -39,15 +58,11 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @forelse ($priceBands as $band)
+                        @forelse ($publicRows as $row)
                             <tr>
-                                <td class="px-5 py-4 font-medium text-slate-900">{{ $band->label }}</td>
-                                <td class="px-5 py-4 text-slate-800 tabular-nums">
-                                    {{ $band->is_quote || $band->monthly_price === null ? 'Teklif' : $formatTariff($band->monthly_price) }}
-                                </td>
-                                <td class="px-5 py-4 text-slate-800 tabular-nums">
-                                    {{ $band->is_quote || $band->yearly_price === null ? 'Teklif' : $formatTariff($band->yearly_price) }}
-                                </td>
+                                <td class="px-5 py-4 font-medium text-slate-900">{{ $row['label'] }}</td>
+                                <td class="px-5 py-4 text-slate-800 tabular-nums">{{ $row['monthly'] }}</td>
+                                <td class="px-5 py-4 text-slate-800 tabular-nums">{{ $row['yearly'] }}</td>
                             </tr>
                         @empty
                             <tr>

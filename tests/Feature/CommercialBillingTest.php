@@ -108,6 +108,7 @@ class CommercialBillingTest extends TestCase
                 'address' => 'Adres',
                 'unit_count' => 2,
                 'manager_type' => 'external',
+                'accept_resident_data' => '1',
             ])
             ->assertSessionHasNoErrors();
 
@@ -117,6 +118,7 @@ class CommercialBillingTest extends TestCase
                 'address' => 'Adres',
                 'unit_count' => 2,
                 'account_opening_date' => now()->format('Y-m-d'),
+                'accept_resident_data' => '1',
             ])
             ->assertSessionHasNoErrors();
 
@@ -155,6 +157,7 @@ class CommercialBillingTest extends TestCase
                 'address' => 'Admin adres',
                 'unit_count' => 10,
                 'account_opening_date' => now()->toDateString(),
+                'accept_resident_data' => '1',
             ])
             ->assertSessionHasNoErrors();
 
@@ -197,13 +200,16 @@ class CommercialBillingTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
+            ->from(route('subscriber.apartments.create'))
             ->post(route('subscriber.apartments.store'), $this->payload('Yüz Bir', 101))
-            ->assertSessionHasErrors('unit_count');
+            ->assertRedirect(route('subscriber.apartments.create'))
+            ->assertSessionHas('status');
 
         $this->assertDatabaseCount('apartments', 0);
+        $this->assertDatabaseCount('quote_requests', 1);
     }
 
-    public function test_one_hundred_one_paid_units_create_a_pending_item(): void
+    public function test_one_hundred_one_units_do_not_open_a_paid_order(): void
     {
         $user = User::factory()->create();
 
@@ -211,33 +217,14 @@ class CommercialBillingTest extends TestCase
             ->post(route('subscriber.apartments.store'), $this->payload('Ücretli Blok', 101, true))
             ->assertRedirect();
 
-        $apartment = Apartment::where('name', 'Ücretli Blok')->firstOrFail();
-        $this->assertSame('paid', $apartment->billing_plan);
-
-        $item = SubscriptionItem::query()->where('apartment_id', $apartment->id)->where('amount', 900)->firstOrFail();
-        $this->assertSame(101, $item->unit_count);
-        $this->assertSame(SubscriptionItem::PLAN_PAID, $item->plan);
-        $this->assertSame(SubscriptionItem::STATUS_PENDING, $item->status);
-        $this->assertNull($item->started_at);
-        $this->assertFalse($item->subscription->is_active);
-
-        $free = SubscriptionItem::query()->where('apartment_id', $apartment->id)->where('plan', SubscriptionItem::PLAN_FREE)->firstOrFail();
-        $this->assertEquals(0, (float) $free->amount);
-        $this->assertSame(SubscriptionItem::STATUS_ACTIVE, $free->status);
-        $this->assertNull($free->ended_at);
-        $this->assertNull($free->subscription_id);
-        $this->assertNotNull($free->apartment_subscription_id);
-
-        $this->assertSame($free->apartment_subscription_id, $item->apartment_subscription_id);
-        $this->assertSame($free->apartment_subscription_id, $item->subscription->subscription_id);
-        $this->assertSame($item->subscription->id, $item->subscription_id);
-        $this->assertNotSame($free->subscription_id, $item->subscription_id);
-        $this->assertSame(1, UserSubscription::query()->count());
-        $this->assertSame(1, Subscription::query()->count());
-        $this->assertSame(0, $item->subscription->payments()->count());
+        $this->assertDatabaseMissing('apartments', ['name' => 'Ücretli Blok']);
+        $this->assertDatabaseCount('quote_requests', 1);
+        $this->assertSame(0, Subscription::query()->count());
+        $this->assertSame(0, UserSubscription::query()->count());
+        $this->assertSame(0, SubscriptionItem::query()->count());
     }
 
-    public function test_same_user_can_keep_one_free_and_one_paid_apartment(): void
+    public function test_same_user_can_keep_a_free_apartment_and_a_quote_request(): void
     {
         $user = User::factory()->create();
 
@@ -245,7 +232,8 @@ class CommercialBillingTest extends TestCase
         $this->actingAs($user)->post(route('subscriber.apartments.store'), $this->payload('Ücretli Blok', 101, true));
 
         $this->assertDatabaseHas('apartments', ['name' => 'Ücretsiz Blok', 'billing_plan' => 'free']);
-        $this->assertDatabaseHas('apartments', ['name' => 'Ücretli Blok', 'billing_plan' => 'paid']);
+        $this->assertDatabaseMissing('apartments', ['name' => 'Ücretli Blok']);
+        $this->assertDatabaseHas('quote_requests', ['apartment_name' => 'Ücretli Blok', 'unit_count' => 101]);
     }
 
     public function test_item_amount_does_not_change_when_the_apartment_is_renamed(): void
@@ -263,6 +251,7 @@ class CommercialBillingTest extends TestCase
                 'apartment_ids' => [$apartment->id],
                 'period' => 'yearly',
                 'payment_method' => 'havale',
+                'accept_sales' => '1',
             ])
             ->assertRedirect();
 
@@ -330,6 +319,8 @@ class CommercialBillingTest extends TestCase
             'unit_count' => $unitCount,
             'account_opening_date' => now()->toDateString(),
             'wants_paid' => $paid ? '1' : '0',
+            'accept_sales' => $paid ? '1' : '0',
+            'accept_resident_data' => '1',
         ];
     }
 }

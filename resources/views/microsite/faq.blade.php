@@ -12,7 +12,7 @@
         <div class="divide-y divide-slate-200 border-y border-slate-200">
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">AidatCep ücretsiz mi?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Hesap oluşturmak ücretsizdir ve kayıt sırasında sipariş açılmaz. 1–100 daireli apartmanlarda temel kullanım süresizdir. 101–150 daire ücretsiz açılamaz. 151 ve üzeri daire için teklif gerekir. Ayrıntılı tarife <a href="{{ route('pricing') }}" class="font-semibold text-emerald-700 hover:text-emerald-800">fiyatlandırma</a> sayfasındadır.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Hesap oluşturmak ücretsizdir ve kayıt sırasında sipariş açılmaz. 1–100 daireli apartmanlarda temel kullanım süresizdir. 101 ve üzeri daire için özel teklif alınır. Ayrıntılı tarife <a href="{{ route('pricing') }}" class="font-semibold text-emerald-700 hover:text-emerald-800">fiyatlandırma</a> sayfasındadır.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Ücretsiz kullanımda hangi özellikleri kullanabilirim?</summary>
@@ -20,11 +20,11 @@
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Ücretli abonelik ne zaman gerekir?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Otomatik aidat planı, giderin dairelere dağıtılması, metrekare ve pay dağıtımı, belge yükleme, PDF/Excel dışa aktarma ve gelişmiş raporlar için ilgili apartmanda ücretli abonelik gerekir. 101–150 daireli apartman da ücretsiz açılamaz.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Otomatik aidat planı, giderin dairelere dağıtılması, metrekare ve pay dağıtımı, belge yükleme, PDF/Excel dışa aktarma ve gelişmiş raporlar için ilgili apartmanda ücretli abonelik gerekir. 101 ve üzeri daireli apartman ücretsiz açılmaz; özel teklif alınır.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Ücret nasıl belirleniyor?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Ücret, apartmanın daire sayısının girdiği banta göre belirlenir. Siparişte aylık veya yıllık dönem seçilir. 151 ve üzeri daire için sitede tutar gösterilmez; teklif istenir. Güncel tutarlar <a href="{{ route('pricing') }}" class="font-semibold text-emerald-700 hover:text-emerald-800">fiyatlandırma</a> sayfasındadır.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Ücret, apartmanın daire sayısının girdiği banta göre belirlenir. Siparişte aylık veya yıllık dönem seçilir. 101 ve üzeri daire için sitede tutar gösterilmez; özel teklif alınır. Güncel tutarlar <a href="{{ route('pricing') }}" class="font-semibold text-emerald-700 hover:text-emerald-800">fiyatlandırma</a> sayfasındadır.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Birden fazla apartman yönetebilir miyim?</summary>

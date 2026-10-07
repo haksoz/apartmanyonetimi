@@ -8,6 +8,10 @@
         <p class="mt-1 text-sm text-slate-500">Daire sayısına göre daire ve hesap kayıtları otomatik oluşturulur.</p>
     </div>
 
+    @if (session('status'))
+        <div class="mb-6 max-w-2xl rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
+    @endif
+
     <form method="POST" action="{{ request()->routeIs('subscriber.*') ? route('subscriber.apartments.store') : route('apartments.store') }}" class="max-w-2xl rounded-2xl bg-white p-6 shadow-sm">
         @csrf
         <div class="space-y-5">
@@ -48,18 +52,13 @@
             </div>
             <div>
                 <label class="text-sm font-medium text-slate-700">Daire Sayısı</label>
-                <input type="number" name="unit_count" value="{{ old('unit_count') }}" min="1" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" required>
+                <input type="number" id="unit-count" name="unit_count" value="{{ old('unit_count') }}" min="1" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" required>
                 @error('unit_count') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
-                <p class="mt-1 text-xs text-slate-500">1–100 daire ücretsiz açılır. 101–150 daire için ücretli kullanım gerekir. 151 ve üzeri teklif fiyatı olmadan açılmaz.</p>
+                <p class="mt-1 text-xs text-slate-500">1–100 daire ücretsiz açılır. 101 ve üzeri daire için özel teklif alınır.</p>
+                <p id="quote-notice" class="mt-3 hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanmaktadır. Talebiniz alınmıştır. Temsilcimiz sizinle iletişime geçerek size özel teklifinizi paylaşacaktır.</p>
             </div>
-            <div>
-                <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-4">
-                    <input type="checkbox" name="wants_paid" value="1" class="mt-1" {{ old('wants_paid') ? 'checked' : '' }}>
-                    <span>
-                        <span class="block text-sm font-semibold text-slate-900">Ücretli kullanım</span>
-                        <span class="block text-sm text-slate-500">Otomatik aidat, gelişmiş rapor ve belge yükleme bu apartman için ücretli plana bağlanır. 101 ve üzeri dairede bu seçim zorunludur.</span>
-                    </span>
-                </label>
+            <div id="resident-consent">
+                @include('partials.accept-resident-data')
             </div>
             <div>
                 <label class="text-sm font-medium text-slate-700">Daire Hesaplarının Açılış Tarihi</label>
@@ -71,5 +70,22 @@
             <a href="{{ request()->routeIs('subscriber.*') ? route('subscriber.dashboard') : route('apartments.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Vazgeç</a>
             <button class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Oluştur</button>
         </div>
+        <script>
+            (function () {
+                const count = document.getElementById('unit-count');
+                const notice = document.getElementById('quote-notice');
+                const resident = document.getElementById('resident-consent');
+                if (!count || !notice || !resident) return;
+                const input = resident.querySelector('input[name="accept_resident_data"]');
+                const sync = function () {
+                    const quote = Number(count.value) >= 101;
+                    notice.classList.toggle('hidden', !quote);
+                    resident.classList.toggle('hidden', quote);
+                    if (input) input.required = !quote;
+                };
+                count.addEventListener('input', sync);
+                sync();
+            })();
+        </script>
     </form>
 @endsection

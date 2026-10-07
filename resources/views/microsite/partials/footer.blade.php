@@ -15,6 +15,8 @@
         </div>
         <div class="text-sm text-slate-400 space-y-2">
             <p class="font-semibold text-slate-200">Yasal</p>
+            <a href="{{ route('legal.membership') }}" class="block hover:text-slate-200">Üyelik Sözleşmesi</a>
+            <a href="{{ route('legal.resident-data') }}" class="block hover:text-slate-200">Daire Sakini Verisi</a>
             <a href="{{ route('legal.distance-sales') }}" class="block hover:text-slate-200">Mesafeli Satış Sözleşmesi</a>
             <a href="{{ route('legal.pre-information') }}" class="block hover:text-slate-200">Ön Bilgilendirme Formu</a>
             <a href="{{ route('legal.privacy') }}" class="block hover:text-slate-200">Gizlilik ve KVKK</a>
