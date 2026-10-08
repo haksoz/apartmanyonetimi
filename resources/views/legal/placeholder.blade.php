@@ -17,7 +17,11 @@
 
     <main class="px-4 sm:px-6 py-16">
         <div class="max-w-3xl mx-auto rounded-2xl border border-slate-200 bg-white p-8 sm:p-10">
-            <h1 class="text-2xl sm:text-3xl font-bold text-slate-950">{{ $title }}</h1>
+            @php
+                $documentKey = \App\Support\LegalConsent::keyForView($body ?? null);
+                $published = $documentKey ? \App\Models\LegalDocumentVersion::current($documentKey) : null;
+            @endphp
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-950">{{ $published->title ?? $title }}</h1>
             <div class="mt-4 text-slate-600 leading-relaxed">
                 @include($body ?? 'legal.content.pending')
             </div>

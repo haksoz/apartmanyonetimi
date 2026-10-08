@@ -88,6 +88,11 @@ class UserSubscription extends Model
         return $this->belongsTo(BillingProfile::class);
     }
 
+    public function legalAcceptances(): HasMany
+    {
+        return $this->hasMany(LegalAcceptance::class, 'user_subscription_id')->orderBy('id');
+    }
+
     public function hasBillingSnapshot(): bool
     {
         return filled($this->billing_label)

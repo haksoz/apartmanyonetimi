@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Apartment;
 use App\Models\LegalAcceptance;
+use App\Models\LegalDocumentVersion;
 use App\Models\User;
 use App\Models\UserSubscription;
 use Illuminate\Http\Request;
@@ -27,6 +28,35 @@ class LegalConsent
         self::RESIDENT_DATA => '1',
         self::PRIVACY => '1',
     ];
+
+    public const SALE_DOCUMENTS = [
+        self::DISTANCE_SALES,
+        self::PRE_INFORMATION,
+    ];
+
+    public static function keyForView(?string $view): ?string
+    {
+        return match ($view) {
+            'legal.content.membership' => self::MEMBERSHIP,
+            'legal.content.distance-sales' => self::DISTANCE_SALES,
+            'legal.content.pre-information' => self::PRE_INFORMATION,
+            'legal.content.resident-data' => self::RESIDENT_DATA,
+            'legal.content.privacy' => self::PRIVACY,
+            default => null,
+        };
+    }
+
+    public static function label(string $key): string
+    {
+        return match ($key) {
+            self::MEMBERSHIP => 'Üyelik sözleşmesi',
+            self::DISTANCE_SALES => 'Mesafeli satış sözleşmesi',
+            self::PRE_INFORMATION => 'Ön bilgilendirme formu',
+            self::RESIDENT_DATA => 'Daire sakini verisi bildirimi',
+            self::PRIVACY => 'Gizlilik ve KVKK aydınlatması',
+            default => $key,
+        };
+    }
 
     public function saleRules(): array
     {
@@ -95,12 +125,15 @@ class LegalConsent
 
     private function record(User $user, string $key, ?int $orderId, ?int $apartmentId, Request $request): void
     {
+        $published = LegalDocumentVersion::current($key);
+
         LegalAcceptance::create([
             'user_id' => $user->id,
             'user_subscription_id' => $orderId,
             'apartment_id' => $apartmentId,
             'document_key' => $key,
-            'document_version' => self::VERSIONS[$key],
+            'document_version' => $published?->version ?? self::VERSIONS[$key],
+            'legal_document_version_id' => $published?->id,
             'accepted_at' => now(),
             'ip_address' => $request->ip(),
         ]);

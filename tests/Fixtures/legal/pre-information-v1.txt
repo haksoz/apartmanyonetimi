@@ -1,0 +1,170 @@
+AİDATCEP ÖN BİLGİLENDİRME FORMU
+
+Sürüm: 1
+
+1. SAĞLAYICI BİLGİLERİ
+
+Ticari Unvan: KAPİTAL ONLİNE BİLGİSAYAR VE İLETİŞİM HİZMETLERİ TİC. LTD. ŞTİ.
+Adres: Orta Mah. Ordu Sk. Ozan İşhanı No: 21 İç Kapı No: 8, 34880 Kartal / İstanbul
+Telefon: +90 216 377 40 00
+E-posta: info@aidatcep.com
+Web: aidatcep.com
+Vergi Dairesi: Yakacık Vergi Dairesi Müdürlüğü
+VKN: 4980863169
+MERSİS No: 0498086316900015
+
+2. HİZMETİN TEMEL NİTELİKLERİ
+
+AidatCep, apartman ve site yönetimlerinin yönetim süreçlerini dijital ortamda yürütmesine yardımcı olan çevrim içi bir yazılım hizmetidir.
+
+Hizmet kapsamında, satın alma sırasında belirtilen kapsam dahilinde apartman, daire, aidat, gider, tahsilat, borç ve ilgili yönetim kayıtlarının dijital ortamda yönetilmesine yönelik özellikler sunulur.
+
+Kullanılabilecek ücretli özellikler, satın alma sırasında AidatCep üzerinde gösterilen hizmet kapsamına göre belirlenir.
+
+3. HİZMETİN DAİRE SAYISI
+
+Hizmet bedeli, satın alınan apartmandaki daire sayısına göre belirlenir.
+
+AidatCep üzerinde 1 ila 100 daire arasındaki apartmanlar için ilgili daire sayısına göre fiyatlandırma uygulanabilir.
+
+101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanabilir. Bu durumda talep alınarak ayrıca teklif sunulabilir.
+
+101 ve üzeri daire için yalnızca teklif talebinin oluşturulması, kendiliğinden ücretli hizmet satın alınması veya mesafeli satış sözleşmesinin kurulması anlamına gelmez.
+
+4. HİZMET DÖNEMİ
+
+Kullanıcı, satın alma sırasında aylık veya 12 aylık hizmet dönemlerinden birini seçebilir.
+
+Aylık hizmet seçeneği bir aylık hizmet dönemini kapsar.
+
+12 aylık hizmet seçeneği satın alma tarihinden itibaren 12 aylık hizmet dönemini kapsar.
+
+Hizmet dönemi sonunda otomatik yenileme veya otomatik tahsilat yapılmaz. Kullanıcı hizmeti sürdürmek isterse yeni bir sipariş oluşturur.
+
+5. FİYAT VE TOPLAM ÖDEME TUTARI
+
+AidatCep hizmetinin fiyatı, satın alma sırasında seçilen daire sayısı ve hizmet dönemine göre belirlenir.
+
+Kullanıcıya siparişini tamamlamadan önce:
+
+• seçilen apartman,
+• daire sayısı,
+• hizmet dönemi,
+• hizmet kapsamı,
+• vergiler dahil toplam ödeme tutarı
+
+açıkça gösterilir.
+
+Kullanıcının ödeyeceği bedel, sipariş oluşturulduğu sırada AidatCep üzerinde gösterilen ve Kullanıcı tarafından onaylanan güncel bedeldir.
+
+Sipariş sonrasında fiyat değişikliği, daha önce oluşturulmuş siparişin bedelini değiştirmez.
+
+6. ÖDEME
+
+Ödeme, sipariş sırasında AidatCep tarafından sunulan ödeme yöntemi kullanılarak yapılır.
+
+Banka transferi veya EFT yönteminin kullanıldığı işlemlerde Kullanıcıdan dekont veya ödeme referansı istenebilir.
+
+Ödemenin kontrol edilmesi gereken işlemlerde hizmet, ödeme Sağlayıcı tarafından onaylandıktan sonra aktif hale getirilebilir.
+
+7. HİZMETİN BAŞLAMA ZAMANI
+
+Hizmetin başlama zamanı, seçilen ödeme yöntemine ve siparişin onay durumuna göre belirlenir.
+
+Ödeme kontrolü gereken işlemlerde hizmetin ücretli özellikleri ödeme onayından önce kullanılmayabilir.
+
+Kullanıcının talebi ve ilgili mevzuatın izin verdiği durumlarda, cayma süresi dolmadan hizmetin ifasına başlanabilir.
+
+8. CAYMA HAKKI
+
+Tüketici, mesafeli hizmet sözleşmesinin kurulduğu tarihten itibaren mevzuatta öngörülen koşullar kapsamında on dört gün içinde herhangi bir gerekçe göstermeksizin ve cezai şart ödemeksizin cayma hakkını kullanabilir.
+
+Cayma hakkının kullanılması için bildirimin mevzuata uygun şekilde Sağlayıcıya ulaştırılması yeterlidir.
+
+Ancak mevzuatta düzenlenen cayma hakkı istisnaları saklıdır.
+
+Özellikle tüketicinin cayma hakkı süresi dolmadan önce açık talebi ve onayı ile hizmetin ifasına başlanması halinde, ilgili mevzuatta düzenlenen cayma hakkı istisnaları uygulanabilir.
+
+9. CAYMA HAKKININ KULLANILMASI
+
+Cayma hakkı, yazılı olarak veya mevzuatta kabul edilen kalıcı veri saklayıcısı aracılığıyla kullanılabilir.
+
+Cayma bildirimleri için:
+
+E-posta: info@aidatcep.com
+
+adresinden Sağlayıcıya ulaşılabilir.
+
+Cayma hakkının kullanılması halinde bedel iadesi, yürürlükteki mevzuatta belirtilen süre ve ödeme yöntemi kurallarına uygun şekilde yapılır.
+
+10. İPTAL VE İADE
+
+Ödeme kanıtı veya ödeme referansı henüz sunulmamış bekleyen siparişler, sistemin izin verdiği durumlarda Kullanıcı tarafından iptal edilebilir.
+
+Ödeme dekontu veya referansı sunulmuş siparişler inceleme sürecine alınabilir.
+
+Bu işlem, Kullanıcının mevzuattan kaynaklanan cayma ve diğer zorunlu haklarını ortadan kaldırmaz.
+
+11. HİZMET HAKKININ APARTMANA BAĞLILIĞI
+
+Satın alınan hizmet hakkı siparişte belirtilen apartmana bağlıdır.
+
+Apartman yöneticisinin değişmesi mevcut hizmet dönemini kendiliğinden sona erdirmez.
+
+Yönetici değişikliğinde mevcut hizmet dönemi devam eder; yeni yönetici yetkilendirildiğinde apartmanın mevcut hizmet hakkını kullanabilir.
+
+Önceki yöneticinin oluşturduğu sipariş ve ödeme kayıtları yeni yöneticinin yeni bir satın alma işlemi yaptığı anlamına gelmez.
+
+12. VERİLER VE KİŞİSEL VERİLER
+
+Hizmet döneminin sona ermesi, apartmana ait verilerin otomatik olarak silineceği anlamına gelmez.
+
+Kişisel verilerin işlenmesine ilişkin ayrıntılar AidatCep Gizlilik ve KVKK Aydınlatma metninde açıklanır.
+
+Kullanıcının apartman sakinlerine, maliklere veya diğer kişilere ait kişisel verileri sisteme aktarması halinde, ilgili verilerin hukuka uygun şekilde işlenmesi ve aktarılması bakımından Kullanıcının kendi yükümlülükleri saklıdır.
+
+13. FİKRİ MÜLKİYET
+
+AidatCep yazılımı, markası, tasarımı, yazılım kodları ve diğer fikri mülkiyet unsurları Sağlayıcıya veya ilgili hak sahiplerine aittir.
+
+Kullanıcıya yalnızca satın aldığı hizmet kapsamında kullanım hakkı tanınır.
+
+14. ŞİKÂYET VE BAŞVURU YOLLARI
+
+Kullanıcı, hizmete ilişkin soru, talep ve şikâyetlerini aşağıdaki iletişim kanallarından Sağlayıcıya iletebilir:
+
+KAPİTAL ONLİNE BİLGİSAYAR VE İLETİŞİM HİZMETLERİ TİC. LTD. ŞTİ.
+Adres: Orta Mah. Ordu Sk. Ozan İşhanı No: 21 İç Kapı No: 8, 34880 Kartal / İstanbul
+Telefon: +90 216 377 40 00
+E-posta: info@aidatcep.com
+
+Tüketici uyuşmazlıklarında, yürürlükteki mevzuata göre Tüketici Hakem Heyetleri ve Tüketici Mahkemeleri dahil olmak üzere yetkili başvuru mercilerine başvurulabilir.
+
+15. SÖZLEŞME BELGELERİ
+
+Kullanıcı, satın alma işlemini tamamlamadan önce işbu Ön Bilgilendirme Formu'nu ve Mesafeli Satış Sözleşmesi'ni inceleyebilir.
+
+Kullanıcının sipariş sırasında onayladığı belgelerin sürümü, kabul tarihi ve ilgili kayıtlar elektronik sistemlerde muhafaza edilir.
+
+Kullanıcı, siparişini tamamlayarak siparişin ödeme yükümlülüğü doğurduğunu bildiğini ve satın alma işlemi öncesinde kendisine sunulan bilgileri incelediğini kabul eder.
+
+16. SİPARİŞ ÖNCESİ ÖZET
+
+Sipariş tamamlanmadan önce Kullanıcıya ayrıca aşağıdaki bilgiler gösterilir:
+
+Apartman: [Siparişte seçilen apartman]
+Daire sayısı: [Siparişteki daire sayısı]
+Hizmet dönemi: [Aylık / 12 aylık]
+Hizmet başlangıcı: [Siparişe göre]
+Hizmet bitişi: [Siparişe göre]
+Toplam bedel (vergiler dahil): [Siparişe göre]
+Ödeme yöntemi: [Siparişe göre]
+
+Kullanıcı, siparişi tamamlamadan önce bu bilgileri kontrol eder.
+
+Sağlayıcı:
+KAPİTAL ONLİNE BİLGİSAYAR VE İLETİŞİM HİZMETLERİ TİC. LTD. ŞTİ.
+Orta Mah. Ordu Sk. Ozan İşhanı No: 21 İç Kapı No: 8
+34880 Kartal / İstanbul
+VKN: 4980863169
+MERSİS No: 0498086316900015

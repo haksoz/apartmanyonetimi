@@ -36,6 +36,8 @@ class AdminOrderController extends Controller
                                 ->orWhere('email', 'like', "%{$search}%")
                                 ->orWhere('phone', 'like', "%{$search}%");
                         })
+                        ->orWhere('billing_legal_name', 'like', "%{$search}%")
+                        ->orWhere('billing_label', 'like', "%{$search}%")
                         ->orWhereHas('items', function ($query) use ($search) {
                             $query->where('apartment_name', 'like', "%{$search}%")
                                 ->orWhereHas('apartment', function ($query) use ($search) {
@@ -75,6 +77,7 @@ class AdminOrderController extends Controller
             'items.apartment',
             'items.apartmentSubscription',
             'payments',
+            'legalAcceptances.legalDocumentVersion',
         ]);
 
         return view('admin.orders.show', compact('order'));

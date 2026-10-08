@@ -183,7 +183,7 @@ class SubscriberSubscriptionController extends Controller
     {
         $this->authorizeSubscription($subscription);
 
-        $subscription->load(['items.apartment', 'items.apartmentSubscription', 'package']);
+        $subscription->load(['items.apartment', 'items.apartmentSubscription', 'package', 'legalAcceptances.legalDocumentVersion']);
         $accounts = BankAccount::active()->ordered()->get();
 
         return view('subscriber.subscriptions.receipt', compact('subscription', 'accounts'));

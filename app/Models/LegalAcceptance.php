@@ -13,6 +13,7 @@ class LegalAcceptance extends Model
         'apartment_id',
         'document_key',
         'document_version',
+        'legal_document_version_id',
         'accepted_at',
         'ip_address',
     ];
@@ -34,5 +35,10 @@ class LegalAcceptance extends Model
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
+    }
+
+    public function legalDocumentVersion(): BelongsTo
+    {
+        return $this->belongsTo(LegalDocumentVersion::class);
     }
 }

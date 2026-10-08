@@ -18,7 +18,7 @@
 
     <div class="mb-6 rounded-xl border border-slate-200 bg-white p-4">
         <form method="GET" action="{{ route('admin.orders.index') }}" class="flex flex-wrap items-center gap-3">
-            <input type="text" name="search" value="{{ $search }}" placeholder="Sipariş no, apartman veya ödeyen" class="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm sm:w-80">
+            <input type="text" name="search" value="{{ $search }}" placeholder="Sipariş no, apartman, ödeyen veya fatura alıcısı" class="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm sm:w-80">
             <select name="status" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                 <option value="">Sipariş: Tümü</option>
                 <option value="pending" @selected($status === 'pending')>Bekliyor</option>
@@ -60,6 +60,8 @@
                     <span class="text-slate-300"> · </span>
                     {{ $order->user?->name ?: '—' }}
                     <span class="text-slate-300"> · </span>
+                    {{ $order->billing_legal_name ?: ($order->billing_label ?: '—') }}
+                    <span class="text-slate-300"> · </span>
                     <a href="{{ route('admin.orders.show', $order) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">Detay</a>
                 </p>
                 <div class="mt-1 flex flex-wrap gap-2">
@@ -78,6 +80,7 @@
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Sipariş</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Apartman</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Ödeyen</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Fatura alıcısı</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Tutar</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Kayıt Tarihi</th>
@@ -105,6 +108,16 @@
                                 <div class="text-xs text-slate-500">{{ $order->user->email }}</div>
                             @endif
                         </td>
+                        <td class="px-4 py-3">
+                            @if (filled($order->billing_legal_name) || filled($order->billing_label))
+                                <div class="font-medium text-slate-900">{{ $order->billing_legal_name ?: $order->billing_label }}</div>
+                                @if (filled($order->billing_label) && filled($order->billing_legal_name) && $order->billing_label !== $order->billing_legal_name)
+                                    <div class="text-xs text-slate-500">{{ $order->billing_label }}</div>
+                                @endif
+                            @else
+                                <span class="text-slate-400">—</span>
+                            @endif
+                        </td>
                         <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ number_format((float) $order->price, 2, ',', '.') }} ₺</td>
                         <td class="px-4 py-3">
                             <div class="flex flex-wrap gap-1">
@@ -118,7 +131,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-6 text-center text-sm text-slate-500">Sipariş yok.</td>
+                        <td colspan="8" class="px-4 py-6 text-center text-sm text-slate-500">Sipariş yok.</td>
                     </tr>
                 @endforelse
             </tbody>

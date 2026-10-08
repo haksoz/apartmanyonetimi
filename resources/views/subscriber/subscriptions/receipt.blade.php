@@ -163,6 +163,7 @@
     </article>
 
     @include('partials.billing-snapshot', ['subscription' => $subscription])
+    @include('partials.order-legal-acceptances', ['subscription' => $subscription])
 
     @if ($canSubmitProof)
         @include('subscriber.subscriptions.partials.payment-info-modal', [

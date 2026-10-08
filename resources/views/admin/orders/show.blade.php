@@ -147,6 +147,7 @@
     </div>
 
     @include('partials.billing-snapshot', ['subscription' => $order])
+    @include('partials.order-legal-acceptances', ['subscription' => $order])
 
     <section class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
         <h2 class="text-lg font-semibold text-slate-900">Sipariş kalemleri</h2>
