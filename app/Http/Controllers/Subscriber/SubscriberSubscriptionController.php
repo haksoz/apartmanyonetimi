@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Subscriber;
 use App\Http\Controllers\Controller;
 use App\Models\Apartment;
 use App\Models\BankAccount;
+use App\Models\BillingProfile;
 use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
@@ -15,6 +16,7 @@ use App\Support\PriceQuote;
 use App\Support\LegalConsent;
 use App\Support\SubscriptionCheckout;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -53,16 +55,41 @@ class SubscriberSubscriptionController extends Controller
             ->get()
             ->groupBy('apartment_id');
 
-        $apartments->each(function (Apartment $apartment) use ($prices, $records, $items) {
+        $billingProfiles = auth()->user()
+            ->billingProfiles()
+            ->where('is_active', true)
+            ->orderBy('label')
+            ->orderBy('id')
+            ->get();
+        $activeProfileIds = $billingProfiles->pluck('id');
+
+        $apartments->each(function (Apartment $apartment) use ($prices, $records, $items, $activeProfileIds) {
             $apartment->monthly_quote = $prices->forUnits((int) $apartment->unit_count, 'monthly', $apartment);
             $apartment->yearly_quote = $prices->forUnits((int) $apartment->unit_count, 'yearly', $apartment);
             $apartment->setAttribute('offer', $this->offer(
                 $records->get($apartment->id),
                 $items->get($apartment->id, collect())
             ));
+            $suggested = $records->get($apartment->id)?->billing_profile_id;
+            $apartment->setAttribute(
+                'suggested_billing_profile_id',
+                $activeProfileIds->contains($suggested) ? $suggested : null
+            );
         });
 
-        return view('subscriber.subscriptions.create', compact('apartments'));
+        $selectable = $apartments->filter(function (Apartment $apartment) {
+            return $apartment->offer['action'] !== 'pending'
+                && $apartment->offer['record']
+                && (int) $apartment->unit_count <= 100
+                && ! ($apartment->monthly_quote['requires_quote'] ?? false);
+        })->values();
+
+        $selectedBillingProfileId = old('billing_profile_id');
+        if ($selectedBillingProfileId === null && old('billing_mode') !== 'new' && $selectable->count() === 1) {
+            $selectedBillingProfileId = $selectable->first()->suggested_billing_profile_id;
+        }
+
+        return view('subscriber.subscriptions.create', compact('apartments', 'billingProfiles', 'selectedBillingProfileId'));
     }
 
     public function store(Request $request, SubscriptionCheckout $checkout)
@@ -75,9 +102,27 @@ class SubscriberSubscriptionController extends Controller
             'reference_code' => ['nullable', 'string', 'max:255'],
             'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'accept_sales' => ['accepted'],
+            'billing_mode' => ['required', Rule::in(['existing', 'new'])],
+            'billing_profile_id' => ['required_if:billing_mode,existing', 'nullable', 'integer'],
+            'billing_label' => ['required_if:billing_mode,new', 'nullable', 'string', 'max:255'],
+            'billing_party_type' => ['required_if:billing_mode,new', 'nullable', 'string', 'max:32', Rule::in(array_keys(BillingProfile::partyTypes()))],
+            'billing_legal_name' => ['nullable', 'string', 'max:255'],
+            'billing_identity_number' => ['nullable', 'string', 'max:64'],
+            'billing_tax_office' => ['nullable', 'string', 'max:255'],
+            'billing_email' => ['nullable', 'email', 'max:255'],
+            'billing_phone' => ['nullable', 'string', 'max:255'],
+            'billing_country' => ['nullable', 'string', 'max:64'],
+            'billing_province' => ['nullable', 'string', 'max:255'],
+            'billing_district' => ['nullable', 'string', 'max:255'],
+            'billing_address' => ['nullable', 'string', 'max:1000'],
+            'billing_postal_code' => ['nullable', 'string', 'max:32'],
         ], [
             'apartment_ids.max' => 'Bir siparişte yalnızca bir apartman olabilir.',
             'accept_sales.accepted' => 'Ücretli abonelik için mesafeli satış sözleşmesini ve ön bilgilendirme formunu kabul edin.',
+            'billing_mode.required' => 'Fatura profili seçin veya yeni bir profil oluşturun.',
+            'billing_profile_id.required_if' => 'Kayıtlı bir fatura profili seçin.',
+            'billing_label.required_if' => 'Yeni fatura profili için bir ad girin.',
+            'billing_party_type.required_if' => 'Yeni fatura profili için bir tür seçin.',
         ]);
 
         $user = auth()->user();
@@ -110,14 +155,19 @@ class SubscriberSubscriptionController extends Controller
             $receiptPath = $request->file('receipt')->store("receipts/{$user->id}", 'public');
         }
 
-        $subscription = $checkout->openPending(
-            $user,
-            $apartments,
-            $validated['period'],
-            $validated['payment_method'],
-            $receiptPath,
-            $validated['reference_code'] ?? null,
-        );
+        $subscription = DB::transaction(function () use ($checkout, $user, $apartments, $validated, $receiptPath) {
+            $billingProfile = $this->billingProfileFor($user, $validated);
+
+            return $checkout->openPending(
+                $user,
+                $apartments,
+                $validated['period'],
+                $validated['payment_method'],
+                $billingProfile,
+                $receiptPath,
+                $validated['reference_code'] ?? null,
+            );
+        });
 
         app(LegalConsent::class)->recordSale($user, $subscription, $request);
 
@@ -283,6 +333,52 @@ class SubscriberSubscriptionController extends Controller
             'period' => null,
             'order' => null,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function billingProfileFor(User $user, array $validated): BillingProfile
+    {
+        if ($validated['billing_mode'] === 'new') {
+            $attributes = [
+                'label' => $validated['billing_label'],
+                'party_type' => $validated['billing_party_type'],
+                'is_active' => true,
+            ];
+
+            foreach ([
+                'legal_name' => 'billing_legal_name',
+                'identity_number' => 'billing_identity_number',
+                'tax_office' => 'billing_tax_office',
+                'email' => 'billing_email',
+                'phone' => 'billing_phone',
+                'country' => 'billing_country',
+                'province' => 'billing_province',
+                'district' => 'billing_district',
+                'address' => 'billing_address',
+                'postal_code' => 'billing_postal_code',
+            ] as $column => $input) {
+                $value = $validated[$input] ?? null;
+                $attributes[$column] = $value === '' ? null : $value;
+            }
+
+            return $user->billingProfiles()->create($attributes);
+        }
+
+        $profile = BillingProfile::query()
+            ->whereKey($validated['billing_profile_id'] ?? null)
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $profile) {
+            throw ValidationException::withMessages([
+                'billing_profile_id' => 'Seçilen fatura profili kullanılamaz.',
+            ]);
+        }
+
+        return $profile;
     }
 
     private function authorizeSubscription(UserSubscription $subscription): void

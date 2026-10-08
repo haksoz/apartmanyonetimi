@@ -43,6 +43,9 @@
                                     @foreach ($subscription->items as $item)
                                         <div>{{ $item->apartment_name }} · {{ $item->unit_count }} daire AidatCep Kullanım / {{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }}</div>
                                     @endforeach
+                                    @if ($subscription->billing_label)
+                                        <div class="mt-1 text-xs font-normal text-slate-500">{{ $subscription->billing_label }}</div>
+                                    @endif
                                 @else
                                     Eski paket kaydı
                                 @endif
@@ -108,6 +111,9 @@
                             @foreach ($subscription->items as $item)
                                 <span class="block">{{ $item->apartment_name }} · {{ $item->unit_count }} daire AidatCep Kullanım / {{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }}</span>
                             @endforeach
+                            @if ($subscription->billing_label)
+                                <span class="mt-1 block text-xs font-normal text-slate-500">{{ $subscription->billing_label }}</span>
+                            @endif
                         @else
                             Eski paket kaydı
                         @endif

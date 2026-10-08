@@ -191,7 +191,7 @@ class QuoteRequestTest extends TestCase
                 'period' => 'monthly',
                 'payment_method' => 'havale',
                 'accept_sales' => '1',
-            ])
+            ] + $this->billingSelection($user))
             ->assertRedirect();
 
         $order = UserSubscription::query()->firstOrFail();
@@ -233,7 +233,7 @@ class QuoteRequestTest extends TestCase
                 'period' => 'monthly',
                 'payment_method' => 'havale',
                 'accept_sales' => '1',
-            ])
+            ] + $this->billingSelection($user))
             ->assertRedirect(route('subscriber.subscriptions.create'))
             ->assertSessionHasErrors('apartment_ids');
 

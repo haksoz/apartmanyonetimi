@@ -72,7 +72,7 @@
                         <div class="rounded-xl border border-slate-200 p-4">
                             <label class="flex items-start gap-3">
                                 @if ($selectable)
-                                    <input type="radio" name="apartment_ids[]" value="{{ $apartment->id }}" class="mt-1" @checked((int) old('apartment_ids.0') === $apartment->id)>
+                                    <input type="radio" name="apartment_ids[]" value="{{ $apartment->id }}" data-billing-profile="{{ $apartment->suggested_billing_profile_id }}" class="mt-1" @checked((int) old('apartment_ids.0') === $apartment->id)>
                                 @endif
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -106,6 +106,12 @@
                     @endforeach
                 </div>
                 @error('apartment_ids') <div class="mt-2 text-sm text-red-600">{{ $message }}</div> @enderror
+
+                @include('subscriber.partials.billing-profile-picker', [
+                    'profiles' => $billingProfiles,
+                    'selectedId' => old('billing_mode') === 'new' ? null : $selectedBillingProfileId,
+                    'mode' => old('billing_mode', $billingProfiles->isEmpty() ? 'new' : 'existing'),
+                ])
 
                 <div class="mt-6 grid gap-4 sm:grid-cols-2">
                     <label class="text-sm font-medium text-slate-700">
@@ -151,6 +157,41 @@
                             input.addEventListener('change', sync);
                         });
                         sync();
+                    })();
+                    (function () {
+                        const picker = document.querySelector('[data-billing-picker]');
+                        if (!picker || {{ old('billing_profile_id') || old('billing_mode') ? 'true' : 'false' }}) {
+                            return;
+                        }
+                        const select = picker.querySelector('select[name="billing_profile_id"]');
+                        const existing = picker.querySelector('input[name="billing_mode"][value="existing"]');
+                        let touched = false;
+                        let applying = false;
+                        const apply = function (radio) {
+                            if (touched || !select || !radio || !radio.checked) {
+                                return;
+                            }
+                            const id = radio.getAttribute('data-billing-profile') || '';
+                            if (id === '' || !existing) {
+                                return;
+                            }
+                            applying = true;
+                            select.value = id;
+                            existing.checked = true;
+                            existing.dispatchEvent(new Event('change'));
+                            applying = false;
+                        };
+                        picker.addEventListener('change', function () {
+                            if (!applying) {
+                                touched = true;
+                            }
+                        });
+                        document.querySelectorAll('input[name="apartment_ids[]"]').forEach(function (radio) {
+                            radio.addEventListener('change', function () {
+                                apply(radio);
+                            });
+                            apply(radio);
+                        });
                     })();
                 </script>
 

@@ -162,6 +162,8 @@
         @endif
     </article>
 
+    @include('partials.billing-snapshot', ['subscription' => $subscription])
+
     @if ($canSubmitProof)
         @include('subscriber.subscriptions.partials.payment-info-modal', [
             'subscription' => $subscription,

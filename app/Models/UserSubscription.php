@@ -49,6 +49,19 @@ class UserSubscription extends Model
         'payment_method',
         'receipt_path',
         'receipt_reference',
+        'billing_profile_id',
+        'billing_party_type',
+        'billing_label',
+        'billing_legal_name',
+        'billing_identity_number',
+        'billing_tax_office',
+        'billing_email',
+        'billing_phone',
+        'billing_country',
+        'billing_province',
+        'billing_district',
+        'billing_address',
+        'billing_postal_code',
     ];
 
     protected $casts = [
@@ -68,6 +81,18 @@ class UserSubscription extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function billingProfile(): BelongsTo
+    {
+        return $this->belongsTo(BillingProfile::class);
+    }
+
+    public function hasBillingSnapshot(): bool
+    {
+        return filled($this->billing_label)
+            || filled($this->billing_legal_name)
+            || filled($this->billing_party_type);
     }
 
     public function subscription(): BelongsTo

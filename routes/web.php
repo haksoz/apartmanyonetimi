@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\AdminSubscriptionItemController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Subscriber\SubscriberApartmentController;
 use App\Http\Controllers\Subscriber\SubscriberApartmentCreateController;
+use App\Http\Controllers\Subscriber\SubscriberBillingProfileController;
 use App\Http\Controllers\Subscriber\SubscriberDashboardController;
 use App\Http\Controllers\Subscriber\SubscriberSubscriptionController;
 use App\Http\Controllers\AuthController;
@@ -300,6 +301,13 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
     Route::get('apartments/{apartment}', [SubscriberApartmentController::class, 'show'])->name('apartments.show');
     Route::get('apartments/{apartment}/edit', [ApartmentController::class, 'edit'])->name('apartments.edit');
     Route::put('apartments/{apartment}', [ApartmentController::class, 'update'])->name('apartments.update');
+
+    Route::get('billing-profiles', [SubscriberBillingProfileController::class, 'index'])->name('billing-profiles.index');
+    Route::get('billing-profiles/create', [SubscriberBillingProfileController::class, 'create'])->name('billing-profiles.create');
+    Route::post('billing-profiles', [SubscriberBillingProfileController::class, 'store'])->name('billing-profiles.store');
+    Route::get('billing-profiles/{billingProfile}/edit', [SubscriberBillingProfileController::class, 'edit'])->name('billing-profiles.edit');
+    Route::put('billing-profiles/{billingProfile}', [SubscriberBillingProfileController::class, 'update'])->name('billing-profiles.update');
+    Route::patch('billing-profiles/{billingProfile}/active', [SubscriberBillingProfileController::class, 'active'])->name('billing-profiles.active');
 
     // Subscription renewal / upgrade orders
     Route::prefix('subscriptions')->name('subscriptions.')->group(function () {

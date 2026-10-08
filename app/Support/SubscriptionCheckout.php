@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Apartment;
+use App\Models\BillingProfile;
 use App\Models\Package;
 use App\Models\Subscription;
 use App\Models\SubscriptionItem;
@@ -17,11 +18,19 @@ class SubscriptionCheckout
 {
     public function __construct(private PriceQuote $prices) {}
 
-    public function openPending(User $user, Collection $apartments, string $period, string $paymentMethod, ?string $receiptPath = null, ?string $reference = null): UserSubscription
+    public function openPending(User $user, Collection $apartments, string $period, string $paymentMethod, BillingProfile $billingProfile, ?string $receiptPath = null, ?string $reference = null): UserSubscription
     {
         if ($apartments->isEmpty()) {
             throw ValidationException::withMessages([
                 'apartment_ids' => 'En az bir apartman seçin.',
+            ]);
+        }
+
+        $billingProfile = BillingProfile::query()->whereKey($billingProfile->id)->first();
+
+        if (! $billingProfile || (int) $billingProfile->user_id !== (int) $user->id || ! $billingProfile->is_active) {
+            throw ValidationException::withMessages([
+                'billing_profile_id' => 'Seçilen fatura profili kullanılamaz.',
             ]);
         }
 
@@ -91,7 +100,7 @@ class SubscriptionCheckout
             'payment_method' => $paymentMethod,
             'receipt_path' => $receiptPath,
             'receipt_reference' => $reference,
-        ]);
+        ] + $billingProfile->orderSnapshot());
 
         foreach ($lines as [$apartment, $quote]) {
             /** @var Apartment $apartment */
@@ -117,6 +126,12 @@ class SubscriptionCheckout
                 'started_at' => null,
                 'expires_at' => null,
                 'ended_at' => null,
+            ]);
+        }
+
+        foreach ($records as $record) {
+            $record->update([
+                'billing_profile_id' => $billingProfile->id,
             ]);
         }
 

@@ -147,7 +147,7 @@ class LegalConsentTest extends TestCase
             'apartment_ids' => [$apartment->id],
             'period' => 'monthly',
             'payment_method' => 'havale',
-        ];
+        ] + $this->billingSelection($user);
 
         $this->actingAs($user)
             ->post(route('subscriber.subscriptions.store'), $payload)

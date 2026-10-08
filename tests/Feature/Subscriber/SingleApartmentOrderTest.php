@@ -63,7 +63,7 @@ class SingleApartmentOrderTest extends TestCase
                 'period' => 'monthly',
                 'payment_method' => 'havale',
                 'accept_sales' => '1',
-            ])
+            ] + $this->billingSelection($user))
             ->assertSessionHasErrors('apartment_ids');
 
         $this->assertSame(0, UserSubscription::query()->count());
@@ -324,7 +324,7 @@ class SingleApartmentOrderTest extends TestCase
             'period' => 'monthly',
             'payment_method' => 'havale',
             'accept_sales' => '1',
-        ];
+        ] + $this->billingSelection($apartment->user);
     }
 
     private function placeOrder(User $user, Apartment $apartment): UserSubscription

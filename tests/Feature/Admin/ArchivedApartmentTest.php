@@ -41,7 +41,7 @@ class ArchivedApartmentTest extends TestCase
                 'period' => 'monthly',
                 'payment_method' => 'havale',
                 'accept_sales' => '1',
-            ])
+            ] + $this->billingSelection($manager))
             ->assertSessionHasErrors('apartment_ids');
 
         $this->assertNotNull($active->id);

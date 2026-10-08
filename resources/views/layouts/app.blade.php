@@ -150,6 +150,12 @@
 
                         <div id="user-dropdown" class="hidden absolute right-0 top-full mt-1 w-56 rounded-xl bg-white shadow-lg border border-slate-200 py-1 z-50">
                             @if(auth()->user()->isSubscriber())
+                                <a href="{{ route('subscriber.billing-profiles.index') }}" class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700">
+                                    <svg class="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                                    </svg>
+                                    <span>Fatura bilgileri</span>
+                                </a>
                                 <a href="{{ route('subscriber.dashboard', ['reset' => 1]) }}" class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700">
                                     <svg class="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
@@ -305,6 +311,12 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 9.75a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
                             <span class="sidebar-text">Siparişlerim</span>
+                        </a>
+                        <a href="{{ route('subscriber.billing-profiles.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('subscriber.billing-profiles.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                            </svg>
+                            <span class="sidebar-text">Fatura bilgileri</span>
                         </a>
                     @endif
 

@@ -131,7 +131,7 @@ class ManagerHandoffCommercialTest extends TestCase
                 'period' => 'yearly',
                 'payment_method' => 'havale',
                 'accept_sales' => '1',
-            ])
+            ] + $this->billingSelection($mehmet))
             ->assertRedirect();
 
         $mehmetOrder = $mehmet->fresh()->subscriptions()->pending()->first();

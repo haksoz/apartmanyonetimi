@@ -3,6 +3,7 @@
 namespace Tests\Feature\Subscription;
 
 use App\Models\Apartment;
+use App\Models\BillingProfile;
 use App\Models\Package;
 use App\Models\Subscription;
 use App\Models\SubscriptionItem;
@@ -487,11 +488,17 @@ class PurchaseItemFlowTest extends TestCase
 
     private function pendingOrder(User $user, array $apartments, string $period = 'yearly'): UserSubscription
     {
+        $profile = BillingProfile::query()->firstOrCreate(
+            ['user_id' => $user->id, 'label' => 'Test profili'],
+            ['party_type' => BillingProfile::TYPE_INDIVIDUAL, 'is_active' => true]
+        );
+
         return app(SubscriptionCheckout::class)->openPending(
             $user,
             collect($apartments),
             $period,
-            'havale'
+            'havale',
+            $profile
         );
     }
 }

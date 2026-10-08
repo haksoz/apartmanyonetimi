@@ -26,6 +26,7 @@ class Subscription extends Model
         'uuid',
         'subscription_no',
         'apartment_id',
+        'billing_profile_id',
         'status',
         'started_at',
         'ended_at',
@@ -73,6 +74,11 @@ class Subscription extends Model
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
+    }
+
+    public function billingProfile(): BelongsTo
+    {
+        return $this->belongsTo(BillingProfile::class);
     }
 
     public function items(): HasMany

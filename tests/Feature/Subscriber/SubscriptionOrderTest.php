@@ -100,7 +100,12 @@ class SubscriptionOrderTest extends TestCase
             ->assertSee('Süresi Bitmiş Apartman')
             ->assertSee('Ücretsiz')
             ->assertSee('Ücretliye Geç')
-            ->assertSee('Nasıl ödemek istersiniz?')
+            ->assertSee('Abonelik türü')
+            ->assertSee('Fatura bilgileri')
+            ->assertSee('Ödeme şekli')
+            ->assertSee('Mesafeli satış sözleşmesini')
+            ->assertSee("payStep(this, 'next')", false)
+            ->assertSee("payStep(this, 'close')", false)
             ->assertSee('Havale / EFT')
             ->assertSee('Kredi kartı')
             ->assertSee('Henüz aktif değil')
@@ -149,7 +154,7 @@ class SubscriptionOrderTest extends TestCase
                 'period' => 'yearly',
                 'payment_method' => 'havale',
                 'accept_sales' => '1',
-            ])
+            ] + $this->billingSelection($manager))
             ->assertOk()
             ->getContent();
 
@@ -191,7 +196,7 @@ class SubscriptionOrderTest extends TestCase
                 'period' => 'monthly',
                 'payment_method' => 'kredi_kartı',
                 'accept_sales' => '1',
-            ])
+            ] + $this->billingSelection($manager))
             ->assertRedirect();
 
         $pending = $manager->fresh()->subscriptions()->pending()->first();

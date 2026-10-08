@@ -6,6 +6,22 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function billingSelection(\App\Models\User $user, array $overrides = []): array
+    {
+        $profile = \App\Models\BillingProfile::query()->create(array_merge([
+            'user_id' => $user->id,
+            'label' => 'Test profili',
+            'party_type' => \App\Models\BillingProfile::TYPE_INDIVIDUAL,
+            'legal_name' => $user->name,
+            'is_active' => true,
+        ], $overrides));
+
+        return [
+            'billing_mode' => 'existing',
+            'billing_profile_id' => $profile->id,
+        ];
+    }
+
     protected function grantPaidFeatures(\App\Models\Apartment $apartment): void
     {
         $apartment->update(['billing_plan' => 'paid']);

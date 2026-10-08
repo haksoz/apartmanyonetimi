@@ -289,6 +289,10 @@
                         {{ $apartmentNames->isNotEmpty() ? $apartmentNames->join(', ') : '—' }}
                         <span class="text-slate-300"> · </span>
                         {{ $subscriptionNumbers->isNotEmpty() ? $subscriptionNumbers->join(', ') : '—' }}
+                        @if ($order->billing_label)
+                            <span class="text-slate-300"> · </span>
+                            {{ $order->billing_label }}
+                        @endif
                         <span class="text-slate-300"> · </span>
                         <a href="{{ route('admin.orders.show', $order) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">Detay</a>
                     </p>
@@ -331,7 +335,12 @@
                                 <div class="font-mono font-medium text-slate-900">{{ $order->order_number ?: '—' }}</div>
                                 <div class="text-xs text-slate-500">{{ $subscriptionNumbers->isNotEmpty() ? $subscriptionNumbers->join(', ') : '—' }}</div>
                             </td>
-                            <td class="px-4 py-3 text-slate-700">{{ $apartmentNames->isNotEmpty() ? $apartmentNames->join(', ') : '—' }}</td>
+                            <td class="px-4 py-3 text-slate-700">
+                                {{ $apartmentNames->isNotEmpty() ? $apartmentNames->join(', ') : '—' }}
+                                @if ($order->billing_label)
+                                    <div class="text-xs text-slate-500">{{ $order->billing_label }}</div>
+                                @endif
+                            </td>
                             <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ number_format((float) $order->price, 2, ',', '.') }} ₺</td>
                             <td class="px-4 py-3">
                                 <div class="flex flex-wrap gap-1">

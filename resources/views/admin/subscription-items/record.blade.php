@@ -208,6 +208,9 @@
                             <td class="whitespace-nowrap px-3 py-2">
                                 @if ($order)
                                     <a href="{{ route('admin.orders.show', $order) }}" class="font-mono font-medium text-emerald-700 hover:text-emerald-800">{{ $order->order_number ?: 'Sipariş' }}</a>
+                                    @if ($order->billing_label)
+                                        <div class="text-xs font-normal text-slate-500">{{ $order->billing_label }}</div>
+                                    @endif
                                 @else
                                     —
                                 @endif
@@ -252,7 +255,12 @@
                     <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                         <div>
                             <dt class="text-slate-500">Sipariş no</dt>
-                            <dd class="font-medium text-slate-900">{{ $order?->order_number ?: '—' }}</dd>
+                            <dd class="font-medium text-slate-900">
+                                {{ $order?->order_number ?: '—' }}
+                                @if ($order?->billing_label)
+                                    <div class="text-xs font-normal text-slate-500">{{ $order->billing_label }}</div>
+                                @endif
+                            </dd>
                         </div>
                         <div>
                             <dt class="text-slate-500">Ödeyen</dt>

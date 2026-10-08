@@ -255,7 +255,7 @@ class CommercialBillingTest extends TestCase
                 'period' => 'yearly',
                 'payment_method' => 'havale',
                 'accept_sales' => '1',
-            ])
+            ] + $this->billingSelection($user))
             ->assertRedirect();
 
         $item = SubscriptionItem::query()->where('apartment_id', $apartment->id)->firstOrFail();
