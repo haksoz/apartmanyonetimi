@@ -70,6 +70,7 @@
                     return false;
                 }
                 if (action === 'read') {
+                    payLegalFill(modal);
                     show(node.getAttribute('data-pay-open'));
                     return false;
                 }
@@ -92,6 +93,84 @@
                     return false;
                 }
                 return false;
+            }
+            function payLegalText(value) {
+                return value && String(value).trim() !== '' ? String(value).trim() : 'Belirtilmedi';
+            }
+            function payLegalMoney(amount) {
+                if (amount === null || amount === '' || isNaN(Number(amount))) return 'Belirtilmedi';
+                const parts = Number(amount).toFixed(2).split('.');
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                return parts[0] + ',' + parts[1] + ' ₺';
+            }
+            function payLegalAddress(parts) {
+                const text = parts.map(function (value) { return value ? String(value).trim() : ''; }).filter(Boolean).join(', ');
+                return text || 'Belirtilmedi';
+            }
+            function payLegalBilling(modal) {
+                const selected = modal.querySelector('input[name="billing_mode"]:checked');
+                const hidden = modal.querySelector('input[type="hidden"][name="billing_mode"]');
+                const isNew = hidden ? hidden.value === 'new' : !!(selected && selected.value === 'new');
+                const read = function (name) {
+                    const field = modal.querySelector('[name="' + name + '"]');
+                    return field ? field.value : '';
+                };
+                if (isNew) {
+                    return {
+                        legal_name: payLegalText(read('billing_legal_name')),
+                        identity_number: payLegalText(read('billing_identity_number')),
+                        tax_office: payLegalText(read('billing_tax_office')),
+                        email: payLegalText(read('billing_email')),
+                        phone: payLegalText(read('billing_phone')),
+                        address: payLegalAddress([read('billing_address'), read('billing_district'), read('billing_province'), read('billing_postal_code'), read('billing_country')]),
+                    };
+                }
+                const option = modal.querySelector('[name="billing_profile_id"] option:checked');
+                if (!option || option.value === '') {
+                    return { legal_name: 'Belirtilmedi', identity_number: 'Belirtilmedi', tax_office: 'Belirtilmedi', email: 'Belirtilmedi', phone: 'Belirtilmedi', address: 'Belirtilmedi' };
+                }
+                return {
+                    legal_name: payLegalText(option.getAttribute('data-billing-legal-name')),
+                    identity_number: payLegalText(option.getAttribute('data-billing-identity-number')),
+                    tax_office: payLegalText(option.getAttribute('data-billing-tax-office')),
+                    email: payLegalText(option.getAttribute('data-billing-email')),
+                    phone: payLegalText(option.getAttribute('data-billing-phone')),
+                    address: payLegalAddress([
+                        option.getAttribute('data-billing-address'),
+                        option.getAttribute('data-billing-district'),
+                        option.getAttribute('data-billing-province'),
+                        option.getAttribute('data-billing-postal-code'),
+                        option.getAttribute('data-billing-country'),
+                    ]),
+                };
+            }
+            function payLegalFill(modal) {
+                const periodInput = modal.querySelector('input[name="period"]:checked');
+                const methodInput = modal.querySelector('input[name="payment_method"]:checked');
+                const period = periodInput ? periodInput.value : 'monthly';
+                const method = methodInput ? methodInput.value : 'havale';
+                const price = period === 'yearly' ? modal.getAttribute('data-price-yearly') : modal.getAttribute('data-price-monthly');
+                const billing = payLegalBilling(modal);
+                const values = {
+                    apartment_name: payLegalText(modal.getAttribute('data-apartment-name')),
+                    unit_count: payLegalText(modal.getAttribute('data-unit-count')),
+                    period: period === 'yearly' ? '12 aylık' : (period === 'monthly' ? 'Aylık' : payLegalText(period)),
+                    price: payLegalMoney(price),
+                    payment_method: method === 'kredi_kartı' ? 'Kredi kartı' : (method === 'havale' ? 'Havale / EFT' : payLegalText(method)),
+                    order_number: 'Sipariş oluşturulduğunda verilir',
+                    service_start: 'Ödeme onay tarihi itibarıyla',
+                    service_end: 'Ödeme onay tarihinden itibaren seçilen hizmet dönemi',
+                    billing_legal_name: billing.legal_name,
+                    billing_identity_number: billing.identity_number,
+                    billing_tax_office: billing.tax_office,
+                    billing_address: billing.address,
+                    billing_email: billing.email,
+                    billing_phone: billing.phone,
+                };
+                modal.querySelectorAll('[data-legal-token]').forEach(function (node) {
+                    const key = node.getAttribute('data-legal-token');
+                    if (Object.prototype.hasOwnProperty.call(values, key)) node.textContent = values[key];
+                });
             }
             function payStepReady(modal) {
                 const panel = modal.querySelector('[data-pay-panel="billing"]');
@@ -273,7 +352,7 @@
                                 <input type="hidden" name="apartment_ids[]" value="{{ $apartment->id }}">
                                 <button type="button" onclick="return payStep(document.getElementById('{{ $payModalId }}'), 'open')" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">{{ $payLabel }}</button>
 
-                                <div id="{{ $payModalId }}" data-pay-modal data-pay-step="{{ $payStep }}" @class([
+                                <div id="{{ $payModalId }}" data-pay-modal data-pay-step="{{ $payStep }}" data-apartment-name="{{ $apartment->name }}" data-unit-count="{{ $apartment->unit_count }}" data-price-monthly="{{ $monthly['amount'] ?? '' }}" data-price-yearly="{{ $yearly['amount'] ?? '' }}" @class([
                                     'fixed inset-0 z-50 items-center justify-center bg-black/50 p-4',
                                     'flex' => $reopenPayModal,
                                     'hidden' => ! $reopenPayModal,
@@ -392,6 +471,30 @@
                                             </div>
                                         </div>
 
+                                        @php
+                                            $previewPeriod = $reopenThisPay ? old('period', 'monthly') : 'monthly';
+                                            $previewProfile = $billingMode !== 'new' && $selectedBillingProfileId
+                                                ? $billingProfiles->firstWhere('id', (int) $selectedBillingProfileId)
+                                                : null;
+                                            $legalPlaceholderTokens = true;
+                                            $legalPlaceholderValues = \App\Support\LegalPlaceholders::preview([
+                                                'apartment_name' => $apartment->name,
+                                                'unit_count' => $apartment->unit_count,
+                                                'period' => $previewPeriod,
+                                                'price' => $previewPeriod === 'yearly' ? ($yearly['amount'] ?? null) : ($monthly['amount'] ?? null),
+                                                'payment_method' => $reopenThisPay ? old('payment_method', 'havale') : 'havale',
+                                                'billing_legal_name' => $billingMode === 'new' ? old('billing_legal_name') : $previewProfile?->legal_name,
+                                                'billing_identity_number' => $billingMode === 'new' ? old('billing_identity_number') : $previewProfile?->identity_number,
+                                                'billing_tax_office' => $billingMode === 'new' ? old('billing_tax_office') : $previewProfile?->tax_office,
+                                                'billing_email' => $billingMode === 'new' ? old('billing_email') : $previewProfile?->email,
+                                                'billing_phone' => $billingMode === 'new' ? old('billing_phone') : $previewProfile?->phone,
+                                                'billing_address' => $billingMode === 'new' ? old('billing_address') : $previewProfile?->address,
+                                                'billing_district' => $billingMode === 'new' ? old('billing_district') : $previewProfile?->district,
+                                                'billing_province' => $billingMode === 'new' ? old('billing_province') : $previewProfile?->province,
+                                                'billing_postal_code' => $billingMode === 'new' ? old('billing_postal_code') : $previewProfile?->postal_code,
+                                                'billing_country' => $billingMode === 'new' ? old('billing_country') : $previewProfile?->country,
+                                            ]);
+                                        @endphp
                                         <div data-pay-panel="distance" class="hidden min-h-0 flex-1 flex-col overflow-hidden p-6" hidden role="region" aria-labelledby="{{ $payModalId }}-distance-title">
                                             <h3 id="{{ $payModalId }}-distance-title" class="text-lg font-bold text-slate-900">Mesafeli Satış Sözleşmesi</h3>
                                             <div class="mt-3 min-h-0 flex-1 overflow-y-auto text-sm leading-relaxed text-slate-600">

@@ -25,16 +25,12 @@
                         <dt class="text-slate-500">Kabul tarihi</dt>
                         <dd class="font-medium text-slate-900">{{ $acceptance->accepted_at?->timezone(config('app.timezone'))->format('d.m.Y H:i') ?? '—' }}</dd>
                     </div>
-                    @php
-                        $acceptedVersion = $acceptance->legalDocumentVersion;
-                        $hasAcceptedText = $acceptedVersion
-                            && (int) $acceptedVersion->id === (int) $acceptance->legal_document_version_id
-                            && $acceptedVersion->document_key === $acceptance->document_key;
-                    @endphp
-                    @if ($hasAcceptedText)
-                        <div class="sm:col-span-3">
-                            <dt class="text-slate-500">Kabul edilen metin</dt>
-                            <dd class="mt-1 whitespace-pre-wrap font-medium text-slate-900">{{ $acceptedVersion->body }}</dd>
+                    @if (filled($acceptance->accepted_content))
+                        <div class="sm:col-span-3 pt-2">
+                            <details class="rounded-lg border border-slate-200 bg-slate-50">
+                                <summary class="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-700">Kabul edilen metin</summary>
+                                <div class="whitespace-pre-wrap border-t border-slate-200 px-3 py-3 font-medium text-slate-900">{{ $acceptance->accepted_content }}</div>
+                            </details>
                         </div>
                     @else
                         <p class="text-slate-600 sm:col-span-3">Bu kabul sırasında belge metni saklanmamış.</p>

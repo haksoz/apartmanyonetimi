@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use RuntimeException;
 
 class LegalAcceptance extends Model
 {
@@ -14,6 +15,7 @@ class LegalAcceptance extends Model
         'document_key',
         'document_version',
         'legal_document_version_id',
+        'accepted_content',
         'accepted_at',
         'ip_address',
     ];
@@ -21,6 +23,15 @@ class LegalAcceptance extends Model
     protected $casts = [
         'accepted_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $acceptance): void {
+            if ($acceptance->isDirty('accepted_content') && filled($acceptance->getOriginal('accepted_content'))) {
+                throw new RuntimeException('Kabul edilen sözleşme metni değiştirilemez.');
+            }
+        });
+    }
 
     public function user(): BelongsTo
     {

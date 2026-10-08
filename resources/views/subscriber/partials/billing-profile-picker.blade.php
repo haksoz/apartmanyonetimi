@@ -20,7 +20,20 @@
             <select name="billing_profile_id" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">
                 <option value="">Seçin</option>
                 @foreach ($profiles as $profile)
-                    <option value="{{ $profile->id }}" @selected($selectedId === (string) $profile->id)>
+                    <option
+                        value="{{ $profile->id }}"
+                        data-billing-legal-name="{{ $profile->legal_name }}"
+                        data-billing-identity-number="{{ $profile->identity_number }}"
+                        data-billing-tax-office="{{ $profile->tax_office }}"
+                        data-billing-email="{{ $profile->email }}"
+                        data-billing-phone="{{ $profile->phone }}"
+                        data-billing-address="{{ $profile->address }}"
+                        data-billing-district="{{ $profile->district }}"
+                        data-billing-province="{{ $profile->province }}"
+                        data-billing-postal-code="{{ $profile->postal_code }}"
+                        data-billing-country="{{ $profile->country }}"
+                        @selected($selectedId === (string) $profile->id)
+                    >
                         {{ $profile->label }}{{ $profile->legal_name ? ' · '.$profile->legal_name : '' }}
                     </option>
                 @endforeach

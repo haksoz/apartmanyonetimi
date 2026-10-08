@@ -119,13 +119,21 @@ class LegalConsent
 
     public function recordSale(User $user, UserSubscription $order, Request $request): void
     {
-        $this->record($user, self::DISTANCE_SALES, $order->id, null, $request);
-        $this->record($user, self::PRE_INFORMATION, $order->id, null, $request);
+        $this->record($user, self::DISTANCE_SALES, $order->id, null, $request, $order);
+        $this->record($user, self::PRE_INFORMATION, $order->id, null, $request, $order);
     }
 
-    private function record(User $user, string $key, ?int $orderId, ?int $apartmentId, Request $request): void
+    private function record(User $user, string $key, ?int $orderId, ?int $apartmentId, Request $request, ?UserSubscription $order = null): void
     {
         $published = LegalDocumentVersion::current($key);
+        $acceptedContent = null;
+
+        if ($published) {
+            $values = $order && in_array($key, self::SALE_DOCUMENTS, true)
+                ? LegalPlaceholders::fromOrder($order)
+                : [];
+            $acceptedContent = LegalPlaceholders::render($published->body, $values);
+        }
 
         LegalAcceptance::create([
             'user_id' => $user->id,
@@ -134,6 +142,7 @@ class LegalConsent
             'document_key' => $key,
             'document_version' => $published?->version ?? self::VERSIONS[$key],
             'legal_document_version_id' => $published?->id,
+            'accepted_content' => $acceptedContent,
             'accepted_at' => now(),
             'ip_address' => $request->ip(),
         ]);
