@@ -297,6 +297,7 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
     Route::post('apartments', [SubscriberApartmentCreateController::class, 'store'])->name('apartments.store');
 
     // Apartment editing for subscribers
+    Route::get('apartments/{apartment}', [SubscriberApartmentController::class, 'show'])->name('apartments.show');
     Route::get('apartments/{apartment}/edit', [ApartmentController::class, 'edit'])->name('apartments.edit');
     Route::put('apartments/{apartment}', [ApartmentController::class, 'update'])->name('apartments.update');
 

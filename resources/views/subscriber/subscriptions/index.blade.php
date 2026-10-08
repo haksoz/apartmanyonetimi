@@ -68,10 +68,12 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <a href="{{ route('subscriber.subscriptions.receipt', $subscription) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
-                                @if ($subscription->status === App\Models\UserSubscription::STATUS_PENDING && ! $subscription->hasPaymentProof())
-                                    <a href="{{ route('subscriber.subscriptions.receipt', $subscription) }}" class="ml-2 text-sm font-semibold text-amber-600 hover:text-amber-700">Ödeme Gir</a>
-                                @endif
+                                <div class="inline-flex items-center justify-end gap-3">
+                                    @if ($subscription->status === App\Models\UserSubscription::STATUS_PENDING && ! $subscription->hasPaymentProof() && $subscription->payment_method !== 'kredi_kartı')
+                                        <button type="button" onclick="document.getElementById('payment-info-modal-{{ $subscription->id }}').classList.remove('hidden')" class="text-sm font-semibold text-amber-600 hover:text-amber-700">Ödeme Gir</button>
+                                    @endif
+                                    <a href="{{ route('subscriber.subscriptions.receipt', $subscription) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -118,10 +120,10 @@
                         <a href="{{ Storage::url($subscription->receipt_path) }}" target="_blank" class="mt-1 inline-flex text-xs font-medium text-emerald-600 hover:text-emerald-700">Dekont görüntüle</a>
                     @endif
                     <div class="mt-4 flex gap-2">
-                        <a href="{{ route('subscriber.subscriptions.receipt', $subscription) }}" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
-                        @if ($subscription->status === App\Models\UserSubscription::STATUS_PENDING && ! $subscription->hasPaymentProof())
-                            <a href="{{ route('subscriber.subscriptions.receipt', $subscription) }}" class="flex-1 rounded-lg bg-amber-500 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-amber-600">Ödeme Gir</a>
+                        @if ($subscription->status === App\Models\UserSubscription::STATUS_PENDING && ! $subscription->hasPaymentProof() && $subscription->payment_method !== 'kredi_kartı')
+                            <button type="button" onclick="document.getElementById('payment-info-modal-{{ $subscription->id }}').classList.remove('hidden')" class="flex-1 rounded-lg bg-amber-500 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-amber-600">Ödeme Gir</button>
                         @endif
+                        <a href="{{ route('subscriber.subscriptions.receipt', $subscription) }}" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
                     </div>
                 </article>
             @empty
@@ -132,5 +134,18 @@
         <div class="mt-6">
             {{ $subscriptions->links() }}
         </div>
+
+        @php
+            $paymentErrors = $errors->has('reference_code') || $errors->has('receipt') || $errors->has('payment_info');
+            $openPaymentModal = (int) session('payment_modal');
+        @endphp
+        @foreach ($subscriptions as $subscription)
+            @if ($subscription->status === App\Models\UserSubscription::STATUS_PENDING && ! $subscription->hasPaymentProof() && $subscription->payment_method !== 'kredi_kartı')
+                @include('subscriber.subscriptions.partials.payment-info-modal', [
+                    'subscription' => $subscription,
+                    'open' => $paymentErrors && $openPaymentModal === $subscription->id,
+                ])
+            @endif
+        @endforeach
     </div>
 @endsection

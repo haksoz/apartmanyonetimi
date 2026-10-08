@@ -33,6 +33,19 @@ class SubscriberApartmentController extends Controller
         return view('subscriber.apartments.index', compact('apartments', 'currentApartmentModel'));
     }
 
+    public function show(Apartment $apartment, CurrentApartment $currentApartment, PriceQuote $prices, SubscriberApartmentOverview $overview)
+    {
+        $user = auth()->user();
+        $match = $currentApartment->availableFor($user)->firstWhere('id', $apartment->id);
+
+        abort_unless($match, 403);
+
+        $match->load(['user', 'managerUnit']);
+        $overview->decorate(collect([$match]), $user, $prices);
+
+        return view('subscriber.apartments.show', ['apartment' => $match]);
+    }
+
     public function update(Request $request, CurrentApartment $currentApartment)
     {
         $validated = $request->validate([

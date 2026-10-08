@@ -41,6 +41,15 @@ class ApartmentController extends Controller
 
         $isOwner = $this->isOwnerOf($currentApartment);
 
+        $serviceHistory = collect();
+        if ($isOwner) {
+            $serviceHistory = SubscriptionItem::query()
+                ->where('apartment_id', $currentApartment->id)
+                ->with('subscription.user')
+                ->get()
+                ->sortByDesc(fn (SubscriptionItem $item) => $item->subscription?->started_at?->timestamp ?? $item->id);
+        }
+
         $hasImported = AccountTransaction::where('apartment_id', $currentApartment->id)
             ->where('is_imported', true)
             ->exists();
@@ -49,6 +58,7 @@ class ApartmentController extends Controller
             'apartment' => $currentApartment,
             'isOwner' => $isOwner,
             'hasImported' => $hasImported,
+            'serviceHistory' => $serviceHistory,
         ]);
     }
 
@@ -177,6 +187,8 @@ class ApartmentController extends Controller
             })
             ->findOrFail($id);
 
+        $apartment->load(['user', 'managerUnit']);
+
         return view('apartments.edit', compact('apartment'));
     }
 
@@ -194,16 +206,20 @@ class ApartmentController extends Controller
             ->findOrFail($id);
 
         $validated = $request->validate([
-            'name'    => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string'],
+            'province' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
         ]);
 
         $apartment->update([
-            'name'    => $validated['name'],
+            'name' => $validated['name'],
             'address' => $validated['address'],
+            'province' => $validated['province'] ?: null,
+            'district' => $validated['district'] ?: null,
         ]);
 
-        $redirectRoute = auth()->user()->isSubscriber() ? 'subscriber.apartments.index' : 'apartments.show';
+        $redirectRoute = auth()->user()->isSubscriber() ? 'subscriber.apartments.show' : 'apartments.show';
         return redirect()->route($redirectRoute, $apartment)->with('status', 'Apartman bilgileri güncellendi.');
     }
 

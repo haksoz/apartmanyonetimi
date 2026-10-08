@@ -28,18 +28,19 @@
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2">
             @if ($canSubmitProof)
-                <button type="button" onclick="document.getElementById('payment-info-modal').classList.remove('hidden')" class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">Ödeme bilgisi gir</button>
+                <button type="button" onclick="document.getElementById('payment-info-modal-{{ $subscription->id }}').classList.remove('hidden')" class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">Ödeme Gir</button>
             @endif
-            <a href="{{ route('subscriber.subscriptions.index') }}" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Siparişlerime dön</a>
+            <button type="button" onclick="if (window.history.length > 1) { history.back(); } else { window.location.href = '{{ route('subscriber.subscriptions.index') }}'; }" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                </svg>
+                Geri
+            </button>
         </div>
     </div>
 
     <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <dl class="divide-y divide-slate-200 text-sm">
-            <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt class="text-slate-500">Sipariş no</dt>
-                <dd class="mt-1 font-mono font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ $subscription->order_number ?: '—' }}</dd>
-            </div>
             <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-slate-500">Tarih</dt>
                 <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ $subscription->created_at?->format('d.m.Y H:i') ?? '—' }}</dd>
@@ -162,37 +163,9 @@
     </article>
 
     @if ($canSubmitProof)
-        <div id="payment-info-modal" @class([
-            'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',
-            'hidden' => ! $reopenPaymentModal,
-        ])>
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="payment-info-title">
-                <h2 id="payment-info-title" class="text-lg font-bold text-slate-900">Ödeme bilgisi gir</h2>
-                <p class="mt-2 text-sm text-slate-600">Referans numarası veya dekont dosyasından en az birini girin.</p>
-                <form method="POST" action="{{ route('subscriber.subscriptions.payment-info', $subscription) }}" enctype="multipart/form-data" class="mt-4 space-y-4">
-                    @csrf
-                    <label class="block text-sm font-medium text-slate-700">
-                        Dekont / referans numarası
-                        <input type="text" name="reference_code" value="{{ old('reference_code', $subscription->receipt_reference) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Örn. DEKONT123456">
-                        @error('reference_code')<span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span>@enderror
-                    </label>
-                    <label class="block text-sm font-medium text-slate-700">
-                        Dekont dosyası
-                        <input type="file" name="receipt" accept=".jpg,.jpeg,.png,.pdf" class="mt-1 block w-full text-sm text-slate-700 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:font-semibold hover:file:bg-slate-200">
-                        @error('receipt')<span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span>@enderror
-                    </label>
-                    @error('payment_info')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
-                    <div class="flex justify-end gap-2">
-                        <button type="button" onclick="document.getElementById('payment-info-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
-                        <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Kaydet</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <script>
-            document.getElementById('payment-info-modal').addEventListener('click', function (event) {
-                if (event.target === this) this.classList.add('hidden');
-            });
-        </script>
+        @include('subscriber.subscriptions.partials.payment-info-modal', [
+            'subscription' => $subscription,
+            'open' => $reopenPaymentModal,
+        ])
     @endif
 @endsection

@@ -143,33 +143,39 @@ class SubscriberSubscriptionController extends Controller
     {
         $this->authorizeSubscription($subscription);
 
-        if (! $subscription->isPending()) {
-            throw ValidationException::withMessages([
-                'payment_info' => 'Ödeme bilgisi yalnızca bekleyen siparişe eklenebilir.',
-            ]);
-        }
+        try {
+            if (! $subscription->isPending()) {
+                throw ValidationException::withMessages([
+                    'payment_info' => 'Ödeme bilgisi yalnızca bekleyen siparişe eklenebilir.',
+                ]);
+            }
 
-        if ($subscription->payment_method === 'kredi_kartı') {
-            throw ValidationException::withMessages([
-                'payment_info' => 'Kredi kartı siparişine dekont veya referans eklenemez.',
-            ]);
-        }
+            if ($subscription->payment_method === 'kredi_kartı') {
+                throw ValidationException::withMessages([
+                    'payment_info' => 'Kredi kartı siparişine dekont veya referans eklenemez.',
+                ]);
+            }
 
-        if ($subscription->hasPaymentProof()) {
-            throw ValidationException::withMessages([
-                'payment_info' => 'Ödeme bilgisi alındı. Dekont veya referans artık değiştirilemez.',
-            ]);
-        }
+            if ($subscription->hasPaymentProof()) {
+                throw ValidationException::withMessages([
+                    'payment_info' => 'Ödeme bilgisi alındı. Dekont veya referans artık değiştirilemez.',
+                ]);
+            }
 
-        $validated = $request->validate([
-            'reference_code' => ['nullable', 'string', 'max:255'],
-            'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
-        ]);
-
-        if (! filled($validated['reference_code'] ?? null) && ! $request->hasFile('receipt')) {
-            throw ValidationException::withMessages([
-                'payment_info' => 'Referans numarası veya dekont dosyası alanlarından en az biri doldurulmalıdır.',
+            $validated = $request->validate([
+                'reference_code' => ['nullable', 'string', 'max:255'],
+                'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             ]);
+
+            if (! filled($validated['reference_code'] ?? null) && ! $request->hasFile('receipt')) {
+                throw ValidationException::withMessages([
+                    'payment_info' => 'Referans numarası veya dekont dosyası alanlarından en az biri doldurulmalıdır.',
+                ]);
+            }
+        } catch (ValidationException $exception) {
+            session()->flash('payment_modal', $subscription->id);
+
+            throw $exception;
         }
 
         $data = [];

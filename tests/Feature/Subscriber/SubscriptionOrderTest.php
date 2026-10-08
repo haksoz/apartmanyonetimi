@@ -222,8 +222,8 @@ class SubscriptionOrderTest extends TestCase
             ->assertSee($account->iban)
             ->assertSee($subscription->order_number)
             ->assertSeeText('Havale/EFT açıklama kısmına')
-            ->assertSee('Ödeme bilgisi gir')
-            ->assertSee('Sipariş no');
+            ->assertSee('Ödeme Gir')
+            ->assertDontSee('Sipariş no');
     }
 
     public function test_receipt_page_highlights_the_apartment(): void
