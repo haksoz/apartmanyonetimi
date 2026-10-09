@@ -5,20 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\AccountTransaction;
 use App\Models\Apartment;
-use App\Models\CashBox;
+use App\Models\ApartmentDataOperation;
 use App\Models\Category;
-use App\Models\CashTransaction;
-use App\Models\Due;
-use App\Models\DueBatch;
-use App\Models\Expense;
-use App\Models\Payment;
-use App\Models\PaymentAllocation;
 use App\Models\QuoteRequest;
 use App\Models\SubscriptionItem;
-use App\Models\TenantAssignment;
 use App\Models\Unit;
-use App\Models\UnitOwnerHistory;
 use App\Support\ApartmentCommercial;
+use App\Support\ApartmentReset\ApartmentReset;
+use App\Support\ApartmentReset\ResetPolicy;
 use App\Support\CurrentApartment;
 use App\Support\LegalConsent;
 use Illuminate\Http\Request;
@@ -237,123 +231,121 @@ class ApartmentController extends Controller
     }
 
     /**
-     * Destroy all data for the current apartment (except accounts).
+     * Aidat, gider, tahsilat ve kasa hareketini siler. Apartman ve abonelik durur.
      */
-    public function destroyAll(Request $request, string $id)
+    public function destroyAll(Request $request, string $id, ApartmentReset $reset)
     {
-        $apartment = Apartment::query()
-            ->when(! auth()->user()->isAdmin(), function ($query) {
-                $query->whereHas('members', function ($query) {
-                    $query->whereKey(auth()->id());
-                });
-            })
-            ->findOrFail($id);
+        $apartment = $this->managedApartment($id);
+        abort_unless($this->isOwnerOf($apartment), 403);
 
-        $isOwner = $this->isOwnerOf($apartment);
-
-        abort_unless($isOwner || auth()->user()->isAdmin(), 403);
-
-        $validated = $request->validate([
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
             'confirmation' => ['required', 'string', 'in:tüm verilerin silinmesini kabul ediyorum'],
+            'skip_archive_check' => ['accepted'],
         ], [
             'confirmation.in' => 'Onay metni hatalı. Lütfen "tüm verilerin silinmesini kabul ediyorum" yazın.',
+            'skip_archive_check.accepted' => 'Silmek için yedekleme altyapısı kontrolünü atlamayı onaylayın.',
         ]);
 
-        DB::transaction(function () use ($apartment) {
-            // Delete payment allocations
-            PaymentAllocation::whereHas('payment', function ($query) use ($apartment) {
-                $query->where('apartment_id', $apartment->id);
-            })->delete();
+        $operation = $reset->wipe($request->user(), $apartment, true);
 
-            // Delete cash transactions
-            CashTransaction::where('apartment_id', $apartment->id)->delete();
-
-            // Delete cash boxes
-            CashBox::where('apartment_id', $apartment->id)->delete();
-
-            // Delete payments
-            Payment::where('apartment_id', $apartment->id)->delete();
-
-            // Delete dues
-            Due::where('apartment_id', $apartment->id)->delete();
-
-            // Delete due batches
-            DueBatch::where('apartment_id', $apartment->id)->delete();
-
-            // Delete due plans
-            \App\Models\DuePlan::where('apartment_id', $apartment->id)->delete();
-
-            // Delete expenses
-            Expense::where('apartment_id', $apartment->id)->delete();
-
-            // Delete account transactions
-            AccountTransaction::where('apartment_id', $apartment->id)->delete();
-
-            // Delete tenant assignments
-            TenantAssignment::whereHas('unit', function ($query) use ($apartment) {
-                $query->where('apartment_id', $apartment->id);
-            })->delete();
-
-            // Delete unit owner histories
-            UnitOwnerHistory::whereHas('unit', function ($query) use ($apartment) {
-                $query->where('apartment_id', $apartment->id);
-            })->delete();
-
-            // Reset units (keep account references but clear other details)
-            Unit::where('apartment_id', $apartment->id)->update([
-                'floor' => null,
-                'block' => null,
-                'resident_name' => null,
-                'phone' => null,
-                'square_meters' => null,
-                'share_coefficient' => null,
+        if ($operation->result === ApartmentDataOperation::RESULT_ARCHIVE_FAILED) {
+            return back()->withErrors([
+                'confirmation' => 'Silme başlatılmadı. Yedekleme altyapısı henüz hazır değil.',
             ]);
+        }
 
-            // Delete categories (except default ones)
-            $defaultCategoryNames = ['Aidat', 'Demirbaş', 'Elektrik', 'Su', 'Asansör', 'Temizlik', 'Yönetim', 'Bakım', 'Diğer'];
-            Category::where('apartment_id', $apartment->id)
-                ->whereNotIn('name', $defaultCategoryNames)
-                ->delete();
-
-            // Note: Accounts are NOT deleted as per requirement
-            // Note: Apartment is NOT deleted as per requirement
-        });
-
-        return redirect()->route('dashboard')->with('status', 'Tüm veriler silindi (hesaplar hariç).');
+        return redirect()->route('dashboard')->with('status', 'İşlem verileri silindi. Apartman, daire sayısı, hesaplar ve abonelik duruyor. Silinen verilerin yedeği alınmadı.');
     }
 
     /**
-     * Deactivate current apartment and redirect to create new apartment.
+     * Daire sayısı kuralına göre aynı apartmanda kurulumu yeniler veya ayrı ücretsiz apartman açar.
      */
-    public function resetAndRenew(Request $request, string $id)
+    public function renewSetup(Request $request, string $id, ApartmentReset $reset)
     {
-        $apartment = Apartment::query()
+        $apartment = $this->managedApartment($id);
+        abort_unless($this->isOwnerOf($apartment), 403);
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'unit_count' => ['required', 'integer', 'min:1', 'max:500'],
+            'confirmation' => ['required', 'string', 'in:kurulumun yenilenmesini kabul ediyorum'],
+            'accept_new_free_apartment' => ['nullable', 'boolean'],
+        ], [
+            'confirmation.in' => 'Onay metni hatalı. Lütfen "kurulumun yenilenmesini kabul ediyorum" yazın.',
+        ]);
+
+        $unitCount = (int) $validated['unit_count'];
+        $decision = $reset->policy()->decide($apartment, $unitCount);
+
+        if ($decision['decision'] === ResetPolicy::QUOTE) {
+            QuoteRequest::record($request->user(), $apartment->name, $unitCount);
+            $reset->renew($request->user(), $apartment, $unitCount, $decision, $request);
+
+            return back()->with('status', ApartmentCommercial::QUOTE_MESSAGE);
+        }
+
+        if ($decision['decision'] === ResetPolicy::BLOCKED_DECREASE) {
+            $reset->renew($request->user(), $apartment, $unitCount, $decision, $request);
+
+            $message = $decision['active']
+                ? 'Ücretli dönem devam ederken daire sayısı, satın alınan sayıdan aşağı indirilemez.'
+                : 'Daire sayısı, son ücretli bandın altına indirilemez.';
+
+            return back()->withErrors([
+                'unit_count' => $message,
+            ])->withInput();
+        }
+
+        if ($decision['decision'] === ResetPolicy::NEW_FREE_APARTMENT && ! $request->boolean('accept_new_free_apartment')) {
+            ApartmentDataOperation::query()->create([
+                'user_id' => $request->user()->id,
+                'apartment_id' => $apartment->id,
+                'action' => ApartmentDataOperation::ACTION_NEW_APARTMENT,
+                'result' => ApartmentDataOperation::RESULT_AWAITING,
+                'archive_status' => ApartmentDataOperation::ARCHIVE_SKIPPED,
+                'requested_unit_count' => $unitCount,
+                'scope' => 'Yeni ücretsiz apartman onayı bekleniyor',
+            ]);
+
+            return back()->withErrors([
+                'accept_new_free_apartment' => ResetPolicy::NEW_APARTMENT_WARNING,
+            ])->withInput();
+        }
+
+        if ($decision['decision'] === ResetPolicy::SAME_APARTMENT && ! $request->boolean('skip_archive_check')) {
+            return back()->withErrors([
+                'skip_archive_check' => 'Silmek için yedekleme altyapısı kontrolünü atlamayı onaylayın.',
+            ])->withInput();
+        }
+
+        $outcome = $reset->renew($request->user(), $apartment, $unitCount, $decision, $request, $request->boolean('skip_archive_check'));
+
+        if ($outcome instanceof ApartmentDataOperation && $outcome->result === ApartmentDataOperation::RESULT_ARCHIVE_FAILED) {
+            return back()->withErrors([
+                'confirmation' => 'Silme başlatılmadı. Yedekleme altyapısı henüz hazır değil.',
+            ])->withInput();
+        }
+
+        if ($outcome instanceof Apartment) {
+            app(CurrentApartment::class)->setFor($request->user(), $outcome->id);
+
+            return redirect()->route('apartments.wizard.cash-box', $outcome)
+                ->with('status', 'Yeni ücretsiz apartman açıldı. Eski apartman ve ücretli kullanım hakkı yerinde duruyor.');
+        }
+
+        return redirect()->route('apartments.wizard.cash-box', $apartment)
+            ->with('status', 'Kurulum yenilendi. Abonelik bu apartmanda duruyor. Silinen verilerin yedeği alınmadı.');
+    }
+
+    private function managedApartment(string $id): Apartment
+    {
+        return Apartment::query()
             ->when(! auth()->user()->isAdmin(), function ($query) {
                 $query->whereHas('members', function ($query) {
                     $query->whereKey(auth()->id());
                 });
             })
             ->findOrFail($id);
-
-        $isOwner = $this->isOwnerOf($apartment);
-
-        abort_unless($isOwner || auth()->user()->isAdmin(), 403);
-
-        $validated = $request->validate([
-            'confirmation' => ['required', 'string', 'in:apartmanın silinmesini kabul ediyorum'],
-        ], [
-            'confirmation.in' => 'Onay metni hatalı. Lütfen "apartmanın silinmesini kabul ediyorum" yazın.',
-        ]);
-
-        DB::transaction(function () use ($apartment) {
-            // Deactivate apartment
-            $apartment->update(['is_active' => false]);
-
-            // Clear current apartment session
-            session()->forget('current_apartment_id');
-        });
-
-        $redirectRoute = auth()->user()->isSubscriber() ? 'subscriber.apartments.create' : 'apartments.create';
-        return redirect()->route($redirectRoute)->with('status', 'Apartman pasife alındı. Yeni apartman oluşturabilirsiniz.');
     }
 }

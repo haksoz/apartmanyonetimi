@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\ApartmentReset\ApartmentResetArchive;
+use App\Support\ApartmentReset\UnavailableApartmentResetArchive;
 use App\Support\CurrentApartment;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
@@ -14,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ApartmentResetArchive::class, UnavailableApartmentResetArchive::class);
     }
 
     /**

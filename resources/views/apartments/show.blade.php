@@ -139,18 +139,18 @@
 
                 <div class="flex items-center justify-between border-t border-slate-100 pt-4">
                     <div>
-                        <p class="text-sm font-medium text-slate-700">Tüm Verileri Sil</p>
-                        <p class="text-xs text-slate-500">Hesap bilgileri hariç tüm veriler silinir. Daire sayısı değişmez.</p>
+                        <p class="text-sm font-medium text-slate-700">İşlem verisini sil</p>
+                        <p class="text-xs text-slate-500">Aidat, gider, tahsilat ve kasa hareketi silinir. Apartman, hesaplar ve abonelik durur.</p>
                     </div>
-                    <button type="button" onclick="document.getElementById('destroy-all-modal').classList.remove('hidden')" class="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Tüm Verileri Sil</button>
+                    <button type="button" onclick="document.getElementById('destroy-all-modal').classList.remove('hidden')" class="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">İşlem verisini sil</button>
                 </div>
 
                 <div class="flex items-center justify-between border-t border-slate-100 pt-4">
                     <div>
-                        <p class="text-sm font-medium text-slate-700">Apartmanı Sil ve Yenile</p>
-                        <p class="text-xs text-slate-500">Mevcut apartmanı silip yeni apartman oluşturun.</p>
+                        <p class="text-sm font-medium text-slate-700">Verileri sil ve kurulumu yenile</p>
+                        <p class="text-xs text-slate-500">Aynı apartmanda kurulumu baştan açar. Daire sayısı kuralı aboneliğe göre uygulanır.</p>
                     </div>
-                    <button type="button" onclick="document.getElementById('reset-and-renew-modal').classList.remove('hidden')" class="rounded-xl border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-50">Apartmanı Sil ve Yenile</button>
+                    <button type="button" onclick="document.getElementById('renew-setup-modal').classList.remove('hidden')" class="rounded-xl border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-50">Kurulumu yenile</button>
                 </div>
             </div>
         </div>
@@ -158,19 +158,40 @@
 
     </div>
 
-    {{-- Tüm Verileri Sil Modal --}}
-    <div id="destroy-all-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    @php
+        $wipeOpen = ($errors->has('confirmation') || $errors->has('skip_archive_check') || $errors->has('current_password')) && ! old('unit_count');
+        $renewOpen = $errors->has('unit_count') || $errors->has('accept_new_free_apartment') || (($errors->has('confirmation') || $errors->has('skip_archive_check')) && old('unit_count'));
+    @endphp
+
+    <div id="destroy-all-modal" @class(['fixed inset-0 z-50 flex items-center justify-center bg-black/50', 'hidden' => ! $wipeOpen])>
         <form method="POST" action="{{ route('apartments.destroy-all', $apartment) }}" class="max-w-md rounded-2xl bg-white p-6 shadow-xl w-full mx-4">
             @csrf
             <div class="mb-4">
-                <h3 class="text-lg font-bold text-slate-900">Tüm Verileri Sil</h3>
-                <p class="mt-2 text-sm text-slate-600">Bu işlem geri alınamaz. Hesap bilgileri hariç tüm veriler silinir. Daire sayısı değişmez.</p>
+                <h3 class="text-lg font-bold text-slate-900">İşlem verisini sil</h3>
+                <ol class="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+                    <li>İşlem öncesi hazırlık</li>
+                    <li>Aidat, gider, tahsilat ve kasa hareketinin temizlenmesi</li>
+                    <li>Sonuç bildirimi</li>
+                </ol>
+                <p class="mt-2 text-sm text-slate-600">{{ $apartment->name }} için hesaplar, daire sayısı ve abonelik korunur.</p>
+                <label class="mt-4 flex items-start gap-2 text-sm font-medium text-slate-800">
+                    <input type="checkbox" name="skip_archive_check" value="1" class="mt-1" @checked(old('skip_archive_check'))>
+                    <span>Yedekleme altyapısı kontrolünü atla</span>
+                </label>
+                <p class="mt-2 text-sm text-amber-800">Bu işlem için henüz otomatik yedekleme ve geri yükleme altyapısı bulunmamaktadır. Devam ederseniz seçilen veriler kalıcı olarak silinebilir ve geri getirilemeyebilir. Bu işlemin öncesinde verilerin yedeği alınmayacaktır.</p>
             </div>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Onay metni</label>
-                <input type="text" name="confirmation" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="tüm verilerin silinmesini kabul ediyorum">
-                <p class="mt-1 text-xs text-slate-500">Onaylamak için lütfen "tüm verilerin silinmesini kabul ediyorum" yazın.</p>
-            </div>
+            <label class="mb-3 block text-sm font-medium text-slate-700">
+                Şifreniz
+                <input type="password" name="current_password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+            </label>
+            <label class="mb-4 block text-sm font-medium text-slate-700">
+                Onay metni
+                <input type="text" name="confirmation" value="{{ old('confirmation') }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="tüm verilerin silinmesini kabul ediyorum">
+                <span class="mt-1 block text-xs font-normal text-slate-500">"tüm verilerin silinmesini kabul ediyorum" yazın.</span>
+            </label>
+            @error('skip_archive_check') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
+            @error('confirmation') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
+            @error('current_password') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
             <div class="flex justify-end gap-3">
                 <button type="button" onclick="document.getElementById('destroy-all-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</button>
                 <button type="submit" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Sil</button>
@@ -178,22 +199,50 @@
         </form>
     </div>
 
-    {{-- Apartmanı Sil ve Yenile Modal --}}
-    <div id="reset-and-renew-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <form method="POST" action="{{ route('apartments.reset-and-renew', $apartment) }}" class="max-w-md rounded-2xl bg-white p-6 shadow-xl w-full mx-4">
+    <div id="renew-setup-modal" @class(['fixed inset-0 z-50 flex items-center justify-center bg-black/50', 'hidden' => ! $renewOpen])>
+        <form method="POST" action="{{ route('apartments.renew-setup', $apartment) }}" class="max-w-md rounded-2xl bg-white p-6 shadow-xl w-full mx-4">
             @csrf
             <div class="mb-4">
-                <h3 class="text-lg font-bold text-slate-900">Apartmanı Sil ve Yenile</h3>
-                <p class="mt-2 text-sm text-slate-600">Bu işlem geri alınamaz. Mevcut apartman silinecek ve yeni apartman oluşturma sayfasına yönlendirileceksiniz.</p>
+                <h3 class="text-lg font-bold text-slate-900">Verileri sil ve kurulumu yenile</h3>
+                <ol class="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+                    <li>İşlem öncesi hazırlık</li>
+                    <li>Verilerin temizlenmesi</li>
+                    <li>Kurulumun yenilenmesi</li>
+                    <li>Sonuç bildirimi</li>
+                </ol>
+                <p class="mt-2 text-sm text-slate-600">{{ $apartment->name }} için ücretli kullanım hakkı başka apartmana taşınmaz.</p>
+                <label class="mt-4 flex items-start gap-2 text-sm font-medium text-slate-800">
+                    <input type="checkbox" name="skip_archive_check" value="1" class="mt-1" @checked(old('skip_archive_check') && old('unit_count'))>
+                    <span>Yedekleme altyapısı kontrolünü atla</span>
+                </label>
+                <p class="mt-2 text-sm text-amber-800">Bu işlem için henüz otomatik yedekleme ve geri yükleme altyapısı bulunmamaktadır. Devam ederseniz seçilen veriler kalıcı olarak silinebilir ve geri getirilemeyebilir. Bu işlemin öncesinde verilerin yedeği alınmayacaktır.</p>
             </div>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Onay metni</label>
-                <input type="text" name="confirmation" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="apartmanın silinmesini kabul ediyorum">
-                <p class="mt-1 text-xs text-slate-500">Onaylamak için lütfen "apartmanın silinmesini kabul ediyorum" yazın.</p>
-            </div>
+            <label class="mb-3 block text-sm font-medium text-slate-700">
+                Daire sayısı
+                <input type="number" name="unit_count" value="{{ old('unit_count', $apartment->unit_count) }}" min="1" max="500" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+            </label>
+            @error('unit_count') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
+            @error('accept_new_free_apartment')
+                <label class="mb-3 flex items-start gap-2 text-sm text-slate-700">
+                    <input type="checkbox" name="accept_new_free_apartment" value="1" class="mt-1">
+                    <span>{{ $message }}</span>
+                </label>
+            @enderror
+            <label class="mb-3 block text-sm font-medium text-slate-700">
+                Şifreniz
+                <input type="password" name="current_password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+            </label>
+            <label class="mb-4 block text-sm font-medium text-slate-700">
+                Onay metni
+                <input type="text" name="confirmation" value="{{ old('unit_count') ? old('confirmation') : '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="kurulumun yenilenmesini kabul ediyorum">
+                <span class="mt-1 block text-xs font-normal text-slate-500">"kurulumun yenilenmesini kabul ediyorum" yazın.</span>
+            </label>
+            @error('skip_archive_check') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
+            @error('confirmation') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
+            @error('current_password') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
             <div class="flex justify-end gap-3">
-                <button type="button" onclick="document.getElementById('reset-and-renew-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</button>
-                <button type="submit" class="rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">Sil ve Yenile</button>
+                <button type="button" onclick="document.getElementById('renew-setup-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</button>
+                <button type="submit" class="rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">Devam</button>
             </div>
         </form>
     </div>
