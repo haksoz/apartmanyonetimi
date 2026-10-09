@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\DB;
 
 class ApartmentReset
 {
+    /** Testler, finish() öncesi hatayı buradan verir. Canlıda boştur. */
+    public static ?\Closure $beforeFinish = null;
+
     public function __construct(
         private ResetPolicy $policy,
         private ApartmentOperationalData $data,
@@ -36,9 +39,16 @@ class ApartmentReset
             return $operation->fresh();
         }
 
-        DB::transaction(function () use ($apartment) {
-            $this->data->wipe($apartment);
-        });
+        try {
+            DB::transaction(function () use ($apartment) {
+                $this->data->wipe($apartment);
+            });
+            $this->beforeFinish($operation);
+        } catch (\Throwable $exception) {
+            $this->markFailed($operation);
+
+            throw $exception;
+        }
 
         return $this->finish(
             $operation,
@@ -80,19 +90,21 @@ class ApartmentReset
         }
 
         if ($decision['decision'] === ResetPolicy::NEW_FREE_APARTMENT) {
-            $created = $this->createFreeApartment($actor, $apartment, $unitCount, $request);
-            $this->open(
-                $actor,
-                $apartment,
-                ApartmentDataOperation::ACTION_NEW_APARTMENT,
-                $unitCount,
-                'Eski apartman korunarak yeni ücretsiz apartman açıldı',
-                ApartmentDataOperation::RESULT_COMPLETED,
-                ApartmentDataOperation::ARCHIVE_SKIPPED,
-                $created->id,
-            );
+            return DB::transaction(function () use ($actor, $apartment, $unitCount, $request) {
+                $created = $this->createFreeApartment($actor, $apartment, $unitCount, $request);
+                $this->open(
+                    $actor,
+                    $apartment,
+                    ApartmentDataOperation::ACTION_NEW_APARTMENT,
+                    $unitCount,
+                    'Eski apartman korunarak yeni ücretsiz apartman açıldı',
+                    ApartmentDataOperation::RESULT_COMPLETED,
+                    ApartmentDataOperation::ARCHIVE_SKIPPED,
+                    $created->id,
+                );
 
-            return $created;
+                return $created;
+            });
         }
 
         $operation = $this->open($actor, $apartment, ApartmentDataOperation::ACTION_RENEW, $unitCount, 'Aynı apartmanda kurulum yenileme');
@@ -101,7 +113,14 @@ class ApartmentReset
             return $operation->fresh();
         }
 
-        $this->data->renewSetup($apartment, $unitCount);
+        try {
+            $this->data->renewSetup($apartment, $unitCount, $actor);
+            $this->beforeFinish($operation);
+        } catch (\Throwable $exception) {
+            $this->markFailed($operation);
+
+            throw $exception;
+        }
 
         return $this->finish(
             $operation,
@@ -194,14 +213,28 @@ class ApartmentReset
         ?int $outcomeApartmentId = null,
     ): ApartmentDataOperation {
         return ApartmentDataOperation::query()->create([
-            'user_id' => $actor->id,
-            'apartment_id' => $apartment->id,
+            ...ApartmentDataOperation::context($actor, $apartment),
             'outcome_apartment_id' => $outcomeApartmentId,
             'action' => $action,
             'result' => $result,
             'archive_status' => $archiveStatus,
             'requested_unit_count' => $unitCount,
             'scope' => $scope,
+        ]);
+    }
+
+    private function beforeFinish(ApartmentDataOperation $operation): void
+    {
+        if (self::$beforeFinish) {
+            (self::$beforeFinish)($operation);
+        }
+    }
+
+    private function markFailed(ApartmentDataOperation $operation): void
+    {
+        $operation->update([
+            'result' => ApartmentDataOperation::RESULT_FAILED,
+            'note' => 'İşlem tamamlanamadı.',
         ]);
     }
 

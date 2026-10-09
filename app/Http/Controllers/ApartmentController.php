@@ -299,8 +299,7 @@ class ApartmentController extends Controller
 
         if ($decision['decision'] === ResetPolicy::NEW_FREE_APARTMENT && ! $request->boolean('accept_new_free_apartment')) {
             ApartmentDataOperation::query()->create([
-                'user_id' => $request->user()->id,
-                'apartment_id' => $apartment->id,
+                ...ApartmentDataOperation::context($request->user(), $apartment),
                 'action' => ApartmentDataOperation::ACTION_NEW_APARTMENT,
                 'result' => ApartmentDataOperation::RESULT_AWAITING,
                 'archive_status' => ApartmentDataOperation::ARCHIVE_SKIPPED,

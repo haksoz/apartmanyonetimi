@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\AdminArchivedApartmentController;
 use App\Http\Controllers\Admin\AdminCommercialController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminDataOperationController;
 use App\Http\Controllers\Admin\AdminImpersonateController;
 use App\Http\Controllers\Admin\AdminManagerController;
 use App\Http\Controllers\Admin\AdminOrderController;
@@ -275,6 +276,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('packages/{package}/features', [AdminPackageController::class, 'updateFeatures'])->name('packages.features.update');
 
     Route::resource('bank-accounts', AdminBankAccountController::class);
+
+    Route::get('data-operations', [AdminDataOperationController::class, 'index'])->name('data-operations.index');
+    Route::get('data-operations/{dataOperation}', [AdminDataOperationController::class, 'show'])->name('data-operations.show');
 
     Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');
     Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
