@@ -46,6 +46,30 @@
                 <input id="iban" name="iban" value="{{ old('iban') }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none">
                 @error('iban')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="opening_balance" class="text-sm font-medium text-slate-700">Açılış Bakiyesi</label>
+                    <input id="opening_balance" name="opening_balance" type="number" min="0" step="0.01" value="{{ old('opening_balance', 0) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('opening_balance')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+                <div>
+                    <label for="opening_date" class="text-sm font-medium text-slate-700">Açılış Tarihi</label>
+                    <input id="opening_date" name="opening_date" type="date" value="{{ old('opening_date', now()->toDateString()) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('opening_date')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
+            <div>
+                <label for="opening_side" class="text-sm font-medium text-slate-700">Açılış Yönü</label>
+                <select id="opening_side" name="opening_side" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none">
+                    <option value="">Tutar girilirse seçin</option>
+                    <option value="income" @selected(old('opening_side') === 'income')>Giriş</option>
+                    <option value="expense" @selected(old('opening_side') === 'expense')>Çıkış</option>
+                </select>
+                <p class="mt-1 text-xs text-slate-400">Boş bırakılırsa kasa sıfır açılır. Giriş kasada duran paradır.</p>
+                @error('opening_side')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
         </div>
 
         <div class="mt-4 flex items-center justify-end gap-3">

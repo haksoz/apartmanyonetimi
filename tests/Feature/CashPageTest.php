@@ -300,5 +300,95 @@ class CashPageTest extends TestCase
             'id' => $transaction->id,
         ]);
     }
+
+    public function test_cash_box_opening_balance_is_a_single_cash_transaction(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('cash-boxes.store'), [
+                'name' => 'Nakit Kasa',
+                'opening_balance' => '1500.75',
+                'opening_side' => 'income',
+                'opening_date' => '2026-10-01',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('cash.index'));
+
+        $cashBox = CashBox::where('name', 'Nakit Kasa')->firstOrFail();
+        $transaction = CashTransaction::where('cash_box_id', $cashBox->id)->firstOrFail();
+
+        $this->assertSame('income', $transaction->type);
+        $this->assertSame('Açılış bakiyesi', $transaction->description);
+        $this->assertSame('1500.75', $transaction->amount);
+        $this->assertSame('2026-10-01', $transaction->transaction_date->format('Y-m-d'));
+        $this->assertNull($transaction->account_id);
+        $this->assertNull($transaction->category_id);
+        $this->assertSame(1, CashTransaction::where('cash_box_id', $cashBox->id)->count());
+    }
+
+    public function test_cash_box_opening_balance_requires_a_side(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('cash-boxes.store'), [
+                'name' => 'Nakit Kasa',
+                'opening_balance' => '100',
+                'opening_date' => '2026-10-01',
+            ])
+            ->assertSessionHasErrors('opening_side');
+
+        $this->assertDatabaseCount('cash_transactions', 0);
+    }
+
+    public function test_updating_cash_box_does_not_rewrite_opening_balance(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $cashBox = CashBox::create([
+            'apartment_id' => $apartment->id,
+            'name' => 'Nakit Kasa',
+            'is_active' => true,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->put(route('cash-boxes.update', $cashBox), [
+                'name' => 'Ana Kasa',
+                'opening_balance' => '900',
+                'opening_side' => 'income',
+                'opening_date' => '2026-10-01',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('cash.index'));
+
+        $this->assertDatabaseMissing('cash_transactions', [
+            'cash_box_id' => $cashBox->id,
+        ]);
+        $this->assertDatabaseHas('cash_boxes', [
+            'id' => $cashBox->id,
+            'name' => 'Ana Kasa',
+        ]);
+    }
 }
 

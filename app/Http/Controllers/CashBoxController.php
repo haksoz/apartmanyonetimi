@@ -6,6 +6,8 @@ use App\Models\CashBox;
 use App\Models\CashTransaction;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CashBoxController extends Controller
 {
@@ -78,17 +80,21 @@ class CashBoxController extends Controller
             return $apartment;
         }
 
-        $validated = $this->validateCashBox($request);
+        $validated = $this->validateCashBox($request, withOpening: true);
 
-        CashBox::create([
-            'apartment_id' => $apartment->id,
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'bank_name' => $validated['bank_name'] ?? null,
-            'iban' => $validated['iban'] ?? null,
-            'account_number' => $validated['account_number'] ?? null,
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        DB::transaction(function () use ($apartment, $request, $validated) {
+            $cashBox = CashBox::create([
+                'apartment_id' => $apartment->id,
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'bank_name' => $validated['bank_name'] ?? null,
+                'iban' => $validated['iban'] ?? null,
+                'account_number' => $validated['account_number'] ?? null,
+                'is_active' => $request->boolean('is_active', true),
+            ]);
+
+            $this->postOpeningBalance($cashBox, $validated);
+        });
 
         return redirect()->route('cash.index')->with('status', 'Kasa oluşturuldu.');
     }
@@ -101,7 +107,16 @@ class CashBoxController extends Controller
             return $cashBox;
         }
 
-        return view('cash.boxes.edit', compact('cashBox'));
+        $openingTransaction = $cashBox->transactions()
+            ->where('description', 'Açılış bakiyesi')
+            ->whereNull('account_id')
+            ->whereNull('category_id')
+            ->whereNull('payment_id')
+            ->whereNull('expense_id')
+            ->orderBy('id')
+            ->first();
+
+        return view('cash.boxes.edit', compact('cashBox', 'openingTransaction'));
     }
 
     public function update(Request $request, string $id, CurrentApartment $currentApartment)
@@ -171,15 +186,47 @@ class CashBoxController extends Controller
             ->findOrFail($id);
     }
 
-    private function validateCashBox(Request $request): array
+    private function validateCashBox(Request $request, bool $withOpening = false): array
     {
-        return $request->validate([
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:255'],
             'iban' => ['nullable', 'string', 'max:255'],
             'account_number' => ['nullable', 'string', 'max:255'],
             'is_active' => ['nullable', 'boolean'],
+        ];
+
+        if ($withOpening) {
+            $hasAmount = abs((float) $request->input('opening_balance', 0)) >= 0.01;
+            $rules['opening_balance'] = ['nullable', 'numeric', 'min:0'];
+            $rules['opening_side'] = ['nullable', Rule::requiredIf($hasAmount), Rule::in(['income', 'expense'])];
+            $rules['opening_date'] = ['nullable', 'date', Rule::requiredIf($hasAmount)];
+        }
+
+        return $request->validate($rules, [
+            'opening_balance.min' => 'Açılış bakiyesi sıfır veya daha büyük olmalıdır. Yönü giriş veya çıkış olarak seçin.',
+            'opening_side.required' => 'Açılış bakiyesi için giriş veya çıkış seçin.',
+            'opening_side.in' => 'Açılış bakiyesi için giriş veya çıkış seçin.',
+            'opening_date.required' => 'Açılış bakiyesi için açılış tarihi zorunludur.',
+        ]);
+    }
+
+    private function postOpeningBalance(CashBox $cashBox, array $validated): void
+    {
+        $amount = round(abs((float) ($validated['opening_balance'] ?? 0)), 2);
+        if ($amount < 0.01) {
+            return;
+        }
+
+        CashTransaction::create([
+            'apartment_id' => $cashBox->apartment_id,
+            'cash_box_id' => $cashBox->id,
+            'type' => $validated['opening_side'],
+            'description' => 'Açılış bakiyesi',
+            'amount' => $amount,
+            'transaction_date' => $validated['opening_date'],
+            'is_active' => true,
         ]);
     }
 }

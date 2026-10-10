@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Apartment;
 use App\Models\CashBox;
+use App\Models\CashTransaction;
 use App\Models\Category;
 use App\Models\Unit;
 use App\Support\CurrentApartment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -32,23 +34,49 @@ class ApartmentWizardController extends Controller
     {
         $this->authorizeApartment($apartment);
 
+        $hasAmount = abs((float) $request->input('opening_balance', 0)) >= 0.01;
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:255'],
             'iban' => ['nullable', 'string', 'max:255'],
             'account_number' => ['nullable', 'string', 'max:255'],
+            'opening_balance' => ['nullable', 'numeric', 'min:0'],
+            'opening_side' => ['nullable', Rule::requiredIf($hasAmount), Rule::in(['income', 'expense'])],
+            'opening_date' => ['nullable', 'date', Rule::requiredIf($hasAmount)],
+        ], [
+            'opening_balance.min' => 'Açılış bakiyesi sıfır veya daha büyük olmalıdır. Yönü giriş veya çıkış olarak seçin.',
+            'opening_side.required' => 'Açılış bakiyesi için giriş veya çıkış seçin.',
+            'opening_side.in' => 'Açılış bakiyesi için giriş veya çıkış seçin.',
+            'opening_date.required' => 'Açılış bakiyesi için açılış tarihi zorunludur.',
         ]);
 
-        CashBox::create([
-            'apartment_id' => $apartment->id,
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'bank_name' => $validated['bank_name'] ?? null,
-            'iban' => $validated['iban'] ?? null,
-            'account_number' => $validated['account_number'] ?? null,
-            'is_active' => true,
-        ]);
+        DB::transaction(function () use ($apartment, $validated) {
+            $cashBox = CashBox::create([
+                'apartment_id' => $apartment->id,
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'bank_name' => $validated['bank_name'] ?? null,
+                'iban' => $validated['iban'] ?? null,
+                'account_number' => $validated['account_number'] ?? null,
+                'is_active' => true,
+            ]);
+
+            $amount = round(abs((float) ($validated['opening_balance'] ?? 0)), 2);
+            if ($amount < 0.01) {
+                return;
+            }
+
+            CashTransaction::create([
+                'apartment_id' => $apartment->id,
+                'cash_box_id' => $cashBox->id,
+                'type' => $validated['opening_side'],
+                'description' => 'Açılış bakiyesi',
+                'amount' => $amount,
+                'transaction_date' => $validated['opening_date'],
+                'is_active' => true,
+            ]);
+        });
 
         return redirect()->route('apartments.wizard.units', $apartment)->with('status', 'Kasa oluşturuldu. Şimdi daire bilgilerini girin.');
     }
