@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Account;
+use App\Models\AccountTransaction;
 use App\Models\Apartment;
 use App\Models\Category;
 use App\Models\Due;
@@ -165,6 +166,71 @@ class AccountPageTest extends TestCase
             'unit_id' => null,
         ]);
         $this->assertSame('2026-05-04', $account->account_opening_date->format('Y-m-d'));
+        $this->assertDatabaseMissing('account_transactions', [
+            'account_id' => $account->id,
+        ]);
+    }
+
+    public function test_opening_balance_is_posted_as_a_single_account_transaction(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => Account::TYPE_SUPPLIER,
+                'name' => 'Doğalgaz',
+                'balance' => '250.50',
+                'opening_side' => 'credit',
+                'account_opening_date' => '2026-10-01',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('accounts.index'));
+
+        $account = Account::where('name', 'Doğalgaz')->firstOrFail();
+
+        $this->assertDatabaseHas('accounts', [
+            'id' => $account->id,
+            'balance' => 0,
+        ]);
+        $transaction = AccountTransaction::where('account_id', $account->id)->firstOrFail();
+        $this->assertSame('credit', $transaction->type);
+        $this->assertSame('Açılış bakiyesi', $transaction->description);
+        $this->assertSame('250.50', $transaction->amount);
+        $this->assertSame('2026-10-01', $transaction->transaction_date->format('Y-m-d'));
+        $this->assertNull($transaction->transactionable_type);
+        $this->assertSame(1, AccountTransaction::where('account_id', $account->id)->count());
+        $this->assertDatabaseMissing('cash_transactions', [
+            'account_id' => $account->id,
+        ]);
+    }
+
+    public function test_opening_balance_requires_a_side(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => Account::TYPE_SUPPLIER,
+                'name' => 'Su',
+                'balance' => '100',
+                'account_opening_date' => '2026-10-01',
+                'is_active' => '1',
+            ])
+            ->assertSessionHasErrors('opening_side');
     }
 
     public function test_user_can_update_account(): void
@@ -196,7 +262,10 @@ class AccountPageTest extends TestCase
         $this->assertDatabaseHas('accounts', [
             'id' => $account->id,
             'name' => 'Yeni Ünvan',
-            'balance' => 100,
+            'balance' => 0,
+        ]);
+        $this->assertDatabaseMissing('account_transactions', [
+            'account_id' => $account->id,
         ]);
     }
 

@@ -87,9 +87,38 @@
 
             <div>
                 <label for="balance" class="mb-2 block text-sm font-medium text-slate-600">Açılış Bakiyesi</label>
-                <input id="balance" name="balance" type="number" step="0.01" value="{{ old('balance', $account?->balance ?? 0) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                @error('balance')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                @if ($account)
+                    @php
+                        $openingTransaction = $openingTransaction ?? null;
+                        $openingAmount = $openingTransaction ? number_format((float) $openingTransaction->amount, 2, ',', '.') : null;
+                        $openingSide = $openingTransaction?->type === 'debit' ? 'Borç' : ($openingTransaction?->type === 'credit' ? 'Alacak' : null);
+                    @endphp
+                    <div class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                        @if ($openingTransaction)
+                            {{ $openingAmount }} TL · {{ $openingSide }}
+                        @else
+                            Hareket yok
+                        @endif
+                        <span class="mt-1 block text-xs text-slate-400">Açılış bakiyesi kayıt sırasında bir kez yazılır. Sonraki düzeltme hesap hareketinden yapılır.</span>
+                    </div>
+                @else
+                    <input id="balance" name="balance" type="number" min="0" step="0.01" value="{{ old('balance', 0) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('balance')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                @endif
             </div>
+
+            @unless ($account)
+                <div>
+                    <label for="opening_side" class="mb-2 block text-sm font-medium text-slate-600">Açılış Yönü</label>
+                    <select id="opening_side" name="opening_side" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        <option value="">Tutar girilirse seçin</option>
+                        <option value="debit" @selected(old('opening_side') === 'debit')>Borç</option>
+                        <option value="credit" @selected(old('opening_side') === 'credit')>Alacak</option>
+                    </select>
+                    <p class="mt-1 text-xs text-slate-400">Borç: hesap bize borçlu. Alacak: biz hesaba borçluyuz. Tedarikçi ve sakin için aynı kural geçerlidir.</p>
+                    @error('opening_side')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+            @endunless
 
             <div data-default-category-field>
                 <label for="default_category_id" class="mb-2 block text-sm font-medium text-slate-600">Varsayılan Kategori <span class="font-normal text-slate-400">(opsiyonel)</span></label>

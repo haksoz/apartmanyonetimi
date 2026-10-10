@@ -302,7 +302,15 @@
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-semibold text-slate-700">Açılış Bakiyesi</label>
-                            <input type="number" name="balance" step="0.01" value="0" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                            <input type="number" name="balance" min="0" step="0.01" value="0" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Açılış Yönü</label>
+                            <select name="opening_side" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                                <option value="">Tutar girilirse seçin</option>
+                                <option value="debit">Borç</option>
+                                <option value="credit">Alacak</option>
+                            </select>
                         </div>
                     </div>
 
