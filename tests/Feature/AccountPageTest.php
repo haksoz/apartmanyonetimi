@@ -635,4 +635,99 @@ class AccountPageTest extends TestCase
             ->assertSee('Borç Devri')
             ->assertSee('Kat Maliki');
     }
+
+    public function test_expense_modal_can_create_supplier_via_ajax(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => 'supplier',
+                'apartment_id' => $apartment->id,
+                'name' => 'A Enerji',
+                'default_category_id' => '',
+                'phone' => '',
+                'email' => '',
+                'account_opening_date' => '2026-10-10',
+                'balance' => '0',
+            ], [
+                'X-Requested-With' => 'XMLHttpRequest',
+                'Accept' => 'application/json',
+            ])
+            ->assertOk()
+            ->assertJsonPath('account.name', 'A Enerji');
+
+        $this->assertDatabaseHas('accounts', [
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'A Enerji',
+        ]);
+    }
+
+    public function test_supplier_name_can_be_reused_after_soft_delete(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $existing = Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'A Enerji',
+        ]);
+        $existing->delete();
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => 'supplier',
+                'name' => 'A Enerji',
+                'account_opening_date' => '2026-10-10',
+                'balance' => '0',
+            ], [
+                'X-Requested-With' => 'XMLHttpRequest',
+                'Accept' => 'application/json',
+            ])
+            ->assertOk()
+            ->assertJsonPath('account.name', 'A Enerji');
+    }
+
+    public function test_ajax_supplier_validation_returns_field_message(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'A Enerji',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => 'supplier',
+                'name' => 'A Enerji',
+                'account_opening_date' => '2026-10-10',
+            ], [
+                'X-Requested-With' => 'XMLHttpRequest',
+                'Accept' => 'application/json',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Bu isimde bir hesap zaten mevcut.');
+    }
 }

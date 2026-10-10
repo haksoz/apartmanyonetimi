@@ -177,7 +177,9 @@ class AccountController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('accounts', 'name')->where('apartment_id', $apartment->id),
+                Rule::unique('accounts', 'name')->where(fn ($query) => $query
+                    ->where('apartment_id', $apartment->id)
+                    ->whereNull('deleted_at')),
             ],
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
@@ -196,7 +198,7 @@ class AccountController extends Controller
             if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validasyon hatası',
+                    'message' => $validator->errors()->first() ?: 'Validasyon hatası',
                     'errors' => $validator->errors()
                 ], 422);
             }

@@ -375,7 +375,10 @@
                         // Trigger auto-fill
                         accountSelect.dispatchEvent(new Event('change'));
                     } else {
-                        alert('Hata: ' + (data.message || 'Tedarikçi oluşturulamadı'));
+                        const details = data.errors
+                            ? Object.values(data.errors).flat().join('\n')
+                            : (data.message || 'Tedarikçi oluşturulamadı');
+                        alert(details);
                     }
                 } catch (error) {
                     alert('Hata: ' + error.message);
