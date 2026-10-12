@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApartmentDataOperation;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\UserQuotaOverride;
 use App\Models\UserSubscription;
+use App\Support\UserApartmentQuota;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,9 +22,13 @@ class AdminCustomerController extends Controller
 
         $customers = User::query()
             ->whereNotIn('role', User::adminRoles())
+            ->with('quotaOverride')
             ->withCount([
                 'apartments as apartment_count' => function ($query) {
                     $query->where('apartment_user.is_active', true);
+                },
+                'ownedApartments as active_apartment_count' => function ($query) {
+                    $query->where('is_active', true);
                 },
                 'subscriptions as pending_order_count' => function ($query) {
                     $query->commercial()->where('status', UserSubscription::STATUS_PENDING);
@@ -64,6 +71,28 @@ class AdminCustomerController extends Controller
             ->with('status', 'Müşteri bilgileri güncellendi.');
     }
 
+    public function updateQuota(Request $request, User $customer)
+    {
+        $this->ensureCustomer($customer);
+
+        $validated = $request->validate([
+            'max_apartments' => ['nullable', 'integer', 'min:1', 'max:1000'],
+        ]);
+
+        if ($validated['max_apartments'] === null || $validated['max_apartments'] === '') {
+            $customer->quotaOverride()?->delete();
+        } else {
+            UserQuotaOverride::query()->updateOrCreate(
+                ['user_id' => $customer->id],
+                ['max_apartments' => (int) $validated['max_apartments']],
+            );
+        }
+
+        return redirect()
+            ->route('admin.customers.show', $customer)
+            ->with('status', 'Apartman oluşturma limiti güncellendi.');
+    }
+
     public function updatePassword(Request $request, User $customer)
     {
         $this->ensureCustomer($customer);
@@ -86,11 +115,15 @@ class AdminCustomerController extends Controller
         $this->ensureCustomer($customer);
 
         $customer->load([
+            'quotaOverride',
             'apartments' => function ($query) {
                 $query->where('apartment_user.is_active', true)
                     ->orderBy('apartments.name');
             },
         ]);
+
+        $activeApartmentCount = app(UserApartmentQuota::class)->currentCount($customer);
+        $apartmentLimit = app(UserApartmentQuota::class)->definedLimit($customer);
 
         $subscriptions = $this->subscriptionsFor($customer)
             ->with([
@@ -136,6 +169,15 @@ class AdminCustomerController extends Controller
             ))
             ->values();
 
+        $renewalPassives = ApartmentDataOperation::query()
+            ->where('action', ApartmentDataOperation::ACTION_NEW_APARTMENT)
+            ->where('result', ApartmentDataOperation::RESULT_COMPLETED)
+            ->whereIn('source_apartment_id', $customer->apartments->pluck('id'))
+            ->orderByDesc('id')
+            ->get()
+            ->unique('source_apartment_id')
+            ->keyBy('source_apartment_id');
+
         $summary = [
             'apartments' => $customer->apartments->count(),
             'active_subscriptions' => $subscriptions->where('status', Subscription::STATUS_ACTIVE)->count(),
@@ -149,7 +191,10 @@ class AdminCustomerController extends Controller
             'subscriptionForApartment',
             'orders',
             'payments',
-            'summary'
+            'renewalPassives',
+            'summary',
+            'activeApartmentCount',
+            'apartmentLimit',
         ));
     }
 

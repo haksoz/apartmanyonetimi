@@ -55,10 +55,6 @@
         <a href="{{ route('admin.customers.index') }}" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">← Müşterilere dön</a>
     </div>
 
-    @if (session('status'))
-        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('status') }}</div>
-    @endif
-
     <section class="rounded-xl border border-slate-200 bg-white p-6">
         <h2 class="text-lg font-semibold text-slate-900">Müşteri bilgileri</h2>
         <form method="POST" action="{{ route('admin.customers.update', $customer) }}" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -98,6 +94,7 @@
         <div class="rounded-xl border border-slate-200 bg-white p-5">
             <div class="text-sm text-slate-500">Apartmanlar</div>
             <div class="mt-2 text-3xl font-bold text-slate-900">{{ $summary['apartments'] }}</div>
+            <div class="mt-1 text-sm text-slate-500">{{ $customer->apartments->where('is_active', true)->count() }} aktif</div>
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-5">
             <div class="text-sm text-slate-500">Aktif abonelikler</div>
@@ -111,6 +108,27 @@
             <div class="text-sm text-slate-500">Toplam siparişler</div>
             <div class="mt-2 text-3xl font-bold text-slate-900">{{ $summary['orders'] }}</div>
         </div>
+    </section>
+
+    </section>
+
+    <section class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+        <h2 class="text-lg font-semibold text-slate-900">Aktif apartman limiti</h2>
+        <p class="mt-1 text-sm text-slate-500">Yalnızca aktif apartmanlar sayılır. Pasif apartmanlar ve başka apartman üyelikleri bu sayıya girmez. Boş bırakılırsa sınır yoktur.</p>
+        <form method="POST" action="{{ route('admin.customers.quota.update', $customer) }}" class="mt-4 flex flex-wrap items-end gap-3">
+            @csrf
+            @method('PATCH')
+            <div class="text-sm">
+                <div class="text-slate-500">Aktif apartman</div>
+                <div class="mt-1 text-2xl font-bold text-slate-900">{{ $activeApartmentCount }}</div>
+            </div>
+            <label class="block text-sm text-slate-700">
+                Limit
+                <input type="number" name="max_apartments" min="1" max="1000" value="{{ old('max_apartments', $apartmentLimit) }}" class="mt-1 w-32 rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                @error('max_apartments')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+            </label>
+            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Limiti kaydet</button>
+        </form>
     </section>
 
     <section id="customer-apartments" class="mt-6">
@@ -175,6 +193,12 @@
                             <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $periodText($period) }}</td>
                             <td class="px-4 py-3">
                                 @include('admin.managers.partials.status-badges', ['status' => $record ? $subscriptionStatus($record->status) : '—', 'pending' => false])
+                                @unless ($apartment->is_active)
+                                    <div class="mt-1 text-xs text-slate-500">Apartman pasif</div>
+                                @endunless
+                                @if ($renewalPassives->get($apartment->id))
+                                    <div class="mt-1 text-xs text-slate-500">Kurulum yenileme ile pasife alındı. Daire sayısı ücretli dilimin dışındaydı.</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap justify-end gap-3">
@@ -248,6 +272,9 @@
                             <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $periodText($period) }}</td>
                             <td class="px-4 py-3">
                                 @include('admin.managers.partials.status-badges', ['status' => $subscriptionStatus($record->status), 'pending' => false])
+                                @if ($renewalPassives->get($record->apartment_id))
+                                    <div class="mt-1 text-xs text-slate-500">Kurulum yenileme ile pasife alındı. Daire sayısı ücretli dilimin dışındaydı.</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <a href="{{ route('admin.subscriptions.show', $record) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>

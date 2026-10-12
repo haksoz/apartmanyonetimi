@@ -34,6 +34,9 @@
                 <p class="mt-1 text-sm text-slate-600">
                     Apartman <span class="font-medium text-slate-900">{{ $customer->apartment_count }}</span>
                     <span class="text-slate-300"> · </span>
+                    Aktif oluşturulan <span class="font-medium text-slate-900">{{ $customer->active_apartment_count }}</span>
+                    / {{ $customer->quotaOverride?->max_apartments ?? 'sınırsız' }}
+                    <span class="text-slate-300"> · </span>
                     Aktif abonelik <span class="font-medium text-slate-900">{{ $customer->active_subscription_count }}</span>
                     <span class="text-slate-300"> · </span>
                     Bekleyen sipariş <span class="font-medium text-slate-900">{{ $customer->pending_order_count }}</span>
@@ -52,7 +55,7 @@
                 <tr>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Müşteri</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Telefon</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Apartman</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Aktif / limit</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Aktif abonelik</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Bekleyen sipariş</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Kayıt Tarihi</th>
@@ -67,7 +70,7 @@
                             <div class="text-xs text-slate-500">{{ $customer->email ?: '—' }}</div>
                         </td>
                         <td class="px-4 py-3 text-slate-700">{{ $customer->phone ?: '-' }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ $customer->apartment_count }}</td>
+                        <td class="px-4 py-3 text-slate-700">{{ $customer->active_apartment_count }} / {{ $customer->quotaOverride?->max_apartments ?? 'sınırsız' }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $customer->active_subscription_count }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $customer->pending_order_count }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $customer->created_at?->format('d.m.Y') ?? '—' }}</td>

@@ -53,6 +53,8 @@ class OnboardingController extends Controller
         app(LegalConsent::class)->requireForApartment($request, false);
 
         $apartment = DB::transaction(function () use ($validated, $user, $currentApartment, $decision, $request) {
+            app(\App\Support\UserApartmentQuota::class)->assertCanCreate($user);
+
             $apartment = \App\Models\Apartment::create([
                 'user_id'    => $user->id,
                 'name'       => $validated['name'],

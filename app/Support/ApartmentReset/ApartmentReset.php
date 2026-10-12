@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Apartment;
 use App\Models\ApartmentDataOperation;
 use App\Models\Category;
+use App\Models\Subscription;
 use App\Models\Unit;
 use App\Models\User;
 use App\Support\LegalConsent;
@@ -97,7 +98,7 @@ class ApartmentReset
                     $apartment,
                     ApartmentDataOperation::ACTION_NEW_APARTMENT,
                     $unitCount,
-                    'Eski apartman pasife alınarak yeni ücretsiz apartman açıldı',
+                    'Eski apartman ve aboneliği, kurulum yenilemede daire sayısı ücretli dilimin dışında kaldığı için pasife alındı',
                     ApartmentDataOperation::RESULT_COMPLETED,
                     ApartmentDataOperation::ARCHIVE_SKIPPED,
                     $created->id,
@@ -172,6 +173,13 @@ class ApartmentReset
 
             $apartment->members()->attach($actor->id, ['role' => 'owner', 'is_active' => true]);
             $source->update(['is_active' => false]);
+            Subscription::query()
+                ->where('apartment_id', $source->id)
+                ->where('status', Subscription::STATUS_ACTIVE)
+                ->update([
+                    'status' => Subscription::STATUS_ENDED,
+                    'ended_at' => now(),
+                ]);
             $this->checkout->openFree($actor, $apartment);
             Category::createDefaultsFor($apartment->id);
 

@@ -15,6 +15,7 @@ use App\Support\ApartmentReset\ApartmentReset;
 use App\Support\ApartmentReset\ResetPolicy;
 use App\Support\CurrentApartment;
 use App\Support\LegalConsent;
+use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -59,9 +60,11 @@ class ApartmentController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(UserApartmentQuota $quota)
     {
-        return view('apartments.create');
+        return view('apartments.create', [
+            'quotaBlocked' => ! $quota->canCreate(auth()->user()),
+        ]);
     }
 
     /**
@@ -90,6 +93,8 @@ class ApartmentController extends Controller
         app(LegalConsent::class)->requireForApartment($request, false);
 
         $apartment = DB::transaction(function () use ($validated, $user, $decision) {
+            app(\App\Support\UserApartmentQuota::class)->assertCanCreate($user);
+
             $apartment = Apartment::create([
                 'user_id' => $user->id,
                 'name' => $validated['name'],

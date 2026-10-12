@@ -11,14 +11,17 @@ use App\Models\Unit;
 use App\Support\ApartmentCommercial;
 use App\Support\CurrentApartment;
 use App\Support\LegalConsent;
+use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SubscriberApartmentCreateController extends Controller
 {
-    public function create()
+    public function create(UserApartmentQuota $quota)
     {
-        return view('apartments.create');
+        return view('apartments.create', [
+            'quotaBlocked' => ! $quota->canCreate(auth()->user()),
+        ]);
     }
 
     public function store(Request $request, CurrentApartment $currentApartment)
@@ -44,6 +47,8 @@ class SubscriberApartmentCreateController extends Controller
         app(LegalConsent::class)->requireForApartment($request, false);
 
         $apartment = DB::transaction(function () use ($validated, $user, $decision) {
+            app(\App\Support\UserApartmentQuota::class)->assertCanCreate($user);
+
             $apartment = Apartment::create([
                 'user_id' => $user->id,
                 'name' => $validated['name'],

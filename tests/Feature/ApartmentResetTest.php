@@ -7,6 +7,7 @@ use App\Models\Apartment;
 use App\Models\ApartmentDataOperation;
 use App\Models\Due;
 use App\Models\QuoteRequest;
+use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\Unit;
 use App\Models\User;
@@ -147,6 +148,7 @@ class ApartmentResetTest extends TestCase
         $this->postRenew($owner, $apartment, 10, true)->assertRedirect();
         $created = Apartment::query()->where('id', '!=', $apartment->id)->where('user_id', $owner->id)->latest('id')->firstOrFail();
         $this->assertFalse($apartment->fresh()->is_active);
+        $this->assertSame(Subscription::STATUS_ENDED, Subscription::query()->where('apartment_id', $apartment->id)->value('status'));
         $this->assertSame(10, $created->unit_count);
         $this->assertTrue($created->is_active);
     }
@@ -172,6 +174,10 @@ class ApartmentResetTest extends TestCase
         $this->assertSame(20, $created->unit_count);
         $this->assertSame(10, $apartment->fresh()->unit_count);
         $this->assertFalse($apartment->fresh()->is_active);
+        $this->assertSame(
+            Subscription::STATUS_ENDED,
+            Subscription::query()->where('apartment_id', $apartment->id)->value('status'),
+        );
         $this->assertTrue($created->is_active);
         $this->assertNull(app(CurrentApartment::class)->queryFor($owner)->whereKey($apartment->id)->first());
         $this->assertSame($order->id, SubscriptionItem::query()->where('apartment_id', $apartment->id)->where('plan', SubscriptionItem::PLAN_PAID)->first()->subscription_id);
