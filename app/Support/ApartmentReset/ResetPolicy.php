@@ -16,7 +16,7 @@ class ResetPolicy
 
     public const QUOTE = 'quote';
 
-    public const NEW_APARTMENT_WARNING = 'Girdiğiniz daire sayısı mevcut ücretli aboneliğinizin kapsamını aşıyor. Devam ederseniz mevcut ücretli apartmanınız ve aboneliğiniz korunacak; girdiğiniz daire sayısıyla ayrı bir ücretsiz apartman oluşturulacak. Mevcut ücretli kullanım hakkınız yeni apartmana aktarılmayacak.';
+    public const NEW_APARTMENT_WARNING = 'Girdiğiniz daire sayısı mevcut ücretli dilimin dışında. Devam ederseniz girdiğiniz daire sayısıyla ücretsiz apartman açılacak. Mevcut ücretli kullanım hakkınız yeni apartmana aktarılmayacak. Ücretli süre devam ediyorsa bu süre müşteri ekranından kalkacak.';
 
     /**
      * @return array{decision: string, active: bool, floor: int|null, ceiling: int|null}
@@ -31,6 +31,11 @@ class ResetPolicy
 
         if ($limit === null) {
             return $this->result(self::SAME_APARTMENT, false, 1, ApartmentCommercial::FREE_UNIT_LIMIT);
+        }
+
+        $paid = $this->paidItem($apartment);
+        if ($paid && $this->outsidePaidBand($paid, $unitCount)) {
+            return $this->result(self::NEW_FREE_APARTMENT, $limit['active'], $limit['floor'], $limit['ceiling']);
         }
 
         if ($unitCount > $limit['ceiling']) {
@@ -49,25 +54,17 @@ class ResetPolicy
      */
     public function commercialLimit(Apartment $apartment): ?array
     {
-        $covering = SubscriptionItem::query()
-            ->where('apartment_id', $apartment->id)
-            ->covering()
-            ->first();
+        $covering = $this->paidItem($apartment);
 
-        if ($covering) {
+        if ($covering && $this->isCoveringItem($covering)) {
             return [
                 'active' => true,
-                'floor' => (int) $covering->unit_count,
+                'floor' => $covering->band_min_units !== null ? (int) $covering->band_min_units : 1,
                 'ceiling' => $this->ceiling($covering),
             ];
         }
 
-        $lastPaid = SubscriptionItem::query()
-            ->where('apartment_id', $apartment->id)
-            ->where('plan', SubscriptionItem::PLAN_PAID)
-            ->orderByDesc('expires_at')
-            ->orderByDesc('id')
-            ->first();
+        $lastPaid = $covering;
 
         if (! $lastPaid) {
             return null;
@@ -78,6 +75,45 @@ class ResetPolicy
             'floor' => $lastPaid->band_min_units !== null ? (int) $lastPaid->band_min_units : 1,
             'ceiling' => $this->ceiling($lastPaid),
         ];
+    }
+
+    private function paidItem(Apartment $apartment): ?SubscriptionItem
+    {
+        $covering = SubscriptionItem::query()
+            ->where('apartment_id', $apartment->id)
+            ->covering()
+            ->first();
+
+        if ($covering) {
+            return $covering;
+        }
+
+        return SubscriptionItem::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('plan', SubscriptionItem::PLAN_PAID)
+            ->orderByDesc('expires_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    private function isCoveringItem(SubscriptionItem $item): bool
+    {
+        return SubscriptionItem::query()->whereKey($item->id)->covering()->exists();
+    }
+
+    private function outsidePaidBand(SubscriptionItem $item, int $unitCount): bool
+    {
+        $min = $item->band_min_units !== null ? (int) $item->band_min_units : 1;
+
+        if ($unitCount < $min) {
+            return true;
+        }
+
+        if ($item->band_max_units === null) {
+            return false;
+        }
+
+        return $unitCount > (int) $item->band_max_units;
     }
 
     private function ceiling(SubscriptionItem $item): int

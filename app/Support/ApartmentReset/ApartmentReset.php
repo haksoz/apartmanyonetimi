@@ -63,7 +63,7 @@ class ApartmentReset
     /**
      * @param  array{decision: string, active: bool, floor: int|null, ceiling: int|null}  $decision
      */
-    public function renew(User $actor, Apartment $apartment, int $unitCount, array $decision, Request $request, bool $skipArchiveCheck = false): ApartmentDataOperation|Apartment
+    public function renew(User $actor, Apartment $apartment, int $unitCount, array $decision, Request $request, bool $skipArchiveCheck = false, array $profile = []): ApartmentDataOperation|Apartment
     {
         if ($decision['decision'] === ResetPolicy::QUOTE) {
             return $this->open(
@@ -90,14 +90,14 @@ class ApartmentReset
         }
 
         if ($decision['decision'] === ResetPolicy::NEW_FREE_APARTMENT) {
-            return DB::transaction(function () use ($actor, $apartment, $unitCount, $request) {
-                $created = $this->createFreeApartment($actor, $apartment, $unitCount, $request);
+            return DB::transaction(function () use ($actor, $apartment, $unitCount, $request, $profile) {
+                $created = $this->createFreeApartment($actor, $apartment, $unitCount, $request, $profile);
                 $this->open(
                     $actor,
                     $apartment,
                     ApartmentDataOperation::ACTION_NEW_APARTMENT,
                     $unitCount,
-                    'Eski apartman korunarak yeni ücretsiz apartman açıldı',
+                    'Eski apartman pasife alınarak yeni ücretsiz apartman açıldı',
                     ApartmentDataOperation::RESULT_COMPLETED,
                     ApartmentDataOperation::ARCHIVE_SKIPPED,
                     $created->id,
@@ -114,7 +114,7 @@ class ApartmentReset
         }
 
         try {
-            $this->data->renewSetup($apartment, $unitCount, $actor);
+            $this->data->renewSetup($apartment, $unitCount, $actor, $profile);
             $this->beforeFinish($operation);
         } catch (\Throwable $exception) {
             $this->markFailed($operation);
@@ -157,24 +157,25 @@ class ApartmentReset
         return false;
     }
 
-    private function createFreeApartment(User $actor, Apartment $source, int $unitCount, Request $request): Apartment
+    private function createFreeApartment(User $actor, Apartment $source, int $unitCount, Request $request, array $profile = []): Apartment
     {
-        $apartment = DB::transaction(function () use ($actor, $source, $unitCount) {
+        $apartment = DB::transaction(function () use ($actor, $source, $unitCount, $profile) {
             $apartment = Apartment::create([
                 'user_id' => $actor->id,
-                'name' => $source->name,
-                'address' => $source->address,
-                'province' => $source->province,
-                'district' => $source->district,
+                'name' => $profile['name'] ?? $source->name,
+                'address' => $profile['address'] ?? $source->address,
+                'province' => $profile['province'] ?? $source->province,
+                'district' => $profile['district'] ?? $source->district,
                 'unit_count' => $unitCount,
                 'billing_plan' => 'free',
             ]);
 
             $apartment->members()->attach($actor->id, ['role' => 'owner', 'is_active' => true]);
+            $source->update(['is_active' => false]);
             $this->checkout->openFree($actor, $apartment);
             Category::createDefaultsFor($apartment->id);
 
-            $openingDate = now()->toDateString();
+            $openingDate = $profile['account_opening_date'] ?? now()->toDateString();
             for ($i = 1; $i <= $unitCount; $i++) {
                 $unitNo = str_pad((string) $i, 2, '0', STR_PAD_LEFT);
                 $unit = Unit::create([

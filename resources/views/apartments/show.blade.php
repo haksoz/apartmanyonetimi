@@ -24,8 +24,6 @@
         <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Durum</div><div class="mt-2 text-2xl font-bold">{{ $apartment->is_active ? 'Aktif' : 'Pasif' }}</div></div>
     </div>
 
-    </div>
-
     @if ($isOwner)
         <div class="mb-8 rounded-2xl bg-white shadow-sm">
             <div class="border-b border-slate-100 px-6 py-4">
@@ -150,7 +148,7 @@
                         <p class="text-sm font-medium text-slate-700">Verileri sil ve kurulumu yenile</p>
                         <p class="text-xs text-slate-500">Aynı apartmanda kurulumu baştan açar. Daire sayısı kuralı aboneliğe göre uygulanır.</p>
                     </div>
-                    <button type="button" onclick="document.getElementById('renew-setup-modal').classList.remove('hidden')" class="rounded-xl border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-50">Kurulumu yenile</button>
+                    <a href="{{ route('apartments.renew-setup.create', $apartment) }}" class="rounded-xl border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-50">Kurulumu yenile</a>
                 </div>
             </div>
         </div>
@@ -159,8 +157,7 @@
     </div>
 
     @php
-        $wipeOpen = ($errors->has('confirmation') || $errors->has('skip_archive_check') || $errors->has('current_password')) && ! old('unit_count');
-        $renewOpen = $errors->has('unit_count') || $errors->has('accept_new_free_apartment') || (($errors->has('confirmation') || $errors->has('skip_archive_check')) && old('unit_count'));
+        $wipeOpen = $errors->has('confirmation') || $errors->has('skip_archive_check') || $errors->has('current_password');
     @endphp
 
     <div id="destroy-all-modal" @class(['fixed inset-0 z-50 flex items-center justify-center bg-black/50', 'hidden' => ! $wipeOpen])>
@@ -199,51 +196,4 @@
         </form>
     </div>
 
-    <div id="renew-setup-modal" @class(['fixed inset-0 z-50 flex items-center justify-center bg-black/50', 'hidden' => ! $renewOpen])>
-        <form method="POST" action="{{ route('apartments.renew-setup', $apartment) }}" class="max-w-md rounded-2xl bg-white p-6 shadow-xl w-full mx-4">
-            @csrf
-            <div class="mb-4">
-                <h3 class="text-lg font-bold text-slate-900">Verileri sil ve kurulumu yenile</h3>
-                <ol class="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
-                    <li>İşlem öncesi hazırlık</li>
-                    <li>Verilerin temizlenmesi</li>
-                    <li>Kurulumun yenilenmesi</li>
-                    <li>Sonuç bildirimi</li>
-                </ol>
-                <p class="mt-2 text-sm text-slate-600">{{ $apartment->name }} için ücretli kullanım hakkı başka apartmana taşınmaz.</p>
-                <label class="mt-4 flex items-start gap-2 text-sm font-medium text-slate-800">
-                    <input type="checkbox" name="skip_archive_check" value="1" class="mt-1" @checked(old('skip_archive_check') && old('unit_count'))>
-                    <span>Yedekleme altyapısı kontrolünü atla</span>
-                </label>
-                <p class="mt-2 text-sm text-amber-800">Bu işlem için henüz otomatik yedekleme ve geri yükleme altyapısı bulunmamaktadır. Devam ederseniz seçilen veriler kalıcı olarak silinebilir ve geri getirilemeyebilir. Bu işlemin öncesinde verilerin yedeği alınmayacaktır.</p>
-            </div>
-            <label class="mb-3 block text-sm font-medium text-slate-700">
-                Daire sayısı
-                <input type="number" name="unit_count" value="{{ old('unit_count', $apartment->unit_count) }}" min="1" max="500" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
-            </label>
-            @error('unit_count') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
-            @error('accept_new_free_apartment')
-                <label class="mb-3 flex items-start gap-2 text-sm text-slate-700">
-                    <input type="checkbox" name="accept_new_free_apartment" value="1" class="mt-1">
-                    <span>{{ $message }}</span>
-                </label>
-            @enderror
-            <label class="mb-3 block text-sm font-medium text-slate-700">
-                Şifreniz
-                <input type="password" name="current_password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
-            </label>
-            <label class="mb-4 block text-sm font-medium text-slate-700">
-                Onay metni
-                <input type="text" name="confirmation" value="{{ old('unit_count') ? old('confirmation') : '' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="kurulumun yenilenmesini kabul ediyorum">
-                <span class="mt-1 block text-xs font-normal text-slate-500">"kurulumun yenilenmesini kabul ediyorum" yazın.</span>
-            </label>
-            @error('skip_archive_check') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
-            @error('confirmation') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
-            @error('current_password') <p class="mb-3 text-sm text-red-600">{{ $message }}</p> @enderror
-            <div class="flex justify-end gap-3">
-                <button type="button" onclick="document.getElementById('renew-setup-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</button>
-                <button type="submit" class="rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">Devam</button>
-            </div>
-        </form>
-    </div>
 @endsection

@@ -158,6 +158,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
         Route::resource('apartments', ApartmentController::class);
         Route::post('apartments/{apartment}/destroy-all', [ApartmentController::class, 'destroyAll'])->name('apartments.destroy-all');
+        Route::get('apartments/{apartment}/renew-setup', [ApartmentController::class, 'renewForm'])->name('apartments.renew-setup.create');
         Route::post('apartments/{apartment}/renew-setup', [ApartmentController::class, 'renewSetup'])->name('apartments.renew-setup');
         Route::post('apartments/{apartment}/trigger-aidat', [SubscriberApartmentController::class, 'triggerAidatGeneration'])->name('apartments.trigger-aidat');
         Route::resource('units', UnitController::class);

@@ -95,26 +95,33 @@ class ApartmentResetTest extends TestCase
         $order = $this->paidPeriod($owner, $apartment, 10, 14, now()->addYear());
         $item = SubscriptionItem::query()->where('subscription_id', $order->id)->firstOrFail();
 
-        $this->postRenew($owner, $apartment, 12)->assertRedirect(route('apartments.wizard.cash-box', $apartment));
+        $this->postRenew($owner, $apartment, 12, false, true, [
+            'name' => 'Yeni Ad',
+            'account_opening_date' => '2024-05-01',
+        ])->assertRedirect(route('apartments.wizard.cash-box', $apartment));
 
         $this->assertSame(12, $apartment->fresh()->unit_count);
+        $this->assertSame('Yeni Ad', $apartment->fresh()->name);
+        $this->assertSame('Deneme Apartmanı', $item->fresh()->apartment_name);
+        $this->assertSame('2024-05-01', Account::query()->where('apartment_id', $apartment->id)->first()->account_opening_date->toDateString());
         $this->assertSame(10, $item->fresh()->unit_count);
         $this->assertSame($order->id, $item->fresh()->subscription_id);
         $this->assertSame($order->price, $order->fresh()->price);
         $this->assertTrue($item->fresh()->isCovering());
     }
 
-    public function test_active_paid_period_cannot_reduce_the_purchased_unit_count(): void
+    public function test_active_paid_period_can_shrink_inside_the_purchased_band(): void
     {
         $this->acceptArchive();
         [$owner, $apartment] = $this->ownerApartment(10);
         $order = $this->paidPeriod($owner, $apartment, 10, 14, now()->addYear());
+        $item = SubscriptionItem::query()->where('subscription_id', $order->id)->firstOrFail();
 
-        $this->postRenew($owner, $apartment, 8)
-            ->assertRedirect()
-            ->assertSessionHasErrors('unit_count');
+        $this->postRenew($owner, $apartment, 8)->assertRedirect(route('apartments.wizard.cash-box', $apartment));
 
-        $this->assertSame(10, $apartment->fresh()->unit_count);
+        $this->assertSame(8, $apartment->fresh()->unit_count);
+        $this->assertTrue($apartment->fresh()->is_active);
+        $this->assertSame(10, $item->fresh()->unit_count);
         $this->assertSame($order->price, $order->fresh()->price);
         $this->assertSame(1, Apartment::query()->count());
     }
@@ -134,8 +141,14 @@ class ApartmentResetTest extends TestCase
 
         [$owner, $apartment] = $this->ownerApartment(20);
         $this->paidPeriod($owner, $apartment, 20, 32, now()->subDay(), 15);
-        $this->postRenew($owner, $apartment, 10)->assertSessionHasErrors('unit_count');
-        $this->assertSame(20, $apartment->fresh()->unit_count);
+        $this->postRenew($owner, $apartment, 10)->assertSessionHasErrors('accept_new_free_apartment');
+        $this->assertTrue($apartment->fresh()->is_active);
+
+        $this->postRenew($owner, $apartment, 10, true)->assertRedirect();
+        $created = Apartment::query()->where('id', '!=', $apartment->id)->where('user_id', $owner->id)->latest('id')->firstOrFail();
+        $this->assertFalse($apartment->fresh()->is_active);
+        $this->assertSame(10, $created->unit_count);
+        $this->assertTrue($created->is_active);
     }
 
     public function test_exceeding_the_paid_band_opens_a_separate_free_apartment_after_confirmation(): void
@@ -158,6 +171,9 @@ class ApartmentResetTest extends TestCase
         $created = Apartment::query()->where('id', '!=', $apartment->id)->firstOrFail();
         $this->assertSame(20, $created->unit_count);
         $this->assertSame(10, $apartment->fresh()->unit_count);
+        $this->assertFalse($apartment->fresh()->is_active);
+        $this->assertTrue($created->is_active);
+        $this->assertNull(app(CurrentApartment::class)->queryFor($owner)->whereKey($apartment->id)->first());
         $this->assertSame($order->id, SubscriptionItem::query()->where('apartment_id', $apartment->id)->where('plan', SubscriptionItem::PLAN_PAID)->first()->subscription_id);
         $this->assertNull(SubscriptionItem::query()->where('apartment_id', $created->id)->where('plan', SubscriptionItem::PLAN_PAID)->first());
         $this->assertTrue(SubscriptionItem::query()->where('apartment_id', $created->id)->where('plan', SubscriptionItem::PLAN_FREE)->exists());
@@ -317,16 +333,23 @@ class ApartmentResetTest extends TestCase
             ]);
     }
 
-    private function postRenew(User $owner, Apartment $apartment, int $units, bool $acceptNew = false, bool $skipArchive = true)
+    private function postRenew(User $owner, Apartment $apartment, int $units, bool $acceptNew = false, bool $skipArchive = true, array $fields = [])
     {
         return $this->actingAs($owner)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->post(route('apartments.renew-setup', $apartment), [
+            ->post(route('apartments.renew-setup', $apartment), array_merge([
+                'name' => $apartment->name,
+                'address' => $apartment->address ?: 'Adres satırı',
+                'province' => $apartment->province,
+                'district' => $apartment->district,
+                'account_opening_date' => now()->toDateString(),
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
                 'current_password' => 'password',
                 'unit_count' => $units,
                 'confirmation' => 'kurulumun yenilenmesini kabul ediyorum',
                 'accept_new_free_apartment' => $acceptNew ? '1' : '0',
                 'skip_archive_check' => $skipArchive ? '1' : '0',
-            ]);
+            ], $fields));
     }
 }

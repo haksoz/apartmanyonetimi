@@ -64,20 +64,20 @@ class DataOperationLogTest extends TestCase
             ->assertSee('güncel daire sayısı 12');
     }
 
-    public function test_a_blocked_renewal_is_shown_as_failed_and_live_state_stays(): void
+    public function test_a_within_band_shrink_stays_on_the_active_apartment(): void
     {
         [$owner, $apartment] = $this->ownerApartment(10);
         $this->paidCover($owner, $apartment);
 
-        $this->postRenew($owner, $apartment, 4)->assertSessionHasErrors('unit_count');
+        $this->postRenew($owner, $apartment, 4)->assertRedirect();
 
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin)
             ->get(route('admin.data-operations.show', ApartmentDataOperation::query()->firstOrFail()))
             ->assertOk()
-            ->assertSee('Başarısız')
+            ->assertSee('Başarılı')
             ->assertSee('Aktif')
-            ->assertSee('güncel daire sayısı 10');
+            ->assertSee('güncel daire sayısı 4');
     }
 
     public function test_history_remains_after_the_apartment_record_is_removed(): void
@@ -166,6 +166,11 @@ class DataOperationLogTest extends TestCase
         return $this->actingAs($owner)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->post(route('apartments.renew-setup', $apartment), [
+                'name' => $apartment->name,
+                'address' => $apartment->address ?: 'Adres satırı',
+                'account_opening_date' => now()->toDateString(),
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
                 'current_password' => 'password',
                 'unit_count' => $units,
                 'confirmation' => 'kurulumun yenilenmesini kabul ediyorum',

@@ -273,6 +273,11 @@ class ApartmentRenewSetupCleanupTest extends TestCase
         return $this->actingAs($owner)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->post(route('apartments.renew-setup', $apartment), [
+                'name' => $apartment->name,
+                'address' => $apartment->address ?: 'Adres satırı',
+                'account_opening_date' => now()->toDateString(),
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
                 'current_password' => 'password',
                 'unit_count' => $units,
                 'confirmation' => 'kurulumun yenilenmesini kabul ediyorum',

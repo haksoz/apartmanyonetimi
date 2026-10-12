@@ -42,11 +42,11 @@ class ApartmentOperationalData
     /** Test, transaction kapanmadan önce hata verir. Canlıda boştur. */
     public static ?\Closure $beforeCommit = null;
 
-    public function renewSetup(Apartment $apartment, int $unitCount, User $actor): void
+    public function renewSetup(Apartment $apartment, int $unitCount, User $actor, array $profile = []): void
     {
         $documentPaths = [];
 
-        DB::transaction(function () use ($apartment, $unitCount, $actor, &$documentPaths) {
+        DB::transaction(function () use ($apartment, $unitCount, $actor, $profile, &$documentPaths) {
             $paths = $this->detachExpenseDocuments($apartment);
             $this->wipe($apartment);
 
@@ -54,11 +54,15 @@ class ApartmentOperationalData
             TenantAssignment::where('apartment_id', $apartment->id)->delete();
             UnitOwnerHistory::where('apartment_id', $apartment->id)->delete();
 
-            $this->replaceUnits($apartment, $unitCount);
+            $this->replaceUnits($apartment, $unitCount, $profile['account_opening_date'] ?? null);
             $this->replaceCategories($apartment);
             $this->removeOtherMemberships($apartment, $actor);
 
             $apartment->update([
+                'name' => $profile['name'] ?? $apartment->name,
+                'address' => $profile['address'] ?? $apartment->address,
+                'province' => array_key_exists('province', $profile) ? $profile['province'] : $apartment->province,
+                'district' => array_key_exists('district', $profile) ? $profile['district'] : $apartment->district,
                 'unit_count' => $unitCount,
                 'setup_units_completed_at' => null,
                 'setup_completed_at' => null,
@@ -101,9 +105,9 @@ class ApartmentOperationalData
         }
     }
 
-    private function replaceUnits(Apartment $apartment, int $unitCount): void
+    private function replaceUnits(Apartment $apartment, int $unitCount, ?string $openingDate = null): void
     {
-        $openingDate = Account::query()
+        $openingDate = $openingDate ?? Account::query()
             ->where('apartment_id', $apartment->id)
             ->value('account_opening_date') ?? now()->toDateString();
 

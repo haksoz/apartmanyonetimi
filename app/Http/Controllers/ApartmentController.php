@@ -258,15 +258,28 @@ class ApartmentController extends Controller
         return redirect()->route('dashboard')->with('status', 'İşlem verileri silindi. Apartman, daire sayısı, hesaplar ve abonelik duruyor. Silinen verilerin yedeği alınmadı.');
     }
 
+    public function renewForm(string $id)
+    {
+        $apartment = $this->managedApartment($id);
+        abort_unless($this->isOwnerOf($apartment), 403);
+
+        return view('apartments.renew-setup', compact('apartment'));
+    }
+
     /**
      * Daire sayısı kuralına göre aynı apartmanda kurulumu yeniler veya ayrı ücretsiz apartman açar.
      */
-    public function renewSetup(Request $request, string $id, ApartmentReset $reset)
+    public function renewSetup(Request $request, string $id, ApartmentReset $reset, LegalConsent $consent)
     {
         $apartment = $this->managedApartment($id);
         abort_unless($this->isOwnerOf($apartment), 403);
 
         $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'address' => ['required', 'string'],
+            'province' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'account_opening_date' => ['required', 'date'],
             'current_password' => ['required', 'current_password'],
             'unit_count' => ['required', 'integer', 'min:1', 'max:500'],
             'confirmation' => ['required', 'string', 'in:kurulumun yenilenmesini kabul ediyorum'],
@@ -276,14 +289,23 @@ class ApartmentController extends Controller
         ]);
 
         $unitCount = (int) $validated['unit_count'];
+        $profile = [
+            'name' => $validated['name'],
+            'address' => $validated['address'],
+            'province' => $validated['province'] ?? null,
+            'district' => $validated['district'] ?? null,
+            'account_opening_date' => $validated['account_opening_date'],
+        ];
         $decision = $reset->policy()->decide($apartment, $unitCount);
 
         if ($decision['decision'] === ResetPolicy::QUOTE) {
-            QuoteRequest::record($request->user(), $apartment->name, $unitCount);
+            QuoteRequest::record($request->user(), $validated['name'], $unitCount);
             $reset->renew($request->user(), $apartment, $unitCount, $decision, $request);
 
-            return back()->with('status', ApartmentCommercial::QUOTE_MESSAGE);
+            return back()->with('status', ApartmentCommercial::QUOTE_MESSAGE)->withInput();
         }
+
+        $consent->requireForApartment($request, false);
 
         if ($decision['decision'] === ResetPolicy::BLOCKED_DECREASE) {
             $reset->renew($request->user(), $apartment, $unitCount, $decision, $request);
@@ -318,7 +340,7 @@ class ApartmentController extends Controller
             ])->withInput();
         }
 
-        $outcome = $reset->renew($request->user(), $apartment, $unitCount, $decision, $request, $request->boolean('skip_archive_check'));
+        $outcome = $reset->renew($request->user(), $apartment, $unitCount, $decision, $request, $request->boolean('skip_archive_check'), $profile);
 
         if ($outcome instanceof ApartmentDataOperation && $outcome->result === ApartmentDataOperation::RESULT_ARCHIVE_FAILED) {
             return back()->withErrors([
@@ -330,8 +352,10 @@ class ApartmentController extends Controller
             app(CurrentApartment::class)->setFor($request->user(), $outcome->id);
 
             return redirect()->route('apartments.wizard.cash-box', $outcome)
-                ->with('status', 'Yeni ücretsiz apartman açıldı. Eski apartman ve ücretli kullanım hakkı yerinde duruyor.');
+                ->with('status', 'Yeni ücretsiz apartman açıldı. Eski apartman pasife alındı. Ücretli kullanım hakkı eski apartmanda duruyor.');
         }
+
+        $consent->recordResidentData($request->user(), $apartment, $request);
 
         return redirect()->route('apartments.wizard.cash-box', $apartment)
             ->with('status', 'Kurulum yenilendi. Abonelik bu apartmanda duruyor. Silinen verilerin yedeği alınmadı.');

@@ -523,10 +523,13 @@
                 @if (session('error'))
                     <div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ session('error') }}</div>
                 @endif
-                @if ($errors->any())
+                @php
+                    $bannerErrors = collect($errors->getMessages())->except('accept_new_free_apartment')->flatten();
+                @endphp
+                @if ($bannerErrors->isNotEmpty())
                     <div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                         <ul class="list-disc list-inside space-y-1">
-                            @foreach ($errors->all() as $error)
+                            @foreach ($bannerErrors as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>
