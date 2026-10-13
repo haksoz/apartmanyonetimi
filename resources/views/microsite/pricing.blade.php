@@ -79,6 +79,7 @@
             <li>Ücretli abonelik aylık veya yıllık olarak seçilebilir.</li>
             <li>Her apartman ayrı abonelik ve ayrı sipariş üzerinden ücretlendirilir.</li>
             <li>Yenileme, yeni bir sipariş oluşturularak yapılır.</li>
+            <li>Bu tablo bir apartmanın ücretli abonelik tarifesidir. Ek apartman limiti için ayrı fiyat yayımlanmaz. Birden fazla apartman için <a href="mailto:info@aidatcep.com" class="font-semibold text-emerald-800 underline">info@aidatcep.com</a> adresinden iletişime geçin.</li>
         </ul>
 
         <h2 class="mt-14 text-2xl font-extrabold text-slate-950 mb-4">Ödeme</h2>

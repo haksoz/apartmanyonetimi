@@ -16,7 +16,7 @@
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Ücretsiz kullanımda hangi özellikleri kullanabilirim?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Aidat takibi, tahsilat, gider ve kasa, cari ekstre görüntüleme, Daire Sakini ve kullanıcı yönetimi, birden fazla apartman ve temel rapor ekranları ücretsiz kullanımda açıktır.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Aidat takibi, tahsilat, gider ve kasa, cari ekstre görüntüleme, Daire Sakini ve kullanıcı yönetimi ile temel rapor ekranları ücretsiz kullanımda açıktır.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Ücretli abonelik ne zaman gerekir?</summary>
@@ -28,7 +28,7 @@
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Birden fazla apartman yönetebilir miyim?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Evet. Tek hesabınızla birden fazla apartman açabilirsiniz. Apartman sayısı hesabınızı sınırlamaz. Her apartmanın ücreti kendi daire sayısına göre ayrı hesaplanır.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">AidatCep'e bir apartmanınızla ücretsiz başlayın. Birden fazla apartman yönetmeniz gerekiyorsa <a href="mailto:info@aidatcep.com" class="font-semibold text-emerald-800 underline">info@aidatcep.com</a> veya <a href="tel:+902163774000" class="font-semibold text-emerald-800 underline">+90 216 377 4000</a> üzerinden bizimle iletişime geçin; ihtiyacınıza uygun kullanım limitini birlikte değerlendirelim. Ek apartman için sitede ayrı bir fiyat yayımlanmaz. Bir apartmanın ücretli aboneliği, daire sayısına göre ayrıca belirlenir.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Her apartman için ayrı mı ödeme yapılır?</summary>
