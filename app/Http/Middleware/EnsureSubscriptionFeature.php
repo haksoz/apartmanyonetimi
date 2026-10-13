@@ -25,10 +25,8 @@ class EnsureSubscriptionFeature
             return $next($request);
         }
 
-        $owner = $apartment->user;
-
-        if (! $owner || ! $owner->hasFeature($feature)) {
-            abort(403, 'Bu özellik aboneliğinizde aktif değil. Erişim için yöneticinizle iletişime geçin.');
+        if (! \App\Support\FeatureGate::allows($apartment, $feature, $user)) {
+            abort(403, 'Bu özellik ücretli plandadır.');
         }
 
         return $next($request);

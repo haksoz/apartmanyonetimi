@@ -7,15 +7,23 @@ use App\Http\Controllers\ApartmentController;
 use App\Http\Controllers\ApartmentSelectionController;
 use App\Http\Controllers\ApartmentWizardController;
 use App\Http\Controllers\ApartmentSwitchController;
+use App\Http\Controllers\Admin\AdminArchivedApartmentController;
+use App\Http\Controllers\Admin\AdminCommercialController;
+use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminDataOperationController;
 use App\Http\Controllers\Admin\AdminImpersonateController;
 use App\Http\Controllers\Admin\AdminManagerController;
+use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminBankAccountController;
 use App\Http\Controllers\Admin\AdminPackageController;
+use App\Http\Controllers\Admin\AdminQuoteRequestController;
 use App\Http\Controllers\Admin\AdminSettingsController;
+use App\Http\Controllers\Admin\AdminSubscriptionItemController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Subscriber\SubscriberApartmentController;
 use App\Http\Controllers\Subscriber\SubscriberApartmentCreateController;
+use App\Http\Controllers\Subscriber\SubscriberBillingProfileController;
 use App\Http\Controllers\Subscriber\SubscriberDashboardController;
 use App\Http\Controllers\Subscriber\SubscriberSubscriptionController;
 use App\Http\Controllers\AuthController;
@@ -35,6 +43,35 @@ use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', LandingController::class)->name('landing');
+Route::get('fiyatlandirma', [LandingController::class, 'pricing'])->name('pricing');
+Route::view('sss', 'microsite.faq')->name('faq');
+
+Route::view('yasal/daire-sakini-verisi', 'legal.placeholder', [
+    'title' => 'Daire Sakini Verisi',
+    'body' => 'legal.content.resident-data',
+])->name('legal.resident-data');
+Route::view('yasal/uyelik-sozlesmesi', 'legal.placeholder', [
+    'title' => 'Üyelik Sözleşmesi',
+    'body' => 'legal.content.membership',
+])->name('legal.membership');
+Route::view('yasal/mesafeli-satis-sozlesmesi', 'legal.placeholder', [
+    'title' => 'Mesafeli Satış Sözleşmesi',
+    'body' => 'legal.content.distance-sales',
+])->name('legal.distance-sales');
+Route::view('yasal/on-bilgilendirme-formu', 'legal.placeholder', [
+    'title' => 'Ön Bilgilendirme Formu',
+    'body' => 'legal.content.pre-information',
+])->name('legal.pre-information');
+Route::view('yasal/gizlilik-ve-kvkk', 'legal.placeholder', [
+    'title' => 'Gizlilik ve KVKK',
+    'body' => 'legal.content.privacy',
+])->name('legal.privacy');
+Route::view('yasal/cerez-aydinlatma', 'legal.placeholder', [
+    'title' => 'Çerez Aydınlatma',
+])->name('legal.cookies');
+Route::view('yasal/iptal-ve-iade', 'legal.placeholder', [
+    'title' => 'İptal ve İade',
+])->name('legal.cancellation');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
@@ -75,28 +112,28 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     // Raporlar - Tüm kullanıcılar
-    Route::prefix('reports')->name('reports.')->middleware('feature:reports')->group(function () {
+        Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('income-expense', [ReportController::class, 'incomeExpense'])->name('income-expense');
-        Route::get('income-expense/export/{type}', [ReportController::class, 'incomeExpenseExport'])->name('income-expense.export');
+        Route::get('income-expense/export/{type}', [ReportController::class, 'incomeExpenseExport'])->middleware('feature.export')->name('income-expense.export');
         Route::get('debt-list', [ReportController::class, 'overdue2'])->name('debt-list');
-        Route::get('debt-list/export/{type}', [ReportController::class, 'overdue2Export'])->name('debt-list.export');
+        Route::get('debt-list/export/{type}', [ReportController::class, 'overdue2Export'])->middleware('feature.export')->name('debt-list.export');
         Route::get('receivable-list', [ReportController::class, 'receivableList'])->name('receivable-list');
-        Route::get('receivable-list/export/{type}', [ReportController::class, 'receivableListExport'])->name('receivable-list.export');
+        Route::get('receivable-list/export/{type}', [ReportController::class, 'receivableListExport'])->middleware('feature.export')->name('receivable-list.export');
         Route::get('account-statement', [ReportController::class, 'accountStatement'])->name('account-statement');
-        Route::get('account-statement/export/{type}', [ReportController::class, 'accountStatementExport'])->name('account-statement.export');
-        Route::get('due-collection', [ReportController::class, 'dueCollection'])->name('due-collection');
-        Route::get('due-collection/export/{type}', [ReportController::class, 'dueCollectionExport'])->name('due-collection.export');
-        Route::get('overdue', [ReportController::class, 'overdue'])->name('overdue');
-        Route::get('overdue/export/{type}', [ReportController::class, 'overdueExport'])->name('overdue.export');
-        Route::get('annual-activity', [ReportController::class, 'annualActivity'])->name('annual-activity');
-        Route::get('annual-activity/export/{type}', [ReportController::class, 'annualActivityExport'])->name('annual-activity.export');
-        Route::get('budget', [ReportController::class, 'budget'])->name('budget');
-        Route::get('budget/export/{type}', [ReportController::class, 'budgetExport'])->name('budget.export');
+        Route::get('account-statement/export/{type}', [ReportController::class, 'accountStatementExport'])->middleware('feature.export')->name('account-statement.export');
+        Route::get('due-collection', [ReportController::class, 'dueCollection'])->middleware('feature:report_due_matrix')->name('due-collection');
+        Route::get('due-collection/export/{type}', [ReportController::class, 'dueCollectionExport'])->middleware(['feature:report_due_matrix', 'feature.export'])->name('due-collection.export');
+        Route::get('overdue', [ReportController::class, 'overdue'])->middleware('feature:report_overdue')->name('overdue');
+        Route::get('overdue/export/{type}', [ReportController::class, 'overdueExport'])->middleware(['feature:report_overdue', 'feature.export'])->name('overdue.export');
+        Route::get('annual-activity', [ReportController::class, 'annualActivity'])->middleware('feature:report_annual')->name('annual-activity');
+        Route::get('annual-activity/export/{type}', [ReportController::class, 'annualActivityExport'])->middleware(['feature:report_annual', 'feature.export'])->name('annual-activity.export');
+        Route::get('budget', [ReportController::class, 'budget'])->middleware('feature:report_budget')->name('budget');
+        Route::get('budget/export/{type}', [ReportController::class, 'budgetExport'])->middleware(['feature:report_budget', 'feature.export'])->name('budget.export');
         Route::get('expenses', [ReportController::class, 'expenses'])->name('expenses');
-        Route::get('expenses/export/{type}', [ReportController::class, 'expensesExport'])->name('expenses.export');
-        Route::get('monthly-board', [ReportController::class, 'monthlyBoard'])->name('monthly-board');
-        Route::get('monthly-board/export/{type}', [ReportController::class, 'monthlyBoardExport'])->name('monthly-board.export');
+        Route::get('expenses/export/{type}', [ReportController::class, 'expensesExport'])->middleware('feature.export')->name('expenses.export');
+        Route::get('monthly-board', [ReportController::class, 'monthlyBoard'])->middleware('feature:report_monthly_board')->name('monthly-board');
+        Route::get('monthly-board/export/{type}', [ReportController::class, 'monthlyBoardExport'])->middleware(['feature:report_monthly_board', 'feature.export'])->name('monthly-board.export');
     });
 
     // Giderler - Üye ve Yönetici erişimi (tüm resource actions)
@@ -110,7 +147,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
     // Aidatlar - Üye ve Yönetici erişimi
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
-    Route::get('dues/export', [DueController::class, 'export'])->name('dues.export');
+        Route::get('dues/export', [DueController::class, 'export'])->middleware('feature.export')->name('dues.export');
     Route::get('dues/create', [DueController::class, 'create'])->name('dues.create');
     Route::post('dues', [DueController::class, 'store'])->name('dues.store');
     Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->name('dues.expenses.by-period');
@@ -121,7 +158,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
         Route::resource('apartments', ApartmentController::class);
         Route::post('apartments/{apartment}/destroy-all', [ApartmentController::class, 'destroyAll'])->name('apartments.destroy-all');
-        Route::post('apartments/{apartment}/reset-and-renew', [ApartmentController::class, 'resetAndRenew'])->name('apartments.reset-and-renew');
+        Route::get('apartments/{apartment}/renew-setup', [ApartmentController::class, 'renewForm'])->name('apartments.renew-setup.create');
+        Route::post('apartments/{apartment}/renew-setup', [ApartmentController::class, 'renewSetup'])->name('apartments.renew-setup');
         Route::post('apartments/{apartment}/trigger-aidat', [SubscriberApartmentController::class, 'triggerAidatGeneration'])->name('apartments.trigger-aidat');
         Route::resource('units', UnitController::class);
 
@@ -134,7 +172,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
         Route::resource('accounts', AccountController::class);
         Route::get('accounts/{id}/statement', [AccountController::class, 'statement'])->name('accounts.statement');
-        Route::get('accounts/{id}/statement/export', [AccountController::class, 'statementExport'])->name('accounts.statement.export');
+        Route::get('accounts/{id}/statement/export', [AccountController::class, 'statementExport'])->middleware('feature.export')->name('accounts.statement.export');
 
         Route::delete('accounts/{id}/transactions/{transaction}', [AccountController::class, 'destroyTransaction'])->name('accounts.transactions.destroy');
         Route::post('accounts/imported-transactions', [AccountController::class, 'destroyAllImported'])->name('accounts.imported.destroy-all');
@@ -207,23 +245,48 @@ Route::post('admin/impersonate/leave', [AdminImpersonateController::class, 'leav
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/', AdminDashboardController::class)->name('dashboard');
+    Route::get('archived-apartments', [AdminArchivedApartmentController::class, 'index'])->name('archived-apartments.index');
 
+    Route::get('customers', [AdminCustomerController::class, 'index'])->name('customers.index');
+    Route::get('customers/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
+    Route::patch('customers/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');
+    Route::patch('customers/{customer}/quota', [AdminCustomerController::class, 'updateQuota'])->name('customers.quota.update');
+    Route::patch('customers/{customer}/password', [AdminCustomerController::class, 'updatePassword'])->name('customers.password.update');
+    Route::patch('customers/{customer}/deactivate', [AdminCustomerController::class, 'deactivate'])->name('customers.deactivate');
+    Route::patch('customers/{customer}/activate', [AdminCustomerController::class, 'activate'])->name('customers.activate');
+    Route::delete('customers/{customer}/apartments/{apartment}', [AdminCustomerController::class, 'destroyApartment'])->name('customers.apartments.destroy');
+    Route::delete('customers/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
     Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
+    Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
+    Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::delete('orders/{order}/payments/{payment}', [AdminOrderController::class, 'destroyPayment'])->name('orders.payments.destroy');
+    Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
+    Route::get('subscriptions/{subscription}', [AdminSubscriptionItemController::class, 'subscription'])->name('subscriptions.show');
+    Route::get('subscription-items/{subscriptionItem}', [AdminSubscriptionItemController::class, 'show'])->name('subscription-items.show');
     Route::get('managers/{manager}', [AdminManagerController::class, 'show'])->name('managers.show');
-    Route::patch('managers/{manager}/subscription', [AdminManagerController::class, 'updateCurrentSubscription'])->name('managers.subscription.update');
-    Route::post('managers/{manager}/subscription/order', [AdminManagerController::class, 'storeSubscriptionOrder'])->name('managers.subscription.order');
     Route::patch('managers/{manager}/subscription/{subscription}/approve', [AdminManagerController::class, 'approveSubscriptionOrder'])->name('managers.subscription.approve');
     Route::patch('managers/{manager}/subscription/{subscription}/reject', [AdminManagerController::class, 'rejectSubscriptionOrder'])->name('managers.subscription.reject');
     Route::patch('managers/{manager}/subscription/{subscription}/reactivate', [AdminManagerController::class, 'reactivateSubscription'])->name('managers.subscription.reactivate');
-    Route::post('managers/{manager}/subscription/cancel', [AdminManagerController::class, 'cancelSubscription'])->name('managers.subscription.cancel');
+    Route::post('managers/{manager}/subscription/{subscription}/cancel', [AdminManagerController::class, 'cancelSubscription'])->name('managers.subscription.cancel');
     Route::delete('managers/{manager}', [AdminManagerController::class, 'destroy'])->name('managers.destroy');
-    Route::patch('managers/{manager}/quota', [AdminManagerController::class, 'updateQuota'])->name('managers.quota.update');
-    Route::post('managers/{manager}/trial-extend', [AdminManagerController::class, 'extendTrial'])->name('managers.trial.extend');
+
+    Route::get('quote-requests', [AdminQuoteRequestController::class, 'index'])->name('quote-requests.index');
+    Route::patch('quote-requests/{quoteRequest}', [AdminQuoteRequestController::class, 'update'])->name('quote-requests.update');
+
+    Route::get('commercial', [AdminCommercialController::class, 'index'])->name('commercial.index');
+    Route::patch('commercial/bands/{band}', [AdminCommercialController::class, 'updateBand'])->name('commercial.bands.update');
+    Route::post('commercial/campaigns', [AdminCommercialController::class, 'storeCampaign'])->name('commercial.campaigns.store');
+    Route::patch('commercial/features/{feature}', [AdminCommercialController::class, 'updateFeature'])->name('commercial.features.update');
+    Route::patch('apartments/{apartment}/price', [AdminManagerController::class, 'updateApartmentPrice'])->name('apartments.price');
+    Route::post('apartments/{apartment}/complimentary', [AdminManagerController::class, 'grantComplimentary'])->name('apartments.complimentary');
 
     Route::resource('packages', AdminPackageController::class);
     Route::patch('packages/{package}/features', [AdminPackageController::class, 'updateFeatures'])->name('packages.features.update');
 
     Route::resource('bank-accounts', AdminBankAccountController::class);
+
+    Route::get('data-operations', [AdminDataOperationController::class, 'index'])->name('data-operations.index');
+    Route::get('data-operations/{dataOperation}', [AdminDataOperationController::class, 'show'])->name('data-operations.show');
 
     Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');
     Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
@@ -247,8 +310,16 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
     Route::post('apartments', [SubscriberApartmentCreateController::class, 'store'])->name('apartments.store');
 
     // Apartment editing for subscribers
+    Route::get('apartments/{apartment}', [SubscriberApartmentController::class, 'show'])->name('apartments.show');
     Route::get('apartments/{apartment}/edit', [ApartmentController::class, 'edit'])->name('apartments.edit');
     Route::put('apartments/{apartment}', [ApartmentController::class, 'update'])->name('apartments.update');
+
+    Route::get('billing-profiles', [SubscriberBillingProfileController::class, 'index'])->name('billing-profiles.index');
+    Route::get('billing-profiles/create', [SubscriberBillingProfileController::class, 'create'])->name('billing-profiles.create');
+    Route::post('billing-profiles', [SubscriberBillingProfileController::class, 'store'])->name('billing-profiles.store');
+    Route::get('billing-profiles/{billingProfile}/edit', [SubscriberBillingProfileController::class, 'edit'])->name('billing-profiles.edit');
+    Route::put('billing-profiles/{billingProfile}', [SubscriberBillingProfileController::class, 'update'])->name('billing-profiles.update');
+    Route::patch('billing-profiles/{billingProfile}/active', [SubscriberBillingProfileController::class, 'active'])->name('billing-profiles.active');
 
     // Subscription renewal / upgrade orders
     Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
@@ -256,6 +327,7 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
         Route::get('create', [SubscriberSubscriptionController::class, 'create'])->name('create');
         Route::post('/', [SubscriberSubscriptionController::class, 'store'])->name('store');
         Route::get('{subscription}/receipt', [SubscriberSubscriptionController::class, 'receipt'])->name('receipt');
+        Route::post('{subscription}/cancel', [SubscriberSubscriptionController::class, 'cancel'])->name('cancel');
         Route::post('{subscription}/payment-info', [SubscriberSubscriptionController::class, 'paymentInfo'])->name('payment-info');
     });
 });

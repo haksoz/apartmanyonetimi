@@ -1,124 +1,208 @@
 @extends('layouts.app')
 
-@section('title', $type === 'upgrade' ? 'Paket Yükselt' : 'Abonelik Yenile')
+@section('title', 'Ücretli Kullanım')
 
 @section('content')
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-3xl mx-auto">
         <div class="mb-6">
             <a href="{{ route('subscriber.dashboard') }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">← Abone Paneline Dön</a>
-            <h1 class="mt-2 text-2xl font-bold text-slate-900">{{ $type === 'upgrade' ? 'Paket Yükselt' : 'Abonelik Yenile' }}</h1>
-            <p class="mt-1 text-sm text-slate-500">İhtiyacınıza uygun paket ve dönemi seçin.</p>
+            <h1 class="mt-2 text-2xl font-bold text-slate-900">Yeni Sipariş</h1>
+            <p class="mt-1 text-sm text-slate-500">Bir sipariş tek apartman içindir. Her apartmanın ödemesi ayrı açılır.</p>
         </div>
 
-        @if ($currentSubscription && ! $currentSubscription->isExpired())
-            <div class="mb-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                Mevcut aboneliğiniz:
-                <span class="font-semibold text-slate-900">{{ $currentSubscription->package->name }}</span>
-                — {{ $currentSubscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }}
-                — {{ $currentSubscription->expires_at?->format('d.m.Y') ?? 'Süresiz' }} tarihine kadar aktif.
+        @if ($apartments->isEmpty())
+            <div class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+                Ücretli kullanım için önce bir apartman oluşturun.
             </div>
-        @endif
+        @else
+            <div class="space-y-3">
+                @foreach ($apartments as $apartment)
+                    @continue($apartment->offer['action'] !== 'pending' || ! $apartment->offer['order'])
+                    <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="font-semibold text-slate-900">{{ $apartment->name }}</span>
+                            <span class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">Ödeme bekliyor</span>
+                        </div>
+                        <p class="mt-1 text-sm text-slate-500">{{ $apartment->unit_count }} daire</p>
+                        @if ($apartment->offer['record'])
+                            <p class="mt-1 font-mono text-sm text-slate-700">{{ $apartment->offer['record']->subscription_no }}</p>
+                        @endif
+                        <p class="mt-3 text-sm font-semibold text-amber-800">Ödeme Bekleyen Siparişiniz Var</p>
+                        <p class="mt-1 font-mono text-sm text-slate-900">{{ $apartment->offer['order']->order_number ?: '—' }}</p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <a href="{{ route('subscriber.subscriptions.receipt', $apartment->offer['order']) }}" class="rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600">Ödemeye Devam Et</a>
+                            @unless ($apartment->offer['order']->hasPaymentProof())
+                                <form method="POST" action="{{ route('subscriber.subscriptions.cancel', $apartment->offer['order']) }}">
+                                    @csrf
+                                    <button class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Siparişi İptal Et</button>
+                                </form>
+                            @endunless
+                        </div>
+                    </div>
+                @endforeach
+            </div>
 
-        <form method="POST" action="{{ route('subscriber.subscriptions.store') }}" enctype="multipart/form-data" class="space-y-6">
-            @csrf
-            <input type="hidden" name="type" value="{{ $type }}">
+            @foreach ($apartments as $apartment)
+                @continue((int) $apartment->unit_count <= 100 || $apartment->offer['action'] === 'pending')
+                <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p class="font-semibold text-slate-900">{{ $apartment->name }}</p>
+                    <p class="mt-1">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanmaktadır. Talebiniz alınmıştır. Temsilcimiz sizinle iletişime geçerek size özel teklifinizi paylaşacaktır.</p>
+                </div>
+            @endforeach
 
-            <div class="rounded-xl border border-slate-200 bg-white p-6">
-                <h2 class="text-lg font-semibold text-slate-900 mb-4">Paket Seçin</h2>
-
-                @if ($packages->isEmpty())
-                    <p class="text-sm text-slate-500">Şu anda uygun paket bulunmuyor.</p>
-                @else
-                    <div class="space-y-3">
-                        @foreach ($packages as $package)
-                            <label class="flex cursor-pointer items-start gap-4 rounded-xl border p-4 transition-colors hover:bg-slate-50 {{ old('package_id', $requestedPackage?->id) == $package->id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200' }}">
-                                <input type="radio" name="package_id" value="{{ $package->id }}" {{ old('package_id', $requestedPackage?->id) == $package->id ? 'checked' : '' }} class="mt-1 text-emerald-600 focus:ring-emerald-500" required>
-                                <div class="flex-1">
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-semibold text-slate-900">{{ $package->name }}</span>
-                                        @if ($currentSubscription?->package_id === $package->id)
-                                            <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">Mevcut Paket</span>
-                                        @endif
+            @if ($apartments->contains(fn ($apartment) => $apartment->offer['action'] !== 'pending' && $apartment->offer['record'] && (int) $apartment->unit_count <= 100 && ! ($apartment->monthly_quote['requires_quote'] ?? false)))
+            <form method="POST" action="{{ route('subscriber.subscriptions.store') }}" enctype="multipart/form-data" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
+                @csrf
+                <div class="space-y-3">
+                    @foreach ($apartments as $apartment)
+                        @continue($apartment->offer['action'] === 'pending' || (int) $apartment->unit_count > 100)
+                        @php
+                            $monthly = $apartment->monthly_quote;
+                            $yearly = $apartment->yearly_quote;
+                            $offer = $apartment->offer;
+                            $quoteScale = (int) $apartment->unit_count > 100;
+                            $actionLabel = $quoteScale ? 'Özel Teklif' : match ($offer['action']) {
+                                'renew' => 'Yenile',
+                                'restart' => 'Yeniden Başlat',
+                                'pending' => 'Ödeme bekliyor',
+                                default => 'Ücretli Pakete Geç',
+                            };
+                            $selectable = (bool) $offer['record'] && ! $quoteScale && ! ($monthly['requires_quote'] ?? false);
+                        @endphp
+                        <div class="rounded-xl border border-slate-200 p-4">
+                            <label class="flex items-start gap-3">
+                                @if ($selectable)
+                                    <input type="radio" name="apartment_ids[]" value="{{ $apartment->id }}" data-billing-profile="{{ $apartment->suggested_billing_profile_id }}" class="mt-1" @checked((int) old('apartment_ids.0') === $apartment->id)>
+                                @endif
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <span class="font-semibold text-slate-900">{{ $apartment->name }}</span>
+                                        <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ $actionLabel }}</span>
                                     </div>
-                                    <p class="mt-1 text-sm text-slate-500">{{ $package->description }}</p>
-                                </div>
-                                <div class="text-right text-sm font-medium text-slate-700">
-                                    <span class="block">{{ number_format($package->monthly_price, 2) }} ₺ / ay</span>
-                                    <span class="block">{{ number_format($package->yearly_price, 2) }} ₺ / yıl</span>
+                                    <p class="mt-1 text-sm text-slate-500">{{ $apartment->unit_count }} daire</p>
+                                    @if ($offer['record'])
+                                        <p class="mt-1 font-mono text-sm text-slate-700">{{ $offer['record']->subscription_no }}</p>
+                                    @endif
+                                    @if ($offer['period'])
+                                        <p class="mt-1 text-sm text-slate-700">
+                                            {{ $offer['period']->started_at?->format('d.m.Y') ?? '—' }}
+                                            –
+                                            {{ $offer['period']->expires_at?->format('d.m.Y') ?? 'süresiz' }}
+                                        </p>
+                                    @elseif ($offer['action'] === 'upgrade')
+                                        <p class="mt-1 text-sm text-slate-600">Temel kullanım</p>
+                                    @endif
+                                    @if ($quoteScale || $monthly['requires_quote'])
+                                        <p class="mt-1 text-sm text-slate-700">101 ve üzeri daire için özel teklif gerekir. Sipariş bu ekrandan açılamaz.</p>
+                                    @elseif ($selectable)
+                                        <p class="mt-1 text-sm text-slate-700">
+                                            Aylık {{ number_format($monthly['amount'], 0, ',', '.') }} ₺
+                                            · Yıllık {{ number_format($yearly['amount'], 0, ',', '.') }} ₺
+                                        </p>
+                                    @endif
                                 </div>
                             </label>
-                        @endforeach
-                    </div>
-                @endif
-                @error('package_id')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-6">
-                <h2 class="text-lg font-semibold text-slate-900 mb-4">Ödeme Dönemi</h2>
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50 {{ old('period', 'monthly') === 'monthly' ? 'border-emerald-500 bg-emerald-50' : '' }}">
-                        <input type="radio" name="period" value="monthly" {{ old('period', 'monthly') === 'monthly' ? 'checked' : '' }} class="text-emerald-600 focus:ring-emerald-500" required>
-                        <div>
-                            <div class="font-semibold text-slate-900">Aylık</div>
-                            <div class="text-sm text-slate-500">Her ay otomatik yenilenir.</div>
                         </div>
-                    </label>
-                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50 {{ old('period') === 'yearly' ? 'border-emerald-500 bg-emerald-50' : '' }}">
-                        <input type="radio" name="period" value="yearly" {{ old('period') === 'yearly' ? 'checked' : '' }} class="text-emerald-600 focus:ring-emerald-500" required>
-                        <div>
-                            <div class="font-semibold text-slate-900">Yıllık</div>
-                            <div class="text-sm text-slate-500">Tek seferde 12 ay ödeyin.</div>
-                        </div>
-                    </label>
+                    @endforeach
                 </div>
-                @error('period')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
-            </div>
+                @error('apartment_ids') <div class="mt-2 text-sm text-red-600">{{ $message }}</div> @enderror
 
-            <div class="rounded-xl border border-slate-200 bg-white p-6">
-                <h2 class="text-lg font-semibold text-slate-900 mb-4">Ödeme Yöntemi</h2>
+                @include('subscriber.partials.billing-profile-picker', [
+                    'profiles' => $billingProfiles,
+                    'selectedId' => old('billing_mode') === 'new' ? null : $selectedBillingProfileId,
+                    'mode' => old('billing_mode', $billingProfiles->isEmpty() ? 'new' : 'existing'),
+                ])
 
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50 {{ old('payment_method', 'havale') === 'havale' ? 'border-emerald-500 bg-emerald-50' : '' }}">
-                        <input type="radio" name="payment_method" value="havale" {{ old('payment_method', 'havale') === 'havale' ? 'checked' : '' }} onchange="togglePaymentMethod(this.value)" class="text-emerald-600 focus:ring-emerald-500" required>
-                        <div>
-                            <div class="font-semibold text-slate-900">Havale / EFT</div>
-                            <div class="text-xs text-slate-500">Banka hesaplarına havale yapın.</div>
-                        </div>
+                <div class="mt-6 grid gap-4 sm:grid-cols-2">
+                    <label class="text-sm font-medium text-slate-700">
+                        Dönem
+                        <select name="period" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
+                            <option value="monthly" {{ old('period', 'monthly') === 'monthly' ? 'selected' : '' }}>Aylık</option>
+                            <option value="yearly" {{ old('period') === 'yearly' ? 'selected' : '' }}>Yıllık</option>
+                        </select>
                     </label>
-                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50 {{ old('payment_method') === 'kredi_kartı' ? 'border-emerald-500 bg-emerald-50' : '' }}">
-                        <input type="radio" name="payment_method" value="kredi_kartı" {{ old('payment_method') === 'kredi_kartı' ? 'checked' : '' }} onchange="togglePaymentMethod(this.value)" class="text-emerald-600 focus:ring-emerald-500" required>
-                        <div>
-                            <div class="font-semibold text-slate-900">Kredi Kartı</div>
-                            <div class="text-xs text-slate-500">Güvenli ödeme altyapısı (yakında).</div>
-                        </div>
-                    </label>
-                </div>
-                @error('payment_method')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
-
-                <div id="havale-fields" class="mt-6 {{ old('payment_method', 'havale') === 'havale' ? '' : 'hidden' }}">
-                    <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                        Siparişinizi oluşturduktan sonra banka hesap bilgilerimizi görüntüleyebilir ve ödemenizi gerçekleştirebilirsiniz.
+                    <div class="text-sm font-medium text-slate-700">
+                        Ödeme
+                        <label class="mt-2 flex items-center gap-2 font-normal">
+                            <input type="radio" name="payment_method" value="havale" {{ old('payment_method', 'havale') === 'havale' ? 'checked' : '' }}> Havale / EFT
+                        </label>
+                        <label class="mt-2 flex items-center gap-2 font-normal">
+                            <input type="radio" name="payment_method" value="kredi_kartı" {{ old('payment_method') === 'kredi_kartı' ? 'checked' : '' }}> Kredi Kartı
+                        </label>
                     </div>
                 </div>
 
-                <div id="kredi-kartı-fields" class="mt-6 {{ old('payment_method') === 'kredi_kartı' ? '' : 'hidden' }}">
-                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                        Kredi kartı ödeme altyapısı henüz aktif değil. Siparişiniz alınacak ve ödeme yapıldığında dekont/referans bilginizi bu sayfadan girebileceksiniz.
+                <div id="transfer-proof" class="mt-4 space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-slate-700">Dekont referansı</label>
+                        <input name="reference_code" value="{{ old('reference_code') }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-slate-700">Dekont</label>
+                        <input type="file" name="receipt" class="mt-1 w-full text-sm">
                     </div>
                 </div>
-            </div>
+                <script>
+                    (function () {
+                        const proof = document.getElementById('transfer-proof');
+                        const sync = function () {
+                            const selected = document.querySelector('input[name="payment_method"]:checked');
+                            const card = selected && selected.value === 'kredi_kartı';
+                            proof.hidden = card;
+                            proof.querySelectorAll('input').forEach(function (input) {
+                                input.disabled = card;
+                            });
+                        };
+                        document.querySelectorAll('input[name="payment_method"]').forEach(function (input) {
+                            input.addEventListener('change', sync);
+                        });
+                        sync();
+                    })();
+                    (function () {
+                        const picker = document.querySelector('[data-billing-picker]');
+                        if (!picker || {{ old('billing_profile_id') || old('billing_mode') ? 'true' : 'false' }}) {
+                            return;
+                        }
+                        const select = picker.querySelector('select[name="billing_profile_id"]');
+                        const existing = picker.querySelector('input[name="billing_mode"][value="existing"]');
+                        let touched = false;
+                        let applying = false;
+                        const apply = function (radio) {
+                            if (touched || !select || !radio || !radio.checked) {
+                                return;
+                            }
+                            const id = radio.getAttribute('data-billing-profile') || '';
+                            if (id === '' || !existing) {
+                                return;
+                            }
+                            applying = true;
+                            select.value = id;
+                            existing.checked = true;
+                            existing.dispatchEvent(new Event('change'));
+                            applying = false;
+                        };
+                        picker.addEventListener('change', function () {
+                            if (!applying) {
+                                touched = true;
+                            }
+                        });
+                        document.querySelectorAll('input[name="apartment_ids[]"]').forEach(function (radio) {
+                            radio.addEventListener('change', function () {
+                                apply(radio);
+                            });
+                            apply(radio);
+                        });
+                    })();
+                </script>
 
-            <script>
-                function togglePaymentMethod(method) {
-                    document.getElementById('havale-fields').classList.toggle('hidden', method !== 'havale');
-                    document.getElementById('kredi-kartı-fields').classList.toggle('hidden', method !== 'kredi_kartı');
-                }
-            </script>
-
-            <div class="flex items-center justify-end gap-3">
-                <a href="{{ route('subscriber.dashboard') }}" class="rounded-xl border border-slate-300 px-6 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
-                <button type="submit" class="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Sipariş Oluştur</button>
-            </div>
-        </form>
+                <div class="mt-6 space-y-4">
+                    @include('partials.accept-sales')
+                    <div class="flex justify-end">
+                        <button class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Sipariş Oluştur</button>
+                    </div>
+                </div>
+            </form>
+            @endif
+        @endif
     </div>
 @endsection

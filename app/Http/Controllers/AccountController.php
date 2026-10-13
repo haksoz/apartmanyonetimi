@@ -177,26 +177,41 @@ class AccountController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('accounts', 'name')->where('apartment_id', $apartment->id),
+                Rule::unique('accounts', 'name')->where(fn ($query) => $query
+                    ->where('apartment_id', $apartment->id)
+                    ->whereNull('deleted_at')),
             ],
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
-            'balance' => ['nullable', 'numeric'],
+            'balance' => ['nullable', 'numeric', 'min:0'],
+            'opening_side' => [
+                'nullable',
+                Rule::requiredIf(fn () => abs((float) $request->input('balance', 0)) >= 0.01),
+                Rule::in(['debit', 'credit']),
+            ],
             'is_active' => ['nullable', 'boolean'],
             'move_in_date' => ['nullable', 'date'],
-            'account_opening_date' => ['nullable', 'date'],
+            'account_opening_date' => [
+                'nullable',
+                'date',
+                Rule::requiredIf(fn () => abs((float) $request->input('balance', 0)) >= 0.01),
+            ],
             'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)],
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
             'name.unique'          => 'Bu isimde bir hesap zaten mevcut.',
+            'balance.min'          => 'Açılış bakiyesi sıfır veya daha büyük olmalıdır. Yönü borç veya alacak olarak seçin.',
+            'opening_side.required' => 'Açılış bakiyesi için borç veya alacak seçin.',
+            'opening_side.in'      => 'Açılış bakiyesi için borç veya alacak seçin.',
+            'account_opening_date.required' => 'Açılış bakiyesi için açılış tarihi zorunludur.',
         ]);
 
         if ($validator->fails()) {
             if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validasyon hatası',
+                    'message' => $validator->errors()->first() ?: 'Validasyon hatası',
                     'errors' => $validator->errors()
                 ], 422);
             }
@@ -253,7 +268,7 @@ class AccountController extends Controller
                 'name' => $validated['name'],
                 'phone' => $validated['phone'] ?? null,
                 'email' => $validated['email'] ?? null,
-                'balance' => $validated['balance'] ?? 0,
+                'balance' => 0,
                 'account_opening_date' => $validated['account_opening_date'] ?? null,
                 'is_active' => $request->boolean('is_active', true),
                 'default_category_id' => $validated['default_category_id'] ?? null,
@@ -273,6 +288,8 @@ class AccountController extends Controller
             if ($account->type === Account::TYPE_OWNER && $account->unit_id) {
                 Unit::whereKey($account->unit_id)->update(['owner_account_id' => $account->id]);
             }
+
+            $this->postOpeningBalance($account, $validated);
 
             return $account;
         });
@@ -773,7 +790,13 @@ class AccountController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('accounts.edit', compact('account', 'apartment', 'units', 'categories'));
+        $openingTransaction = $account->transactions()
+            ->where('description', 'Açılış bakiyesi')
+            ->whereNull('transactionable_type')
+            ->orderBy('id')
+            ->first();
+
+        return view('accounts.edit', compact('account', 'apartment', 'units', 'categories', 'openingTransaction'));
     }
 
     /**
@@ -813,7 +836,6 @@ class AccountController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
-            'balance' => ['nullable', 'numeric'],
             'is_active' => ['nullable', 'boolean'],
             'move_in_date' => ['nullable', 'date'],
             'account_opening_date' => ['nullable', 'date'],
@@ -861,7 +883,6 @@ class AccountController extends Controller
             $updateData = [
                 'unit_id' => in_array($validated['type'], [Account::TYPE_OWNER, Account::TYPE_TENANT], true) ? ($validated['unit_id'] ?? null) : null,
                 'type' => $validated['type'],
-                'balance' => $validated['balance'] ?? 0,
                 'account_opening_date' => $validated['account_opening_date'],
                 'is_active' => $request->boolean('is_active'),
                 'default_category_id' => $validated['default_category_id'] ?? null,
@@ -2087,5 +2108,25 @@ class AccountController extends Controller
 
         return redirect()->route('payments.show', $payment)
             ->with('status', $expenses->count() . ' gider ödemesi başarıyla kaydedildi.');
+    }
+
+    /**
+     * Açılış bakiyesini tek cari hareket olarak yazar. Kasa, aidat, gider veya ödeme üretmez.
+     */
+    private function postOpeningBalance(Account $account, array $validated): void
+    {
+        $amount = round(abs((float) ($validated['balance'] ?? 0)), 2);
+        if ($amount < 0.01) {
+            return;
+        }
+
+        AccountTransaction::create([
+            'apartment_id' => $account->apartment_id,
+            'account_id' => $account->id,
+            'type' => $validated['opening_side'],
+            'description' => 'Açılış bakiyesi',
+            'amount' => $amount,
+            'transaction_date' => $validated['account_opening_date'],
+        ]);
     }
 }

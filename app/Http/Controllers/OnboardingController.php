@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\QuoteRequest;
 use App\Models\Unit;
+use App\Support\ApartmentCommercial;
 use App\Support\CurrentApartment;
-use App\Support\UserApartmentQuota;
+use App\Support\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -40,22 +42,29 @@ class OnboardingController extends Controller
         ]);
 
         $user = auth()->user();
+        $decision = app(ApartmentCommercial::class)->assess((int) $validated['unit_count']);
 
-        if (! app(UserApartmentQuota::class)->canCreate($user)) {
-            return back()->withErrors([
-                'quota' => 'Mevcut paketinizin apartman limitine ulaştınız. Daha fazla apartman eklemek için paketinizi yükseltin veya yönetici ile iletişime geçin.',
-            ])->withInput();
+        if ($decision['quote']) {
+            QuoteRequest::record($user, $validated['name'], (int) $validated['unit_count']);
+
+            return back()->with('status', ApartmentCommercial::QUOTE_MESSAGE)->withInput();
         }
 
-        $apartment = DB::transaction(function () use ($validated, $user, $currentApartment) {
+        app(LegalConsent::class)->requireForApartment($request, false);
+
+        $apartment = DB::transaction(function () use ($validated, $user, $currentApartment, $decision, $request) {
+            app(\App\Support\UserApartmentQuota::class)->assertCanCreate($user);
+
             $apartment = \App\Models\Apartment::create([
                 'user_id'    => $user->id,
                 'name'       => $validated['name'],
                 'address'    => $validated['address'] ?? null,
                 'unit_count' => $validated['unit_count'],
+                'billing_plan' => $decision['plan'],
             ]);
 
             $apartment->members()->attach($user->id, ['role' => 'owner']);
+            app(\App\Support\SubscriptionCheckout::class)->openFree($user, $apartment);
             Category::createDefaultsFor($apartment->id);
 
             $managerUnitId = null;
@@ -117,6 +126,7 @@ class OnboardingController extends Controller
             }
 
             $currentApartment->setFor($user, $apartment->id);
+            app(LegalConsent::class)->recordResidentData($user, $apartment, $request);
 
             return $apartment;
         });

@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AidatCep &mdash; Apartman Yönetimi, Cebinizde</title>
-    <meta name="description" content="Apartmanınızın aidat takibini, gider yönetimini ve sakin iletişimini tek platformda yönetin.">
+    <title>@yield('title', 'AidatCep — Apartman Yönetimi')</title>
+    <meta name="description" content="@yield('description', 'AidatCep, apartman yöneticileri için aidat, tahsilat, gider, kasa, cari hesap ve Daire Sakini yönetimini tek yerde toplar.')">
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif

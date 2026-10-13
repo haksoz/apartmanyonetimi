@@ -202,4 +202,67 @@ class CategoryPageTest extends TestCase
 
         $this->assertSoftDeleted($category);
     }
+
+    public function test_category_with_related_expense_cannot_be_deleted(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $category = Category::create([
+            'apartment_id' => $apartment->id,
+            'name' => 'Yakıt',
+            'type' => Category::TYPE_EXPENSE,
+        ]);
+        \App\Models\Expense::create([
+            'apartment_id' => $apartment->id,
+            'category_id' => $category->id,
+            'category' => $category->name,
+            'amount' => 100,
+            'expense_date' => '2026-10-01',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->delete(route('categories.destroy', $category))
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHas('error', 'Bu kategori gider kayıtlarında kullanıldığı için silinemez.');
+
+        $this->assertModelExists($category);
+    }
+
+    public function test_category_can_be_deleted_when_only_deleted_expenses_remain(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $category = Category::create([
+            'apartment_id' => $apartment->id,
+            'name' => 'Yakıt',
+            'type' => Category::TYPE_EXPENSE,
+        ]);
+        $expense = \App\Models\Expense::create([
+            'apartment_id' => $apartment->id,
+            'category_id' => $category->id,
+            'category' => $category->name,
+            'amount' => 100,
+            'expense_date' => '2026-10-01',
+        ]);
+        $expense->delete();
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->delete(route('categories.destroy', $category))
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHas('status', 'Kategori silindi.');
+
+        $this->assertSoftDeleted($category);
+    }
 }

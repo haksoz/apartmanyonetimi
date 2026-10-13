@@ -267,6 +267,7 @@ class DuePageTest extends TestCase
             'unit_count' => 2,
         ]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $this->grantPaidFeatures($apartment);
         $unitOne = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $unitTwo = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '2']);
         $accountOne = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitOne->id, 'type' => Account::TYPE_OWNER, 'name' => '1. Daire Maliki', 'is_active' => true]);
@@ -757,6 +758,7 @@ class DuePageTest extends TestCase
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 2]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $this->grantPaidFeatures($apartment);
         $unitOne = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $unitTwo = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '2']);
         $accountOne = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitOne->id, 'type' => Account::TYPE_OWNER, 'name' => '1. Daire Maliki', 'is_active' => true]);
@@ -811,6 +813,7 @@ class DuePageTest extends TestCase
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 2]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $this->grantPaidFeatures($apartment);
         $unitOne = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $unitTwo = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '2']);
         $accountOne = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitOne->id, 'type' => Account::TYPE_OWNER, 'name' => '1. Daire Maliki', 'is_active' => true]);
@@ -858,6 +861,7 @@ class DuePageTest extends TestCase
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 4]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $this->grantPaidFeatures($apartment);
         $units = [];
         $accounts = [];
         for ($i = 1; $i <= 4; $i++) {
@@ -926,6 +930,7 @@ class DuePageTest extends TestCase
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $this->grantPaidFeatures($apartment);
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Maliki', 'is_active' => true]);
         $unit->update(['owner_account_id' => $account->id, 'occupant_account_id' => $account->id]);

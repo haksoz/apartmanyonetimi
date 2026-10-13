@@ -1111,6 +1111,14 @@ class ExpenseController extends Controller
 
     private function storeDocumentForExpense(Request $request, Expense $expense): void
     {
+        if (! $request->hasFile('document')) {
+            return;
+        }
+
+        if (! \App\Support\FeatureGate::allows($expense->apartment, 'documents')) {
+            abort(403, 'Belge yükleme ücretli plandadır.');
+        }
+
         $file = $request->file('document');
         $mime = $file->getMimeType();
         $documentType = str_starts_with($mime, 'image/')

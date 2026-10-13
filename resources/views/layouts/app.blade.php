@@ -78,8 +78,8 @@
                     </button>
                     {{-- Logo --}}
                     <a href="{{ auth()->user()->isSubscriber() ? route('subscriber.dashboard') : route('dashboard') }}" class="flex items-center gap-2">
-                        <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-8 w-auto">
-                        <span class="text-lg font-bold"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span>
+                        <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-10 w-auto sm:h-8">
+                        <span class="text-xl font-bold sm:text-lg"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span>
                     </a>
                 </div>
 
@@ -234,19 +234,37 @@
                                     <span class="sidebar-text">Admin Kullanıcıları</span>
                                 </a>
                             @endif
-                            <a href="{{ route('admin.managers.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.managers.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                            <a href="{{ route('admin.customers.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.customers.*') ? 'bg-sky-50 text-sky-800' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.592-2.641M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
+                                </svg>
+                                <span class="sidebar-text">Müşteriler</span>
+                            </a>
+                            <a href="{{ route('admin.managers.index', ['view' => 'items']) }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.managers.*') || request()->routeIs('admin.subscription-items.*') || request()->routeIs('admin.subscriptions.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.592-2.641m-3.958-5.599c.351.351.645.748.876 1.185M9 13.5V9.75a6 6 0 0112 0v3"/>
                                 </svg>
                                 <span class="sidebar-text">Abonelikler</span>
                             </a>
+                            <a href="{{ route('admin.orders.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.orders.*') ? 'bg-amber-50 text-amber-800' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                <span class="sidebar-text">Siparişler</span>
+                            </a>
 
                             <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Paket Yönetimi</div>
-                            <a href="{{ route('admin.packages.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.packages.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                            <a href="{{ route('admin.quote-requests.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.quote-requests.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.5 8.25h9m-9 3.75h6m-8.25 6.75h13.5A2.25 2.25 0 0021 16.5V6.75A2.25 2.25 0 0018.75 4.5H5.25A2.25 2.25 0 003 6.75v9.75A2.25 2.25 0 005.25 18.75z"/>
                                 </svg>
-                                <span class="sidebar-text">Paketler</span>
+                                <span class="sidebar-text">Teklif Talepleri</span>
+                            </a>
+                            <a href="{{ route('admin.commercial.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.commercial.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="sidebar-text">Fiyat ve özellikler</span>
                             </a>
                             <a href="{{ route('admin.bank-accounts.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.bank-accounts.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,6 +274,12 @@
                             </a>
 
                             <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Sistem</div>
+                            <a href="{{ route('admin.data-operations.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.data-operations.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                                </svg>
+                                <span class="sidebar-text">Veri İşlem Kayıtları</span>
+                            </a>
                             <a href="{{ route('admin.settings.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.settings.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -268,18 +292,12 @@
 
                     @if(request()->routeIs('subscriber.*'))
                         <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Abone</div>
-                        <a href="{{ route('subscriber.dashboard', ['reset' => 1]) }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('subscriber.dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                        <a href="{{ route('subscriber.dashboard', ['reset' => 1]) }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('subscriber.dashboard') || request()->routeIs('subscriber.apartments.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/>
                             </svg>
                             <span class="sidebar-text">Abone Paneli</span>
-                        </a>
-                        <a href="{{ route('subscriber.apartments.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('subscriber.apartments.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/>
-                            </svg>
-                            <span class="sidebar-text">Apartmanlarım</span>
                         </a>
                         <a href="{{ route('subscriber.subscriptions.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('subscriber.subscriptions.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,6 +305,12 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 9.75a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
                             <span class="sidebar-text">Siparişlerim</span>
+                        </a>
+                        <a href="{{ route('subscriber.billing-profiles.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('subscriber.billing-profiles.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                            </svg>
+                            <span class="sidebar-text">Fatura bilgileri</span>
                         </a>
                     @endif
 
@@ -328,7 +352,7 @@
                     </a>
                     @endif
 
-                    @if($navIsOwner && $currentApartment && (auth()->user()->isAdmin() || $currentApartment->user?->hasFeature('auto_dues')))
+                    @if($navIsOwner && $currentApartment && (auth()->user()->isAdmin() || \App\Support\FeatureGate::allows($currentApartment, 'auto_dues')))
                     <a href="{{ route('due-plans.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('due-plans.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
@@ -365,7 +389,7 @@
                     </a>
                     @endif
 
-                    @if($currentApartment && (auth()->user()->isAdmin() || $currentApartment->user?->hasFeature('reports')))
+                    @if($currentApartment)
                     <a href="{{ route('reports.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('reports.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -466,7 +490,7 @@
 
         {{-- Main Content --}}
         <main class="pt-16 lg:pl-72 sidebar-transition min-h-screen flex flex-col">
-            <div class="mx-auto max-w-7xl w-full px-2 py-8 sm:px-6 lg:px-8 flex-1">
+            <div class="mx-auto w-full px-2 py-8 sm:px-6 lg:px-8 flex-1 @yield('content_width', 'max-w-7xl')">
                 @if (session('impersonate_admin_id'))
                     <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center justify-between">
                         <div>
@@ -479,16 +503,21 @@
                     </div>
                 @endif
 
+                @yield('wizard_steps')
+
                 @if (session('status'))
                     <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('status') }}</div>
                 @endif
                 @if (session('error'))
                     <div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ session('error') }}</div>
                 @endif
-                @if ($errors->any())
+                @php
+                    $bannerErrors = collect($errors->getMessages())->except('accept_new_free_apartment')->flatten();
+                @endphp
+                @if ($bannerErrors->isNotEmpty())
                     <div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                         <ul class="list-disc list-inside space-y-1">
-                            @foreach ($errors->all() as $error)
+                            @foreach ($bannerErrors as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>

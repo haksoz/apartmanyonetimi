@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Package;
-use App\Models\SystemSetting;
 use App\Models\User;
-use App\Models\UserSubscription;
+use App\Models\UserQuotaOverride;
+use App\Support\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,6 +25,16 @@ class AuthController extends Controller
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()->withErrors([
                 'email' => 'Giriş bilgileri hatalı.',
+            ])->onlyInput('email');
+        }
+
+        if ($request->user()->deactivated_at) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Bu hesap pasif.',
             ])->onlyInput('email');
         }
 
@@ -64,6 +73,11 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'human_answer' => ['required', 'integer'],
             'company' => ['prohibited'],
+            'accept_membership' => ['accepted'],
+            'accept_privacy' => ['accepted'],
+        ], [
+            'accept_membership.accepted' => 'Devam etmek için üyelik sözleşmesini kabul edin.',
+            'accept_privacy.accepted' => 'Devam etmek için gizlilik ve KVKK aydınlatmasını kabul edin.',
         ]);
 
         $challenge = session('register_challenge');
@@ -93,10 +107,6 @@ class AuthController extends Controller
 
         session()->forget('register_challenge');
 
-        // Get trial package from system settings
-        $package = SystemSetting::getTrialPackage();
-        $trialDuration = SystemSetting::getTrialDuration();
-
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -104,28 +114,13 @@ class AuthController extends Controller
             'role' => 'manager',
         ]);
 
-        // Get package features
-        $featureAutoDues = $package->features->where('feature_key', 'Otomatik aidat planlama')->first()?->is_enabled ?? false;
-        $featureUserPortal = $package->features->where('feature_key', 'Kullanıcı portalı erişimi')->first()?->is_enabled ?? false;
-        $featureReports = $package->features->where('feature_key', 'Hesap ekstresi ve raporlar')->first()?->is_enabled ?? false;
-        $featureMultiApartment = $package->features->where('feature_key', 'Çoklu apartman yönetimi')->first()?->is_enabled ?? false;
-
-        // Free trial for configured duration
-        UserSubscription::create([
+        UserQuotaOverride::query()->create([
             'user_id' => $user->id,
-            'package_id' => $package->id,
-            'period' => 'monthly',
-            'price' => 0,
-            'started_at' => now(),
-            'expires_at' => now()->addMonths($trialDuration),
-            'is_active' => true,
-            'is_trial' => true,
-            'feature_auto_dues' => $featureAutoDues,
-            'feature_user_portal' => $featureUserPortal,
-            'feature_reports' => $featureReports,
-            'feature_multi_apartment' => $featureMultiApartment,
-            'multi_apartment_limit_override' => $featureMultiApartment ? $package->multi_apartment_limit : null,
+            'max_apartments' => 1,
         ]);
+
+        app(LegalConsent::class)->recordMembership($user, $request);
+        app(LegalConsent::class)->recordPrivacy($user, $request);
 
         Auth::login($user);
 

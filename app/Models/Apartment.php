@@ -22,6 +22,9 @@ class Apartment extends Model
         'unit_count',
         'manager_unit_id',
         'is_active',
+        'billing_plan',
+        'custom_monthly_price',
+        'custom_yearly_price',
         'code',
         'setup_units_completed_at',
         'setup_completed_at',
@@ -49,6 +52,8 @@ class Apartment extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'custom_monthly_price' => 'decimal:2',
+        'custom_yearly_price' => 'decimal:2',
         'setup_units_completed_at' => 'datetime',
         'setup_completed_at' => 'datetime',
     ];
@@ -128,6 +133,11 @@ class Apartment extends Model
         return $this->belongsToMany(User::class)
             ->withPivot('role', 'is_active')
             ->withTimestamps();
+    }
+
+    public function subscriptionItems(): HasMany
+    {
+        return $this->hasMany(SubscriptionItem::class);
     }
 
     public function isSetupCompleted(): bool

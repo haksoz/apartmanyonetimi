@@ -37,6 +37,48 @@
             @error('iban')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
 
+        @if ($cashBox)
+            @php
+                $openingTransaction = $openingTransaction ?? null;
+                $openingAmount = $openingTransaction ? number_format((float) $openingTransaction->amount, 2, ',', '.') : null;
+                $openingSide = $openingTransaction?->type === 'income' ? 'Giriş' : ($openingTransaction?->type === 'expense' ? 'Çıkış' : null);
+            @endphp
+            <div>
+                <div class="mb-2 text-sm font-semibold text-slate-700">Açılış Bakiyesi</div>
+                <div class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    @if ($openingTransaction)
+                        {{ $openingAmount }} TL · {{ $openingSide }} · {{ $openingTransaction->transaction_date->format('d.m.Y') }}
+                    @else
+                        Hareket yok
+                    @endif
+                    <span class="mt-1 block text-xs text-slate-400">Açılış bakiyesi kayıt sırasında bir kez yazılır. Sonraki düzeltme kasa hareketinden yapılır.</span>
+                </div>
+            </div>
+        @else
+            <div class="grid gap-5 md:grid-cols-2">
+                <div>
+                    <label for="opening_balance" class="mb-2 block text-sm font-semibold text-slate-700">Açılış Bakiyesi</label>
+                    <input id="opening_balance" name="opening_balance" type="number" min="0" step="0.01" value="{{ old('opening_balance', 0) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('opening_balance')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+                <div>
+                    <label for="opening_date" class="mb-2 block text-sm font-semibold text-slate-700">Açılış Tarihi</label>
+                    <input id="opening_date" name="opening_date" type="date" value="{{ old('opening_date', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('opening_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+            </div>
+            <div>
+                <label for="opening_side" class="mb-2 block text-sm font-semibold text-slate-700">Açılış Yönü</label>
+                <select id="opening_side" name="opening_side" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <option value="">Tutar girilirse seçin</option>
+                    <option value="income" @selected(old('opening_side') === 'income')>Giriş</option>
+                    <option value="expense" @selected(old('opening_side') === 'expense')>Çıkış</option>
+                </select>
+                <p class="mt-1 text-xs text-slate-400">Giriş kasada duran paradır. Çıkış kasanın eksi açılmasıdır. Bu satır bir hesaba veya kategoriye bağlanmaz.</p>
+                @error('opening_side')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+        @endif
+
         <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
             <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $cashBox?->is_active ?? true)) class="rounded border-slate-300">
             Aktif kasa

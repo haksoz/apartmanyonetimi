@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class UserSubscription extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     public const PERIOD_MONTHLY = 'monthly';
 
@@ -22,9 +24,14 @@ class UserSubscription extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const CANCELLED_BY_CUSTOMER = 'customer';
+
+    public const CANCELLED_BY_ADMIN = 'admin';
+
     protected $fillable = [
         'order_number',
         'user_id',
+        'subscription_id',
         'package_id',
         'period',
         'price',
@@ -40,9 +47,23 @@ class UserSubscription extends Model
         'feature_multi_apartment',
         'multi_apartment_limit_override',
         'status',
+        'cancelled_by',
         'payment_method',
         'receipt_path',
         'receipt_reference',
+        'billing_profile_id',
+        'billing_party_type',
+        'billing_label',
+        'billing_legal_name',
+        'billing_identity_number',
+        'billing_tax_office',
+        'billing_email',
+        'billing_phone',
+        'billing_country',
+        'billing_province',
+        'billing_district',
+        'billing_address',
+        'billing_postal_code',
     ];
 
     protected $casts = [
@@ -64,9 +85,36 @@ class UserSubscription extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function billingProfile(): BelongsTo
+    {
+        return $this->belongsTo(BillingProfile::class);
+    }
+
+    public function legalAcceptances(): HasMany
+    {
+        return $this->hasMany(LegalAcceptance::class, 'user_subscription_id')->orderBy('id');
+    }
+
+    public function hasBillingSnapshot(): bool
+    {
+        return filled($this->billing_label)
+            || filled($this->billing_legal_name)
+            || filled($this->billing_party_type);
+    }
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(Subscription::class);
+    }
+
     public function package(): BelongsTo
     {
         return $this->belongsTo(Package::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(SubscriptionItem::class, 'subscription_id');
     }
 
     public function payments(): HasMany
@@ -74,9 +122,43 @@ class UserSubscription extends Model
         return $this->hasMany(SubscriptionPayment::class, 'subscription_id');
     }
 
+    /**
+     * Gerçek satın alma. Yalnızca ücretsiz temel kullanım kalemi taşıyan başlıklar sipariş değildir.
+     */
+    public function scopeCommercial(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query) {
+            $query->whereDoesntHave('items', function (Builder $query) {
+                $query->where('plan', SubscriptionItem::PLAN_FREE);
+            })->orWhereHas('items', function (Builder $query) {
+                $query->where('plan', '!=', SubscriptionItem::PLAN_FREE);
+            });
+        });
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeCovering(Builder $query): Builder
+    {
+        return $query->where('is_active', true)
+            ->where('status', self::STATUS_ACTIVE)
+            ->where(function (Builder $query) {
+                $query->whereNull('started_at')->orWhere('started_at', '<=', now());
+            })
+            ->where(function (Builder $query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            });
+    }
+
+    public function isCovering(): bool
+    {
+        return $this->is_active
+            && $this->status === self::STATUS_ACTIVE
+            && ($this->started_at === null || ! $this->started_at->isFuture())
+            && ($this->expires_at === null || $this->expires_at->isFuture());
     }
 
     public function scopePending(Builder $query): Builder
@@ -107,6 +189,11 @@ class UserSubscription extends Model
     public function isPending(): bool
     {
         return $this->status === self::STATUS_PENDING;
+    }
+
+    public function hasPaymentProof(): bool
+    {
+        return filled($this->receipt_path) || filled($this->receipt_reference);
     }
 
     public function hasFeature(string $key): bool

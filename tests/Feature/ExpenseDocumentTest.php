@@ -33,6 +33,7 @@ class ExpenseDocumentTest extends TestCase
             'unit_count' => 1,
         ]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $this->grantPaidFeatures($apartment);
         $supplier = Account::create([
             'apartment_id' => $apartment->id,
             'type' => Account::TYPE_SUPPLIER,

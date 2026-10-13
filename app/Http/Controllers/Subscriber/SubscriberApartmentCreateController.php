@@ -6,25 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Apartment;
 use App\Models\Category;
+use App\Models\QuoteRequest;
 use App\Models\Unit;
+use App\Support\ApartmentCommercial;
 use App\Support\CurrentApartment;
+use App\Support\LegalConsent;
 use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SubscriberApartmentCreateController extends Controller
 {
-    public function create()
+    public function create(UserApartmentQuota $quota)
     {
-        $user = auth()->user();
-        $subscription = $user->subscription;
-
-        // Check if user has an active subscription
-        if (!$subscription || $subscription->isExpired()) {
-            return redirect()->route('landing')->with('error', 'Apartman oluşturmak için aktif bir aboneliğiniz olmalıdır.');
-        }
-
-        return view('apartments.create');
+        return view('apartments.create', [
+            'quotaBlocked' => ! $quota->canCreate(auth()->user()),
+        ]);
     }
 
     public function store(Request $request, CurrentApartment $currentApartment)
@@ -39,14 +36,19 @@ class SubscriberApartmentCreateController extends Controller
         ]);
 
         $user = auth()->user();
+        $decision = app(ApartmentCommercial::class)->assess((int) $validated['unit_count']);
 
-        if (! app(UserApartmentQuota::class)->canCreate($user)) {
-            return back()->withErrors([
-                'quota' => 'Mevcut paketinizin apartman limitine ulaştınız. Daha fazla apartman eklemek için paketinizi yükseltin veya yönetici ile iletişime geçin.',
-            ])->withInput();
+        if ($decision['quote']) {
+            QuoteRequest::record($user, $validated['name'], (int) $validated['unit_count']);
+
+            return back()->with('status', ApartmentCommercial::QUOTE_MESSAGE)->withInput();
         }
 
-        $apartment = DB::transaction(function () use ($validated, $user) {
+        app(LegalConsent::class)->requireForApartment($request, false);
+
+        $apartment = DB::transaction(function () use ($validated, $user, $decision) {
+            app(\App\Support\UserApartmentQuota::class)->assertCanCreate($user);
+
             $apartment = Apartment::create([
                 'user_id' => $user->id,
                 'name' => $validated['name'],
@@ -54,9 +56,11 @@ class SubscriberApartmentCreateController extends Controller
                 'province' => $validated['province'] ?? null,
                 'district' => $validated['district'] ?? null,
                 'unit_count' => $validated['unit_count'],
+                'billing_plan' => $decision['plan'],
             ]);
 
             $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
+            app(\App\Support\SubscriptionCheckout::class)->openFree($user, $apartment);
             Category::createDefaultsFor($apartment->id);
 
             for ($i = 1; $i <= $validated['unit_count']; $i++) {
@@ -86,6 +90,7 @@ class SubscriberApartmentCreateController extends Controller
 
         // Set the newly created apartment as current
         $currentApartment->setFor($user, $apartment->id);
+        app(LegalConsent::class)->recordResidentData($user, $apartment, $request);
 
         return redirect()->route('apartments.wizard.cash-box', $apartment)
             ->with('status', 'Apartman oluşturuldu. Şimdi kasanızı oluşturun.');

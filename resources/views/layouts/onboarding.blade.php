@@ -10,8 +10,8 @@
 
     <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div class="flex items-center gap-2">
-            <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-8 w-auto">
-            <span class="text-lg font-bold"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span>
+            <img src="{{ asset('images/logo.png') }}" alt="AidatCep" class="h-10 w-auto sm:h-8">
+            <span class="text-xl font-bold sm:text-lg"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span>
         </div>
         <form method="POST" action="{{ route('logout') }}">
             @csrf

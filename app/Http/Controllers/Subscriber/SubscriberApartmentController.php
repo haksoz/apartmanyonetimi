@@ -6,25 +6,40 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\DuePlanController;
 use App\Models\Apartment;
 use App\Models\DuePlan;
+use App\Models\Subscription;
 use App\Support\AidatPeriodReconciliation;
 use App\Support\CurrentApartment;
+use App\Support\PriceQuote;
+use App\Support\SubscriberApartmentOverview;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class SubscriberApartmentController extends Controller
 {
-    public function index(CurrentApartment $currentApartment)
+    public function index()
     {
-        $apartments = $currentApartment->availableFor(auth()->user())
-            ->load('user')
-            ->sortBy('name')
-            ->values();
+        return redirect()->route('subscriber.dashboard');
+    }
 
-        if ($apartments->isEmpty()) {
-            return redirect()->route('subscriber.apartments.create');
-        }
+    public function show(Apartment $apartment, CurrentApartment $currentApartment, PriceQuote $prices, SubscriberApartmentOverview $overview)
+    {
+        $user = auth()->user();
+        $match = $currentApartment->availableFor($user)->firstWhere('id', $apartment->id);
 
-        return view('subscriber.apartments.index', compact('apartments'));
+        abort_unless($match, 403);
+
+        $match->load(['user', 'managerUnit']);
+        $overview->decorate(collect([$match]), $user, $prices);
+        $match->setAttribute(
+            'subscription_no',
+            Subscription::query()
+                ->where('apartment_id', $match->id)
+                ->orderByRaw("case when status = 'active' then 0 else 1 end")
+                ->orderByDesc('id')
+                ->value('subscription_no'),
+        );
+
+        return view('subscriber.apartments.show', ['apartment' => $match]);
     }
 
     public function update(Request $request, CurrentApartment $currentApartment)
@@ -45,7 +60,7 @@ class SubscriberApartmentController extends Controller
             abort(403, 'Bu apartmana erişiminiz yok.');
         }
 
-        if (! $apartment->user || ! $apartment->user->hasFeature('auto_dues')) {
+        if (! \App\Support\FeatureGate::allows($apartment, 'auto_dues')) {
             abort(403, 'Otomatik aidat planlama özelliği aboneliğinizde aktif değil.');
         }
 

@@ -1,8 +1,10 @@
 @extends('layouts.app')
 
-@section('content')
+@section('wizard_steps')
     @include('apartments.wizard._steps', ['activeStep' => 4])
+@endsection
 
+@section('content')
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-slate-950">Kategoriler</h1>
         <p class="mt-1 text-sm text-slate-500">Varsayılan kategoriler zaten oluşturuldu. İsterseniz yeni kategori ekleyebilir veya bu adımı atlayabilirsiniz.</p>

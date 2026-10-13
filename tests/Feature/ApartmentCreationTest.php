@@ -30,6 +30,8 @@ class ApartmentCreationTest extends TestCase
                 'unit_count' => 12,
                 'manager_unit_no' => 3,
                 'account_opening_date' => now()->format('Y-m-d'),
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
             ]);
 
         $apartment = Apartment::where('name', 'Akbey Apartmanı')->firstOrFail();
@@ -54,5 +56,19 @@ class ApartmentCreationTest extends TestCase
             ->get(route('apartments.show', $apartment))
             ->assertStatus(200)
             ->assertSee('Akbey Apartmanı');
+    }
+
+    public function test_apartment_settings_page_includes_service_history(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::factory()->forUser($user)->create(['name' => 'Ayar Apartmanı']);
+        $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('apartments.index'))
+            ->assertOk()
+            ->assertSee('Ayar Apartmanı')
+            ->assertSee('Hizmet geçmişi');
     }
 }

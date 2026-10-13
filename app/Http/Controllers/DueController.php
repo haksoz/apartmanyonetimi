@@ -305,6 +305,15 @@ class DueController extends Controller
         ]);
 
         // Period formdan gönderilmemişse oluşturulma tarihinden otomatik belirle
+        if ($validated['source_type'] === DueBatch::SOURCE_EXPENSES && ! \App\Support\FeatureGate::allows($apartment, 'expense_distribution')) {
+            abort(403, 'Giderin dairelere dağıtılması ücretli plandadır.');
+        }
+
+        if (in_array($validated['distribution_type'], [DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT], true)
+            && ! \App\Support\FeatureGate::allows($apartment, 'distribution_advanced')) {
+            abort(403, 'Metrekare ve pay çarpanı dağıtımı ücretli plandadır.');
+        }
+
         if (empty($validated['period'])) {
             $validated['period'] = \Carbon\Carbon::parse($validated['created_at_manual'] ?? now())->format('Y-m');
         }

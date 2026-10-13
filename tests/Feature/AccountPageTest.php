@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Account;
+use App\Models\AccountTransaction;
 use App\Models\Apartment;
 use App\Models\Category;
 use App\Models\Due;
@@ -165,6 +166,71 @@ class AccountPageTest extends TestCase
             'unit_id' => null,
         ]);
         $this->assertSame('2026-05-04', $account->account_opening_date->format('Y-m-d'));
+        $this->assertDatabaseMissing('account_transactions', [
+            'account_id' => $account->id,
+        ]);
+    }
+
+    public function test_opening_balance_is_posted_as_a_single_account_transaction(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => Account::TYPE_SUPPLIER,
+                'name' => 'Doğalgaz',
+                'balance' => '250.50',
+                'opening_side' => 'credit',
+                'account_opening_date' => '2026-10-01',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('accounts.index'));
+
+        $account = Account::where('name', 'Doğalgaz')->firstOrFail();
+
+        $this->assertDatabaseHas('accounts', [
+            'id' => $account->id,
+            'balance' => 0,
+        ]);
+        $transaction = AccountTransaction::where('account_id', $account->id)->firstOrFail();
+        $this->assertSame('credit', $transaction->type);
+        $this->assertSame('Açılış bakiyesi', $transaction->description);
+        $this->assertSame('250.50', $transaction->amount);
+        $this->assertSame('2026-10-01', $transaction->transaction_date->format('Y-m-d'));
+        $this->assertNull($transaction->transactionable_type);
+        $this->assertSame(1, AccountTransaction::where('account_id', $account->id)->count());
+        $this->assertDatabaseMissing('cash_transactions', [
+            'account_id' => $account->id,
+        ]);
+    }
+
+    public function test_opening_balance_requires_a_side(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => Account::TYPE_SUPPLIER,
+                'name' => 'Su',
+                'balance' => '100',
+                'account_opening_date' => '2026-10-01',
+                'is_active' => '1',
+            ])
+            ->assertSessionHasErrors('opening_side');
     }
 
     public function test_user_can_update_account(): void
@@ -196,7 +262,10 @@ class AccountPageTest extends TestCase
         $this->assertDatabaseHas('accounts', [
             'id' => $account->id,
             'name' => 'Yeni Ünvan',
-            'balance' => 100,
+            'balance' => 0,
+        ]);
+        $this->assertDatabaseMissing('account_transactions', [
+            'account_id' => $account->id,
         ]);
     }
 
@@ -634,5 +703,100 @@ class AccountPageTest extends TestCase
             ->assertStatus(200)
             ->assertSee('Borç Devri')
             ->assertSee('Kat Maliki');
+    }
+
+    public function test_expense_modal_can_create_supplier_via_ajax(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => 'supplier',
+                'apartment_id' => $apartment->id,
+                'name' => 'A Enerji',
+                'default_category_id' => '',
+                'phone' => '',
+                'email' => '',
+                'account_opening_date' => '2026-10-10',
+                'balance' => '0',
+            ], [
+                'X-Requested-With' => 'XMLHttpRequest',
+                'Accept' => 'application/json',
+            ])
+            ->assertOk()
+            ->assertJsonPath('account.name', 'A Enerji');
+
+        $this->assertDatabaseHas('accounts', [
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'A Enerji',
+        ]);
+    }
+
+    public function test_supplier_name_can_be_reused_after_soft_delete(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $existing = Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'A Enerji',
+        ]);
+        $existing->delete();
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => 'supplier',
+                'name' => 'A Enerji',
+                'account_opening_date' => '2026-10-10',
+                'balance' => '0',
+            ], [
+                'X-Requested-With' => 'XMLHttpRequest',
+                'Accept' => 'application/json',
+            ])
+            ->assertOk()
+            ->assertJsonPath('account.name', 'A Enerji');
+    }
+
+    public function test_ajax_supplier_validation_returns_field_message(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'A Enerji',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('accounts.store'), [
+                'type' => 'supplier',
+                'name' => 'A Enerji',
+                'account_opening_date' => '2026-10-10',
+            ], [
+                'X-Requested-With' => 'XMLHttpRequest',
+                'Accept' => 'application/json',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Bu isimde bir hesap zaten mevcut.');
     }
 }

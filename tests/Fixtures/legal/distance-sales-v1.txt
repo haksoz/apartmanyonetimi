@@ -1,0 +1,219 @@
+AİDATCEP MESAFELİ SATIŞ SÖZLEŞMESİ
+
+Sürüm: 1
+Hizmet sağlayıcı: KAPİTAL ONLİNE BİLGİSAYAR VE İLETİŞİM HİZMETLERİ TİC. LTD. ŞTİ.
+Web sitesi: aidatcep.com
+E-posta: info@aidatcep.com
+
+MADDE 1 – TARAFLAR
+
+İşbu Mesafeli Satış Sözleşmesi (“Sözleşme”), aşağıdaki taraflar arasında elektronik ortamda kurulmuştur.
+
+1.1. Sağlayıcı
+
+Ticari Unvan: KAPİTAL ONLİNE BİLGİSAYAR VE İLETİŞİM HİZMETLERİ TİC. LTD. ŞTİ.
+Adres: Orta Mah. Ordu Sk. Ozan İşhanı No: 21 İç Kapı No: 8, 34880 Kartal / İstanbul
+Telefon: +90 216 377 40 00
+E-posta: info@aidatcep.com
+Web: aidatcep.com
+Vergi Dairesi: Yakacık Vergi Dairesi Müdürlüğü
+VKN: 4980863169
+MERSİS No: 0498086316900015
+
+Bundan sonra “Sağlayıcı” olarak anılacaktır.
+
+1.2. Kullanıcı / Tüketici
+
+AidatCep üzerinden hizmet satın alan gerçek veya tüzel kişi, satın alma işlemi sırasında sisteme bildirdiği kimlik ve iletişim bilgileri ile tanımlanan “Kullanıcı”dır.
+
+Kullanıcı, işlemi ticari veya mesleki amacı dışında gerçekleştiriyorsa ilgili mevzuat kapsamında “Tüketici” olarak da anılır.
+
+MADDE 2 – SÖZLEŞMENİN KONUSU
+
+İşbu Sözleşme'nin konusu, Kullanıcı tarafından AidatCep internet sitesi üzerinden satın alınan apartman yönetimi yazılım hizmetinin kullanım koşullarının ve tarafların hak ve yükümlülüklerinin belirlenmesidir.
+
+AidatCep; apartman ve site yönetimlerinin aidat, gider, tahsilat, borç, daire, sakin ve ilgili yönetim kayıtlarını dijital ortamda yönetmelerine yardımcı olan çevrim içi bir yazılım hizmetidir.
+
+Satın alınan hizmetin kapsamı, Kullanıcının sipariş sırasında seçtiği daire sayısı, hizmet dönemi ve satın alma ekranında gösterilen özellikler ile sınırlıdır.
+
+MADDE 3 – SÖZLEŞMENİN KURULMASI
+
+Kullanıcı, satın alma işlemi sırasında kendisine sunulan Ön Bilgilendirme Formu ve işbu Sözleşme'yi inceleyerek onaylar.
+
+Sözleşme, Kullanıcının gerekli bilgileri tamamlaması, ilgili hukuki metinleri onaylaması ve siparişin ödeme yükümlülüğü doğurduğunu açıkça belirten işlem sonrasında siparişin oluşturulmasıyla kurulur.
+
+Kullanıcı, siparişini tamamlamadan önce seçtiği hizmetin kapsamını, hizmet dönemini, daire sayısını ve vergiler dahil toplam bedeli görebilir.
+
+MADDE 4 – HİZMETİN KAPSAMI
+
+AidatCep hizmeti, satın alınan paketin ve ilgili hizmet döneminin kapsamı dahilinde çevrim içi yazılım kullanım hakkı sağlar.
+
+Ücretli hizmet kapsamında sunulan özellikler, satın alma sırasında AidatCep üzerinde belirtilen kapsam doğrultusunda kullanılabilir.
+
+Sağlayıcı, hizmetin geliştirilmesi amacıyla teknik altyapıda, kullanıcı arayüzünde ve özelliklerde değişiklik yapabilir. Bu değişiklikler, satın alınmış hizmet döneminin temel kullanım amacını ortadan kaldıracak şekilde uygulanamaz.
+
+Hizmetin kapsamı dışında kalan özel geliştirme, entegrasyon, danışmanlık veya ayrıca ücretlendirilen hizmetler bu Sözleşme'nin kapsamında değildir.
+
+MADDE 5 – DAİRE SAYISI VE HİZMET HAKKI
+
+Hizmet bedeli, satın alma sırasında seçilen ve siparişe kaydedilen daire sayısına göre belirlenir.
+
+AidatCep üzerinde belirlenen fiyatlar ve hizmet seçenekleri zaman içinde değişebilir. Kullanıcı açısından uygulanacak bedel, ilgili sipariş oluşturulurken AidatCep üzerinde gösterilen ve Kullanıcının onayladığı güncel bedeldir.
+
+Hizmet hakkı, siparişte belirtilen apartmana ilişkindir.
+
+Apartman yöneticisinin değişmesi, mevcut hizmet dönemini kendiliğinden sona erdirmez. Yönetici değişikliği halinde apartmanın mevcut hizmet dönemi ve bu döneme ilişkin kullanım hakkı devam eder.
+
+Önceki yönetici tarafından oluşturulan sipariş, ödeme ve fatura kayıtları yeni yöneticiye devredilmiş yeni bir satış işlemi olarak kabul edilmez.
+
+MADDE 6 – HİZMET DÖNEMİ
+
+Hizmet, Kullanıcının satın alma sırasında seçtiği hizmet dönemine göre sunulur.
+
+Aylık hizmet seçeneği, siparişte belirtilen bir aylık hizmet dönemini kapsar.
+
+Yıllık hizmet seçeneği, satın alma tarihinden itibaren 12 aylık hizmet dönemini kapsar.
+
+Hizmet döneminin sonunda hizmet kendiliğinden yeni bir döneme uzamaz ve otomatik tahsilat yapılmaz. Kullanıcı hizmeti devam ettirmek isterse yeni bir sipariş oluşturarak yenileme işlemi yapabilir.
+
+Yeni dönem için oluşturulan sipariş, yeni bir satış işlemi ve yeni bir kabul sürecidir.
+
+MADDE 7 – FİYAT VE ÖDEME
+
+Hizmet bedeli, Kullanıcının sipariş sırasında AidatCep üzerinde gördüğü güncel fiyat üzerinden belirlenir.
+
+Sipariş oluşturulmadan önce Kullanıcıya uygulanacak toplam bedel, vergiler dahil olarak gösterilir.
+
+Kullanıcı tarafından onaylanan siparişin bedeli, sipariş kaydında muhafaza edilir.
+
+Ödeme, AidatCep üzerinde sipariş sırasında belirtilen ödeme yöntemi kullanılarak gerçekleştirilir.
+
+Banka transferi veya EFT ile ödeme öngörülen işlemlerde Kullanıcı, ödeme yaptıktan sonra sistemde istenen dekont veya ödeme referans bilgilerini iletir.
+
+Ödemenin Sağlayıcı tarafından kontrol edilip onaylanması gereken durumlarda, ücretli hizmet özellikleri ödeme onayından önce aktif hale getirilmeyebilir.
+
+MADDE 8 – HİZMETİN BAŞLATILMASI
+
+Ödeme ve sipariş kontrolünün gerekli olduğu durumlarda hizmet, ödemenin Sağlayıcı tarafından onaylanmasından sonra aktif hale getirilir.
+
+Kullanıcının, hizmetin cayma süresi dolmadan başlamasını açıkça talep ettiği durumlarda, hizmetin başlatılmasına ilişkin onayının elektronik ortamda alınması sağlanır.
+
+Cayma hakkının kullanılması bakımından emredici mevzuat hükümleri saklıdır.
+
+MADDE 9 – CAYMA HAKKI
+
+Tüketici, mesafeli hizmet sözleşmelerinde mevzuatta öngörülen şartlar kapsamında, sözleşmenin kurulduğu tarihten itibaren on dört gün içinde herhangi bir gerekçe göstermeksizin ve cezai şart ödemeksizin cayma hakkına sahiptir.
+
+Cayma hakkının kullanılması için mevzuatta öngörülen usullere uygun olarak Sağlayıcıya bildirim yapılması yeterlidir.
+
+Kullanıcıya cayma hakkının kapsamı, süresi, kullanımı ve istisnaları satın alma öncesinde Ön Bilgilendirme Formu ile açıklanır.
+
+Mevzuatta cayma hakkının kullanılamayacağı veya cayma hakkının hizmetin ifasına başlanması nedeniyle etkilenebileceği özel durumlar saklıdır.
+
+Kullanıcının talebi üzerine cayma hakkı süresi dolmadan hizmetin ifasına başlanması halinde, uygulanabilecek cayma hakkı istisnaları ilgili mevzuat hükümlerine göre değerlendirilir.
+
+Cayma hakkının kullanılması halinde bedel iadesi, yürürlükteki mevzuatta öngörülen süre ve yöntemlere uygun olarak gerçekleştirilir.
+
+MADDE 10 – İPTAL VE İADE
+
+Sipariş ödeme kanıtı veya ödeme referansı sunulmadan önce Kullanıcı tarafından sistem üzerinden iptal edilebilir.
+
+Ödeme dekontu veya ödeme referansı sisteme sunulduktan sonra sipariş inceleme aşamasına alınabilir ve Kullanıcının sistem üzerinden doğrudan iptal etmesi sınırlandırılabilir.
+
+Bu durum, Kullanıcının mevzuattan doğan cayma, fesih, bedel iadesi veya diğer zorunlu tüketici haklarını ortadan kaldırmaz.
+
+İade işlemleri, ilgili mevzuat ve siparişin ödeme yöntemi dikkate alınarak gerçekleştirilir.
+
+MADDE 11 – HİZMET DÖNEMİNİN SONA ERMESİ
+
+Hizmet döneminin sona ermesi, Kullanıcının veya apartmanın AidatCep üzerinde oluşturduğu verilerin kendiliğinden silinmesi anlamına gelmez.
+
+Ücretli özelliklerin kullanım hakkı hizmet döneminin sona ermesiyle sona erebilir.
+
+Verilerin saklanması, silinmesi ve işlenmesine ilişkin hususlar ilgili mevzuat, AidatCep'in gizlilik ve kişisel verilerin korunmasına ilişkin metinleri ve teknik saklama politikaları çerçevesinde yürütülür.
+
+MADDE 12 – KULLANICI YÜKÜMLÜLÜKLERİ
+
+Kullanıcı;
+
+• AidatCep hesabına ilişkin bilgileri doğru ve güncel vermek,
+• Hesap bilgilerinin güvenliğini sağlamak,
+• Yetkisi bulunmayan kişilerin hesaba erişmesini önlemek,
+• Sisteme yüklediği bilgi ve belgelerin hukuka uygun olmasını sağlamak,
+• Apartman sakinleri, malik ve diğer kişilere ait verileri sisteme aktarırken gerekli hukuki dayanağın bulunmasından sorumlu olmak,
+• AidatCep'i yürürlükteki mevzuata ve işbu Sözleşme'ye uygun şekilde kullanmak
+
+ile yükümlüdür.
+
+Kullanıcı, başka kişilere ait kişisel verilerin sisteme aktarılması ve işlenmesi bakımından kendi hukuki yükümlülüklerini yerine getirmekle sorumludur.
+
+MADDE 13 – KİŞİSEL VERİLER
+
+AidatCep kapsamında kişisel verilerin işlenmesine ilişkin esaslar, Sağlayıcının ayrıca yayımladığı Gizlilik ve KVKK Aydınlatma metinlerinde düzenlenir.
+
+Kullanıcının apartman sakinlerine, maliklere veya diğer üçüncü kişilere ait kişisel verileri sisteme aktarması halinde, bu verilerin aktarılması ve işlenmesi bakımından ilgili mevzuattan doğan yükümlülükler saklıdır.
+
+İşbu Sözleşme, kişisel verilerin işlenmesine ilişkin ayrı aydınlatma ve gerekli olduğu durumlarda açık rıza metinlerinin yerine geçmez.
+
+MADDE 14 – FİKRİ MÜLKİYET
+
+AidatCep yazılımı, tasarımı, kullanıcı arayüzü, yazılım kodları, marka unsurları, metinleri ve diğer fikri mülkiyet unsurları Sağlayıcıya veya ilgili hak sahiplerine aittir.
+
+Kullanıcıya yalnızca satın aldığı hizmet dönemi boyunca hizmeti kullanmak üzere sınırlı, devredilemez ve münhasır olmayan bir kullanım hakkı tanınır.
+
+Kullanıcı, AidatCep yazılımını kopyalayamaz, çoğaltamaz, tersine mühendislik yapamaz, kaynak kodunu elde etmeye çalışamaz veya üçüncü kişilere hizmet olarak sunamaz.
+
+MADDE 15 – TEKNİK ALTYAPI VE HİZMET KESİNTİLERİ
+
+AidatCep hizmetinin internet bağlantısı, sunucu, veri merkezi, üçüncü taraf hizmetleri ve benzeri teknik altyapılara bağlı olması nedeniyle geçici erişim sorunları meydana gelebilir.
+
+Sağlayıcı, hizmetin sürekliliğini sağlamak için makul teknik ve idari tedbirleri alır.
+
+Planlı bakım çalışmaları mümkün olduğunca önceden duyurulur.
+
+Sağlayıcının kontrolü dışında meydana gelen internet, altyapı, enerji, üçüncü taraf servis, doğal afet, siber saldırı veya benzeri olaylar nedeniyle oluşabilecek geçici kesintiler bakımından ilgili mevzuat hükümleri saklıdır.
+
+MADDE 16 – HESAP VE ERİŞİM
+
+Kullanıcı, hesabına erişim bilgilerinin güvenliğinden sorumludur.
+
+Kullanıcının yetkili yöneticiyi değiştirmesi halinde apartmana ilişkin mevcut hizmet dönemi korunur. Yeni yöneticinin kendi kullanıcı hesabı üzerinden yetkilendirilmesi, mevcut hizmet döneminin yeniden satın alınması anlamına gelmez.
+
+MADDE 17 – SÖZLEŞMENİN SONA ERMESİ
+
+Sözleşme, satın alınan hizmet döneminin sona ermesiyle sona erer.
+
+Cayma hakkının kullanılması, mevzuata uygun fesih veya tarafların haklı nedenle sona erdirme hakları saklıdır.
+
+Kullanıcının sözleşmeyi sona erdirmesi, daha önce doğmuş ödeme, kullanım veya hukuki yükümlülükleri ortadan kaldırmaz.
+
+MADDE 18 – BİLDİRİMLER
+
+Kullanıcı tarafından bildirilen e-posta adresi, hesap ve sipariş işlemleriyle ilgili elektronik bildirimlerde kullanılabilir.
+
+Kullanıcı, iletişim bilgilerinin güncel tutulmasından sorumludur.
+
+Mevzuatta özel bir şekil öngörülen bildirimler, ilgili mevzuatta belirtilen yöntemlere uygun şekilde yapılır.
+
+MADDE 19 – UYUŞMAZLIKLAR
+
+Tüketici sıfatını taşıyan Kullanıcının, yürürlükteki mevzuattan doğan tüketici hakları saklıdır.
+
+Tüketici uyuşmazlıklarında, uyuşmazlığın niteliğine ve parasal sınırına göre Tüketici Hakem Heyetleri ve Tüketici Mahkemeleri dahil olmak üzere mevzuatta belirlenen başvuru yolları kullanılabilir.
+
+Tüketici olmayan kullanıcılar bakımından Türk hukuku uygulanır ve kanunen yetkili mahkeme ve icra mercileri yetkilidir.
+
+MADDE 20 – YÜRÜRLÜK
+
+İşbu Sözleşme, Kullanıcı tarafından elektronik ortamda onaylanıp siparişin oluşturulmasıyla yürürlüğe girer.
+
+Sözleşmenin Kullanıcı tarafından kabul edildiği tarih, elektronik sistem kayıtlarında muhafaza edilir.
+
+Kullanıcı, sipariş sırasında Sözleşme'nin güncel sürümünü inceleyerek kabul eder.
+
+Sağlayıcı:
+KAPİTAL ONLİNE BİLGİSAYAR VE İLETİŞİM HİZMETLERİ TİC. LTD. ŞTİ.
+Orta Mah. Ordu Sk. Ozan İşhanı No: 21 İç Kapı No: 8
+34880 Kartal / İstanbul
+VKN: 4980863169
+MERSİS No: 0498086316900015

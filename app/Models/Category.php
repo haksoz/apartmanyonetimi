@@ -57,6 +57,29 @@ class Category extends Model
         };
     }
 
+    public function scopeOrderedForDisplay($query)
+    {
+        $rank = [
+            'Aidat' => 1,
+            'Demirbaş' => 2,
+            'Elektrik' => 3,
+            'Su' => 4,
+            'Asansör' => 5,
+            'Temizlik' => 6,
+            'Yönetim' => 7,
+            'Bakım' => 8,
+            'Diğer' => 1000,
+        ];
+
+        $sql = 'CASE name';
+        foreach ($rank as $name => $position) {
+            $sql .= " WHEN '".str_replace("'", "''", $name)."' THEN {$position}";
+        }
+        $sql .= ' ELSE 100 END';
+
+        return $query->orderByRaw($sql)->orderBy('name');
+    }
+
     public static function createDefaultsFor(int $apartmentId): void
     {
         $defaults = [

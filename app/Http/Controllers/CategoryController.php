@@ -2,7 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
+use App\Models\CashTransaction;
 use App\Models\Category;
+use App\Models\Due;
+use App\Models\DueBatch;
+use App\Models\DuePlan;
+use App\Models\Expense;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -104,6 +110,10 @@ class CategoryController extends Controller
             return redirect()->route('categories.index')->with('error', 'Bu kategori sistem kategorisi olduğu için silinemez.');
         }
 
+        if ($reason = $this->relatedRecordReason($category)) {
+            return redirect()->route('categories.index')->with('error', $reason);
+        }
+
         $category->delete();
 
         return redirect()->route('categories.index')->with('status', 'Kategori silindi.');
@@ -135,6 +145,25 @@ class CategoryController extends Controller
         return Category::query()
             ->where('apartment_id', $apartment->id)
             ->findOrFail($id);
+    }
+
+    private function relatedRecordReason(Category $category): ?string
+    {
+        $links = [
+            'gider' => Expense::where('category_id', $category->id)->exists(),
+            'kasa hareketi' => CashTransaction::where('category_id', $category->id)->exists(),
+            'borç' => Due::where('category_id', $category->id)->exists(),
+            'borçlandırma' => DueBatch::where('category_id', $category->id)->exists(),
+            'aidat planı' => DuePlan::where('category_id', $category->id)->exists(),
+            'hesap' => Account::where('default_category_id', $category->id)->exists(),
+        ];
+
+        $used = array_keys(array_filter($links));
+        if ($used === []) {
+            return null;
+        }
+
+        return 'Bu kategori '.implode(', ', $used).' kayıtlarında kullanıldığı için silinemez.';
     }
 
     private function validateCategory(Request $request, int $apartmentId, ?int $categoryId = null): array
