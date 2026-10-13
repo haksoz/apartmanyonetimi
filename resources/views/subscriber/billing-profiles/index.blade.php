@@ -7,7 +7,7 @@
         <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-slate-900">Fatura bilgileri</h1>
-                <p class="mt-1 text-sm text-slate-500">Bu kayıtlar size aittir. Sipariş açarken birini seçebilir veya yenisini oluşturabilirsiniz.</p>
+                <p class="mt-1 text-sm text-slate-500">Bireysel veya kurumsal fatura bilginizi kaydedin. Siparişte bu profillerden birini seçebilirsiniz.</p>
             </div>
             <a href="{{ route('subscriber.billing-profiles.create') }}" class="inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Yeni profil</a>
         </div>
@@ -18,7 +18,7 @@
 
         @if ($profiles->isEmpty())
             <div class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-                Henüz fatura profiliniz yok.
+                Henüz kayıtlı fatura profiliniz yok.
             </div>
         @else
             <div class="space-y-3">
@@ -33,8 +33,18 @@
                                     </span>
                                 </div>
                                 <p class="mt-1 text-sm text-slate-500">{{ \App\Models\BillingProfile::partyLabel($profile->party_type) }}</p>
-                                @if ($profile->legal_name)
-                                    <p class="mt-1 text-sm text-slate-700">{{ $profile->legal_name }}</p>
+                                @if ($profile->address)
+                                    <p class="mt-1 text-sm text-slate-600">{{ $profile->address }}</p>
+                                @endif
+                                @if ($profile->party_type === \App\Models\BillingProfile::TYPE_CORPORATE)
+                                    @if ($profile->tax_office)
+                                        <p class="mt-1 text-sm text-slate-600">{{ $profile->tax_office }}</p>
+                                    @endif
+                                    @if ($profile->identity_number)
+                                        <p class="mt-1 text-sm text-slate-600">Vergi no: {{ $profile->identity_number }}</p>
+                                    @endif
+                                @elseif ($profile->identity_number)
+                                    <p class="mt-1 text-sm text-slate-600">Kimlik no: {{ $profile->identity_number }}</p>
                                 @endif
                             </div>
                             <div class="flex flex-wrap gap-2">

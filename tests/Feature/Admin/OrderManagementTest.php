@@ -112,7 +112,7 @@ class OrderManagementTest extends TestCase
             ->assertSee('Bu kayıtta sipariş kalemi yok.')
             ->assertSee('Bu siparişe bağlı tahsilat yok.')
             ->assertSee('—')
-            ->assertDontSee('Abonelik Detayına Git')
+            ->assertDontSee('Abonelik detayına git')
             ->assertDontSee('ABN-');
     }
 
@@ -210,9 +210,8 @@ class OrderManagementTest extends TestCase
             ->assertSee('02.04.2026 – 02.05.2026')
             ->assertSee('01.06.2026 – 01.07.2026')
             ->assertSee('Birden fazla dönem')
-            ->assertSee('Birden fazla')
-            ->assertSee(route('admin.subscription-items.show', $firstItem), false)
-            ->assertSee(route('admin.subscription-items.show', $secondItem), false)
+            ->assertSee(route('admin.subscriptions.show', $recordA), false)
+            ->assertSee(route('admin.subscriptions.show', $recordB), false)
             ->assertSee(route('apartments.show', $first), false)
             ->assertSee(route('apartments.show', $second), false)
             ->assertDontSee('ABN-26-200001/');
@@ -255,9 +254,10 @@ class OrderManagementTest extends TestCase
             ->assertSee('HVL-DETAY')
             ->assertSee('Dekontu aç')
             ->assertSee('Banka dekontu')
-            ->assertSee(route('admin.subscription-items.show', $item), false)
-            ->assertSee('Abonelik Detayına Git')
-            ->assertSee('Apartman Detayına Git');
+            ->assertSee(route('admin.subscriptions.show', $record), false)
+            ->assertSee(route('apartments.show', $apartment), false)
+            ->assertDontSee('Abonelik detayına git')
+            ->assertDontSee('Apartman detayına git');
 
         $this->actingAs($admin)
             ->get(route('admin.subscription-items.show', $item))

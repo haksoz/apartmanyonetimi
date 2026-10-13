@@ -47,7 +47,8 @@ class SubscriberApartmentSessionTest extends TestCase
             ->actingAs($user)
             ->get(route('subscriber.dashboard'))
             ->assertStatus(200)
-            ->assertSee('Apartmanlarım')
+            ->assertSee('Abone Paneli')
+            ->assertDontSee('Apartmanlarım')
             ->assertDontSee('Hesaplar')
             ->assertDontSee('Giderler')
             ->assertDontSee('Aidatlar');

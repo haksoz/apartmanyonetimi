@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\DuePlanController;
 use App\Models\Apartment;
 use App\Models\DuePlan;
+use App\Models\Subscription;
 use App\Support\AidatPeriodReconciliation;
 use App\Support\CurrentApartment;
 use App\Support\PriceQuote;
@@ -15,22 +16,9 @@ use Illuminate\Http\Request;
 
 class SubscriberApartmentController extends Controller
 {
-    public function index(CurrentApartment $currentApartment, PriceQuote $prices, SubscriberApartmentOverview $overview)
+    public function index()
     {
-        $user = auth()->user();
-        $apartments = $currentApartment->availableFor($user)
-            ->load(['user', 'managerUnit'])
-            ->sortBy('name')
-            ->values();
-
-        if ($apartments->isEmpty()) {
-            return redirect()->route('subscriber.apartments.create');
-        }
-
-        $overview->decorate($apartments, $user, $prices);
-        $currentApartmentModel = $currentApartment->getFor($user);
-
-        return view('subscriber.apartments.index', compact('apartments', 'currentApartmentModel'));
+        return redirect()->route('subscriber.dashboard');
     }
 
     public function show(Apartment $apartment, CurrentApartment $currentApartment, PriceQuote $prices, SubscriberApartmentOverview $overview)
@@ -42,6 +30,14 @@ class SubscriberApartmentController extends Controller
 
         $match->load(['user', 'managerUnit']);
         $overview->decorate(collect([$match]), $user, $prices);
+        $match->setAttribute(
+            'subscription_no',
+            Subscription::query()
+                ->where('apartment_id', $match->id)
+                ->orderByRaw("case when status = 'active' then 0 else 1 end")
+                ->orderByDesc('id')
+                ->value('subscription_no'),
+        );
 
         return view('subscriber.apartments.show', ['apartment' => $match]);
     }

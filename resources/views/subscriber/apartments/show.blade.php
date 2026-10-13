@@ -26,6 +26,7 @@
             $statusClass = 'bg-slate-100 text-slate-700';
         }
         $rows = [
+            'Abonelik numarası' => $apartment->subscription_no,
             'Apartman kodu' => $apartment->code,
             'Daire sayısı' => $apartment->unit_count,
             'Adres' => $apartment->address,
@@ -53,7 +54,7 @@
                     <button type="submit" class="rounded-xl border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">Aidat Tetikle</button>
                 </form>
             @endif
-            <button type="button" onclick="if (window.history.length > 1) { history.back(); } else { window.location.href = '{{ route('subscriber.apartments.index') }}'; }" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <button type="button" onclick="if (window.history.length > 1) { history.back(); } else { window.location.href = '{{ route('subscriber.dashboard') }}'; }" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
                 </svg>
@@ -89,7 +90,7 @@
                 @endif
                 <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt class="text-slate-500">Dönem bitişi</dt>
-                    <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ $active->expires_at?->format('d.m.Y') ?? 'Süresiz' }}</dd>
+                    <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ ($apartment->commercial_coverage_end ?? $active->expires_at)?->format('d.m.Y') ?? 'Süresiz' }}</dd>
                 </div>
             @elseif ($expired?->expires_at)
                 <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">

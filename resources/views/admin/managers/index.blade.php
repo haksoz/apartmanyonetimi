@@ -13,7 +13,9 @@
                 \App\Models\SubscriptionItem::PLAN_FREE => 'Ücretsiz',
                 default => '—',
             };
+            $proofSent = filled($current?->subscription?->receipt_path) || filled($current?->subscription?->receipt_reference);
             $statusLabel = match (true) {
+                $current?->status === \App\Models\SubscriptionItem::STATUS_PENDING && $proofSent => 'Onay bekliyor',
                 $current?->status === \App\Models\SubscriptionItem::STATUS_PENDING => 'Ödeme bekliyor',
                 $subscription->status === \App\Models\Subscription::STATUS_ENDED => 'Sona erdi',
                 $current?->status === \App\Models\SubscriptionItem::STATUS_ACTIVE => 'Aktif',
@@ -48,7 +50,7 @@
                 'plan' => $planLabel,
                 'period' => $period,
                 'status' => $statusLabel,
-                'pending' => (bool) ($pendingOrderItem && $statusLabel !== 'Ödeme bekliyor'),
+                'pending' => (bool) ($pendingOrderItem && ! in_array($statusLabel, ['Ödeme bekliyor', 'Onay bekliyor'], true)),
                 'detail_url' => route('admin.subscriptions.show', $subscription),
             ];
         });
@@ -61,8 +63,10 @@
                 \App\Models\SubscriptionItem::PLAN_FREE => 'Ücretsiz',
                 default => '—',
             };
-            $statusLabel = match ($item->status) {
-                \App\Models\SubscriptionItem::STATUS_PENDING => 'Ödeme bekliyor',
+            $proofSent = filled($item->subscription?->receipt_path) || filled($item->subscription?->receipt_reference);
+            $statusLabel = match (true) {
+                $item->status === \App\Models\SubscriptionItem::STATUS_PENDING && $proofSent => 'Onay bekliyor',
+                $item->status === \App\Models\SubscriptionItem::STATUS_PENDING => 'Ödeme bekliyor',
                 \App\Models\SubscriptionItem::STATUS_ACTIVE => 'Aktif',
                 \App\Models\SubscriptionItem::STATUS_CANCELLED => 'İptal',
                 default => '—',

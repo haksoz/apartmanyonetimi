@@ -99,7 +99,7 @@
                 <a href="{{ route('apartments.show', $record->apartment ?? $period->apartment) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Apartman detayına git</a>
             @endif
             @if ($currentOrder)
-                <a href="{{ route('admin.orders.show', $currentOrder) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sipariş detayına git</a>
+                <a href="{{ route('admin.orders.show', $currentOrder) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{{ $currentOrder->isPending() ? 'Siparişi incele' : 'Sipariş detayına git' }}</a>
             @endif
         </div>
     </div>
@@ -148,16 +148,10 @@
                 <a href="{{ route('apartments.show', $record->apartment ?? $period->apartment) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Apartman detayına git</a>
             @endif
             @if ($currentOrder)
-                <a href="{{ route('admin.orders.show', $currentOrder) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sipariş detayına git</a>
+                <a href="{{ route('admin.orders.show', $currentOrder) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{{ $currentOrder->isPending() ? 'Siparişi incele' : 'Sipariş detayına git' }}</a>
             @endif
         </div>
     </div>
-
-    @if ($currentOrder && $payer && $currentOrder->isPending())
-        <div class="mt-4">
-            @include('admin.managers.partials.approve', ['manager' => $payer, 'subscription' => $currentOrder])
-        </div>
-    @endif
 </section>
 
 <section class="rounded-xl border border-slate-200 bg-white p-6">
@@ -183,7 +177,10 @@
                         @php
                             $order = $row->subscription;
                             $rowPayer = $order?->user;
-                            $rowStatus = $statusOf($row->status);
+                            $proofSent = filled($order?->receipt_path) || filled($order?->receipt_reference);
+                            $rowStatus = $row->status === \App\Models\SubscriptionItem::STATUS_PENDING && $proofSent
+                                ? 'Onay bekliyor'
+                                : $statusOf($row->status);
                         @endphp
                         <tr class="align-top">
                             <td class="whitespace-nowrap px-3 py-2 font-medium text-slate-900">
@@ -197,6 +194,8 @@
                             <td class="whitespace-nowrap px-3 py-2">
                                 @if ($rowStatus === 'Aktif')
                                     <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{{ $rowStatus }}</span>
+                                @elseif ($rowStatus === 'Onay bekliyor')
+                                    <span class="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800">{{ $rowStatus }}</span>
                                 @elseif ($rowStatus === 'Ödeme bekliyor')
                                     <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{{ $rowStatus }}</span>
                                 @elseif ($rowStatus === 'İptal')
@@ -207,10 +206,8 @@
                             </td>
                             <td class="whitespace-nowrap px-3 py-2">
                                 @if ($order)
-                                    <a href="{{ route('admin.orders.show', $order) }}" class="font-mono font-medium text-emerald-700 hover:text-emerald-800">{{ $order->order_number ?: 'Sipariş' }}</a>
-                                    @if ($order->billing_label)
-                                        <div class="text-xs font-normal text-slate-500">{{ $order->billing_label }}</div>
-                                    @endif
+                                    <a href="{{ route('admin.orders.show', $order) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">{{ $order->isPending() ? 'Siparişi incele' : 'Sipariş detayı' }}</a>
+                                    <div class="font-mono text-xs font-normal text-slate-500">{{ $order->order_number ?: '—' }}</div>
                                 @else
                                     —
                                 @endif
@@ -226,13 +223,6 @@
                                 @endif
                             </td>
                         </tr>
-                        @if ($order && $order->isPending() && $rowPayer && ! $currentOrder?->is($order))
-                            <tr>
-                                <td colspan="7" class="px-3 py-2">
-                                    @include('admin.managers.partials.approve', ['manager' => $rowPayer, 'subscription' => $order])
-                                </td>
-                            </tr>
-                        @endif
                     @endforeach
                 </tbody>
             </table>
@@ -243,6 +233,10 @@
                 @php
                     $order = $row->subscription;
                     $rowPayer = $order?->user;
+                    $proofSent = filled($order?->receipt_path) || filled($order?->receipt_reference);
+                    $rowStatus = $row->status === \App\Models\SubscriptionItem::STATUS_PENDING && $proofSent
+                        ? 'Onay bekliyor'
+                        : $statusOf($row->status);
                 @endphp
                 <article class="rounded-xl border border-slate-200 p-4">
                     <div class="flex flex-wrap items-start justify-between gap-3">
@@ -250,7 +244,7 @@
                             <p class="font-medium text-slate-900">{{ $periodText($row) }}</p>
                             <p class="mt-1 text-sm text-slate-500">{{ $planOf($row->plan) }} · {{ number_format($row->amount, 0, ',', '.') }} ₺</p>
                         </div>
-                        <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ $statusOf($row->status) }}</span>
+                        @include('admin.managers.partials.status-badges', ['status' => $rowStatus, 'pending' => false])
                     </div>
                     <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                         <div>
@@ -275,7 +269,7 @@
                     </dl>
                     @if ($order)
                         <div class="mt-3">
-                            <a href="{{ route('admin.orders.show', $order) }}" class="text-sm font-semibold text-emerald-700 hover:text-emerald-800">Sipariş detayına git</a>
+                            <a href="{{ route('admin.orders.show', $order) }}" class="text-sm font-semibold text-emerald-700 hover:text-emerald-800">{{ $order->isPending() ? 'Siparişi incele' : 'Sipariş detayına git' }}</a>
                         </div>
                         @if ($order->payments->isEmpty())
                             <p class="mt-3 text-sm text-slate-500">Bu siparişe bağlı tahsilat yok.</p>
@@ -289,11 +283,6 @@
                                         · {{ $payment->reference_code ?: '—' }}
                                     </p>
                                 @endforeach
-                            </div>
-                        @endif
-                        @if ($order->isPending() && $rowPayer && ! $currentOrder?->is($order))
-                            <div class="mt-3">
-                                @include('admin.managers.partials.approve', ['manager' => $rowPayer, 'subscription' => $order])
                             </div>
                         @endif
                     @endif

@@ -20,7 +20,8 @@
     };
     $paymentBadge = match ($paymentStatusLabel) {
         'Tahsil edildi' => 'bg-emerald-100 text-emerald-700',
-        'Onay bekliyor', 'Ödeme bekliyor' => 'bg-amber-100 text-amber-800',
+        'Onay bekliyor' => 'bg-sky-100 text-sky-800',
+        'Ödeme bekliyor' => 'bg-amber-100 text-amber-800',
         'Ödenmedi' => 'bg-red-100 text-red-700',
         default => 'bg-slate-100 text-slate-600',
     };

@@ -1,6 +1,8 @@
 <div class="flex flex-col items-start gap-1">
     @if ($status === 'Aktif')
         <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{{ $status }}</span>
+    @elseif ($status === 'Onay bekliyor')
+        <span class="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800">{{ $status }}</span>
     @elseif ($status === 'Ödeme bekliyor')
         <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{{ $status }}</span>
     @elseif ($status === 'İptal')

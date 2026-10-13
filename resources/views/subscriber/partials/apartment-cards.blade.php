@@ -179,9 +179,17 @@
                 const selected = panel.querySelector('input[name="billing_mode"]:checked');
                 const isNew = hidden ? hidden.value === 'new' : !!(selected && selected.value === 'new');
                 if (isNew) {
-                    const label = panel.querySelector('[name="billing_label"]');
                     const type = panel.querySelector('[name="billing_party_type"]');
-                    return !!(label && label.value.trim() !== '' && type && type.value !== '');
+                    const name = panel.querySelector('[name="billing_legal_name"]');
+                    const address = panel.querySelector('[name="billing_address"]');
+                    const identity = panel.querySelector('[name="billing_identity_number"]');
+                    const office = panel.querySelector('[name="billing_tax_office"]');
+                    const profileName = panel.querySelector('[name="billing_label"]');
+                    if (!profileName || profileName.value.trim() === '' || !type || type.value === '' || !name || name.value.trim() === '' || !address || address.value.trim() === '' || !identity || identity.value.trim() === '') {
+                        return false;
+                    }
+                    if (type.value === 'corporate' && (!office || office.value.trim() === '')) return false;
+                    return true;
                 }
                 const profile = panel.querySelector('[name="billing_profile_id"]');
                 return !!(profile && profile.value !== '');
@@ -200,10 +208,11 @@
                     $needsQuote = ($monthly['requires_quote'] ?? false) && ! $active;
                     $quoteScale = (int) $apartment->unit_count > 100;
                     $canPurchase = (bool) $apartment->can_purchase;
-                    $renewSoon = $active && $active->expires_at && $active->expires_at->lessThanOrEqualTo(now()->addDays(3));
-                    $daysLeft = $renewSoon ? (int) now()->startOfDay()->diffInDays($active->expires_at->copy()->startOfDay()) : null;
+                    $paidUntil = $apartment->commercial_coverage_end ?? $active?->expires_at;
+                    $renewSoon = $active && $paidUntil && $paidUntil->copy()->startOfDay()->lessThanOrEqualTo(now()->startOfDay()->addDays(7));
+                    $daysLeft = $renewSoon ? (int) now()->startOfDay()->diffInDays($paidUntil->copy()->startOfDay()) : null;
                     $proofSent = $ownPending && $pending->subscription?->hasPaymentProof();
-                    $showPay = $canPurchase && ! $quoteScale && ! $needsQuote && ! ($ownPending && ! $active);
+                    $showPay = $canPurchase && ! $quoteScale && ! $needsQuote && ! $pending;
                     $payLabel = ($active || $expired) ? 'Yenile' : 'Ücretliye Geç';
                     $reopenThisPay = in_array($apartment->id, array_map('intval', (array) old('apartment_ids', [])), true);
                     $suggestedBillingProfileId = $suggestedBillingProfileIds[$apartment->id] ?? null;
@@ -244,19 +253,19 @@
                             <p class="font-medium text-slate-800">Özel Teklif</p>
                             <p>{{ \App\Support\ApartmentCommercial::QUOTE_MESSAGE }}</p>
                         @elseif ($pending && ! $active && $ownPending && $proofSent)
-                            <p>AidatCep Temel yönetim açık.</p>
+                            <p>AidatCep Temel yönetim açık. (Ücretsiz Abonelik)</p>
                             <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
                                 Ödeme bilgileriniz alınmıştır, admin onayı bekleniyor.
                                 <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="mt-1 block underline">Sipariş Detayları</a>
                             </p>
                         @elseif ($pending && ! $active && $ownPending)
-                            <p>AidatCep Temel yönetim açık.</p>
+                            <p>AidatCep Temel yönetim açık. (Ücretsiz Abonelik)</p>
                             <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
-                                Ücretli kullanım siparişiniz oluşturuldu. Ödemeniz bekleniyor.
-                                <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="mt-1 block underline">Sipariş Detayları</a>
+                                {{ $pending->subscription?->order_number ?: '—' }} numaralı ücretli kullanım siparişiniz oluşturuldu. Ödemeniz bekleniyor.
+                                Ödeme dekontunuzu <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="underline">Sipariş Detaylarından</a> yollayabilirsiniz.
                             </p>
                         @elseif ($pending && ! $active)
-                            <p>AidatCep Temel yönetim açık.</p>
+                            <p>AidatCep Temel yönetim açık. (Ücretsiz Abonelik)</p>
                             <p>Ödeme {{ $pending->subscription->user?->name }} siparişinde bekliyor.</p>
                         @elseif ($active && ! $ownActive)
                             <p>Bu hizmet {{ $apartment->name }} için {{ $active->subscription->user?->name }} tarafından satın alınmıştır.</p>
@@ -264,13 +273,13 @@
                             @if ($active->started_at)
                                 <p>Başlangıç {{ $active->started_at->format('d.m.Y') }}</p>
                             @endif
-                            <p>Bitiş {{ $active->expires_at?->format('d.m.Y') ?? 'süresiz' }}</p>
+                            <p>Bitiş {{ $paidUntil?->format('d.m.Y') ?? 'süresiz' }}</p>
                         @elseif ($active)
                             <p>Paket: {{ $periodLabel }}</p>
                             @if ($active->started_at)
                                 <p>Başlangıç {{ $active->started_at->format('d.m.Y') }}</p>
                             @endif
-                            <p>Bitiş {{ $active->expires_at?->format('d.m.Y') ?? 'süresiz' }}</p>
+                            <p>Bitiş {{ $paidUntil?->format('d.m.Y') ?? 'süresiz' }}</p>
                         @elseif ($expired)
                             <p>Ücretli özelliklerin kullanımı sona erdi. Devam etmek için yeni bir dönem başlatabilirsiniz.</p>
                             @if ($expired->expires_at)
@@ -280,34 +289,56 @@
                             <p class="font-medium text-slate-800">Teklif gerekir</p>
                             <p>{{ $monthly['message'] }}</p>
                         @else
-                            <p>AidatCep Temel yönetim açık.</p>
+                            <p>AidatCep Temel yönetim açık. (Ücretsiz Abonelik)</p>
                         @endif
 
-                        @if ($renewSoon)
+                        @if ($renewSoon && $ownActive && ! $ownPending)
                             <p class="pt-1 font-medium text-amber-700">
                                 @if ($daysLeft < 1)
-                                    Paketinizin süresi bugün doluyor.
+                                    Paketinizin süresi bugün doluyor. Şimdi yenileyin.
                                 @else
-                                    Paketinizin bitmesine {{ $daysLeft }} gün kaldı.
+                                    Paketinizin bitmesine {{ $daysLeft }} gün kaldı. Şimdi yenileyin.
+                                @endif
+                                @if (! ($monthly['requires_quote'] ?? false))
+                                    <span class="mt-1 block font-normal">Aylık {{ number_format($monthly['amount'], 0, ',', '.') }} ₺ · Yıllık {{ number_format($yearly['amount'], 0, ',', '.') }} ₺</span>
                                 @endif
                             </p>
                         @endif
 
-                        @if ($canPurchase && $ownPending && $active)
+                        @if ($ownPending && $active)
                             @if ($proofSent)
                                 <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
                                     Ödeme bilgileriniz alınmıştır, admin onayı bekleniyor.
                                     <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="mt-1 block underline">Sipariş Detayları</a>
                                 </p>
                             @else
-                                <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="mt-2 inline-flex text-sm font-semibold text-amber-700 hover:text-amber-800">Yenileme ödemesi bekliyor</a>
+                                <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+                                    {{ $pending->subscription?->order_number ?: '—' }} numaralı ücretli kullanım siparişiniz oluşturuldu. Ödemeniz bekleniyor.
+                                    Ödeme dekontunuzu <a href="{{ route('subscriber.subscriptions.receipt', $pending->subscription) }}" class="underline">Sipariş Detaylarından</a> yollayabilirsiniz.
+                                </p>
                             @endif
                         @endif
                     </div>
 
-                    @if (! $active && ! $pending && ! $quoteScale && ! $needsQuote && isset($monthly['amount'], $yearly['amount']) && $monthly['amount'] !== null && $yearly['amount'] !== null)
+                    @if ($active)
+                        <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                            <p class="text-xs font-semibold text-emerald-800">AidatCep Ücretli Kullanım avantajları açık.</p>
+                            <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-emerald-900">
+                                <li>Aidatların otomatik oluşturulması</li>
+                                <li>Giderin dairelere dağıtılması</li>
+                                <li>Metrekare ve paya göre dağıtım</li>
+                                <li>Gider belgesi yükleme ve rapor dışa aktarma</li>
+                            </ul>
+                        </div>
+                    @elseif (! $pending && ! $quoteScale && ! $needsQuote && isset($monthly['amount'], $yearly['amount']) && $monthly['amount'] !== null && $yearly['amount'] !== null)
                         <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
                             <p class="text-xs font-semibold text-emerald-800">AidatCep Ücretli Kullanım avantajlarından yararlanın.</p>
+                            <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-emerald-900">
+                                <li>Aidatların otomatik oluşturulması</li>
+                                <li>Giderin dairelere dağıtılması</li>
+                                <li>Metrekare ve paya göre dağıtım</li>
+                                <li>Gider belgesi yükleme ve rapor dışa aktarma</li>
+                            </ul>
                             <div class="mt-2 grid grid-cols-2 gap-2">
                                 <div class="rounded-lg bg-white px-2 py-1 text-center">
                                     <p class="text-xs text-slate-500">Aylık</p>
@@ -402,14 +433,13 @@
                                             <div class="min-h-0 flex-1 overflow-y-auto p-6">
                                                 @include('subscriber.partials.pay-steps', ['active' => 2])
                                                 <h3 class="text-lg font-bold text-slate-900">Fatura bilgileri</h3>
-                                                <p class="mt-2 text-sm text-slate-600">Bu siparişte kullanılacak fatura profilini seçin veya yeni bir profil oluşturun.</p>
                                                 @include('subscriber.partials.billing-profile-picker', [
                                                     'profiles' => $billingProfiles,
                                                     'selectedId' => $billingMode === 'new' ? null : $selectedBillingProfileId,
                                                     'mode' => $billingMode,
                                                     'embedded' => true,
                                                 ])
-                                                <p data-pay-billing-error class="mt-2 hidden text-sm text-red-600" hidden>Devam etmek için bir fatura profili seçin veya yeni profilin adını ve türünü girin.</p>
+                                                <p data-pay-billing-error class="mt-2 hidden text-sm text-red-600" hidden>Devam etmek için fatura alanlarını doldurun.</p>
                                             </div>
                                             <div class="flex shrink-0 justify-between gap-3 border-t border-slate-200 px-6 py-4">
                                                 <button type="button" onclick="return payStep(this, 'close')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>

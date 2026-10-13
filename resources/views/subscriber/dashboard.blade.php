@@ -3,9 +3,25 @@
 @section('title', 'Abone Paneli')
 
 @section('content')
-    <div class="mb-6">
-        <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">Abone Paneli</h1>
-        <p class="mt-1 text-sm text-slate-500">Apartmanlarınızın kullanım durumu ve şu anda yapmanız gereken işlem burada.</p>
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">Abone Paneli</h1>
+            <p class="mt-1 text-sm text-slate-500">Apartmanlarınızın kullanım durumu ve şu anda yapmanız gereken işlem burada.</p>
+            @if ($apartmentLimit !== null && ! $canCreateApartment)
+                <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Apartman açma hakkınız {{ $apartmentCount }}/{{ $apartmentLimit }} dir. Tanımlı limitinize ulaştınız.
+                    <span class="mt-1 block">Daha fazla apartman yönetimi için AidatCep ile iletişime geçin.</span>
+                </div>
+            @elseif ($apartmentLimit !== null && $canCreateApartment)
+                <div class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                    Apartman açma hakkınız {{ $apartmentCount }}/{{ $apartmentLimit }} dir. Yeni apartman oluşturabilirsiniz.
+                    <a href="{{ route('subscriber.apartments.create') }}" class="font-semibold text-emerald-800 underline">+ Yeni Apartman Oluştur</a>
+                </div>
+            @endif
+        </div>
+        @if ($apartmentLimit === null)
+            <a href="{{ route('subscriber.apartments.create') }}" class="inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Yeni Apartman Oluştur</a>
+        @endif
     </div>
 
     @if ($apartments->count() === 0)
@@ -28,6 +44,6 @@
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Henüz apartman yok.</div>
     @else
-        @include('subscriber.partials.apartment-cards', ['showDetails' => false])
+        @include('subscriber.partials.apartment-cards', ['showDetails' => true])
     @endif
 @endsection

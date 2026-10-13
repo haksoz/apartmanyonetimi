@@ -1,4 +1,4 @@
-<details class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+<details class="rounded-xl border border-slate-200 bg-slate-50 p-4" @if (! empty($open)) open @endif>
     <summary class="cursor-pointer text-sm font-semibold text-emerald-700">Onayla veya reddet</summary>
     <div class="mt-4 grid gap-4 lg:grid-cols-2">
         <form method="POST" action="{{ route('admin.managers.subscription.approve', [$manager, $subscription]) }}" class="space-y-3">

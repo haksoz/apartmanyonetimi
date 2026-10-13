@@ -16,7 +16,7 @@
         <div class="max-w-2xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             {{ \App\Support\UserApartmentQuota::LIMIT_MESSAGE }}
         </div>
-        <a href="{{ request()->routeIs('subscriber.*') ? route('subscriber.apartments.index') : route('apartments.index') }}" class="mt-4 inline-flex rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Geri dön</a>
+        <a href="{{ request()->routeIs('subscriber.*') ? route('subscriber.dashboard') : route('apartments.index') }}" class="mt-4 inline-flex rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Geri dön</a>
     @else
     <form method="POST" action="{{ request()->routeIs('subscriber.*') ? route('subscriber.apartments.store') : route('apartments.store') }}" class="max-w-2xl rounded-2xl bg-white p-4 shadow-sm sm:p-5">
         @csrf

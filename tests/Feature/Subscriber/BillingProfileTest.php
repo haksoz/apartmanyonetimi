@@ -200,7 +200,7 @@ class BillingProfileTest extends TestCase
         $this->assertSame(0, UserSubscription::query()->count());
     }
 
-    public function test_subscriber_can_keep_a_profile_with_only_a_name_and_type(): void
+    public function test_subscriber_can_keep_an_individual_profile(): void
     {
         $ahmet = User::factory()->create(['name' => 'Ahmet']);
         $other = User::factory()->create(['name' => 'Başka']);
@@ -209,13 +209,16 @@ class BillingProfileTest extends TestCase
             ->post(route('subscriber.billing-profiles.store'), [
                 'label' => 'Kendi adıma',
                 'party_type' => BillingProfile::TYPE_INDIVIDUAL,
+                'legal_name' => 'Ahmet Yılmaz',
+                'address' => 'Örnek Mah. No 1',
+                'identity_number' => '12345678901',
             ])
             ->assertRedirect(route('subscriber.billing-profiles.index'));
 
         $profile = BillingProfile::query()->firstOrFail();
         $this->assertSame($ahmet->id, $profile->user_id);
-        $this->assertNull($profile->legal_name);
-        $this->assertNull($profile->identity_number);
+        $this->assertSame('Ahmet Yılmaz', $profile->legal_name);
+        $this->assertSame('12345678901', $profile->identity_number);
         $this->assertNull($profile->tax_office);
         $this->assertTrue($profile->is_active);
 

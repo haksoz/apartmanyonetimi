@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\UserQuotaOverride;
 use App\Support\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -101,6 +102,11 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role' => 'manager',
+        ]);
+
+        UserQuotaOverride::query()->create([
+            'user_id' => $user->id,
+            'max_apartments' => 1,
         ]);
 
         app(LegalConsent::class)->recordMembership($user, $request);

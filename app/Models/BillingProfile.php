@@ -44,9 +44,22 @@ class BillingProfile extends Model
     public static function partyTypes(): array
     {
         return [
-            self::TYPE_INDIVIDUAL => 'Kişi',
-            self::TYPE_CORPORATE => 'Kurum',
+            self::TYPE_INDIVIDUAL => 'Bireysel',
+            self::TYPE_CORPORATE => 'Kurumsal',
             self::TYPE_OTHER => 'Diğer',
+        ];
+    }
+
+    /**
+     * Yeni kayıtta seçilebilen türler. Eski "Diğer" kayıtları görüntülenmeye devam eder.
+     *
+     * @return array<string, string>
+     */
+    public static function selectablePartyTypes(): array
+    {
+        return [
+            self::TYPE_INDIVIDUAL => 'Bireysel',
+            self::TYPE_CORPORATE => 'Kurumsal',
         ];
     }
 
@@ -67,15 +80,15 @@ class BillingProfile extends Model
         return [
             'label' => ['required', 'string', 'max:255'],
             'party_type' => ['required', 'string', 'max:32', Rule::in(array_keys(static::partyTypes()))],
-            'legal_name' => ['nullable', 'string', 'max:255'],
-            'identity_number' => ['nullable', 'string', 'max:64'],
-            'tax_office' => ['nullable', 'string', 'max:255'],
+            'legal_name' => ['nullable', 'string', 'max:255', Rule::requiredIf(fn () => in_array(request('party_type'), [self::TYPE_INDIVIDUAL, self::TYPE_CORPORATE], true))],
+            'identity_number' => ['nullable', 'string', 'max:64', Rule::requiredIf(fn () => in_array(request('party_type'), [self::TYPE_INDIVIDUAL, self::TYPE_CORPORATE], true))],
+            'tax_office' => ['nullable', 'string', 'max:255', Rule::requiredIf(fn () => request('party_type') === self::TYPE_CORPORATE)],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:64'],
             'province' => ['nullable', 'string', 'max:255'],
             'district' => ['nullable', 'string', 'max:255'],
-            'address' => ['nullable', 'string', 'max:1000'],
+            'address' => ['nullable', 'string', 'max:1000', Rule::requiredIf(fn () => in_array(request('party_type'), [self::TYPE_INDIVIDUAL, self::TYPE_CORPORATE], true))],
             'postal_code' => ['nullable', 'string', 'max:32'],
         ];
     }

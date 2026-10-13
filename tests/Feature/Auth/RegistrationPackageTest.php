@@ -46,5 +46,9 @@ class RegistrationPackageTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('user_subscriptions', 0);
+        $this->assertDatabaseHas('user_quota_overrides', [
+            'user_id' => \App\Models\User::query()->where('email', 'manager@example.com')->value('id'),
+            'max_apartments' => 1,
+        ]);
     }
 }

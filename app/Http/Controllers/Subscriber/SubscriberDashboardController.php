@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\CurrentApartment;
 use App\Support\PriceQuote;
 use App\Support\SubscriberApartmentOverview;
+use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 
 class SubscriberDashboardController extends Controller
@@ -23,7 +24,17 @@ class SubscriberDashboardController extends Controller
         }
 
         $overview->decorate($apartments, $user, $prices);
+        $quota = app(UserApartmentQuota::class);
+        $apartmentLimit = $quota->definedLimit($user);
+        $apartmentCount = $apartmentLimit === null ? null : $quota->currentCount($user);
+        $canCreateApartment = $quota->canCreate($user);
 
-        return view('subscriber.dashboard', compact('apartments', 'currentApartmentModel'));
+        return view('subscriber.dashboard', compact(
+            'apartments',
+            'currentApartmentModel',
+            'apartmentLimit',
+            'apartmentCount',
+            'canCreateApartment',
+        ));
     }
 }
