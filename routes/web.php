@@ -259,6 +259,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::delete('orders/{order}/payments/{payment}', [AdminOrderController::class, 'destroyPayment'])->name('orders.payments.destroy');
+    Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::get('subscriptions/{subscription}', [AdminSubscriptionItemController::class, 'subscription'])->name('subscriptions.show');
     Route::get('subscription-items/{subscriptionItem}', [AdminSubscriptionItemController::class, 'show'])->name('subscription-items.show');
     Route::get('managers/{manager}', [AdminManagerController::class, 'show'])->name('managers.show');

@@ -520,6 +520,57 @@ class OrderManagementTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_admin_soft_deletes_a_payment_before_the_order(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $payer = User::factory()->create();
+        $order = UserSubscription::factory()->create([
+            'user_id' => $payer->id,
+            'order_number' => 'SIP-26-000777',
+            'status' => UserSubscription::STATUS_ACTIVE,
+        ]);
+        $payment = SubscriptionPayment::create([
+            'subscription_id' => $order->id,
+            'amount' => 300,
+            'payment_date' => '2026-09-25',
+            'payment_method' => 'havale',
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.orders.show', $order))
+            ->delete(route('admin.orders.destroy', $order), [
+                'current_password' => 'password',
+            ])
+            ->assertSessionHasErrors('order');
+        $this->assertNull($order->fresh()->deleted_at);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.orders.payments.destroy', [$order, $payment]), [
+                'current_password' => 'yanlis-parola',
+            ])
+            ->assertSessionHasErrors('current_password');
+        $this->assertNull($payment->fresh()->deleted_at);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.orders.payments.destroy', [$order, $payment]), [
+                'current_password' => 'password',
+            ])
+            ->assertRedirect(route('admin.orders.show', $order));
+        $this->assertNotNull($payment->fresh()->deleted_at);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.orders.destroy', $order), [
+                'current_password' => 'password',
+            ])
+            ->assertRedirect(route('admin.orders.index'));
+
+        $this->assertNotNull(UserSubscription::withTrashed()->find($order->id)->deleted_at);
+        $this->actingAs($admin)
+            ->get(route('admin.orders.index'))
+            ->assertOk()
+            ->assertSee('Sipariş yok');
+    }
+
     private function subscription(Apartment $apartment, string $number, string $startedAt = '2026-10-04 09:00:00'): Subscription
     {
         return Subscription::create([

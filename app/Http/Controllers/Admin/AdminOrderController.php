@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\SubscriptionPayment;
 use App\Models\UserSubscription;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class AdminOrderController extends Controller
 {
@@ -81,5 +83,42 @@ class AdminOrderController extends Controller
         ]);
 
         return view('admin.orders.show', compact('order'));
+    }
+
+    public function destroy(Request $request, UserSubscription $order)
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'purge_order_action' => ['nullable', 'string'],
+        ]);
+
+        if ($order->payments()->exists()) {
+            throw ValidationException::withMessages([
+                'order' => 'Bu siparişe bağlı ödeme var. Önce ödemeyi silin.',
+            ]);
+        }
+
+        $number = $order->order_number ?: 'Sipariş';
+        $order->delete();
+
+        return redirect()
+            ->route('admin.orders.index')
+            ->with('status', $number.' pasif silindi.');
+    }
+
+    public function destroyPayment(Request $request, UserSubscription $order, SubscriptionPayment $payment)
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'purge_payment_action' => ['nullable', 'string'],
+        ]);
+
+        abort_unless((int) $payment->subscription_id === (int) $order->id, 404);
+
+        $payment->delete();
+
+        return redirect()
+            ->route('admin.orders.show', $order)
+            ->with('status', 'Ödeme pasif silindi.');
     }
 }

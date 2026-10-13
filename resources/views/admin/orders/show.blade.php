@@ -54,8 +54,12 @@
         };
     @endphp
 
-    <div class="mb-6">
-        <a href="{{ route('admin.orders.index') }}" class="text-sm font-semibold text-amber-700 hover:text-amber-800">← Siparişlere dön</a>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <a href="{{ route('admin.orders.index') }}" class="text-sm font-semibold text-amber-700 hover:text-amber-800">← Siparişlere dön</a>
+            <h1 class="mt-2 text-2xl font-bold text-slate-900">Sipariş Detayı</h1>
+        </div>
+        <button type="button" onclick="document.getElementById('purge-order-modal').classList.remove('hidden')" class="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Siparişi pasif sil</button>
     </div>
 
     <section class="rounded-xl border border-slate-200 bg-white p-6">
@@ -226,10 +230,64 @@
                             @if ($payment->notes)
                                 <p class="mt-3 text-sm text-slate-600">{{ $payment->notes }}</p>
                             @endif
+                            <button type="button" onclick="openPurgePayment(@js(route('admin.orders.payments.destroy', [$order, $payment])))" class="mt-3 text-sm font-semibold text-red-700 hover:text-red-800">Ödemeyi pasif sil</button>
                         </article>
                     @endforeach
                 </div>
             @endif
         </div>
     </details>
+
+    <div id="purge-order-modal" @class([
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',
+        'hidden' => ! $errors->has('order') && ! ($errors->has('current_password') && ! old('purge_payment_action')),
+    ])>
+        <form method="POST" action="{{ route('admin.orders.destroy', $order) }}" class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true">
+            @csrf
+            @method('DELETE')
+            <h2 class="text-lg font-bold text-slate-900">Siparişi pasif sil</h2>
+            <p class="mt-2 text-sm text-slate-600">{{ $order->order_number ?: 'Sipariş' }} listeden kalkar. Bağlı ödeme varsa önce ödeme silinir.</p>
+            <label class="mt-4 block text-sm font-medium text-slate-700">
+                Kendi parolanız
+                <input type="password" name="current_password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                @error('current_password')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+                @error('order')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+            </label>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('purge-order-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                <button type="submit" class="rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">Pasif sil</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="purge-payment-modal" @class([
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',
+        'hidden' => ! old('purge_payment_action'),
+    ])>
+        <form method="POST" action="{{ old('purge_payment_action', '#') }}" class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true">
+            @csrf
+            @method('DELETE')
+            <input type="hidden" name="purge_payment_action" value="{{ old('purge_payment_action') }}">
+            <h2 class="text-lg font-bold text-slate-900">Ödemeyi pasif sil</h2>
+            <p class="mt-2 text-sm text-slate-600">Ödeme listeden kalkar. Kayıt veritabanında durur.</p>
+            <label class="mt-4 block text-sm font-medium text-slate-700">
+                Kendi parolanız
+                <input type="password" name="current_password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                @error('current_password')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+            </label>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('purge-payment-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                <button type="submit" class="rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">Pasif sil</button>
+            </div>
+        </form>
+    </div>
+    <script>
+        function openPurgePayment(action) {
+            const modal = document.getElementById('purge-payment-modal');
+            const form = modal.querySelector('form');
+            form.action = action;
+            form.querySelector('input[name="purge_payment_action"]').value = action;
+            modal.classList.remove('hidden');
+        }
+    </script>
 @endsection

@@ -63,6 +63,8 @@
                     {{ $order->billing_legal_name ?: ($order->billing_label ?: '—') }}
                     <span class="text-slate-300"> · </span>
                     <a href="{{ route('admin.orders.show', $order) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">Detay</a>
+                    <span class="text-slate-300"> · </span>
+                    <button type="button" onclick="openPurgeOrder(@js(route('admin.orders.destroy', $order)), @js($order->order_number ?: 'Sipariş'))" class="font-semibold text-red-700 hover:text-red-800">Pasif sil</button>
                 </p>
                 <div class="mt-1 flex flex-wrap gap-2">
                     @include('admin.orders.partials.badges', ['order' => $order])
@@ -127,6 +129,7 @@
                         <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $order->created_at?->format('d.m.Y') ?? '—' }}</td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('admin.orders.show', $order) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
+                            <button type="button" onclick="openPurgeOrder(@js(route('admin.orders.destroy', $order)), @js($order->order_number ?: 'Sipariş'))" class="ml-3 text-sm font-semibold text-red-700 hover:text-red-800">Pasif sil</button>
                         </td>
                     </tr>
                 @empty
@@ -139,4 +142,37 @@
     </div>
 
     <div class="mt-6">{{ $orders->links() }}</div>
+
+    <div id="purge-order-modal" @class([
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',
+        'hidden' => ! $errors->has('current_password') && ! $errors->has('order'),
+    ])>
+        <form method="POST" action="{{ old('purge_order_action', '#') }}" class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true">
+            @csrf
+            @method('DELETE')
+            <input type="hidden" name="purge_order_action" value="{{ old('purge_order_action') }}">
+            <h2 class="text-lg font-bold text-slate-900">Siparişi pasif sil</h2>
+            <p id="purge-order-copy" class="mt-2 text-sm text-slate-600">Sipariş listeden kalkar. Kayıt veritabanında durur.</p>
+            <label class="mt-4 block text-sm font-medium text-slate-700">
+                Kendi parolanız
+                <input type="password" name="current_password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                @error('current_password')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+                @error('order')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+            </label>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('purge-order-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                <button type="submit" class="rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">Pasif sil</button>
+            </div>
+        </form>
+    </div>
+    <script>
+        function openPurgeOrder(action, number) {
+            const modal = document.getElementById('purge-order-modal');
+            const form = modal.querySelector('form');
+            form.action = action;
+            form.querySelector('input[name="purge_order_action"]').value = action;
+            document.getElementById('purge-order-copy').textContent = number + ' listeden kalkar. Bağlı ödeme varsa önce ödeme silinir. Kayıt veritabanında durur.';
+            modal.classList.remove('hidden');
+        }
+    </script>
 @endsection
