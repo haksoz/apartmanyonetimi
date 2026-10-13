@@ -48,7 +48,7 @@ class AdminSubscriptionItemController extends Controller
 
     private function viewData(?Subscription $record, ?SubscriptionItem $opened): array
     {
-        $period = $record?->currentItem() ?? $opened;
+        $period = $record?->currentItem() ?? $opened ?? $record?->historyItems()->first();
 
         return [
             'item' => $opened ?? $period,

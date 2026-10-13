@@ -3,6 +3,7 @@
     $payer = $currentOrder?->user;
     $owners = $record->apartment?->members ?? $period?->apartment?->members ?? collect();
     $apartmentName = $record->apartment?->name
+        ?? $record->apartment_name
         ?? $period?->apartment?->name
         ?? $period?->apartment_name
         ?? '—';

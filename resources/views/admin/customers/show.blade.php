@@ -51,8 +51,27 @@
         <div>
             <p class="text-xs font-semibold uppercase tracking-wide text-sky-700">Müşteri</p>
             <h1 class="mt-1 text-2xl font-bold text-slate-900">{{ $customer->name ?: '—' }}</h1>
+            @if ($customer->deactivated_at)
+                <p class="mt-1 text-sm font-semibold text-slate-500">Pasif</p>
+            @endif
         </div>
-        <a href="{{ route('admin.customers.index') }}" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">← Müşterilere dön</a>
+        <div class="flex flex-wrap items-center gap-2">
+            @if ($customer->deactivated_at)
+                <form method="POST" action="{{ route('admin.customers.activate', $customer) }}">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Tekrar aktifleştir</button>
+                </form>
+            @else
+                <form method="POST" action="{{ route('admin.customers.deactivate', $customer) }}">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Pasife al</button>
+                </form>
+            @endif
+            <button type="button" onclick="document.getElementById('purge-customer-modal').classList.remove('hidden')" class="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Müşteriyi kalıcı sil</button>
+            <a href="{{ route('admin.customers.index') }}" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">← Müşterilere dön</a>
+        </div>
     </div>
 
     <section class="rounded-xl border border-slate-200 bg-white p-6">
@@ -149,6 +168,10 @@
                         {{ $periodText($period) }}
                         <span class="text-slate-300"> · </span>
                         <a href="{{ route('apartments.show', $apartment) }}" class="font-semibold text-slate-700 hover:text-slate-900">Apartman</a>
+                        @unless ($apartment->is_active)
+                            <span class="text-slate-300"> · </span>
+                            <button type="button" onclick="openPurgeApartment(@js(route('admin.customers.apartments.destroy', [$customer, $apartment])), @js($apartment->name))" class="font-semibold text-red-700 hover:text-red-800">Kalıcı sil</button>
+                        @endunless
                         @if ($record)
                             <span class="text-slate-300"> · </span>
                             <a href="{{ route('admin.subscriptions.show', $record) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">Detay</a>
@@ -203,6 +226,9 @@
                             <td class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap justify-end gap-3">
                                     <a href="{{ route('apartments.show', $apartment) }}" class="text-sm font-semibold text-slate-600 hover:text-slate-800">Apartman</a>
+                                    @unless ($apartment->is_active)
+                                        <button type="button" onclick="openPurgeApartment(@js(route('admin.customers.apartments.destroy', [$customer, $apartment])), @js($apartment->name))" class="text-sm font-semibold text-red-700 hover:text-red-800">Kalıcı sil</button>
+                                    @endunless
                                     @if ($record)
                                         <a href="{{ route('admin.subscriptions.show', $record) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
                                     @endif
@@ -224,11 +250,11 @@
         <div class="mt-3 space-y-2 md:hidden">
             @forelse ($subscriptions as $record)
                 @php
-                    $period = $record->currentItem();
+                    $period = $record->displayItem();
                 @endphp
                 <article class="rounded-xl border border-slate-200 bg-white px-3 py-2">
                     <div class="flex flex-wrap items-baseline gap-2">
-                        <p class="font-semibold text-slate-900">{{ $record->apartment?->name ?: '—' }}</p>
+                        <p class="font-semibold text-slate-900">{{ $record->displayApartmentName() }}</p>
                         <p class="text-sm text-slate-600">{{ $record->subscription_no ?: '—' }}</p>
                     </div>
                     <p class="mt-1 text-sm text-slate-600">
@@ -259,11 +285,11 @@
                 <tbody class="divide-y divide-slate-200">
                     @forelse ($subscriptions as $record)
                         @php
-                            $period = $record->currentItem();
+                            $period = $record->displayItem();
                         @endphp
                         <tr class="hover:bg-slate-50">
                             <td class="px-4 py-3">
-                                <div class="font-medium text-slate-900">{{ $record->apartment?->name ?: '—' }}</div>
+                                <div class="font-medium text-slate-900">{{ $record->displayApartmentName() }}</div>
                                 <div class="text-xs text-slate-500">{{ $record->subscription_no ?: '—' }}</div>
                             </td>
                             <td class="px-4 py-3">
@@ -476,6 +502,58 @@
             </div>
         </form>
     </div>
+    <div id="purge-customer-modal" @class([
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',
+        'hidden' => ! $errors->has('current_password') || old('purge_apartment_id'),
+    ])>
+        <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}" class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="purge-customer-title">
+            @csrf
+            @method('DELETE')
+            <h2 id="purge-customer-title" class="text-lg font-bold text-slate-900">Müşteriyi kalıcı sil</h2>
+            <p class="mt-2 text-sm text-slate-600">{{ $customer->name }} hesabı, sahip olduğu apartmanlar, siparişler ve ödemeler silinir.</p>
+            <label class="mt-4 block text-sm font-medium text-slate-700">
+                Kendi parolanız
+                <input type="password" name="current_password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                @error('current_password')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+            </label>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('purge-customer-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                <button type="submit" class="rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">Kalıcı sil</button>
+            </div>
+        </form>
+    </div>
+    <div id="purge-apartment-modal" @class([
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',
+        'hidden' => ! (( $errors->has('current_password') && old('purge_apartment_id')) || $errors->has('apartment')),
+    ])>
+        <form method="POST" action="{{ old('purge_apartment_id') ? route('admin.customers.apartments.destroy', [$customer, old('purge_apartment_id')]) : '#' }}" class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="purge-apartment-title">
+            @csrf
+            @method('DELETE')
+            <input type="hidden" name="purge_apartment_id" value="{{ old('purge_apartment_id') }}">
+            <h2 id="purge-apartment-title" class="text-lg font-bold text-slate-900">Apartmanı kalıcı sil</h2>
+            <p id="purge-apartment-copy" class="mt-2 text-sm text-slate-600">Pasif apartmanın daire, aidat ve kasa kayıtları silinir. Sipariş ve ödemeler kalır.</p>
+            <label class="mt-4 block text-sm font-medium text-slate-700">
+                Kendi parolanız
+                <input type="password" name="current_password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                @error('current_password')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+                @error('apartment')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+            </label>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('purge-apartment-modal').classList.add('hidden')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                <button type="submit" class="rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">Kalıcı sil</button>
+            </div>
+        </form>
+    </div>
+    <script>
+        function openPurgeApartment(action, name) {
+            const modal = document.getElementById('purge-apartment-modal');
+            const form = modal.querySelector('form');
+            form.action = action;
+            form.querySelector('input[name="purge_apartment_id"]').value = action.split('/').filter(Boolean).pop();
+            document.getElementById('purge-apartment-copy').textContent = name + ' apartmanının daire, aidat ve kasa kayıtları silinir. Sipariş ve ödemeler kalır.';
+            modal.classList.remove('hidden');
+        }
+    </script>
     <script>
         document.getElementById('customer-password-modal')?.addEventListener('click', function (event) {
             if (event.target === this) {

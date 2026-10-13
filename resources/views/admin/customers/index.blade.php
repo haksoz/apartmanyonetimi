@@ -25,6 +25,9 @@
             <article class="rounded-xl border border-slate-200 bg-white px-3 py-2">
                 <div class="flex flex-wrap items-baseline gap-2">
                     <p class="font-semibold text-slate-900">{{ $customer->name ?: '—' }}</p>
+                    @if ($customer->deactivated_at)
+                        <p class="text-xs font-semibold text-slate-500">Pasif</p>
+                    @endif
                     <p class="text-sm text-slate-600">{{ $customer->email ?: '—' }}</p>
                     @if ($customer->phone)
                         <p class="text-sm text-slate-600">{{ $customer->phone }}</p>
@@ -68,6 +71,9 @@
                         <td class="px-4 py-3">
                             <div class="font-medium text-slate-900">{{ $customer->name ?: '—' }}</div>
                             <div class="text-xs text-slate-500">{{ $customer->email ?: '—' }}</div>
+                            @if ($customer->deactivated_at)
+                                <div class="mt-1 text-xs font-semibold text-slate-500">Pasif</div>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-slate-700">{{ $customer->phone ?: '-' }}</td>
                         <td class="px-4 py-3 text-slate-700">{{ $customer->active_apartment_count }} / {{ $customer->quotaOverride?->max_apartments ?? 'sınırsız' }}</td>

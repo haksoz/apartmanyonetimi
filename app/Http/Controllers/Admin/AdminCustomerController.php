@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Apartment;
 use App\Models\ApartmentDataOperation;
 use App\Models\Subscription;
+use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserQuotaOverride;
 use App\Models\UserSubscription;
 use App\Support\UserApartmentQuota;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AdminCustomerController extends Controller
 {
@@ -110,6 +114,85 @@ class AdminCustomerController extends Controller
             ->with('status', 'Parola güncellendi.');
     }
 
+    public function deactivate(User $customer)
+    {
+        $this->ensureCustomer($customer);
+
+        $customer->update(['deactivated_at' => now()]);
+
+        return redirect()
+            ->route('admin.customers.show', $customer)
+            ->with('status', 'Müşteri pasife alındı.');
+    }
+
+    public function activate(User $customer)
+    {
+        $this->ensureCustomer($customer);
+
+        $customer->update(['deactivated_at' => null]);
+
+        return redirect()
+            ->route('admin.customers.show', $customer)
+            ->with('status', 'Müşteri tekrar aktifleştirildi.');
+    }
+
+    public function destroy(Request $request, User $customer)
+    {
+        $this->ensureCustomer($customer);
+
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+        ]);
+
+        $name = $customer->name;
+
+        DB::transaction(function () use ($customer) {
+            Apartment::query()
+                ->where('user_id', $customer->id)
+                ->get()
+                ->each(function (Apartment $apartment) {
+                    $this->endSubscriptions($apartment, null);
+                    $apartment->forceDelete();
+                });
+
+            $customer->delete();
+        });
+
+        return redirect()
+            ->route('admin.customers.index')
+            ->with('status', $name.' ve bağlı kayıtları silindi.');
+    }
+
+    public function destroyApartment(Request $request, User $customer, Apartment $apartment)
+    {
+        $this->ensureCustomer($customer);
+
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'purge_apartment_id' => ['nullable', 'integer'],
+        ]);
+
+        $isMember = $apartment->members()
+            ->whereKey($customer->id)
+            ->where('apartment_user.is_active', true)
+            ->exists();
+
+        if (! $isMember || $apartment->is_active) {
+            throw ValidationException::withMessages([
+                'apartment' => 'Yalnızca bu müşteriye bağlı pasif apartman silinebilir.',
+            ]);
+        }
+
+        DB::transaction(function () use ($customer, $apartment) {
+            $this->endSubscriptions($apartment, $customer->id);
+            $apartment->forceDelete();
+        });
+
+        return redirect()
+            ->route('admin.customers.show', $customer)
+            ->with('status', 'Pasif apartman ve işletme kayıtları silindi. Sipariş ve ödemeler duruyor.');
+    }
+
     public function show(User $customer)
     {
         $this->ensureCustomer($customer);
@@ -198,6 +281,28 @@ class AdminCustomerController extends Controller
         ));
     }
 
+    private function endSubscriptions(Apartment $apartment, ?int $retainedUserId): void
+    {
+        Subscription::query()
+            ->where('apartment_id', $apartment->id)
+            ->get()
+            ->each(function (Subscription $subscription) use ($apartment, $retainedUserId) {
+                $subscription->update([
+                    'apartment_name' => $apartment->name,
+                    'retained_user_id' => $retainedUserId,
+                    'status' => Subscription::STATUS_ENDED,
+                    'ended_at' => now(),
+                ]);
+
+                $subscription->items()
+                    ->whereIn('status', [SubscriptionItem::STATUS_ACTIVE, SubscriptionItem::STATUS_PENDING])
+                    ->update([
+                        'status' => SubscriptionItem::STATUS_CANCELLED,
+                        'ended_at' => now(),
+                    ]);
+            });
+    }
+
     private function ensureCustomer(User $customer): void
     {
         abort_if($customer->isAdminPanelUser(), 404);
@@ -252,6 +357,8 @@ class AdminCustomerController extends Controller
                 ->join('user_subscriptions as customer_orders', 'customer_orders.id', '=', 'subscription_items.subscription_id')
                 ->whereColumn('subscription_items.apartment_subscription_id', 'subscriptions.id');
             $matchUser($query, 'customer_orders.user_id');
+        })->orWhere(function ($query) use ($matchUser) {
+            $matchUser($query, 'subscriptions.retained_user_id');
         });
     }
 }

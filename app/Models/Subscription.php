@@ -26,6 +26,8 @@ class Subscription extends Model
         'uuid',
         'subscription_no',
         'apartment_id',
+        'apartment_name',
+        'retained_user_id',
         'billing_profile_id',
         'status',
         'started_at',
@@ -46,6 +48,10 @@ class Subscription extends Model
 
             if (! $subscription->subscription_no) {
                 $subscription->subscription_no = static::nextNumber();
+            }
+
+            if (! $subscription->apartment_name && $subscription->apartment_id) {
+                $subscription->apartment_name = Apartment::query()->whereKey($subscription->apartment_id)->value('name');
             }
         });
     }
@@ -74,6 +80,24 @@ class Subscription extends Model
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
+    }
+
+    public function retainedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'retained_user_id');
+    }
+
+    public function displayApartmentName(): string
+    {
+        return $this->apartment?->name
+            ?: $this->apartment_name
+            ?: $this->historyItems()->first()?->apartment_name
+            ?: '—';
+    }
+
+    public function displayItem(): ?SubscriptionItem
+    {
+        return $this->currentItem() ?: $this->historyItems()->first();
     }
 
     public function billingProfile(): BelongsTo

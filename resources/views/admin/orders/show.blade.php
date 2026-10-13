@@ -46,7 +46,7 @@
         $summaryPeriod = $order->items->isEmpty() ? '—' : ($periods->count() === 1 ? $periods->first() : 'Birden fazla dönem');
         $summaryApartment = $apartmentNames->isNotEmpty()
             ? $apartmentNames->join(', ')
-            : ($linkedSubscription?->apartment?->name ?: '—');
+            : ($linkedSubscription?->displayApartmentName() ?: '—');
         $cycleLabel = match ($order->period) {
             \App\Models\UserSubscription::PERIOD_MONTHLY => 'Aylık',
             'yearly' => 'Yıllık',

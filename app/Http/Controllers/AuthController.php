@@ -28,6 +28,16 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
+        if ($request->user()->deactivated_at) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Bu hesap pasif.',
+            ])->onlyInput('email');
+        }
+
         $request->session()->regenerate();
 
         if ($request->user()->isAdmin()) {

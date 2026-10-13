@@ -3,9 +3,11 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Apartment;
+use App\Models\Due;
 use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\SubscriptionPayment;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\UserSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -558,6 +560,194 @@ class CustomerManagementTest extends TestCase
             ->assertForbidden();
 
         $this->assertNotSame('Yetkisiz', $customer->fresh()->name);
+    }
+
+    public function test_deactivated_customer_cannot_log_in_and_records_remain(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create([
+            'email' => 'pasif@example.com',
+            'password' => 'password',
+        ]);
+        $apartment = Apartment::factory()->forUser($customer)->create(['name' => 'Duracak Apartman']);
+        $order = $this->order($customer, ['order_number' => 'SIP-26-000111']);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.customers.deactivate', $customer))
+            ->assertRedirect(route('admin.customers.show', $customer));
+
+        $this->assertNotNull($customer->fresh()->deactivated_at);
+        $this->assertDatabaseHas('apartments', ['id' => $apartment->id]);
+        $this->assertDatabaseHas('user_subscriptions', ['id' => $order->id]);
+
+        $this->post(route('logout'));
+
+        $this->post('/login', [
+            'email' => 'pasif@example.com',
+            'password' => 'password',
+        ])->assertSessionHasErrors('email');
+        $this->assertGuest();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.customers.activate', $customer))
+            ->assertRedirect(route('admin.customers.show', $customer));
+
+        $this->assertNull($customer->fresh()->deactivated_at);
+    }
+
+    public function test_admin_permanently_deletes_a_customer_and_owned_records(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create(['name' => 'Silinecek Musteri']);
+        $other = User::factory()->create();
+        $owned = Apartment::factory()->forUser($customer)->create(['name' => 'Sahip Apartman']);
+        $shared = Apartment::factory()->forUser($other)->create(['name' => 'Baska Apartman']);
+        $this->member($customer, $owned);
+        $this->member($customer, $shared);
+        $record = $this->subscription($owned, 'ABN-26-000222');
+        $order = $this->order($customer, [
+            'subscription_id' => $record->id,
+            'order_number' => 'SIP-26-000222',
+        ]);
+        $payment = SubscriptionPayment::create([
+            'subscription_id' => $order->id,
+            'amount' => 150,
+            'payment_date' => '2026-09-25',
+            'payment_method' => 'havale',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.customers.destroy', $customer), [
+                'current_password' => 'yanlis-parola',
+            ])
+            ->assertSessionHasErrors('current_password');
+        $this->assertDatabaseHas('users', ['id' => $customer->id]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.customers.destroy', $admin), [
+                'current_password' => 'password',
+            ])
+            ->assertNotFound();
+
+        $this->actingAs($admin)
+            ->delete(route('admin.customers.destroy', $customer), [
+                'current_password' => 'password',
+            ])
+            ->assertRedirect(route('admin.customers.index'));
+
+        $this->assertDatabaseMissing('users', ['id' => $customer->id]);
+        $this->assertDatabaseMissing('apartments', ['id' => $owned->id]);
+        $this->assertDatabaseMissing('user_subscriptions', ['id' => $order->id]);
+        $this->assertDatabaseMissing('subscription_payments', ['id' => $payment->id]);
+        $this->assertDatabaseHas('apartments', ['id' => $shared->id]);
+        $this->assertDatabaseHas('subscriptions', [
+            'id' => $record->id,
+            'apartment_name' => 'Sahip Apartman',
+            'retained_user_id' => null,
+            'status' => Subscription::STATUS_ENDED,
+        ]);
+    }
+
+    public function test_admin_permanently_deletes_a_passive_apartment_and_keeps_orders(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create();
+        $apartment = Apartment::factory()->forUser($customer)->create([
+            'name' => 'Silinecek Apartman',
+            'is_active' => false,
+        ]);
+        $this->member($customer, $apartment);
+        $unit = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $due = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'due_type' => 'aidat',
+            'amount' => 100,
+            'remaining_amount' => 100,
+            'description' => 'Aidat',
+        ]);
+        $record = $this->subscription($apartment, 'ABN-26-000099');
+        $order = $this->order($customer, [
+            'subscription_id' => $record->id,
+            'order_number' => 'SIP-26-000099',
+            'price' => 300,
+        ]);
+        $item = $this->item($order, $apartment, [
+            'apartment_subscription_id' => $record->id,
+        ]);
+        $payment = SubscriptionPayment::create([
+            'subscription_id' => $order->id,
+            'amount' => 300,
+            'payment_date' => '2026-09-25',
+            'payment_method' => 'havale',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.customers.apartments.destroy', [$customer, $apartment]), [
+                'current_password' => 'password',
+                'purge_apartment_id' => $apartment->id,
+            ])
+            ->assertRedirect(route('admin.customers.show', $customer));
+
+        $this->assertDatabaseMissing('apartments', ['id' => $apartment->id]);
+        $this->assertDatabaseMissing('units', ['id' => $unit->id]);
+        $this->assertDatabaseMissing('dues', ['id' => $due->id]);
+        $this->assertDatabaseHas('user_subscriptions', ['id' => $order->id, 'order_number' => 'SIP-26-000099']);
+        $this->assertDatabaseHas('subscription_payments', ['id' => $payment->id, 'amount' => 300]);
+        $this->assertDatabaseHas('subscriptions', [
+            'id' => $record->id,
+            'subscription_no' => 'ABN-26-000099',
+            'apartment_id' => null,
+            'apartment_name' => 'Silinecek Apartman',
+            'retained_user_id' => $customer->id,
+            'status' => Subscription::STATUS_ENDED,
+        ]);
+        $this->assertSame(SubscriptionItem::STATUS_CANCELLED, $item->fresh()->status);
+        $this->assertSame('Silinecek Apartman', $item->fresh()->apartment_name);
+
+        $this->actingAs($admin)
+            ->get(route('admin.customers.show', $customer))
+            ->assertOk()
+            ->assertSee('Silinecek Apartman')
+            ->assertSee('ABN-26-000099')
+            ->assertSee('Sona erdi')
+            ->assertSee('SIP-26-000099');
+    }
+
+    public function test_active_apartment_and_wrong_password_are_not_deleted(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create();
+        $active = Apartment::factory()->forUser($customer)->create([
+            'name' => 'Aktif Apartman',
+            'is_active' => true,
+        ]);
+        $passive = Apartment::factory()->forUser($customer)->create([
+            'name' => 'Pasif Apartman',
+            'is_active' => false,
+        ]);
+        $this->member($customer, $active);
+        $this->member($customer, $passive);
+
+        $this->actingAs($admin)
+            ->from(route('admin.customers.show', $customer))
+            ->delete(route('admin.customers.apartments.destroy', [$customer, $active]), [
+                'current_password' => 'password',
+            ])
+            ->assertSessionHasErrors('apartment');
+
+        $this->actingAs($admin)
+            ->from(route('admin.customers.show', $customer))
+            ->delete(route('admin.customers.apartments.destroy', [$customer, $passive]), [
+                'current_password' => 'yanlis-parola',
+            ])
+            ->assertSessionHasErrors('current_password');
+
+        $this->assertDatabaseHas('apartments', ['id' => $active->id]);
+        $this->assertDatabaseHas('apartments', ['id' => $passive->id]);
     }
 
     private function member(User $user, Apartment $apartment): void

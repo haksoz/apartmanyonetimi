@@ -39,6 +39,7 @@
 
             return [
                 'apartment_name' => $subscription->apartment?->name
+                    ?? $subscription->apartment_name
                     ?? $current?->apartment?->name
                     ?? $current?->apartment_name
                     ?? '—',

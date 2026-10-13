@@ -252,6 +252,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('customers/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');
     Route::patch('customers/{customer}/quota', [AdminCustomerController::class, 'updateQuota'])->name('customers.quota.update');
     Route::patch('customers/{customer}/password', [AdminCustomerController::class, 'updatePassword'])->name('customers.password.update');
+    Route::patch('customers/{customer}/deactivate', [AdminCustomerController::class, 'deactivate'])->name('customers.deactivate');
+    Route::patch('customers/{customer}/activate', [AdminCustomerController::class, 'activate'])->name('customers.activate');
+    Route::delete('customers/{customer}/apartments/{apartment}', [AdminCustomerController::class, 'destroyApartment'])->name('customers.apartments.destroy');
+    Route::delete('customers/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
     Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
