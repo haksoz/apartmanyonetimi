@@ -7,7 +7,8 @@
 @section('content')
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-slate-950">Daire Bilgileri</h1>
-        <p class="mt-1 text-sm text-slate-500">Dairelere ait kat, blok, metrekare ve pay katsayısı bilgilerini girin. Bu adımı atlayabilirsiniz.</p>
+        <p class="mt-1 text-sm text-slate-500">Dairelere ait metrekare ve pay katsayısı bilgilerini girin. Bu adımı atlayabilirsiniz.</p>
+        <p class="mt-2 text-sm text-slate-500">Kat ve blok bilgileri daire özelliklerindedir; bunları daha sonra <a href="{{ route('units.index') }}" class="font-medium text-slate-800 underline">Daireler</a> sayfasından düzenleyebilirsiniz.</p>
     </div>
 
     <form method="POST" action="{{ route('apartments.wizard.units.store', $apartment) }}" class="rounded-2xl bg-white p-6 shadow-sm">
@@ -17,8 +18,6 @@
                 <thead class="bg-slate-50">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Daire No</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Kat</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Blok</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">m²</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Pay Katsayısı</th>
                     </tr>
@@ -27,12 +26,6 @@
                     @foreach ($units as $unit)
                         <tr>
                             <td class="px-4 py-3 font-medium text-slate-900">{{ $unit->unit_no }}</td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="units[{{ $unit->id }}][floor]" value="{{ old('units.'.$unit->id.'.floor', $unit->floor) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none">
-                            </td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="units[{{ $unit->id }}][block]" value="{{ old('units.'.$unit->id.'.block', $unit->block) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none">
-                            </td>
                             <td class="px-4 py-3">
                                 <input type="number" step="0.01" name="units[{{ $unit->id }}][square_meters]" value="{{ old('units.'.$unit->id.'.square_meters', $unit->square_meters) }}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none">
                             </td>

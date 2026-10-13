@@ -269,6 +269,47 @@ class AccountPageTest extends TestCase
         ]);
     }
 
+    public function test_updating_opening_date_moves_opening_balance_transaction(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'Enerji',
+            'account_opening_date' => '2026-01-01',
+        ]);
+        $opening = AccountTransaction::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'type' => 'debit',
+            'description' => 'Açılış bakiyesi',
+            'amount' => 250,
+            'transaction_date' => '2026-01-01',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->put(route('accounts.update', $account), [
+                'type' => Account::TYPE_SUPPLIER,
+                'name' => 'Enerji',
+                'account_opening_date' => '2026-03-15',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('accounts.show', $account));
+
+        $this->assertDatabaseHas('account_transactions', [
+            'id' => $opening->id,
+            'transaction_date' => '2026-03-15',
+            'amount' => 250,
+        ]);
+    }
+
     public function test_user_can_soft_delete_account(): void
     {
         $user = User::factory()->create();

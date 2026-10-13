@@ -118,8 +118,6 @@ class ApartmentWizardController extends Controller
 
         $validated = $request->validate([
             'units' => ['required', 'array'],
-            'units.*.floor' => ['nullable', 'string', 'max:50'],
-            'units.*.block' => ['nullable', 'string', 'max:50'],
             'units.*.square_meters' => ['nullable', 'numeric', 'min:0'],
             'units.*.share_coefficient' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -128,8 +126,6 @@ class ApartmentWizardController extends Controller
             Unit::where('id', $unitId)
                 ->where('apartment_id', $apartment->id)
                 ->update([
-                    'floor' => $data['floor'] ?? null,
-                    'block' => $data['block'] ?? null,
                     'square_meters' => $data['square_meters'] ?? null,
                     'share_coefficient' => $data['share_coefficient'] ?? null,
                 ]);

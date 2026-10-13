@@ -188,11 +188,18 @@ class CashBoxController extends Controller
 
     private function validateCashBox(Request $request, bool $withOpening = false): array
     {
+        $iban = strtoupper(preg_replace('/\s+/', '', trim((string) $request->input('iban', ''))) ?? '');
+        $request->merge(['iban' => $iban === '' ? null : $iban]);
+
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:255'],
-            'iban' => ['nullable', 'string', 'max:255'],
+            'iban' => ['nullable', 'string', 'max:34', function (string $attribute, mixed $value, \Closure $fail) {
+                if (! is_string($value) || ! $this->isValidIban($value)) {
+                    $fail('Geçerli bir IBAN girin.');
+                }
+            }],
             'account_number' => ['nullable', 'string', 'max:255'],
             'is_active' => ['nullable', 'boolean'],
         ];
@@ -210,6 +217,30 @@ class CashBoxController extends Controller
             'opening_side.in' => 'Açılış bakiyesi için giriş veya çıkış seçin.',
             'opening_date.required' => 'Açılış bakiyesi için açılış tarihi zorunludur.',
         ]);
+    }
+
+    private function isValidIban(string $iban): bool
+    {
+        if (! preg_match('/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/', $iban)) {
+            return false;
+        }
+
+        if (str_starts_with($iban, 'TR') && strlen($iban) !== 26) {
+            return false;
+        }
+
+        $rearranged = substr($iban, 4).substr($iban, 0, 4);
+        $numeric = '';
+        foreach (str_split($rearranged) as $char) {
+            $numeric .= ctype_alpha($char) ? (string) (ord($char) - 55) : $char;
+        }
+
+        $remainder = 0;
+        foreach (str_split($numeric, 7) as $chunk) {
+            $remainder = (int) (($remainder.$chunk) % 97);
+        }
+
+        return $remainder === 1;
     }
 
     private function postOpeningBalance(CashBox $cashBox, array $validated): void

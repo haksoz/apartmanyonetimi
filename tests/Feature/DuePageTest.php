@@ -431,12 +431,13 @@ class DuePageTest extends TestCase
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
+            ->from(route('dues.index'))
             ->post(route('dues.payment.store', $due), [
                 'cash_box_id' => $cashBox->id,
                 'amount' => 500,
                 'payment_date' => '2026-05-31',
             ])
-            ->assertRedirect(route('accounts.show', $account->id));
+            ->assertRedirect(route('dues.index'));
 
         $this->assertDatabaseHas('dues', [
             'id' => $due->id,

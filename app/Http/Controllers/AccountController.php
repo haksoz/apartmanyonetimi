@@ -144,6 +144,8 @@ class AccountController extends Controller
 
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
+            ->where('is_active', true)
+            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
             ->orderBy('name')
             ->get();
 
@@ -196,7 +198,7 @@ class AccountController extends Controller
                 'date',
                 Rule::requiredIf(fn () => abs((float) $request->input('balance', 0)) >= 0.01),
             ],
-            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)],
+            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])],
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
@@ -893,6 +895,13 @@ class AccountController extends Controller
             $updateData['email'] = $validated['email'] ?? null;
 
             $account->update($updateData);
+
+            if (! empty($validated['account_opening_date'])) {
+                $account->transactions()
+                    ->where('description', 'Açılış bakiyesi')
+                    ->whereNull('transactionable_type')
+                    ->update(['transaction_date' => $validated['account_opening_date']]);
+            }
 
             if ($account->type === Account::TYPE_TENANT && $account->unit_id) {
                 $isActive = $request->boolean('is_active');

@@ -275,7 +275,7 @@
                     </div>
 
                     <div>
-                        <label class="mb-2 block text-sm font-semibold text-slate-700">Varsayılan Kategori <span class="text-slate-400 font-normal">(opsiyonel)</span></label>
+                        <label class="mb-2 block text-sm font-semibold text-slate-700">Kategori <span class="font-normal text-slate-400">(opsiyonel)</span></label>
                         <select name="default_category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                             <option value="">Kategori seçin</option>
                             @foreach ($categories as $category)
@@ -286,31 +286,26 @@
 
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
-                            <label class="mb-2 block text-sm font-semibold text-slate-700">Telefon</label>
-                            <input type="text" name="phone" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="mb-2 block text-sm font-semibold text-slate-700">E-posta</label>
-                            <input type="email" name="email" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        </div>
-                    </div>
-
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
                             <label class="mb-2 block text-sm font-semibold text-slate-700">Açılış Tarihi</label>
-                            <input type="date" name="account_opening_date" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                            <input type="date" name="account_opening_date" value="{{ now()->toDateString() }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-semibold text-slate-700">Açılış Bakiyesi</label>
-                            <input type="number" name="balance" min="0" step="0.01" value="0" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                            <input type="number" id="supplier-balance" name="balance" min="0" step="0.01" value="0" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         </div>
-                        <div class="md:col-span-2">
-                            <label class="mb-2 block text-sm font-semibold text-slate-700">Açılış Yönü</label>
-                            <select name="opening_side" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                                <option value="">Tutar girilirse seçin</option>
-                                <option value="debit">Borç</option>
-                                <option value="credit">Alacak</option>
-                            </select>
+                    </div>
+
+                    <div id="supplier-opening-side" class="hidden">
+                        <p class="mb-2 text-sm font-semibold text-slate-700">Girilen bakiye borç mu, alacak mı?</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50">
+                                <input type="radio" name="opening_side" value="debit" class="h-4 w-4 accent-emerald-600">
+                                Borç
+                            </label>
+                            <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50">
+                                <input type="radio" name="opening_side" value="credit" class="h-4 w-4 accent-emerald-600">
+                                Alacak
+                            </label>
                         </div>
                     </div>
 
@@ -332,17 +327,32 @@
             const cancelBtn = document.getElementById('cancel-supplier');
             const supplierForm = document.getElementById('supplier-form');
             const accountSelect = document.getElementById('account_id');
+            const balanceInput = document.getElementById('supplier-balance');
+            const openingSide = document.getElementById('supplier-opening-side');
+
+            const syncOpeningSide = () => {
+                const hasBalance = Math.abs(parseFloat(balanceInput?.value || '0')) >= 0.01;
+                openingSide?.classList.toggle('hidden', !hasBalance);
+                openingSide?.querySelectorAll('input[name="opening_side"]').forEach((input) => {
+                    input.disabled = !hasBalance;
+                    if (!hasBalance) input.checked = false;
+                });
+            };
 
             const openModal = () => {
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+                syncOpeningSide();
             };
 
             const closeModal = () => {
                 modal.classList.add('hidden');
                 document.body.style.overflow = '';
                 supplierForm.reset();
+                syncOpeningSide();
             };
+
+            balanceInput?.addEventListener('input', syncOpeningSide);
 
             openBtn?.addEventListener('click', openModal);
             closeBtn?.addEventListener('click', closeModal);

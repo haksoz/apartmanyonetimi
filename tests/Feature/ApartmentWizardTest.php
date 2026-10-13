@@ -97,8 +97,8 @@ class ApartmentWizardTest extends TestCase
         $response = $this->actingAs($user)
             ->post(route('apartments.wizard.units.store', $apartment), [
                 'units' => [
-                    $unitOne->id => ['floor' => '1', 'block' => 'A', 'square_meters' => 100, 'share_coefficient' => 0.5],
-                    $unitTwo->id => ['floor' => '2', 'block' => 'B', 'square_meters' => 120, 'share_coefficient' => 0.6],
+                    $unitOne->id => ['square_meters' => 100, 'share_coefficient' => 0.5],
+                    $unitTwo->id => ['square_meters' => 120, 'share_coefficient' => 0.6],
                 ],
             ]);
 
@@ -108,8 +108,6 @@ class ApartmentWizardTest extends TestCase
 
         $this->assertDatabaseHas('units', [
             'id' => $unitOne->id,
-            'floor' => '1',
-            'block' => 'A',
             'square_meters' => 100,
             'share_coefficient' => 0.5,
         ]);

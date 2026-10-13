@@ -27,7 +27,7 @@
                 @error('type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
-            <div data-unit-field>
+            <div data-unit-field class="{{ old('type', $account?->type ?? 'owner') === 'supplier' ? 'hidden' : '' }}">
                 <label for="unit_id" class="mb-2 block text-sm font-medium text-slate-600">Daire Bağlantısı</label>
                 @if ($account && in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]))
                     <input type="hidden" name="unit_id" value="{{ $account->unit_id }}">
@@ -44,6 +44,17 @@
                     </select>
                 @endif
                 @error('unit_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
+            <div data-default-category-field class="{{ old('type', $account?->type ?? 'owner') === 'supplier' ? '' : 'hidden' }}">
+                <label for="default_category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="font-normal text-slate-400">(opsiyonel)</span></label>
+                <select id="default_category_id" name="default_category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <option value="">Kategori seçin</option>
+                    @foreach ($categories ?? [] as $category)
+                        <option value="{{ $category->id }}" @selected((string) old('default_category_id', $account?->default_category_id) === (string) $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+                @error('default_category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
             <div class="md:col-span-2">
@@ -76,9 +87,10 @@
                         'tenant'   => 'Kiracı Giriş Tarihi',
                         default    => 'Hesap Açılış Tarihi',
                     };
-                    $openingValue = $account?->type === 'tenant'
-                        ? old('account_opening_date', $activeTenantAssignment?->move_in_date?->format('Y-m-d') ?? $account?->account_opening_date?->format('Y-m-d'))
-                        : old('account_opening_date', $account?->account_opening_date?->format('Y-m-d'));
+                    $existingOpening = $account?->type === 'tenant'
+                        ? ($activeTenantAssignment?->move_in_date?->format('Y-m-d') ?? $account?->account_opening_date?->format('Y-m-d'))
+                        : $account?->account_opening_date?->format('Y-m-d');
+                    $openingValue = old('account_opening_date', $existingOpening ?: ($account ? null : now()->toDateString()));
                 @endphp
                 <label for="account_opening_date" class="mb-2 block text-sm font-medium text-slate-600">{{ $openingLabel }}</label>
                 <input id="account_opening_date" name="account_opening_date" type="date" value="{{ $openingValue }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
@@ -108,28 +120,22 @@
             </div>
 
             @unless ($account)
-                <div>
-                    <label for="opening_side" class="mb-2 block text-sm font-medium text-slate-600">Açılış Yönü</label>
-                    <select id="opening_side" name="opening_side" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        <option value="">Tutar girilirse seçin</option>
-                        <option value="debit" @selected(old('opening_side') === 'debit')>Borç</option>
-                        <option value="credit" @selected(old('opening_side') === 'credit')>Alacak</option>
-                    </select>
-                    <p class="mt-1 text-xs text-slate-400">Borç: hesap bize borçlu. Alacak: biz hesaba borçluyuz. Tedarikçi ve sakin için aynı kural geçerlidir.</p>
+                <div id="account-opening-side" class="md:col-span-2 {{ abs((float) old('balance', 0)) >= 0.01 ? '' : 'hidden' }}">
+                    <p class="mb-2 text-sm font-medium text-slate-600">Girilen bakiye borç mu, alacak mı?</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm has-[:checked]:border-slate-950 has-[:checked]:bg-slate-50">
+                            <input type="radio" name="opening_side" value="debit" @checked(old('opening_side') === 'debit') class="h-4 w-4">
+                            Borç
+                        </label>
+                        <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm has-[:checked]:border-slate-950 has-[:checked]:bg-slate-50">
+                            <input type="radio" name="opening_side" value="credit" @checked(old('opening_side') === 'credit') class="h-4 w-4">
+                            Alacak
+                        </label>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-400">Borç: hesap bize borçlu. Alacak: biz hesaba borçluyuz.</p>
                     @error('opening_side')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
             @endunless
-
-            <div data-default-category-field>
-                <label for="default_category_id" class="mb-2 block text-sm font-medium text-slate-600">Varsayılan Kategori <span class="font-normal text-slate-400">(opsiyonel)</span></label>
-                <select id="default_category_id" name="default_category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    <option value="">Kategori seçin</option>
-                    @foreach ($categories ?? [] as $category)
-                        <option value="{{ $category->id }}" @selected((string) old('default_category_id', $account?->default_category_id) === (string) $category->id)>{{ $category->name }}</option>
-                    @endforeach
-                </select>
-                @error('default_category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-            </div>
 
             <div class="md:col-span-2">
                 <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700 cursor-pointer">
@@ -192,6 +198,20 @@
 
         type.addEventListener('change', refresh);
         refresh();
+
+        const balanceInput = form.querySelector('#balance');
+        const openingSide = form.querySelector('#account-opening-side');
+        const syncOpeningSide = () => {
+            if (! balanceInput || ! openingSide) return;
+            const hasBalance = Math.abs(parseFloat(balanceInput.value || '0')) >= 0.01;
+            openingSide.classList.toggle('hidden', ! hasBalance);
+            openingSide.querySelectorAll('input[name="opening_side"]').forEach((input) => {
+                input.disabled = ! hasBalance;
+                if (! hasBalance) input.checked = false;
+            });
+        };
+        balanceInput?.addEventListener('input', syncOpeningSide);
+        syncOpeningSide();
 
         form.addEventListener('submit', () => {
             const submitButton = form.querySelector('button[type="submit"]');

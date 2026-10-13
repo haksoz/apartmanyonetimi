@@ -116,7 +116,7 @@ class CashPageTest extends TestCase
                 'name' => 'Banka Kasası',
                 'description' => 'Banka hareketleri',
                 'bank_name' => 'Test Bankası',
-                'iban' => 'TR000000000000000000000000',
+                'iban' => 'TR33 0006 1005 1978 6457 8413 26',
                 'account_number' => '123456',
                 'is_active' => '1',
             ])
@@ -127,8 +127,29 @@ class CashPageTest extends TestCase
             'name' => 'Banka Kasası',
             'description' => 'Banka hareketleri',
             'bank_name' => 'Test Bankası',
+            'iban' => 'TR330006100519786457841326',
             'is_active' => true,
         ]);
+    }
+
+    public function test_cash_box_rejects_invalid_iban(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('cash-boxes.store'), [
+                'name' => 'Banka Kasası',
+                'iban' => 'TR000000000000000000000000',
+                'is_active' => '1',
+            ])
+            ->assertSessionHasErrors('iban');
     }
 
     public function test_user_can_create_cash_transaction_for_selected_apartment(): void

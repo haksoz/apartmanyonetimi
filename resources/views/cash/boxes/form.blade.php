@@ -67,14 +67,19 @@
                     @error('opening_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
             </div>
-            <div>
-                <label for="opening_side" class="mb-2 block text-sm font-semibold text-slate-700">Açılış Yönü</label>
-                <select id="opening_side" name="opening_side" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    <option value="">Tutar girilirse seçin</option>
-                    <option value="income" @selected(old('opening_side') === 'income')>Giriş</option>
-                    <option value="expense" @selected(old('opening_side') === 'expense')>Çıkış</option>
-                </select>
-                <p class="mt-1 text-xs text-slate-400">Giriş kasada duran paradır. Çıkış kasanın eksi açılmasıdır. Bu satır bir hesaba veya kategoriye bağlanmaz.</p>
+            <div id="cash-opening-side" class="{{ abs((float) old('opening_balance', 0)) >= 0.01 ? '' : 'hidden' }}">
+                <p class="mb-2 text-sm font-semibold text-slate-700">Girilen bakiye giriş mi, çıkış mı?</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm has-[:checked]:border-slate-950 has-[:checked]:bg-slate-50">
+                        <input type="radio" name="opening_side" value="income" @checked(old('opening_side') === 'income') class="h-4 w-4">
+                        Giriş
+                    </label>
+                    <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm has-[:checked]:border-slate-950 has-[:checked]:bg-slate-50">
+                        <input type="radio" name="opening_side" value="expense" @checked(old('opening_side') === 'expense') class="h-4 w-4">
+                        Çıkış
+                    </label>
+                </div>
+                <p class="mt-2 text-xs text-slate-400">Giriş kasada duran paradır. Çıkış kasanın eksi açılmasıdır.</p>
                 @error('opening_side')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
         @endif
@@ -90,3 +95,23 @@
         </div>
     </div>
 </form>
+
+<script>
+    (() => {
+        const balanceInput = document.getElementById('opening_balance');
+        const openingSide = document.getElementById('cash-opening-side');
+        if (! balanceInput || ! openingSide) return;
+
+        const syncOpeningSide = () => {
+            const hasBalance = Math.abs(parseFloat(balanceInput.value || '0')) >= 0.01;
+            openingSide.classList.toggle('hidden', ! hasBalance);
+            openingSide.querySelectorAll('input[name="opening_side"]').forEach((input) => {
+                input.disabled = ! hasBalance;
+                if (! hasBalance) input.checked = false;
+            });
+        };
+
+        balanceInput.addEventListener('input', syncOpeningSide);
+        syncOpeningSide();
+    })();
+</script>
