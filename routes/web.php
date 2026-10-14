@@ -27,16 +27,20 @@ use App\Http\Controllers\Subscriber\SubscriberBillingProfileController;
 use App\Http\Controllers\Subscriber\SubscriberDashboardController;
 use App\Http\Controllers\Subscriber\SubscriberSubscriptionController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\InviteController;
 use App\Http\Controllers\CashBoxController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ResidenceController;
 use App\Http\Controllers\DueController;
 use App\Http\Controllers\DuePlanController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\PaymentAllocationController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UnitController;
@@ -73,15 +77,25 @@ Route::view('yasal/iptal-ve-iade', 'legal.placeholder', [
     'title' => 'İptal ve İade',
 ])->name('legal.cancellation');
 
+Route::get('davet/{token}', [InviteController::class, 'show'])->name('invite.show');
+Route::post('davet/{token}', [InviteController::class, 'accept'])->name('invite.accept');
+
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('login', [AuthController::class, 'login']);
+    Route::get('sifremi-unuttum', [PasswordResetController::class, 'create'])->name('password.request');
+    Route::post('sifremi-unuttum', [PasswordResetController::class, 'store'])->middleware('throttle:5,1')->name('password.email');
+    Route::get('sifre-sifirla/{token}', [PasswordResetController::class, 'edit'])->name('password.reset');
+    Route::post('sifre-sifirla', [PasswordResetController::class, 'update'])->name('password.update');
     Route::get('register/{package?}', [AuthController::class, 'showRegister'])->name('register');
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 });
 
 Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('hesabim', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('hesabim', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('hesabim/parola', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
     // Onboarding routes - no apartment required
     Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
@@ -92,7 +106,7 @@ Route::middleware('auth')->group(function () {
     Route::post('apartments', [ApartmentController::class, 'store'])->name('apartments.store');
 
     // Apartment setup wizard
-    Route::prefix('apartments/{apartment}/wizard')->name('apartments.wizard.')->group(function () {
+    Route::prefix('apartments/{apartment}/wizard')->name('apartments.wizard.')->middleware('building.panel')->group(function () {
         Route::get('cash-box', [ApartmentWizardController::class, 'cashBoxStep'])->name('cash-box');
         Route::post('cash-box', [ApartmentWizardController::class, 'storeCashBox'])->name('cash-box.store');
         Route::get('units', [ApartmentWizardController::class, 'unitsStep'])->name('units');
@@ -110,9 +124,12 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
     // Üye + Yönetici erişimi
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/dairem', ResidenceController::class)->name('residence.home');
+    Route::get('reports/account-statement', [ReportController::class, 'accountStatement'])->name('reports.account-statement');
+    Route::get('reports/account-statement/export/{type}', [ReportController::class, 'accountStatementExport'])->middleware('feature.export')->name('reports.account-statement.export');
 
     // Raporlar - Tüm kullanıcılar
-        Route::prefix('reports')->name('reports.')->group(function () {
+        Route::prefix('reports')->name('reports.')->middleware('building.panel')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('income-expense', [ReportController::class, 'incomeExpense'])->name('income-expense');
         Route::get('income-expense/export/{type}', [ReportController::class, 'incomeExpenseExport'])->middleware('feature.export')->name('income-expense.export');
@@ -120,8 +137,6 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('debt-list/export/{type}', [ReportController::class, 'overdue2Export'])->middleware('feature.export')->name('debt-list.export');
         Route::get('receivable-list', [ReportController::class, 'receivableList'])->name('receivable-list');
         Route::get('receivable-list/export/{type}', [ReportController::class, 'receivableListExport'])->middleware('feature.export')->name('receivable-list.export');
-        Route::get('account-statement', [ReportController::class, 'accountStatement'])->name('account-statement');
-        Route::get('account-statement/export/{type}', [ReportController::class, 'accountStatementExport'])->middleware('feature.export')->name('account-statement.export');
         Route::get('due-collection', [ReportController::class, 'dueCollection'])->middleware('feature:report_due_matrix')->name('due-collection');
         Route::get('due-collection/export/{type}', [ReportController::class, 'dueCollectionExport'])->middleware(['feature:report_due_matrix', 'feature.export'])->name('due-collection.export');
         Route::get('overdue', [ReportController::class, 'overdue'])->middleware('feature:report_overdue')->name('overdue');
@@ -136,7 +151,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('monthly-board/export/{type}', [ReportController::class, 'monthlyBoardExport'])->middleware(['feature:report_monthly_board', 'feature.export'])->name('monthly-board.export');
     });
 
-    // Giderler - Üye ve Yönetici erişimi (tüm resource actions)
+    Route::middleware('building.panel')->group(function () {
     Route::resource('expenses', ExpenseController::class);
     Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
     Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');
@@ -144,6 +159,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::post('expenses/{expense}/documents', [ExpenseController::class, 'storeDocument'])->name('expenses.documents.store');
     Route::delete('expenses/{expense}/documents/{document}', [ExpenseController::class, 'destroyDocument'])->name('expenses.documents.destroy');
     Route::get('expenses/{expense}/documents/{document}/download', [ExpenseController::class, 'downloadDocument'])->name('expenses.documents.download');
+    });
 
     // Aidatlar - Üye ve Yönetici erişimi
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
@@ -186,6 +202,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::get('users/{user}/edit', [AccountUserController::class, 'edit'])->name('users.edit');
         Route::patch('users/{user}', [AccountUserController::class, 'update'])->name('users.update');
         Route::patch('users/{user}/password', [AccountUserController::class, 'updatePassword'])->name('users.password');
+        Route::post('users/{user}/invite', [AccountUserController::class, 'refreshInvite'])->name('users.invite');
         Route::post('accounts/{account}/user', [AccountUserController::class, 'store'])->name('accounts.user.store');
         Route::post('users/{user}/attach-accounts', [AccountUserController::class, 'attachAccounts'])->name('users.attach-accounts');
         Route::patch('accounts/{account}/user/role', [AccountUserController::class, 'updateRole'])->name('accounts.user.role');
@@ -298,7 +315,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('impersonate/{manager}', [AdminImpersonateController::class, 'start'])->name('impersonate.start');
 });
 
-Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscriber'])->group(function () {
+Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscription.access'])->group(function () {
     Route::get('/', SubscriberDashboardController::class)->name('dashboard');
 
     Route::get('apartments', [SubscriberApartmentController::class, 'index'])->name('apartments.index');
@@ -306,8 +323,8 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscribe
     Route::post('apartments/{apartment}/trigger-aidat', [SubscriberApartmentController::class, 'triggerAidatGeneration'])->name('apartments.trigger-aidat');
 
     // Apartment creation for subscribers - no apartment required
-    Route::get('apartments/create', [SubscriberApartmentCreateController::class, 'create'])->name('apartments.create');
-    Route::post('apartments', [SubscriberApartmentCreateController::class, 'store'])->name('apartments.store');
+    Route::get('apartments/create', [SubscriberApartmentCreateController::class, 'create'])->middleware('subscriber')->name('apartments.create');
+    Route::post('apartments', [SubscriberApartmentCreateController::class, 'store'])->middleware('subscriber')->name('apartments.store');
 
     // Apartment editing for subscribers
     Route::get('apartments/{apartment}', [SubscriberApartmentController::class, 'show'])->name('apartments.show');

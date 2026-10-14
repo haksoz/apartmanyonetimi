@@ -38,6 +38,10 @@ class UserApartmentQuota
     {
         $max = $this->definedLimit($user);
 
+        if (! $user->isSubscriber() && ! $user->isAdminPanelUser()) {
+            return $max !== null && $this->currentCount($user) < $max;
+        }
+
         if ($max === null) {
             return true;
         }
@@ -59,6 +63,12 @@ class UserApartmentQuota
             ->first();
 
         if (! $override) {
+            if (! $user->isSubscriber() && ! $user->isAdminPanelUser()) {
+                throw ValidationException::withMessages([
+                    'name' => self::LIMIT_MESSAGE,
+                ]);
+            }
+
             return;
         }
 

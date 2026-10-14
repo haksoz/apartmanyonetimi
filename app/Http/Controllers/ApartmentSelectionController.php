@@ -2,21 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\CurrentApartment;
+use App\Support\BuildingPlaces;
 
 class ApartmentSelectionController extends Controller
 {
-    public function __invoke(CurrentApartment $currentApartment)
+    public function __invoke(BuildingPlaces $places)
     {
-        $apartments = $currentApartment->queryFor(auth()->user())
-            ->with('user')
-            ->orderBy('name')
-            ->get();
+        $user = auth()->user();
+        $grouped = $places->grouped($user);
 
-        if ($apartments->isEmpty()) {
-            return redirect()->route('apartments.create');
+        if ($grouped['residences']->isEmpty() && $grouped['managed']->isEmpty()) {
+            if ($user->isSubscriber() || $user->isAdmin()) {
+                return redirect()->route('apartments.create');
+            }
+
+            return redirect()->route('onboarding.show');
         }
 
-        return view('apartments.select', compact('apartments'));
+        return view('apartments.select', [
+            'residences' => $grouped['residences'],
+            'managed' => $grouped['managed'],
+        ]);
     }
 }

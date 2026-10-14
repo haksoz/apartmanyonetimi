@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\User;
+use App\Models\UserInvitation;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -147,6 +148,12 @@ class AccountUserController extends Controller
      */
     public function edit(CurrentApartment $currentApartment, User $user)
     {
+        if ($user->isActivated()) {
+            return redirect()
+                ->route('users.show', $user)
+                ->withErrors(['name' => 'Daveti kabul eden kişinin ad, e-posta ve telefonunu kendisi düzenler.']);
+        }
+
         $apartment = $currentApartment->getFor(auth()->user());
 
         // Kullanıcının bağlı olduğu hesaplar
@@ -171,6 +178,12 @@ class AccountUserController extends Controller
      */
     public function update(Request $request, CurrentApartment $currentApartment, User $user)
     {
+        if ($user->isActivated()) {
+            return redirect()
+                ->route('users.show', $user)
+                ->withErrors(['name' => 'Daveti kabul eden kişinin ad, e-posta ve telefonunu kendisi düzenler.']);
+        }
+
         $apartment = $currentApartment->getFor(auth()->user());
 
         $validated = $request->validate([
@@ -215,18 +228,20 @@ class AccountUserController extends Controller
             'phone' => ['nullable', 'string', 'max:255'],
         ]);
 
-        DB::transaction(function () use ($validated, $account, $apartment) {
-            $user = User::firstOrCreate(
-                ['email' => $validated['email']],
-                [
-                    'name'     => $validated['name'],
-                    'phone'    => $validated['phone'] ?? null,
-                    'password' => bcrypt(Str::random(16)),
-                    'role'     => 'user',
-                ]
-            );
+        $user = DB::transaction(function () use ($validated, $account, $apartment) {
+            $user = User::query()->where('email', $validated['email'])->first();
 
-            // Sadece user_id bağla, hesap bilgilerini ezme
+            if (! $user) {
+                $user = User::create([
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'] ?? null,
+                    'password' => Str::random(32),
+                    'role' => 'user',
+                    'activated_at' => null,
+                ]);
+            }
+
             $account->update([
                 'user_id' => $user->id,
             ]);
@@ -234,9 +249,11 @@ class AccountUserController extends Controller
             if (! $apartment->members()->whereKey($user->id)->exists()) {
                 $apartment->members()->attach($user->id, ['role' => 'member']);
             }
+
+            return $user;
         });
 
-        return back()->with('status', 'Kullanıcı hesaba bağlandı.');
+        return $this->redirectAfterProvision($user, 'Kullanıcı hesaba bağlandı.');
     }
 
     /**
@@ -349,13 +366,11 @@ class AccountUserController extends Controller
         abort_unless($apartment->members()->whereKey($user->id)->exists(), 403);
         abort_if($user->id === auth()->id(), 403, 'Kendi şifrenizi buradan değiştiremezsiniz.');
 
-        $validated = $request->validate([
-            'password' => ['required', 'string', 'min:6'],
-        ]);
+        if (! $user->isActivated()) {
+            return back()->withErrors(['password' => 'Davetli kullanıcının parolasını davet bağlantısı belirler.']);
+        }
 
-        $user->update(['password' => bcrypt($validated['password'])]);
-
-        return back()->with('status', $user->name.' için şifre güncellendi. Kullanıcıya yeni şifreyi bildirin.');
+        return back()->withErrors(['password' => 'Parola kişiye aittir. Hesabım sayfasından değiştirilir.']);
     }
 
     /**
@@ -374,19 +389,21 @@ class AccountUserController extends Controller
             'sync_account_info' => ['nullable', 'boolean'],
         ]);
 
-        $user = User::firstOrCreate(
-            ['email' => $validated['email']],
-            [
-                'name'     => $validated['name'],
-                'phone'    => $validated['phone'] ?? null,
-                'password' => bcrypt(Str::random(16)),
-                'role'     => 'user',
-            ]
-        );
+        $user = User::query()->where('email', $validated['email'])->first();
 
-        // Bu apartmanda zaten üyeyse engelle
-        if ($apartment->members()->whereKey($user->id)->exists()) {
+        if ($user && $apartment->members()->whereKey($user->id)->exists()) {
             return back()->withErrors(['email' => $user->name.' zaten bu apartmanın üyesi.'])->withInput();
+        }
+
+        if (! $user) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'password' => Str::random(32),
+                'role' => 'user',
+                'activated_at' => null,
+            ]);
         }
 
         // Apartmana ekle
@@ -419,7 +436,39 @@ class AccountUserController extends Controller
             }
         }
 
-        return back()->with('status', $user->name.' kullanıcısı oluşturuldu ve hesaplara bağlandı.');
+        return $this->redirectAfterProvision($user, $user->name.' kullanıcısı oluşturuldu ve hesaplara bağlandı.');
+    }
+
+    public function refreshInvite(CurrentApartment $currentApartment, User $user)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        abort_unless($apartment, 403);
+        abort_unless($apartment->members()->whereKey($user->id)->exists(), 403);
+
+        if ($user->isActivated()) {
+            return back()->withErrors(['invite' => 'Bu kullanıcı daveti zaten kabul etti.']);
+        }
+
+        $plain = UserInvitation::issue($user);
+
+        return redirect()
+            ->route('users.show', $user)
+            ->with('invite_url', route('invite.show', $plain))
+            ->with('status', 'Yeni davet bağlantısı hazır.');
+    }
+
+    private function redirectAfterProvision(User $user, string $status)
+    {
+        $redirect = redirect()->route('users.show', $user)->with('status', $status);
+
+        if ($user->isActivated()) {
+            return $redirect;
+        }
+
+        $plain = UserInvitation::issue($user);
+
+        return $redirect->with('invite_url', route('invite.show', $plain));
     }
 
     /**
@@ -443,7 +492,7 @@ class AccountUserController extends Controller
 
         $apartment->members()->updateExistingPivot($user->id, ['is_active' => $newState]);
 
-        $message = $newState ? 'Kullanıcı aktive edildi.' : 'Kullanıcı pasife alındı.';
+        $message = $newState ? 'Bu binadaki erişim açıldı.' : 'Bu binadaki erişim kapatıldı.';
 
         return back()->with('status', $message);
     }

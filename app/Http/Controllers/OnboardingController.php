@@ -9,6 +9,7 @@ use App\Models\Unit;
 use App\Support\ApartmentCommercial;
 use App\Support\CurrentApartment;
 use App\Support\LegalConsent;
+use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -31,6 +32,10 @@ class OnboardingController extends Controller
     {
         if ($currentApartment->hasAvailableFor(auth()->user())) {
             return redirect()->route('dashboard');
+        }
+
+        if (! app(UserApartmentQuota::class)->canCreate($request->user())) {
+            return back()->withErrors(['name' => UserApartmentQuota::LIMIT_MESSAGE])->withInput();
         }
 
         $validated = $request->validate([

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Support\ApartmentReset\ApartmentResetArchive;
 use App\Support\ApartmentReset\UnavailableApartmentResetArchive;
+use App\Support\BuildingPlaces;
 use App\Support\CurrentApartment;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
@@ -32,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
             $availableApartments = collect();
             $currentApartment = null;
             $navIsOwner = false;
+            $showResidence = false;
+            $homeUrl = route('dashboard');
 
             if (auth()->check()) {
                 $user = auth()->user();
@@ -53,9 +56,20 @@ class AppServiceProvider extends ServiceProvider
                         ->wherePivot('is_active', true)
                         ->exists();
                 }
+
+                $showResidence = $currentApartment
+                    && ! $user->isAdmin()
+                    && (! $navIsOwner || app(BuildingPlaces::class)->hasResidenceIn($user, $currentApartment));
+
+                $homeUrl = match (true) {
+                    $user->isAdmin() => route('admin.dashboard'),
+                    $user->isSubscriber() => route('subscriber.dashboard'),
+                    $navIsOwner => route('dashboard'),
+                    default => route('residence.home'),
+                };
             }
 
-            $view->with(compact('availableApartments', 'currentApartment', 'navIsOwner'));
+            $view->with(compact('availableApartments', 'currentApartment', 'navIsOwner', 'showResidence', 'homeUrl'));
         });
     }
 }

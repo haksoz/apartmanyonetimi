@@ -495,20 +495,34 @@ class ReportController extends Controller
     // 4. CARİ EKSTRELER
     // -------------------------------------------------------------------------
 
-    public function accountStatement(CurrentApartment $currentApartment, Request $request)
+    private function statementAccounts($apartment)
     {
-        $apartment = $this->getApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
-
-        $accounts  = Account::with('unit')
+        $user = auth()->user();
+        $query = Account::with('unit')
             ->where('accounts.apartment_id', $apartment->id)
-            ->where('accounts.is_active', true)
+            ->where('accounts.is_active', true);
+
+        if (! $user->isAdmin() && ! $this->isOwnerOf($apartment)) {
+            $query->where('accounts.user_id', $user->id)
+                ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT]);
+        }
+
+        return $query
             ->leftJoin('units', 'units.id', '=', 'accounts.unit_id')
             ->orderByRaw("CASE WHEN accounts.type = 'supplier' THEN 1 ELSE 0 END")
             ->orderByRaw('LENGTH(units.unit_no), units.unit_no')
             ->orderBy('accounts.name')
             ->select('accounts.*')
             ->get();
+    }
+
+    public function accountStatement(CurrentApartment $currentApartment, Request $request)
+    {
+        $apartment = $this->getApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
+
+        $accounts = $this->statementAccounts($apartment);
+        $ownStatement = ! auth()->user()->isAdmin() && ! $this->isOwnerOf($apartment);
         $accountId = $request->input('account_id');
         $dateFrom  = $request->input('date_from', now()->startOfYear()->format('Y-m-d'));
         $dateTo    = $request->input('date_to', now()->format('Y-m-d'));
@@ -521,7 +535,8 @@ class ReportController extends Controller
         $totalCredit = 0;
 
         if ($accountId) {
-            $account = Account::find($accountId);
+            $account = $accounts->firstWhere('id', (int) $accountId);
+            abort_unless($account, 403);
 
             $openingTxs = AccountTransaction::where('account_id', $accountId)
                 ->where('transaction_date', '<', $dateFrom)
@@ -552,7 +567,7 @@ class ReportController extends Controller
             $totalCredit = $transactions->where('type', 'credit')->sum('amount');
         }
 
-        return view('reports.account-statement', compact('apartment', 'accounts', 'account', 'transactions', 'accountId', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'runningBalance', 'openingBalance'));
+        return view('reports.account-statement', compact('apartment', 'accounts', 'account', 'transactions', 'accountId', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'runningBalance', 'openingBalance', 'ownStatement'));
     }
 
     public function accountStatementExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -560,10 +575,12 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
+        $accounts = $this->statementAccounts($apartment);
         $accountId = $request->input('account_id');
         $dateFrom  = $request->input('date_from', now()->startOfYear()->format('Y-m-d'));
         $dateTo    = $request->input('date_to', now()->format('Y-m-d'));
-        $account   = Account::with('unit')->find($accountId);
+        $account = $accounts->firstWhere('id', (int) $accountId);
+        abort_unless($account, 403);
 
         $openingBalance = 0;
         $openingTxs = AccountTransaction::where('account_id', $accountId)

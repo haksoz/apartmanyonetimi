@@ -21,7 +21,8 @@
     @endif
 
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">{{ $apartment->name }}</h1>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Özet</p>
+        <h1 class="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">{{ $apartment->name }}</h1>
         <p class="mt-1 text-sm text-slate-500">
             Hoş geldiniz, {{ auth()->user()->name }}.
             @if ($managesOtherApartments)

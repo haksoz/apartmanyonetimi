@@ -19,6 +19,9 @@
                 <label for="password" class="text-sm font-medium text-slate-700">Şifre</label>
                 <input id="password" name="password" type="password" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
                 @error('password')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                <div class="mt-2 text-right">
+                    <a href="{{ route('password.request') }}" class="text-sm font-semibold text-slate-700 hover:text-slate-950">Şifremi unuttum</a>
+                </div>
             </div>
 
             <label class="flex items-center gap-2 text-sm text-slate-600">

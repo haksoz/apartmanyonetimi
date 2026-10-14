@@ -11,9 +11,20 @@ class ApartmentSwitchController extends Controller
     {
         $validated = $request->validate([
             'apartment_id' => ['required', 'integer'],
+            'destination' => ['nullable', 'in:dairem,ozet'],
         ]);
 
         $apartment = $currentApartment->setFor($request->user(), (int) $validated['apartment_id']);
+        $user = $request->user();
+        $isOwner = $user->isAdmin() || $apartment->members()
+            ->whereKey($user->id)
+            ->where('apartment_user.role', 'owner')
+            ->where('apartment_user.is_active', true)
+            ->exists();
+
+        if (($validated['destination'] ?? null) === 'dairem' || ! $isOwner) {
+            return redirect()->route('residence.home')->with('status', $apartment->name.' seçildi.');
+        }
 
         if ($nextStep = $apartment->nextSetupStep()) {
             return redirect()->route('apartments.wizard.'.$nextStep, $apartment)

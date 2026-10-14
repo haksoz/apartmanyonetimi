@@ -13,6 +13,7 @@ class AdminImpersonateController extends Controller
     {
         abort_unless($request->user()->isAdmin(), 403);
         abort_if($manager->isAdmin(), 403, 'Admin kullanıcıya geçiş yapılamaz.');
+        abort_unless($manager->isActivated(), 403, 'Davetli hesap henüz açılamaz.');
 
         $request->session()->put('impersonate_admin_id', $request->user()->id);
         $request->session()->put('impersonate_user_id', $manager->id);

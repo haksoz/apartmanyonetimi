@@ -60,6 +60,9 @@
                         </td>
                         <td class="px-5 py-4">
                             <div class="font-semibold text-slate-900">{{ $user->name }}</div>
+                            @if (! $user->isActivated())
+                                <div class="mt-0.5 text-xs font-semibold text-amber-700">Davetli</div>
+                            @endif
                             <div class="text-xs text-slate-500 mt-0.5">{{ $user->email }}</div>
                             @if ($user->phone)
                                 <div class="text-xs text-slate-400 mt-0.5">{{ $user->phone }}</div>
@@ -83,7 +86,7 @@
                         <td class="px-5 py-4">
                             @if (! $isActive)
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Pasif
+                                    <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Erişim kapalı
                                 </span>
                             @elseif (! $isCurrentUser)
                                 <form method="POST" action="{{ route('users.role', $user) }}">
@@ -109,7 +112,7 @@
                                         @method('PATCH')
                                         <button type="submit"
                                             class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors {{ $isActive ? 'border-amber-200 text-amber-700 hover:bg-amber-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' }}">
-                                            {{ $isActive ? 'Pasife Al' : 'Aktive Et' }}
+                                            {{ $isActive ? 'Erişimi Kapat' : 'Erişimi Aç' }}
                                         </button>
                                     </form>
                                 @endif
@@ -142,6 +145,9 @@
                 <div class="flex items-start justify-between mb-3">
                     <div>
                         <div class="font-bold text-slate-900">{{ $user->name }}</div>
+                        @if (! $user->isActivated())
+                            <div class="text-xs font-semibold text-amber-700">Davetli</div>
+                        @endif
                         <div class="text-sm text-slate-500">{{ $user->email }}</div>
                         @if ($user->phone)
                             <div class="text-sm text-slate-400">{{ $user->phone }}</div>
@@ -150,7 +156,7 @@
                     <div>
                         @if (! $isActive)
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                                <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Pasif
+                                <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Erişim kapalı
                             </span>
                         @elseif ($role === 'owner')
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
@@ -197,7 +203,7 @@
                             @method('PATCH')
                             <button type="submit"
                                 class="w-full rounded-lg border px-3 py-2.5 text-sm font-semibold text-center {{ $isActive ? 'border-amber-200 text-amber-700 hover:bg-amber-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' }}">
-                                {{ $isActive ? 'Pasife Al' : 'Aktive Et' }}
+                                {{ $isActive ? 'Erişimi Kapat' : 'Erişimi Aç' }}
                             </button>
                         </form>
                     @endif

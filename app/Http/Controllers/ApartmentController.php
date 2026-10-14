@@ -81,6 +81,10 @@ class ApartmentController extends Controller
             'account_opening_date' => ['required', 'date'],
         ]);
 
+        if (! app(UserApartmentQuota::class)->canCreate($request->user())) {
+            return back()->withErrors(['name' => UserApartmentQuota::LIMIT_MESSAGE])->withInput();
+        }
+
         $user = auth()->user();
         $decision = app(ApartmentCommercial::class)->assess((int) $validated['unit_count']);
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\UserQuotaOverride;
 use App\Support\LegalConsent;
+use App\Support\AccountEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -38,17 +39,19 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
+        if (! $request->user()->isActivated()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Bu hesap henüz daveti kabul etmedi. Davet bağlantısını kullanın.',
+            ])->onlyInput('email');
+        }
+
         $request->session()->regenerate();
 
-        if ($request->user()->isAdmin()) {
-            return redirect()->route('admin.dashboard');
-        }
-
-        if ($request->user()->isSubscriber()) {
-            return redirect()->route('subscriber.dashboard');
-        }
-
-        return redirect()->route('onboarding.show');
+        return app(AccountEntry::class)->redirect($request->user());
     }
 
     public function showRegister($package = null)
@@ -112,6 +115,7 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role' => 'manager',
+            'activated_at' => now(),
         ]);
 
         UserQuotaOverride::query()->create([

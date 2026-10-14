@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'        => \App\Http\Middleware\EnsureAdmin::class,
             'super_admin'  => \App\Http\Middleware\EnsureSuperAdmin::class,
             'subscriber'   => \App\Http\Middleware\EnsureSubscriber::class,
+            'subscription.access' => \App\Http\Middleware\EnsureSubscriptionAccess::class,
+            'building.panel' => \App\Http\Middleware\RedirectBuildingMembers::class,
             'feature'        => \App\Http\Middleware\EnsureSubscriptionFeature::class,
             'feature.export' => \App\Http\Middleware\EnsureReportExport::class,
         ]);

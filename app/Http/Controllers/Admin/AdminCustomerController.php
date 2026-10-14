@@ -23,6 +23,10 @@ class AdminCustomerController extends Controller
     public function index(Request $request)
     {
         $search = trim((string) $request->query('search', ''));
+        $filter = $request->query('filtre', 'muhataplar');
+        if (! in_array($filter, ['muhataplar', 'davetliler', 'uyeler', 'tumu'], true)) {
+            $filter = 'muhataplar';
+        }
 
         $customers = User::query()
             ->whereNotIn('role', User::adminRoles())
@@ -31,11 +35,20 @@ class AdminCustomerController extends Controller
                 'apartments as apartment_count' => function ($query) {
                     $query->where('apartment_user.is_active', true);
                 },
-                'ownedApartments as active_apartment_count' => function ($query) {
-                    $query->where('is_active', true);
+                'apartments as managed_apartment_count' => function ($query) {
+                    $query->where('apartments.is_active', true)
+                        ->where('apartment_user.role', 'owner')
+                        ->where('apartment_user.is_active', true);
                 },
                 'subscriptions as pending_order_count' => function ($query) {
                     $query->commercial()->where('status', UserSubscription::STATUS_PENDING);
+                },
+            ])
+            ->withExists([
+                'apartments as manages_building' => function ($query) {
+                    $query->where('apartments.is_active', true)
+                        ->where('apartment_user.role', 'owner')
+                        ->where('apartment_user.is_active', true);
                 },
             ])
             ->selectSub($this->activeSubscriptionCount(), 'active_subscription_count')
@@ -46,12 +59,13 @@ class AdminCustomerController extends Controller
                         ->orWhere('phone', 'like', "%{$search}%");
                 });
             })
+            ->tap(fn ($query) => $this->applyCustomerFilter($query, $filter))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.customers.index', compact('customers', 'search'));
+        return view('admin.customers.index', compact('customers', 'search', 'filter'));
     }
 
     public function update(Request $request, User $customer)
@@ -300,6 +314,39 @@ class AdminCustomerController extends Controller
                         'status' => SubscriptionItem::STATUS_CANCELLED,
                         'ended_at' => now(),
                     ]);
+            });
+    }
+
+    private function applyCustomerFilter(Builder $query, string $filter): void
+    {
+        $ownerMembership = function ($query): void {
+            $query->where('apartments.is_active', true)
+                ->where('apartment_user.role', 'owner')
+                ->where('apartment_user.is_active', true);
+        };
+
+        if ($filter === 'davetliler') {
+            $query->whereNull('activated_at');
+
+            return;
+        }
+
+        if ($filter === 'uyeler') {
+            $query->whereNotNull('activated_at')
+                ->where('role', '!=', User::ROLE_MANAGER)
+                ->whereDoesntHave('apartments', $ownerMembership);
+
+            return;
+        }
+
+        if ($filter === 'tumu') {
+            return;
+        }
+
+        $query->whereNotNull('activated_at')
+            ->where(function ($query) use ($ownerMembership) {
+                $query->where('role', User::ROLE_MANAGER)
+                    ->orWhereHas('apartments', $ownerMembership);
             });
     }
 

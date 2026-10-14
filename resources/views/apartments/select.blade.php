@@ -3,28 +3,35 @@
 @section('content')
     <div class="mx-auto max-w-3xl">
         <div class="mb-8 text-center">
-            <h1 class="text-2xl font-bold text-slate-950">Yönetilecek Apartmanı Seçin</h1>
-            <p class="mt-2 text-sm text-slate-500">Dashboard ve diğer işlemler seçtiğiniz apartman özelinde açılır.</p>
+            <h1 class="text-2xl font-bold text-slate-950">Nereye gireceksiniz?</h1>
+            <p class="mt-2 text-sm text-slate-500">Daireleriniz ve yönettiğiniz apartmanlar ayrı açılır.</p>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2">
-            @foreach ($apartments as $apartment)
-                <form method="POST" action="{{ route('current-apartment.update') }}" class="rounded-2xl bg-white p-5 shadow-sm">
-                    @csrf
-                    <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
-                    <div class="text-lg font-semibold text-slate-950">{{ $apartment->name }}</div>
-                    <div class="mt-1 text-sm text-slate-500">{{ $apartment->address ?: 'Adres girilmedi' }}</div>
-                    <div class="mt-2 text-sm text-slate-600">
-                        Yönetici: <span class="font-medium">{{ $apartment->user?->name ?? 'Belirtilmemiş' }}</span>
-                    </div>
-                    <div class="mt-4 text-sm text-slate-500">{{ $apartment->unit_count }} daire</div>
-                    <button type="submit" class="mt-5 w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Bu Apartmanla Devam Et</button>
-                </form>
-            @endforeach
-        </div>
+        @if ($residences->isNotEmpty())
+            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Dairelerim</h2>
+            <div class="mb-8 grid gap-4 md:grid-cols-2">
+                @foreach ($residences as $apartment)
+                    @include('apartments.partials.place-card', ['apartment' => $apartment, 'destination' => 'dairem', 'action' => 'Daireme gir'])
+                @endforeach
+            </div>
+        @endif
 
-        <div class="mt-6 text-center">
-            <a href="{{ route('apartments.create') }}" class="text-sm font-semibold text-slate-700 hover:text-slate-950">Yeni apartman oluştur</a>
+        @if ($managed->isNotEmpty())
+            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Yönettiğim apartmanlar</h2>
+            <div class="grid gap-4 md:grid-cols-2">
+                @foreach ($managed as $apartment)
+                    @include('apartments.partials.place-card', ['apartment' => $apartment, 'destination' => 'ozet', 'action' => 'Yönetime gir'])
+                @endforeach
+            </div>
+        @endif
+
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm font-semibold">
+            @if (auth()->user()->canPurchaseSubscription())
+                <a href="{{ route('subscriber.dashboard') }}" class="text-slate-700 hover:text-slate-950">Abone Paneli</a>
+            @endif
+            @if (auth()->user()->isSubscriber())
+                <a href="{{ route('apartments.create') }}" class="text-slate-700 hover:text-slate-950">Yeni apartman oluştur</a>
+            @endif
         </div>
     </div>
 @endsection

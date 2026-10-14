@@ -44,7 +44,7 @@ class AdminUserController extends Controller
             'password' => ['required', Password::defaults()],
         ]);
 
-        User::create($validated);
+        User::create($validated + ['activated_at' => now()]);
 
         return redirect()->route('admin.admin-users.index')->with('status', 'Admin kullanıcısı oluşturuldu.');
     }

@@ -5,15 +5,20 @@
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
-                <a href="{{ route('reports.index') }}" class="hover:text-slate-600">Raporlar</a>
+                @if ($ownStatement)
+                    <a href="{{ route('residence.home') }}" class="hover:text-slate-600">Dairem</a>
+                @else
+                    <a href="{{ route('reports.index') }}" class="hover:text-slate-600">Raporlar</a>
+                @endif
                 <span>/</span>
                 <span class="text-slate-600">Cari Ekstreler</span>
             </div>
             <h1 class="text-2xl font-bold text-slate-950">Cari Ekstreler</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }}</p>
         </div>
-        @if($accountId)
         <div class="flex gap-2 flex-wrap">
+            <a href="{{ $ownStatement ? route('residence.home') : route('reports.index') }}" class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri</a>
+            @if($accountId)
             <a href="{{ route('reports.account-statement.export', array_merge(['type'=>'excel'], request()->query())) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -24,8 +29,8 @@
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
             </a>
+            @endif
         </div>
-        @endif
     </div>
 
     {{-- Filtreler --}}

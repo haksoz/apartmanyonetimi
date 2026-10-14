@@ -47,6 +47,12 @@
             </div>
         </div>
 
+        @if ($user->isActivated())
+            <div class="rounded-2xl bg-white p-6 shadow-sm">
+                <h5 class="text-sm font-semibold text-slate-900">Kimlik</h5>
+                <p class="mt-2 text-sm text-slate-500">Bu kişi daveti kabul etti. Ad, e-posta, telefon ve parola kendisine aittir. Parolasını Hesabım sayfasından değiştirir. Hesap bağını buradan yönetmeye devam edebilirsiniz.</p>
+            </div>
+        @else
         {{-- Düzenle Formu --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
             <h5 class="text-sm font-semibold text-slate-900 mb-5">Bilgileri Düzenle</h5>
@@ -97,6 +103,7 @@
                 </button>
             </form>
         </div>
+        @endif
 
         {{-- Bağlı Hesaplar --}}
         @if ($linkedAccounts->isNotEmpty())
@@ -168,30 +175,20 @@
             </div>
         @endif
 
-        {{-- Şifre Güncelle --}}
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <h5 class="text-sm font-semibold text-slate-900 mb-5">Şifre Belirle</h5>
-            <form method="POST" action="{{ route('users.password', $user) }}">
-                @csrf
-                @method('PATCH')
-                <div class="flex gap-3 items-end">
-                    <div class="flex-1 max-w-sm">
-                        <label class="block text-sm font-medium text-slate-600 mb-2">Yeni Şifre</label>
-                        <input type="text" name="password" id="password-input" required
-                            class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none"
-                            placeholder="Şifre girin veya üretin">
-                    </div>
-                    <button type="button" onclick="generatePassword()"
-                        class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                        Üret
-                    </button>
-                    <button type="submit" class="rounded-xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800">
-                        Kaydet
-                    </button>
-                </div>
-                <p class="text-xs text-slate-400 mt-2">Kullanıcıya bu şifreyi güvenli bir şekilde bildirin.</p>
-            </form>
-        </div>
+        @if (! $user->isActivated())
+            <div class="rounded-2xl bg-white p-6 shadow-sm">
+                <h5 class="text-sm font-semibold text-slate-900 mb-2">Davet bağlantısı</h5>
+                <p class="text-sm text-slate-500">Bu kişi henüz parolasını belirlemedi. Bağlantıyı kendisine iletin. Yeni bağlantı eskisini düşürür.</p>
+                @if (session('invite_url'))
+                    <p class="mt-4 break-all rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900">{{ session('invite_url') }}</p>
+                @endif
+                @error('invite')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+                <form method="POST" action="{{ route('users.invite', $user) }}" class="mt-4">
+                    @csrf
+                    <button type="submit" class="rounded-xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800">Bağlantıyı yenile</button>
+                </form>
+            </div>
+        @endif
 
     </div>
 
@@ -202,14 +199,5 @@
                 document.getElementById('sync-info-box').classList.toggle('hidden', !anyChecked);
             });
         });
-
-        function generatePassword() {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-            let password = '';
-            for (let i = 0; i < 10; i++) {
-                password += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            document.getElementById('password-input').value = password;
-        }
     </script>
 @endsection

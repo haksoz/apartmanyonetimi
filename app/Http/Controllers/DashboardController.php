@@ -31,6 +31,10 @@ class DashboardController extends Controller
             return redirect()->route('onboarding.show');
         }
 
+        if (! $user->isAdmin() && ! $this->isOwnerOf($apartment)) {
+            return redirect()->route('residence.home');
+        }
+
         if ($nextStep = $apartment->nextSetupStep()) {
             return redirect()->route('apartments.wizard.'.$nextStep, $apartment)
                 ->with('status', 'Lütfen apartman kurulumunu tamamlayın.');

@@ -1,0 +1,343 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Apartment;
+use App\Models\User;
+use App\Models\UserInvitation;
+use App\Models\UserQuotaOverride;
+use App\Models\UserSubscription;
+use App\Support\CurrentApartment;
+use App\Support\SubscriptionCheckout;
+use App\Support\UserApartmentQuota;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
+
+class UserInvitationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_invited_user_cannot_log_in_until_the_link_sets_a_password(): void
+    {
+        [$manager, $apartment] = $this->managerApartment();
+
+        $this->actingAs($manager)
+            ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->post(route('users.store'), [
+                'name' => 'Davet Edilen',
+                'email' => 'davet@example.com',
+                'phone' => '5551112233',
+            ])
+            ->assertRedirect();
+
+        $invited = User::query()->where('email', 'davet@example.com')->firstOrFail();
+        $this->assertNull($invited->activated_at);
+        $this->assertSame('user', $invited->role);
+        $this->assertSame('member', $apartment->members()->whereKey($invited->id)->first()->pivot->role);
+
+        $url = session('invite_url');
+        $this->assertNotEmpty($url);
+
+        $this->actingAs($manager)
+            ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->get(route('users.show', $invited))
+            ->assertOk()
+            ->assertSee($url, false)
+            ->assertSee('Bağlantıyı yenile')
+            ->assertDontSee('Şifre Belirle');
+
+        $invited->update(['password' => 'bilinen-parola']);
+
+        $this->post(route('logout'));
+
+        $this->post('/login', [
+            'email' => 'davet@example.com',
+            'password' => 'bilinen-parola',
+        ])->assertSessionHasErrors('email');
+        $this->assertGuest();
+
+        $this->actingAs($manager)
+            ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->patch(route('users.password', $invited), ['password' => 'yonetici-yazar'])
+            ->assertSessionHasErrors('password');
+
+        $token = $this->tokenFrom($url);
+        $this->get(route('invite.show', $token))
+            ->assertOk()
+            ->assertSee('Hesabınızı açın');
+
+        $this->post(route('invite.accept', $token), [
+            'password' => 'yeni-parola',
+            'password_confirmation' => 'yeni-parola',
+        ])->assertRedirect(route('residence.home'));
+
+        $this->assertAuthenticatedAs($invited);
+        $this->assertNotNull($invited->fresh()->activated_at);
+        $this->assertTrue(Hash::check('yeni-parola', $invited->fresh()->password));
+        $this->assertNotNull(UserInvitation::query()->where('user_id', $invited->id)->first()->accepted_at);
+    }
+
+    public function test_refreshing_an_invite_drops_the_previous_link(): void
+    {
+        [$manager, $apartment] = $this->managerApartment();
+        $invited = User::factory()->create([
+            'role' => 'user',
+            'activated_at' => null,
+            'email' => 'eski@example.com',
+        ]);
+        $apartment->members()->attach($invited->id, ['role' => 'member', 'is_active' => true]);
+
+        $first = UserInvitation::issue($invited);
+
+        $this->actingAs($manager)
+            ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->post(route('users.invite', $invited))
+            ->assertRedirect(route('users.show', $invited));
+
+        $second = $this->tokenFrom(session('invite_url'));
+        $this->assertNotSame($first, $second);
+        $this->assertSame(1, UserInvitation::query()->where('user_id', $invited->id)->count());
+
+        auth()->logout();
+
+        $this->post(route('invite.accept', $first), [
+            'password' => 'eski-parola',
+            'password_confirmation' => 'eski-parola',
+        ])->assertRedirect(route('invite.show', $first));
+        $this->assertGuest();
+        $this->assertNull($invited->fresh()->activated_at);
+
+        $expired = UserInvitation::query()->where('user_id', $invited->id)->firstOrFail();
+        $expired->update(['expires_at' => now()->subMinute()]);
+
+        $this->get(route('invite.show', $second))
+            ->assertOk()
+            ->assertSee('geçersiz veya süresi dolmuş');
+    }
+
+    public function test_a_member_cannot_open_subscriptions_or_create_an_apartment(): void
+    {
+        $member = User::factory()->create(['role' => 'user']);
+        $apartment = Apartment::factory()->create(['is_active' => true, 'unit_count' => 8]);
+        $apartment->members()->attach($member->id, ['role' => 'member', 'is_active' => true]);
+
+        $this->actingAs($member)
+            ->get(route('subscriber.subscriptions.create'))
+            ->assertForbidden();
+
+        $this->actingAs($member)
+            ->post(route('subscriber.apartments.store'), [
+                'name' => 'Uye Apartmani',
+                'address' => 'Adres',
+                'unit_count' => 4,
+                'account_opening_date' => now()->toDateString(),
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
+            ])->assertForbidden();
+
+        $loose = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($loose)
+            ->post(route('onboarding.store'), [
+                'name' => 'Izinsiz Apartman',
+                'unit_count' => 4,
+                'manager_type' => 'external',
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
+            ])->assertSessionHasErrors('name');
+
+        $this->assertSame(0, Apartment::query()->where('user_id', $loose->id)->count());
+        $this->assertFalse(app(UserApartmentQuota::class)->canCreate($loose));
+    }
+
+    public function test_a_promoted_owner_can_order_the_next_subscription_without_opening_a_new_apartment(): void
+    {
+        [$manager, $apartment] = $this->managerApartment();
+        $next = User::factory()->create([
+            'role' => 'user',
+            'name' => 'Sonraki Yonetici',
+            'activated_at' => now(),
+        ]);
+        $apartment->members()->attach($next->id, ['role' => 'member', 'is_active' => true]);
+
+        $previous = UserSubscription::factory()->create([
+            'user_id' => $manager->id,
+            'order_number' => 'SIP-26-ESKI1',
+            'status' => UserSubscription::STATUS_ACTIVE,
+            'is_active' => true,
+        ]);
+        app(SubscriptionCheckout::class)->openFree($manager, $apartment);
+
+        $this->actingAs($manager)
+            ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->patch(route('users.role', $next), ['role' => 'owner'])
+            ->assertRedirect();
+
+        $next->refresh();
+        $this->assertSame('user', $next->role);
+        $this->assertSame('owner', $apartment->members()->whereKey($next->id)->first()->pivot->role);
+
+        $this->actingAs($next)
+            ->get(route('subscriber.subscriptions.create'))
+            ->assertOk()
+            ->assertSee($apartment->name);
+
+        $this->actingAs($next)
+            ->post(route('subscriber.apartments.store'), [
+                'name' => 'Ikinci Bina',
+                'address' => 'Adres',
+                'unit_count' => 4,
+                'account_opening_date' => now()->toDateString(),
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
+            ])->assertForbidden();
+
+        $this->actingAs($next)
+            ->post(route('onboarding.store'), [
+                'name' => 'Ikinci Bina',
+                'unit_count' => 4,
+                'manager_type' => 'external',
+            ])->assertRedirect(route('dashboard'));
+
+        $this->actingAs($next)
+            ->post(route('subscriber.subscriptions.store'), [
+                'apartment_ids' => [$apartment->id],
+                'period' => 'monthly',
+                'payment_method' => 'havale',
+                'accept_sales' => '1',
+            ] + $this->billingSelection($next))
+            ->assertRedirect();
+
+        $order = UserSubscription::query()->where('user_id', $next->id)->where('status', UserSubscription::STATUS_PENDING)->first();
+        $this->assertNotNull($order);
+        $this->assertSame($apartment->id, $order->items()->first()->apartment_id);
+        $this->assertSame($manager->id, $previous->fresh()->user_id);
+        $this->assertSame('SIP-26-ESKI1', $previous->fresh()->order_number);
+        $this->assertSame(0, Apartment::query()->where('user_id', $next->id)->count());
+    }
+
+    public function test_admin_can_let_a_non_subscriber_create_by_setting_a_quota(): void
+    {
+        $user = User::factory()->create(['role' => 'user']);
+        UserQuotaOverride::query()->create([
+            'user_id' => $user->id,
+            'max_apartments' => 1,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('subscriber.apartments.store'), [
+                'name' => 'Kapali Kapi',
+                'address' => 'Adres',
+                'unit_count' => 4,
+                'account_opening_date' => now()->toDateString(),
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
+            ])->assertForbidden();
+
+        $this->actingAs($user)
+            ->post(route('onboarding.store'), [
+                'name' => 'Kotali Apartman',
+                'unit_count' => 4,
+                'manager_type' => 'external',
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
+            ])->assertRedirect();
+
+        $this->assertSame(1, Apartment::query()->where('user_id', $user->id)->where('is_active', true)->count());
+    }
+
+    public function test_customer_list_defaults_to_commercial_counterparts(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create(['name' => 'Kayitli Musteri', 'role' => 'manager']);
+        $member = User::factory()->create([
+            'name' => 'Sadece Uye',
+            'role' => 'user',
+            'activated_at' => now(),
+        ]);
+        $invitee = User::factory()->create([
+            'name' => 'Davet Bekleyen',
+            'role' => 'user',
+            'activated_at' => null,
+        ]);
+        $owner = User::factory()->create([
+            'name' => 'Bina Yoneticisi',
+            'role' => 'user',
+            'activated_at' => now(),
+        ]);
+        $apartment = Apartment::factory()->forUser($customer)->create(['is_active' => true]);
+        $apartment->members()->attach($customer->id, ['role' => 'owner', 'is_active' => true]);
+        $apartment->members()->attach($member->id, ['role' => 'member', 'is_active' => true]);
+        $apartment->members()->attach($owner->id, ['role' => 'owner', 'is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.customers.index'))
+            ->assertOk()
+            ->assertSee('Muhataplar')
+            ->assertSee('Kayitli Musteri')
+            ->assertSee('Bina Yoneticisi')
+            ->assertDontSee('Sadece Uye')
+            ->assertDontSee('Davet Bekleyen');
+
+        $this->actingAs($admin)
+            ->get(route('admin.customers.index', ['filtre' => 'uyeler']))
+            ->assertOk()
+            ->assertSee('Sadece Uye')
+            ->assertSee('Üye')
+            ->assertDontSee('Davet Bekleyen')
+            ->assertDontSee('Kayitli Musteri')
+            ->assertDontSee('Bina Yoneticisi');
+
+        $this->actingAs($admin)
+            ->get(route('admin.customers.index', ['filtre' => 'davetliler']))
+            ->assertOk()
+            ->assertSee('Davet Bekleyen')
+            ->assertSee('Davetli')
+            ->assertDontSee('Sadece Uye')
+            ->assertDontSee('Kayitli Musteri');
+
+        $this->actingAs($admin)
+            ->get(route('admin.customers.index', ['filtre' => 'tumu']))
+            ->assertOk()
+            ->assertSee('Kayitli Musteri')
+            ->assertSee('Sadece Uye')
+            ->assertSee('Davet Bekleyen')
+            ->assertSee('Bina Yoneticisi');
+    }
+
+    public function test_admin_cannot_impersonate_an_unactivated_user(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $invitee = User::factory()->create([
+            'role' => 'user',
+            'activated_at' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.impersonate.start', $invitee))
+            ->assertForbidden();
+    }
+
+    /**
+     * @return array{0: User, 1: Apartment}
+     */
+    private function managerApartment(): array
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+        $apartment = Apartment::factory()->forUser($manager)->create([
+            'name' => 'Davet Apartmani',
+            'unit_count' => 10,
+            'is_active' => true,
+            'billing_plan' => 'free',
+        ]);
+        $apartment->members()->attach($manager->id, ['role' => 'owner', 'is_active' => true]);
+
+        return [$manager, $apartment];
+    }
+
+    private function tokenFrom(string $url): string
+    {
+        return basename(parse_url($url, PHP_URL_PATH));
+    }
+}
