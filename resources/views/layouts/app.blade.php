@@ -201,7 +201,11 @@
                 {{-- Scrollable Navigation --}}
                 <div class="flex-1 overflow-y-auto sidebar-scroll -mx-4 px-4 min-h-0">
                     <nav class="space-y-1">
-                    @if(!request()->routeIs('admin.*') && !request()->routeIs('subscriber.*'))
+                    @php
+                        $subscriberNav = request()->routeIs('subscriber.*')
+                            || (request()->routeIs('profile.*') && auth()->user()->canPurchaseSubscription());
+                    @endphp
+                    @if(!request()->routeIs('admin.*') && ! $subscriberNav)
                         @if(auth()->user()->isAdmin())
                             <a href="{{ route('admin.dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -285,7 +289,7 @@
                         @endif
                     @else
 
-                    @if(request()->routeIs('subscriber.*'))
+                    @if($subscriberNav)
                         <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Abone</div>
                         <a href="{{ route('subscriber.dashboard', ['reset' => 1]) }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('subscriber.dashboard') || request()->routeIs('subscriber.apartments.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,9 +311,15 @@
                             </svg>
                             <span class="sidebar-text">Fatura bilgileri</span>
                         </a>
+                        <a href="{{ route('profile.edit') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('profile.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                            </svg>
+                            <span class="sidebar-text">Hesabım</span>
+                        </a>
                     @endif
 
-                    @if(!request()->routeIs('subscriber.*'))
+                    @if(! $subscriberNav)
                     @if($navIsOwner && $currentApartment)
                     <a href="{{ route('dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\UserInvitation;
 use App\Support\AccountEntry;
+use App\Support\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -31,6 +32,9 @@ class InviteController extends Controller
 
         $validated = $request->validate([
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'accept_privacy' => ['accepted'],
+        ], [
+            'accept_privacy.accepted' => 'Devam etmek için gizlilik ve KVKK aydınlatmasını kabul edin.',
         ]);
 
         $user = $invitation->user;
@@ -45,6 +49,8 @@ class InviteController extends Controller
         ]);
 
         $invitation->update(['accepted_at' => now()]);
+
+        app(LegalConsent::class)->recordPrivacy($user, $request);
 
         Auth::login($user);
         $request->session()->regenerate();

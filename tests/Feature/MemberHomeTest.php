@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Account;
 use App\Models\Apartment;
+use App\Models\LegalAcceptance;
 use App\Models\Unit;
 use App\Models\User;
 use App\Support\CurrentApartment;
+use App\Support\LegalConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -147,7 +149,8 @@ class MemberHomeTest extends TestCase
             ->get(route('profile.edit'))
             ->assertOk()
             ->assertSee('Parola')
-            ->assertSee('Mevcut parola');
+            ->assertSee('Mevcut parola')
+            ->assertDontSee('sidebar-text">Abone Paneli', false);
 
         $this->actingAs($member)
             ->patch(route('profile.password'), [
@@ -166,6 +169,60 @@ class MemberHomeTest extends TestCase
             ->assertRedirect(route('profile.edit'));
 
         $this->assertTrue(Hash::check('yeni-parola', $member->fresh()->password));
+    }
+
+    public function test_the_profile_lists_accepted_documents(): void
+    {
+        [, $apartment, $member] = $this->building();
+
+        LegalAcceptance::query()->create([
+            'user_id' => $member->id,
+            'document_key' => LegalConsent::PRIVACY,
+            'document_version' => '1',
+            'accepted_content' => 'KVKK metni',
+            'accepted_at' => now(),
+        ]);
+        LegalAcceptance::query()->create([
+            'user_id' => $member->id,
+            'apartment_id' => $apartment->id,
+            'document_key' => LegalConsent::RESIDENT_DATA,
+            'document_version' => '1',
+            'accepted_at' => now(),
+        ]);
+
+        $this->actingAs($member)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('Onaylanan belgeler')
+            ->assertSee('Gizlilik ve KVKK aydınlatması')
+            ->assertSee('Daire sakini verisi bildirimi')
+            ->assertSee('Uye Apartmani')
+            ->assertSee('KVKK metni')
+            ->assertDontSee('Üyelik sözleşmesi');
+    }
+
+    public function test_a_subscriber_profile_uses_the_subscriber_menu(): void
+    {
+        [$manager] = $this->building();
+
+        $this->actingAs($manager)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSeeInOrder([
+                'sidebar-text">Abone Paneli',
+                'sidebar-text">Siparişlerim',
+                'sidebar-text">Fatura bilgileri',
+                'sidebar-text">Hesabım',
+            ], false)
+            ->assertDontSee('sidebar-text">Özet', false);
+
+        $this->actingAs($manager)
+            ->get(route('subscriber.dashboard'))
+            ->assertOk()
+            ->assertSeeInOrder([
+                'sidebar-text">Fatura bilgileri',
+                'sidebar-text">Hesabım',
+            ], false);
     }
 
     /**

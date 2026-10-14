@@ -57,4 +57,39 @@
             <button type="submit" class="rounded-xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800">Parolayı kaydet</button>
         </form>
     </div>
+
+    <div class="mt-4 max-w-xl rounded-2xl bg-white p-6 shadow-sm">
+        <h2 class="text-sm font-semibold text-slate-900">Onaylanan belgeler</h2>
+        <p class="mt-1 text-sm text-slate-500">Kabul ettiğiniz aydınlatma ve sözleşmeler.</p>
+        @if ($acceptances->isEmpty())
+            <p class="mt-4 text-sm text-slate-500">Henüz onaylanmış bir belge yok.</p>
+        @else
+            <ul class="mt-4 divide-y divide-slate-200">
+                @foreach ($acceptances as $acceptance)
+                    <li class="py-3">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">{{ \App\Support\LegalConsent::label($acceptance->document_key) }}</div>
+                                @if ($acceptance->order)
+                                    <div class="mt-0.5 text-xs text-slate-500">Sipariş {{ $acceptance->order->order_number }}</div>
+                                @elseif ($acceptance->apartment)
+                                    <div class="mt-0.5 text-xs text-slate-500">{{ $acceptance->apartment->name }}</div>
+                                @endif
+                            </div>
+                            <div class="shrink-0 text-right text-xs text-slate-500">
+                                <div>{{ $acceptance->accepted_at?->timezone(config('app.timezone'))->format('d.m.Y H:i') }}</div>
+                                <div>Sürüm {{ $acceptance->document_version }}</div>
+                            </div>
+                        </div>
+                        @if (filled($acceptance->accepted_content))
+                            <details class="mt-2">
+                                <summary class="cursor-pointer text-xs font-semibold text-slate-600">Kabul edilen metin</summary>
+                                <div class="mt-2 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">{{ $acceptance->accepted_content }}</div>
+                            </details>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        @endif
+    </div>
 @endsection

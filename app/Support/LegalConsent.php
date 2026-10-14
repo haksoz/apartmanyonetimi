@@ -101,6 +101,23 @@ class LegalConsent
         $request->validate($rules, $messages);
     }
 
+    public function accepted(User $user, string $key): bool
+    {
+        return LegalAcceptance::query()
+            ->where('user_id', $user->id)
+            ->where('document_key', $key)
+            ->exists();
+    }
+
+    public function needsMembership(User $user): bool
+    {
+        if ($user->isAdminPanelUser() || $user->isSubscriber() || ! $user->managesBuilding()) {
+            return false;
+        }
+
+        return ! $this->accepted($user, self::MEMBERSHIP);
+    }
+
     public function recordMembership(User $user, Request $request): void
     {
         $this->record($user, self::MEMBERSHIP, null, null, $request);

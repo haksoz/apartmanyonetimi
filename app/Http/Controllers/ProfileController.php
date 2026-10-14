@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LegalAcceptance;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
 
@@ -9,8 +10,16 @@ class ProfileController extends Controller
 {
     public function edit()
     {
+        $user = auth()->user();
+
         return view('profile.edit', [
-            'user' => auth()->user(),
+            'user' => $user,
+            'acceptances' => LegalAcceptance::query()
+                ->where('user_id', $user->id)
+                ->with(['apartment:id,name', 'order:id,order_number'])
+                ->orderByDesc('accepted_at')
+                ->orderByDesc('id')
+                ->get(),
         ]);
     }
 

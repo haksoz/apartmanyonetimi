@@ -28,6 +28,7 @@ use App\Http\Controllers\Subscriber\SubscriberDashboardController;
 use App\Http\Controllers\Subscriber\SubscriberSubscriptionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InviteController;
+use App\Http\Controllers\MembershipConsentController;
 use App\Http\Controllers\CashBoxController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\CategoryController;
@@ -93,6 +94,8 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('sozlesme/uyelik', [MembershipConsentController::class, 'show'])->name('legal.membership.accept');
+    Route::post('sozlesme/uyelik', [MembershipConsentController::class, 'store'])->name('legal.membership.accept.store');
     Route::get('hesabim', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('hesabim', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('hesabim/parola', [ProfileController::class, 'updatePassword'])->name('profile.password');

@@ -8,6 +8,7 @@ use App\Models\UserInvitation;
 use App\Models\UserQuotaOverride;
 use App\Models\UserSubscription;
 use App\Support\CurrentApartment;
+use App\Support\LegalConsent;
 use App\Support\SubscriptionCheckout;
 use App\Support\UserApartmentQuota;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -65,17 +66,33 @@ class UserInvitationTest extends TestCase
         $token = $this->tokenFrom($url);
         $this->get(route('invite.show', $token))
             ->assertOk()
-            ->assertSee('Hesabınızı açın');
+            ->assertSee('Hesabınızı açın')
+            ->assertSee('Gizlilik ve KVKK aydınlatmasını okudum, kabul ediyorum.');
 
         $this->post(route('invite.accept', $token), [
             'password' => 'yeni-parola',
             'password_confirmation' => 'yeni-parola',
+        ])->assertSessionHasErrors('accept_privacy');
+        $this->assertNull($invited->fresh()->activated_at);
+
+        $this->post(route('invite.accept', $token), [
+            'password' => 'yeni-parola',
+            'password_confirmation' => 'yeni-parola',
+            'accept_privacy' => '1',
         ])->assertRedirect(route('residence.home'));
 
         $this->assertAuthenticatedAs($invited);
         $this->assertNotNull($invited->fresh()->activated_at);
         $this->assertTrue(Hash::check('yeni-parola', $invited->fresh()->password));
         $this->assertNotNull(UserInvitation::query()->where('user_id', $invited->id)->first()->accepted_at);
+        $this->assertDatabaseHas('legal_acceptances', [
+            'user_id' => $invited->id,
+            'document_key' => LegalConsent::PRIVACY,
+        ]);
+        $this->assertDatabaseMissing('legal_acceptances', [
+            'user_id' => $invited->id,
+            'document_key' => LegalConsent::MEMBERSHIP,
+        ]);
     }
 
     public function test_refreshing_an_invite_drops_the_previous_link(): void
@@ -90,12 +107,15 @@ class UserInvitationTest extends TestCase
 
         $first = UserInvitation::issue($invited);
 
-        $this->actingAs($manager)
+        $response = $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->post(route('users.invite', $invited))
-            ->assertRedirect(route('users.show', $invited));
+            ->followingRedirects()
+            ->post(route('users.invite', $invited));
 
-        $second = $this->tokenFrom(session('invite_url'));
+        $response->assertOk();
+        $this->assertSame(1, substr_count($response->getContent(), 'Yeni davet bağlantısı hazır.'));
+        preg_match('#/davet/([^"\s<]+)#', $response->getContent(), $invite);
+        $second = $invite[1];
         $this->assertNotSame($first, $second);
         $this->assertSame(1, UserInvitation::query()->where('user_id', $invited->id)->count());
 
@@ -177,6 +197,28 @@ class UserInvitationTest extends TestCase
         $next->refresh();
         $this->assertSame('user', $next->role);
         $this->assertSame('owner', $apartment->members()->whereKey($next->id)->first()->pivot->role);
+
+        $this->actingAs($next)
+            ->get(route('subscriber.subscriptions.create'))
+            ->assertRedirect(route('legal.membership.accept'));
+
+        $this->actingAs($next)
+            ->get(route('legal.membership.accept'))
+            ->assertOk()
+            ->assertSee('Üyelik sözleşmesini okudum, kabul ediyorum.');
+
+        $this->actingAs($next)
+            ->post(route('legal.membership.accept.store'))
+            ->assertSessionHasErrors('accept_membership');
+
+        $this->actingAs($next)
+            ->post(route('legal.membership.accept.store'), ['accept_membership' => '1'])
+            ->assertRedirect(route('subscriber.dashboard'));
+
+        $this->assertDatabaseHas('legal_acceptances', [
+            'user_id' => $next->id,
+            'document_key' => LegalConsent::MEMBERSHIP,
+        ]);
 
         $this->actingAs($next)
             ->get(route('subscriber.subscriptions.create'))
