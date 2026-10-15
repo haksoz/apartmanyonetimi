@@ -567,6 +567,56 @@ class ExpensePageTest extends TestCase
 
         $this->assertDatabaseHas('expenses', ['id' => $expense->id]);
     }
+
+    public function test_expenses_index_paginates_after_twenty_five_rows(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $supplier = Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => 'supplier',
+            'name' => 'Temizlik Firması',
+        ]);
+
+        foreach (range(0, 25) as $day) {
+            Expense::create([
+                'apartment_id' => $apartment->id,
+                'account_id' => $supplier->id,
+                'category' => 'Temizlik',
+                'description' => 'Gider '.$day,
+                'amount' => 100,
+                'expense_date' => now()->parse('2026-01-01')->addDays($day)->toDateString(),
+            ]);
+        }
+
+        $session = [CurrentApartment::SESSION_KEY => $apartment->id];
+
+        $this->withSession($session)
+            ->actingAs($user)
+            ->get(route('expenses.index'))
+            ->assertOk()
+            ->assertSee('Gider 25')
+            ->assertSee('Gider 1')
+            ->assertDontSee('Gider 0')
+            ->assertSee('Sonraki')
+            ->assertDontSee('Previous')
+            ->assertDontSee('Next');
+
+        $this->withSession($session)
+            ->actingAs($user)
+            ->get(route('expenses.index', ['page' => 2]))
+            ->assertOk()
+            ->assertSee('Gider 0')
+            ->assertSee('Önceki')
+            ->assertDontSee('Gider 25')
+            ->assertDontSee('Previous')
+            ->assertDontSee('Next');
+    }
 }
 
 

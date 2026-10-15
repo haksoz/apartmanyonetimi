@@ -16,10 +16,13 @@ use App\Models\CashBox;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Support\AidatPeriodReconciliation;
+use App\Support\BulkImportGuard;
 use App\Support\CurrentApartment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Spatie\LaravelPdf\Facades\Pdf;
+use Symfony\Component\HttpFoundation\Response;
 
 class AccountController extends Controller
 {
@@ -477,10 +480,31 @@ class AccountController extends Controller
             ->when($dateTo,   fn ($q) => $q->where('transaction_date', '<=', $dateTo))
             ->orderBy('transaction_date')->orderBy('id');
 
-        $transactions = $query->get();
+        $netSql = "COALESCE(SUM(CASE WHEN type = 'debit' THEN amount ELSE -amount END), 0)";
+        $periodNet = (float) $account->transactions()
+            ->when($dateFrom, fn ($q) => $q->where('transaction_date', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->where('transaction_date', '<=', $dateTo))
+            ->selectRaw($netSql.' as net')
+            ->value('net');
+        $closingBalance = $openingBalance + $periodNet;
 
-        // Running balance
-        $running = $openingBalance;
+        $transactions = $query->paginate(25)->withQueryString();
+
+        $offset = ($transactions->currentPage() - 1) * $transactions->perPage();
+        $priorNet = 0.0;
+        if ($offset > 0) {
+            $priorNet = (float) DB::query()->fromSub(
+                $account->transactions()
+                    ->when($dateFrom, fn ($q) => $q->where('transaction_date', '>=', $dateFrom))
+                    ->when($dateTo, fn ($q) => $q->where('transaction_date', '<=', $dateTo))
+                    ->orderBy('transaction_date')->orderBy('id')
+                    ->select(['type', 'amount'])
+                    ->limit($offset),
+                'prior_rows'
+            )->selectRaw($netSql.' as net')->value('net');
+        }
+
+        $running = $openingBalance + $priorNet;
         foreach ($transactions as $t) {
             $running += $t->type === 'debit' ? $t->amount : -$t->amount;
             $t->running_balance = $running;
@@ -528,8 +552,6 @@ class AccountController extends Controller
             }
         }
 
-        $closingBalance = $transactions->last()?->running_balance ?? $openingBalance;
-
         // İçe aktarılmış transaction sayısı
         $importedCount = $account->transactions()->where('is_imported', true)->count();
 
@@ -541,8 +563,10 @@ class AccountController extends Controller
     /**
      * Excel export for account statement (XLSX)
      */
-    public function statementExport(string $id, Request $request, CurrentApartment $currentApartment)
+    public function statementExport(string $id, string $type, Request $request, CurrentApartment $currentApartment)
     {
+        abort_unless(in_array($type, ['excel', 'pdf'], true), 404);
+
         $apartment = $currentApartment->getFor(auth()->user());
 
         $account = Account::query()
@@ -575,23 +599,38 @@ class AccountController extends Controller
             $t->running_balance = $running;
         }
 
-        // PhpSpreadsheet ile XLSX oluştur
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-
-        // Başlık
-        $sheet->setCellValue('A1', 'Hesap Ekstresi');
-        $sheet->setCellValue('A2', 'Hesap: ' . $account->name);
-        $sheet->setCellValue('A3', 'Daire: ' . ($account->unit?->unit_no ?? '-'));
-        $sheet->setCellValue('A4', 'Tarih Aralığı: ' . \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') . ' - ' . \Carbon\Carbon::parse($dateTo)->format('d.m.Y'));
-
-        // Özet mesajı
         $closingBalance = $transactions->last()?->running_balance ?? $openingBalance;
         $summary = $closingBalance > 0
             ? 'Hesabın Toplam ' . number_format($closingBalance, 2, ',', '.') . ' TL borcu vardır'
             : ($closingBalance < 0
                 ? 'Hesabın Toplam ' . number_format(abs($closingBalance), 2, ',', '.') . ' TL alacağı vardır'
                 : 'Hesabın bakiyesi sıfırdır');
+
+        if ($type === 'pdf') {
+            $heading = $account->unit
+                ? 'Daire: '.str_pad((string) $account->unit->unit_no, 2, '0', STR_PAD_LEFT).' - '.$account->name.' ('.$account->type_label.')'
+                : $account->name.' ('.$account->type_label.')';
+
+            return $this->statementPdfResponse('accounts.statement-pdf', [
+                'account' => $account,
+                'apartment' => $apartment,
+                'heading' => $heading,
+                'transactions' => $transactions,
+                'dateFrom' => $dateFrom,
+                'dateTo' => $dateTo,
+                'openingBalance' => $openingBalance,
+                'closingBalance' => $closingBalance,
+                'summary' => $summary,
+            ], 'hesap-ekstresi-'.$account->id);
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setCellValue('A1', 'Hesap Ekstresi');
+        $sheet->setCellValue('A2', 'Hesap: ' . $account->name);
+        $sheet->setCellValue('A3', 'Daire: ' . ($account->unit?->unit_no ?? '-'));
+        $sheet->setCellValue('A4', 'Tarih Aralığı: ' . \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') . ' - ' . \Carbon\Carbon::parse($dateTo)->format('d.m.Y'));
+
         $sheet->setCellValue('A5', $summary);
         $sheet->getStyle('A5')->getFont()->setBold(true);
         $sheet->getStyle('A5')->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color($closingBalance > 0 ? 'DC2626' : ($closingBalance < 0 ? '059669' : '64748B')));
@@ -672,6 +711,22 @@ class AccountController extends Controller
         ]);
     }
 
+    private function statementPdfResponse(string $viewName, array $data, string $filename): Response
+    {
+        $tempPath = sys_get_temp_dir().'/'.uniqid('pdf_', true).'.pdf';
+        $filename .= '-'.now()->format('Ymd-Hi');
+
+        Pdf::view($viewName, $data)
+            ->format('a4')
+            ->margins(10, 10, 10, 10)
+            ->save($tempPath);
+
+        return response()->file($tempPath, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'.pdf"',
+        ])->deleteFileAfterSend();
+    }
+
     public function destroyTransaction(string $id, AccountTransaction $transaction, CurrentApartment $currentApartment)
     {
         $apartment = $currentApartment->getFor(auth()->user());
@@ -699,6 +754,10 @@ class AccountController extends Controller
 
         if (! $this->isOwnerOf($apartment)) {
             abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
+        }
+
+        if ($redirect = app(BulkImportGuard::class)->redirectIfDeleteBlocked($apartment)) {
+            return $redirect;
         }
 
         $deletedDues = 0;
@@ -1108,6 +1167,10 @@ class AccountController extends Controller
             abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
         }
 
+        if ($redirect = app(BulkImportGuard::class)->redirectIfBlocked($apartment)) {
+            return $redirect;
+        }
+
         return view('accounts.import', compact('apartment'));
     }
 
@@ -1206,6 +1269,10 @@ class AccountController extends Controller
 
         if (! $this->isOwnerOf($apartment)) {
             abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
+        }
+
+        if ($redirect = app(BulkImportGuard::class)->redirectIfBlocked($apartment)) {
+            return $redirect;
         }
 
         $validated = $request->validate([
@@ -1364,6 +1431,10 @@ class AccountController extends Controller
             abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
         }
 
+        if ($redirect = app(BulkImportGuard::class)->redirectIfBlocked($apartment)) {
+            return $redirect;
+        }
+
         $transactions = session('bulk_import_transactions', []);
         $accounts = session('bulk_import_accounts', []);
         $sessionApartmentId = session('bulk_import_apartment_id');
@@ -1428,6 +1499,10 @@ class AccountController extends Controller
 
         if (! $this->isOwnerOf($apartment)) {
             abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
+        }
+
+        if ($redirect = app(BulkImportGuard::class)->redirectIfBlocked($apartment)) {
+            return $redirect;
         }
 
         $transactions = session('bulk_import_transactions', []);

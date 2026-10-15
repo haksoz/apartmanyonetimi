@@ -18,17 +18,28 @@
         </div>
 
         <div class="flex items-center justify-end gap-2 shrink-0">
-            @include('accounts._tabs', ['account' => $account, 'active' => 'statement', 'withOverview' => false])
+            <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'excel', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+               class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center gap-1.5 rounded-2xl sm:rounded-xl border border-slate-300 bg-white px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 hover:bg-slate-50">
+                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Excel
+            </a>
+            <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'pdf', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+               class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center gap-1.5 rounded-2xl sm:rounded-xl border border-slate-300 bg-white px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 hover:bg-slate-50">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                PDF
+            </a>
         </div>
     </div>
 
     {{-- Başlık + Tarih Filtresi --}}
     <div class="rounded-2xl bg-white shadow-sm p-4 md:p-6 mb-6">
-        <h1 class="text-2xl font-bold text-slate-950">Tüm Hareketler</h1>
-        <p class="mt-1 text-sm text-slate-500">
-            {{ $account->name }}
-            @if($account->unit) &mdash; Daire No: {{ $account->unit->unit_no }} @endif
-        </p>
+        <div>
+            <h1 class="text-2xl font-bold text-slate-950">Tüm Hareketler</h1>
+            <p class="mt-1 text-sm text-slate-500">
+                {{ $account->name }} ({{ $account->type_label }})
+                @if($account->unit) &mdash; Daire No: {{ $account->unit->unit_no }} @endif
+            </p>
+        </div>
 
         <form method="GET" action="{{ route('accounts.statement', $account) }}" class="mt-5 border-t border-slate-100 pt-5">
             <div class="flex flex-row flex-wrap items-end gap-4">
@@ -72,7 +83,7 @@
                     </span>
                 @endif
             </h2>
-            <span class="text-sm text-slate-500">{{ $transactions->count() }} kayıt</span>
+            <span class="text-sm text-slate-500">{{ $transactions->total() }} kayıt</span>
         </div>
 
         @if($transactions->isEmpty())
@@ -98,7 +109,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @if($dateFrom)
+                        @if($dateFrom && $transactions->onFirstPage())
                             <tr class="bg-slate-50 font-medium">
                                 <td class="px-2.5 py-3.5 text-slate-500">
                                     <div class="sm:hidden">
@@ -272,13 +283,11 @@
         @endif
     </div>
 
-    <div class="mt-4 flex justify-end">
-        <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
-           class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
-            Excel'e Aktar
-        </a>
-    </div>
-
+    @if ($transactions->hasPages())
+        <div class="mt-6">
+            {{ $transactions->links() }}
+        </div>
+    @endif
 
     <script>
         document.addEventListener('click', function (e) {

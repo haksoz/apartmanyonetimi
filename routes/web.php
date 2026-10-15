@@ -191,7 +191,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
         Route::resource('accounts', AccountController::class);
         Route::get('accounts/{id}/statement', [AccountController::class, 'statement'])->name('accounts.statement');
-        Route::get('accounts/{id}/statement/export', [AccountController::class, 'statementExport'])->middleware('feature.export')->name('accounts.statement.export');
+        Route::get('accounts/{id}/statement/export/{type}', [AccountController::class, 'statementExport'])->name('accounts.statement.export');
 
         Route::delete('accounts/{id}/transactions/{transaction}', [AccountController::class, 'destroyTransaction'])->name('accounts.transactions.destroy');
         Route::post('accounts/imported-transactions', [AccountController::class, 'destroyAllImported'])->name('accounts.imported.destroy-all');

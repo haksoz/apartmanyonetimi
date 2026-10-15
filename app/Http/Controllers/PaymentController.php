@@ -296,7 +296,8 @@ class PaymentController extends Controller
                 ->where('unallocated_amount', '>', 0))
             ->orderByDesc('payment_date')
             ->orderByDesc('id')
-            ->get();
+            ->paginate(25)
+            ->withQueryString();
 
         $isOrphanFilter = $filter === 'orphan';
 

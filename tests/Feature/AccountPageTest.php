@@ -840,4 +840,125 @@ class AccountPageTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('message', 'Bu isimde bir hesap zaten mevcut.');
     }
+
+    public function test_account_statement_excel_and_pdf_are_free(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Salih Sayan',
+        ]);
+        AccountTransaction::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $account->id,
+            'type' => 'debit',
+            'description' => 'Ocak aidatı',
+            'amount' => 150,
+            'transaction_date' => '2026-01-15',
+        ]);
+
+        $session = [CurrentApartment::SESSION_KEY => $apartment->id];
+
+        $this->withSession($session)
+            ->actingAs($user)
+            ->get(route('accounts.statement', ['id' => $account->id, 'date_from' => '2026-01-01', 'date_to' => '2026-01-31']))
+            ->assertOk()
+            ->assertSee('statement/export/excel', false)
+            ->assertSee('statement/export/pdf', false)
+            ->assertSee('Excel')
+            ->assertSee('Salih Sayan (Kat Maliki)', false)
+            ->assertSee('PDF')
+            ->assertDontSee("Excel'e Aktar")
+            ->assertDontSee('+ Borçlandır')
+            ->assertDontSee('+ Tahsilat Ekle')
+            ->assertDontSee('Düzenle');
+
+        $this->withSession($session)
+            ->actingAs($user)
+            ->get(route('accounts.statement.export', ['id' => $account->id, 'type' => 'excel', 'date_from' => '2026-01-01', 'date_to' => '2026-01-31']))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $html = view('accounts.statement-pdf', [
+            'account' => $account->load('unit'),
+            'apartment' => $apartment,
+            'heading' => 'Daire: 01 - Salih Sayan (Kat Maliki)',
+            'transactions' => $account->transactions,
+            'dateFrom' => '2026-01-01',
+            'dateTo' => '2026-01-31',
+            'openingBalance' => 0,
+            'closingBalance' => 150,
+            'summary' => 'Hesabın Toplam 150,00 TL borcu vardır',
+        ])->render();
+
+        $this->assertStringContainsString('Daire: 01 - Salih Sayan (Kat Maliki)', $html);
+        $this->assertStringContainsString('Hesabın Toplam 150,00 TL borcu vardır', $html);
+        $this->assertStringContainsString('Ocak aidatı', $html);
+    }
+
+    public function test_account_statement_paginates_like_the_dues_list(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Salih Sayan',
+        ]);
+
+        foreach (range(0, 25) as $day) {
+            AccountTransaction::create([
+                'apartment_id' => $apartment->id,
+                'account_id' => $account->id,
+                'type' => 'debit',
+                'description' => 'Hareket '.$day,
+                'amount' => 10,
+                'transaction_date' => now()->parse('2026-01-01')->addDays($day)->toDateString(),
+            ]);
+        }
+
+        $session = [CurrentApartment::SESSION_KEY => $apartment->id];
+        $query = ['id' => $account->id, 'date_from' => '2026-01-01', 'date_to' => '2026-02-15'];
+
+        $this->withSession($session)
+            ->actingAs($user)
+            ->get(route('accounts.statement', $query))
+            ->assertOk()
+            ->assertSee('26 kayıt')
+            ->assertSee('Dönem Açılış Bakiyesi')
+            ->assertSee('250,00 TL')
+            ->assertSee('260,00 TL')
+            ->assertSee('Sonraki')
+            ->assertDontSee('Previous')
+            ->assertDontSee('Next');
+
+        $this->withSession($session)
+            ->actingAs($user)
+            ->get(route('accounts.statement', $query + ['page' => 2]))
+            ->assertOk()
+            ->assertSee('Hareket 25')
+            ->assertSee('260,00 TL')
+            ->assertSee('Önceki')
+            ->assertDontSee('Dönem Açılış Bakiyesi')
+            ->assertDontSee('Hareket 0')
+            ->assertDontSee('Previous')
+            ->assertDontSee('Next');
+    }
 }

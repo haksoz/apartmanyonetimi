@@ -128,4 +128,10 @@
             </div>
         @endforelse
     </div>
+
+    @if ($payments->hasPages())
+        <div class="mt-6">
+            {{ $payments->links() }}
+        </div>
+    @endif
 @endsection

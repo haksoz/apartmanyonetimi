@@ -11,6 +11,7 @@ use App\Models\QuoteRequest;
 use App\Models\SubscriptionItem;
 use App\Models\Unit;
 use App\Support\ApartmentCommercial;
+use App\Support\BulkImportGuard;
 use App\Support\ApartmentReset\ApartmentReset;
 use App\Support\ApartmentReset\ResetPolicy;
 use App\Support\CurrentApartment;
@@ -54,6 +55,8 @@ class ApartmentController extends Controller
             'isOwner' => $isOwner,
             'hasImported' => $hasImported,
             'serviceHistory' => $serviceHistory,
+            'importBlockReason' => $isOwner ? app(BulkImportGuard::class)->reason($currentApartment) : null,
+            'importDeleteReason' => $isOwner ? app(BulkImportGuard::class)->deleteReason($currentApartment) : null,
         ]);
     }
 
@@ -174,7 +177,10 @@ class ApartmentController extends Controller
             ->where('is_imported', true)
             ->exists();
 
-        return view('apartments.show', compact('apartment', 'isOwner', 'hasImported', 'serviceHistory'));
+        $importBlockReason = $isOwner ? app(BulkImportGuard::class)->reason($apartment) : null;
+        $importDeleteReason = $isOwner ? app(BulkImportGuard::class)->deleteReason($apartment) : null;
+
+        return view('apartments.show', compact('apartment', 'isOwner', 'hasImported', 'serviceHistory', 'importBlockReason', 'importDeleteReason'));
     }
 
     /**

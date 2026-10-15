@@ -9,14 +9,6 @@
             <a href="{{ route('accounts.index') }}" class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-300 px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
                 Hesaplar
             </a>
-            <span class="text-slate-400">/</span>
-            <a href="{{ route('accounts.show', $account) }}" class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-300 px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 bg-white hover:bg-slate-50">
-                @if ($account->unit)
-                    Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                @else
-                    {{ $account->type_label }}
-                @endif
-            </a>
 
             @if (!$account->is_active)
                 <span class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
@@ -57,6 +49,11 @@
                     Detaylar
                 </summary>
                 <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-slate-500">Hesap Türü</div>
+                    <div class="font-semibold text-slate-900">{{ $account->type_label }}</div>
+                </div>
 
                 {{-- Daire bilgileri --}}
                 @if ($account->unit)

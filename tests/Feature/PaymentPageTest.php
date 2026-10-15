@@ -121,4 +121,56 @@ class PaymentPageTest extends TestCase
             'id' => $payment->id,
         ]);
     }
+
+    public function test_payments_index_paginates_after_twenty_five_rows(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $tenant = Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_TENANT,
+            'name' => 'Kiracı',
+        ]);
+
+        foreach (range(0, 25) as $day) {
+            Payment::create([
+                'apartment_id' => $apartment->id,
+                'account_id' => $tenant->id,
+                'amount' => 100,
+                'unallocated_amount' => 0,
+                'payment_date' => now()->parse('2026-01-01')->addDays($day)->toDateString(),
+                'description' => 'Tahsilat '.$day,
+            ]);
+        }
+
+        $session = [CurrentApartment::SESSION_KEY => $apartment->id];
+
+        $this->withSession($session)
+            ->actingAs($user)
+            ->get(route('payments.index'))
+            ->assertOk()
+            ->assertSee('Tahsilat 25')
+            ->assertSee('Tahsilat 1')
+            ->assertDontSee('Tahsilat 0')
+            ->assertSee('Sonraki')
+            ->assertDontSee('Previous')
+            ->assertDontSee('Next');
+
+        $this->withSession($session)
+            ->actingAs($user)
+            ->get(route('payments.index', ['page' => 2]))
+            ->assertOk()
+            ->assertSee('Tahsilat 0')
+            ->assertSee('Önceki')
+            ->assertDontSee('Tahsilat 25')
+            ->assertDontSee('Previous')
+            ->assertDontSee('Next');
+
+        $this->withSession($session)
+            ->actingAs($user)
+            ->get(route('payments.index', ['filter' => 'orphan', 'page' => 2]))
+            ->assertOk()
+            ->assertDontSee('Tahsilat 0');
+    }
 }
