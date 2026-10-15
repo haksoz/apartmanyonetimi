@@ -4,15 +4,20 @@
 
 @section('content')
 
-    <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
-        <div class="flex items-center gap-2 min-w-0 overflow-x-auto">
-            <a href="{{ route('accounts.index') }}" class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-300 px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
-                Hesaplar
-            </a>
-
-            @if (!$account->is_active)
-                <span class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
-            @endif
+    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+        <div class="min-w-0 flex-1">
+            <h1 class="text-2xl font-bold text-slate-950">
+                <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+                <span class="font-normal text-slate-400"> / </span>
+                @if ($account->unit)
+                    Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @else
+                    {{ $account->name }}
+                @endif
+                @if (!$account->is_active)
+                    <span class="ml-2 align-middle inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
+                @endif
+            </h1>
         </div>
 
         {{-- Hesap Sekmeleri --}}
@@ -30,53 +35,42 @@
     <div class="rounded-2xl bg-white shadow-sm mb-6 overflow-hidden">
         {{-- Üst: Bilgiler --}}
         <div class="p-4 md:p-6 border-b border-slate-100">
-            {{-- Hesap adı --}}
-            <div class="mb-5">
-                <div class="text-2xl font-bold text-slate-900">
-                    @if ($account->unit)
-                        Daire: {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }} - {{ $account->name }}
-                    @else
-                        {{ $account->name }}
-                    @endif
-                </div>
+            <div class="mb-4">
+                <div class="text-xl font-bold text-slate-900">{{ $account->name }}</div>
+                <p class="mt-0.5 text-sm text-slate-400">{{ $account->type_label }}</p>
             </div>
 
             <details class="group">
-                <summary class="cursor-pointer list-none inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <summary class="flex cursor-pointer list-none items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 focus:outline-none">
+                    <span>Detaylar</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
-                    Detaylar
                 </summary>
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-
-                <div class="flex items-center justify-between gap-2">
-                    <div class="text-xs text-slate-500">Hesap Türü</div>
-                    <div class="font-semibold text-slate-900">{{ $account->type_label }}</div>
-                </div>
+                <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 text-sm">
 
                 {{-- Daire bilgileri --}}
                 @if ($account->unit)
                     @if ($account->unit->floor)
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                         <div class="text-xs text-slate-500">Kat</div>
                         <div class="font-semibold text-slate-900">{{ $account->unit->floor }}</div>
                     </div>
                     @endif
                     @if ($account->unit->block)
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                         <div class="text-xs text-slate-500">Blok</div>
                         <div class="font-semibold text-slate-900">{{ $account->unit->block }}</div>
                     </div>
                     @endif
                     @if ($account->unit->square_meters)
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                         <div class="text-xs text-slate-500">Alan</div>
                         <div class="font-semibold text-slate-900">{{ number_format($account->unit->square_meters, 0, ',', '.') }} m²</div>
                     </div>
                     @endif
                     @if ($account->unit->share_coefficient)
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                         <div class="text-xs text-slate-500">Hisse Katsayısı</div>
                         <div class="font-semibold text-slate-900">{{ $account->unit->share_coefficient }}</div>
                     </div>
@@ -85,7 +79,7 @@
 
                 {{-- Telefon --}}
                 @if ($account->phone)
-                <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                     <div class="text-xs text-slate-500">Telefon</div>
                     <div class="font-semibold text-slate-900">{{ $account->phone }}</div>
                 </div>
@@ -93,20 +87,20 @@
 
                 {{-- E-posta --}}
                 @if ($account->email)
-                <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                     <div class="text-xs text-slate-500">E-posta</div>
                     <div class="font-semibold text-slate-900">{{ $account->email }}</div>
                 </div>
                 @endif
 
                 {{-- Portal erişimi --}}
-                <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                     <div class="text-xs text-slate-500">Portal Erişimi</div>
                     <div class="font-semibold text-slate-900">{{ $account->user ? 'Var' : 'Yok' }}</div>
                 </div>
 
                 {{-- Açılış tarihi --}}
-                <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                     <div class="text-xs text-slate-500">
                         @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Girişi
                         @else Hesap Açılışı
@@ -123,7 +117,7 @@
 
                 {{-- Kapanış tarihi --}}
                 @if ($account->account_end_date)
-                <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                     <div class="text-xs text-slate-500">
                         @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Çıkışı
                         @elseif ($account->type === App\Models\Account::TYPE_OWNER) Maliklik Bitişi
@@ -136,12 +130,12 @@
 
                 {{-- Kullanıcı bilgileri --}}
                 @if ($account->user)
-                <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                     <div class="text-xs text-slate-500">E-posta</div>
                     <div class="font-semibold text-slate-900">{{ $account->user->email }}</div>
                 </div>
                 @if ($account->user->phone)
-                <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                     <div class="text-xs text-slate-500">Telefon</div>
                     <div class="font-semibold text-slate-900">{{ $account->user->phone }}</div>
                 </div>

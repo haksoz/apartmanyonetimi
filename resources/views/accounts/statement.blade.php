@@ -1,47 +1,68 @@
 @extends('layouts.app')
 
 @section('content')
-    {{-- Breadcrumb + Hesap Sekmeleri --}}
-    <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
-        <div class="flex items-center gap-2 min-w-0 overflow-x-auto">
-            <a href="{{ route('accounts.index') }}" class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-300 px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
-                Hesaplar
-            </a>
-            <span class="text-slate-400">/</span>
-            <a href="{{ route('accounts.show', $account) }}" class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-300 px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 bg-white hover:bg-slate-50">
-                @if ($account->unit)
-                    Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                @else
-                    {{ $account->type_label }}
+    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+        <div class="min-w-0 flex-1">
+            <h1 class="text-2xl font-bold text-slate-950">
+                <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
+                <span class="font-normal text-slate-400"> / </span>
+                <a href="{{ route('accounts.show', $account) }}" class="hover:text-slate-600">
+                    @if ($account->unit)
+                        Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                    @else
+                        {{ $account->name }}
+                    @endif
+                </a>
+                @if (!$account->is_active)
+                    <span class="ml-2 align-middle inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
                 @endif
-            </a>
+            </h1>
+            <p class="mt-1 text-sm text-slate-500">Tüm Hareketler</p>
         </div>
 
         <div class="flex items-center justify-end gap-2 shrink-0">
-            <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'excel', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
-               class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center gap-1.5 rounded-2xl sm:rounded-xl border border-slate-300 bg-white px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 hover:bg-slate-50">
-                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Excel
-            </a>
-            <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'pdf', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
-               class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center gap-1.5 rounded-2xl sm:rounded-xl border border-slate-300 bg-white px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 hover:bg-slate-50">
-                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                PDF
-            </a>
+            <div class="hidden lg:flex items-center gap-2">
+                <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'excel', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+                   class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Excel
+                </a>
+                <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'pdf', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+                   class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    PDF
+                </a>
+            </div>
+
+            <details class="lg:hidden relative group">
+                <summary class="cursor-pointer list-none min-h-[3.5rem] inline-flex items-center justify-center rounded-2xl bg-slate-950 px-5 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800 gap-2 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    İşlem
+                </summary>
+                <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
+                    <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'excel', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+                       class="inline-flex w-full items-center gap-2 min-h-[3.5rem] rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Excel
+                    </a>
+                    <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'pdf', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+                       class="inline-flex w-full items-center gap-2 min-h-[3.5rem] rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        PDF
+                    </a>
+                </div>
+            </details>
         </div>
     </div>
 
-    {{-- Başlık + Tarih Filtresi --}}
     <div class="rounded-2xl bg-white shadow-sm p-4 md:p-6 mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-950">Tüm Hareketler</h1>
-            <p class="mt-1 text-sm text-slate-500">
-                {{ $account->name }} ({{ $account->type_label }})
-                @if($account->unit) &mdash; Daire No: {{ $account->unit->unit_no }} @endif
-            </p>
+        <div class="mb-5">
+            <div class="text-xl font-bold text-slate-900">{{ $account->name }}</div>
+            <p class="mt-0.5 text-sm text-slate-400">{{ $account->type_label }}</p>
         </div>
-
-        <form method="GET" action="{{ route('accounts.statement', $account) }}" class="mt-5 border-t border-slate-100 pt-5">
+        <form method="GET" action="{{ route('accounts.statement', $account) }}" class="border-t border-slate-100 pt-5">
             <div class="flex flex-row flex-wrap items-end gap-4">
                 <div class="flex-1">
                     <label class="block text-xs font-medium text-slate-500 mb-1.5">Başlangıç Tarihi</label>

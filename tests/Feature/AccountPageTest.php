@@ -126,7 +126,11 @@ class AccountPageTest extends TestCase
             ->get(route('accounts.show', $account))
             ->assertStatus(200)
             ->assertSee('1. Daire')
-            ->assertSee('1 no.lu daire');
+            ->assertSee('Daire 01')
+            ->assertSee('Resident')
+            ->assertSee('Detaylar')
+            ->assertDontSee('Hesap Türü')
+            ->assertSee(route('accounts.index'), false);
     }
 
     public function test_user_can_create_supplier_account_for_selected_apartment(): void
@@ -878,7 +882,12 @@ class AccountPageTest extends TestCase
             ->assertSee('statement/export/excel', false)
             ->assertSee('statement/export/pdf', false)
             ->assertSee('Excel')
-            ->assertSee('Salih Sayan (Kat Maliki)', false)
+            ->assertSee('Salih Sayan')
+            ->assertSee('Kat Maliki')
+            ->assertSee('Daire 01')
+            ->assertSee('Tüm Hareketler')
+            ->assertSee('İşlem')
+            ->assertSee(route('accounts.show', $account), false)
             ->assertSee('PDF')
             ->assertDontSee("Excel'e Aktar")
             ->assertDontSee('+ Borçlandır')
