@@ -9,12 +9,22 @@
     @if ($selectedAccount)
         @include('accounts._page_heading', ['account' => $selectedAccount, 'active' => 'due'])
     @else
-        <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
-            <a href="{{ route('accounts.index') }}" class="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
-                Hesaplar
-            </a>
-            <div class="flex gap-2">
-                <a href="{{ route('dues.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Aidatlara Dön</a>
+        <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+            <div class="min-w-0 flex-1">
+                <h1 class="text-2xl font-bold text-slate-950">
+                    <a href="{{ route('dues.index') }}" class="hover:text-slate-600">Aidatlar</a>
+                    <span class="font-normal text-slate-400"> / </span>
+                    <span class="text-lg font-semibold text-slate-800">Borçlandır</span>
+                </h1>
+                <p class="mt-1 text-sm text-slate-500">Tek hesaba birebir borçlandırma oluşturun.</p>
+            </div>
+            <div class="flex items-center justify-end gap-2 shrink-0">
+                <button type="button" onclick="history.back()" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                    </svg>
+                    Geri
+                </button>
             </div>
         </div>
     @endif
@@ -28,10 +38,12 @@
 
         {{-- Başlık + Ana Alanlar --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <h1 class="text-2xl font-bold text-slate-950">Borçlandır</h1>
-            <p class="mt-1 text-sm text-slate-500">Tek hesaba birebir borçlandırma oluşturun.</p>
+            @if ($selectedAccount)
+                <h1 class="text-2xl font-bold text-slate-950">Borçlandır</h1>
+                <p class="mt-1 text-sm text-slate-500">Tek hesaba birebir borçlandırma oluşturun.</p>
+            @endif
 
-            <div class="mt-5 grid gap-5 border-t border-slate-100 pt-5 md:grid-cols-2">
+            <div class="grid gap-5 md:grid-cols-2 {{ $selectedAccount ? 'mt-5 border-t border-slate-100 pt-5' : '' }}">
                 <div>
                     <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Hesap / Kiracı-Katmaliki</label>
                     <select id="account_id" name="{{ $lockedAccount ? null : 'account_id' }}" required

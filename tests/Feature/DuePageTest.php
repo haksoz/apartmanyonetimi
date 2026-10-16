@@ -73,8 +73,15 @@ class DuePageTest extends TestCase
             ->actingAs($user)
             ->get(route('dues.create'))
             ->assertOk()
-            ->assertSee('Aidatlara Dön')
+            ->assertSee('Aidatlar')
+            ->assertSee(route('dues.index'), false)
+            ->assertSee('text-lg font-semibold text-slate-800">Borçlandır', false)
+            ->assertSee('Tek hesaba birebir borçlandırma oluşturun.')
+            ->assertSee('Geri')
+            ->assertSee('history.back()', false)
+            ->assertDontSee('Toplu Borçlandır')
             ->assertSee('name="account_id"', false)
+            ->assertDontSee('Aidatlara Dön')
             ->assertDontSee('cursor-not-allowed', false)
             ->assertDontSee('text-base font-semibold text-slate-800', false);
     }
@@ -528,6 +535,7 @@ class DuePageTest extends TestCase
             ->assertSee('Detaylar')
             ->assertSee('<details class="group" open>', false)
             ->assertSee('Daire 01')
+            ->assertSee('history.back()', false)
             ->assertDontSee('Aidat Detayı')
             ->assertDontSee('Aidatlara Dön');
     }

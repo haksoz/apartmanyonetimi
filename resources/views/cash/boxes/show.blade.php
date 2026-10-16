@@ -1,16 +1,41 @@
 @extends('layouts.app')
 
 @section('content')
-    {{-- Header --}}
-    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-950">{{ $cashBox->name }}</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ $cashBox->description ?: 'Kasa hareketleri' }}</p>
+    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+        <div class="min-w-0 flex-1">
+            <h1 class="text-2xl font-bold text-slate-950">
+                <a href="{{ route('cash.index') }}" class="hover:text-slate-600">Kasa</a>
+                <span class="font-normal text-slate-400"> / </span>
+                <span class="text-lg font-semibold text-slate-800">{{ $cashBox->name }}</span>
+            </h1>
+            <p class="mt-1 text-sm text-slate-500">{{ $cashBox->description ?: 'Gelir, gider ve bakiye hareketleri.' }}</p>
         </div>
-        <div class="flex flex-wrap gap-2">
-            <span title="Manuel kasa hareketi muhasebe kayıtlarına yansımadığı için şimdilik devre dışı" class="cursor-not-allowed flex-1 md:flex-none rounded-xl bg-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-500 text-center select-none">+ Hareket Ekle</span>
-            <a href="{{ route('cash-boxes.edit', $cashBox) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Düzenle</a>
-            <a href="{{ route('cash.index') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Kasalara Dön</a>
+
+        <div class="flex items-center justify-end gap-2 shrink-0">
+            <div class="hidden lg:flex flex-wrap items-center gap-2">
+                <span title="Manuel kasa hareketi muhasebe kayıtlarına yansımadığı için şimdilik devre dışı" class="cursor-not-allowed rounded-xl bg-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-500 select-none">+ Hareket Ekle</span>
+                <a href="{{ route('cash-boxes.edit', $cashBox) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+            </div>
+
+            <details class="lg:hidden relative group">
+                <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    İşlem
+                </summary>
+                <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
+                    <span title="Manuel kasa hareketi muhasebe kayıtlarına yansımadığı için şimdilik devre dışı" class="block w-full cursor-not-allowed rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400 text-left select-none">+ Hareket Ekle</span>
+                    <a href="{{ route('cash-boxes.edit', $cashBox) }}" class="block w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-left hover:bg-slate-50">Düzenle</a>
+                </div>
+            </details>
+
+            <button type="button" onclick="history.back()" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                </svg>
+                Geri
+            </button>
         </div>
     </div>
 

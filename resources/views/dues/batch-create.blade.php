@@ -1,14 +1,22 @@
 @extends('layouts.app')
 
 @section('content')
-    {{-- Header --}}
-    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-950">Toplu Borçlandır</h1>
+    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+        <div class="min-w-0 flex-1">
+            <h1 class="text-2xl font-bold text-slate-950">
+                <a href="{{ route('dues.index') }}" class="hover:text-slate-600">Aidatlar</a>
+                <span class="font-normal text-slate-400"> / </span>
+                <span class="text-lg font-semibold text-slate-800">Toplu Borçlandır</span>
+            </h1>
             <p class="mt-1 text-sm text-slate-500">Dönem giderlerinden veya manuel toplam tutar ile tüm dairelere borçlandırma oluşturun.</p>
         </div>
-        <div class="flex gap-2">
-            <a href="{{ route('dues.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Aidatlara Dön</a>
+        <div class="flex items-center justify-end gap-2 shrink-0">
+            <button type="button" onclick="history.back()" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                </svg>
+                Geri
+            </button>
         </div>
     </div>
 

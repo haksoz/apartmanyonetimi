@@ -127,6 +127,7 @@ class ExpensePageTest extends TestCase
             ->assertSee('text-xl font-bold text-slate-900', false)
             ->assertSee('text-sm text-slate-400', false)
             ->assertSee('Detaylar')
+            ->assertSee('history.back()', false)
             ->assertDontSee('Gider Detayı');
     }
 

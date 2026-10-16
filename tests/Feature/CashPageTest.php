@@ -33,6 +33,35 @@ class CashPageTest extends TestCase
             ->assertSee('Henüz kasa hareketi yok.');
     }
 
+    public function test_cash_box_show_uses_the_shared_heading(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $cashBox = CashBox::create([
+            'apartment_id' => $apartment->id,
+            'name' => 'Site Kasası',
+            'description' => 'Aidat tahsilatları',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('cash-boxes.show', $cashBox))
+            ->assertOk()
+            ->assertSee('Kasa')
+            ->assertSee(route('cash.index'), false)
+            ->assertSee('text-lg font-semibold text-slate-800', false)
+            ->assertSee('Site Kasası')
+            ->assertSee('Aidat tahsilatları')
+            ->assertSee('history.back()', false)
+            ->assertSee('Düzenle')
+            ->assertDontSee('Kasalara Dön');
+    }
+
     public function test_cash_index_uses_only_selected_apartment_transactions(): void
     {
         $user = User::factory()->create();
