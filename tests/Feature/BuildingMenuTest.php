@@ -25,7 +25,8 @@ class BuildingMenuTest extends TestCase
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->get(route('residence.home'))
             ->assertOk()
-            ->assertSee('sidebar-text">Dairem', false)
+            ->assertSee('sidebar-text">Abone Paneli', false)
+            ->assertDontSee('sidebar-text">Dairem', false)
             ->assertSee('Kiracı')
             ->assertDontSee('sidebar-text">Özet', false)
             ->assertDontSee('sidebar-text">Dashboard', false)
@@ -58,10 +59,9 @@ class BuildingMenuTest extends TestCase
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->get(route('accounts.index'))
             ->assertOk()
-            ->assertSeeInOrder([
-                'sidebar-text">Raporlar',
-                'sidebar-text">Dairem',
-            ], false);
+            ->assertSee('sidebar-text">Abone Paneli', false)
+            ->assertSee('sidebar-text">Raporlar', false)
+            ->assertDontSee('sidebar-text">Dairem', false);
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -69,7 +69,8 @@ class BuildingMenuTest extends TestCase
             ->assertOk()
             ->assertSee('Kiracı')
             ->assertSee('Yonetici Kiraci')
-            ->assertSee('sidebar-text">Özet', false)
+            ->assertSee('sidebar-text">Abone Paneli', false)
+            ->assertDontSee('sidebar-text">Özet', false)
             ->assertDontSee('Kasa Bakiyesi');
     }
 
@@ -82,15 +83,16 @@ class BuildingMenuTest extends TestCase
         $this->post('/login', [
             'email' => $member->email,
             'password' => 'password',
-        ])->assertRedirect(route('current-apartment.select'));
+        ])->assertRedirect(route('subscriber.dashboard'));
 
         $this->actingAs($member)
-            ->get(route('current-apartment.select'))
+            ->get(route('subscriber.dashboard'))
             ->assertOk()
-            ->assertSee('Dairelerim')
+            ->assertSee('Dairem')
             ->assertSee('Birinci Daire')
             ->assertSee('Ikinci Daire')
-            ->assertDontSee('Yönettiğim apartmanlar');
+            ->assertDontSee('Yönettiğim apartman')
+            ->assertDontSee('sidebar-text">Siparişlerim', false);
 
         $this->actingAs($member)
             ->post(route('current-apartment.update'), [
@@ -117,16 +119,20 @@ class BuildingMenuTest extends TestCase
         $this->post('/login', [
             'email' => $person->email,
             'password' => 'password',
-        ])->assertRedirect(route('current-apartment.select'));
+        ])->assertRedirect(route('subscriber.dashboard'));
 
         $this->actingAs($person)
-            ->get(route('current-apartment.select'))
+            ->get(route('subscriber.dashboard'))
             ->assertOk()
-            ->assertSee('Dairelerim')
-            ->assertSee('Yönettiğim apartmanlar')
+            ->assertSee('Dairem')
+            ->assertSee('Oturduğunuz veya sahip olduğunuz daireler.')
+            ->assertDontSee('Yönettiğim apartman')
+            ->assertDontSee('Yönettiğiniz apartmanlar ve daireleriniz burada.')
             ->assertSee('Yonettigim Bina')
             ->assertSee('Kiraci Oldugum Bina')
-            ->assertSee('Abone Paneli');
+            ->assertSee('sidebar-text">Abone Paneli', false)
+            ->assertSee('sidebar-text">Siparişlerim', false)
+            ->assertSee('sidebar-text">Hesabım', false);
 
         $this->actingAs($person)
             ->post(route('current-apartment.update'), [

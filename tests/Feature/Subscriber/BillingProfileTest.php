@@ -51,12 +51,12 @@ class BillingProfileTest extends TestCase
         $first->refresh();
         $this->assertSame($frozen, $this->snapshot($first));
 
-        $this->actingAs($ahmet)
+        $page = $this->actingAs($ahmet)
             ->get(route('subscriber.subscriptions.create'))
             ->assertOk()
-            ->assertSee('Profil A · A Apartmanı Yönetimi')
-            ->assertSee('value="'.$profileA->id.'" selected', false)
-            ->assertDontSee('value="'.$profileB->id.'" selected', false);
+            ->assertSee('Profil A · A Apartmanı Yönetimi');
+        $this->assertMatchesRegularExpression('/value="'.$profileA->id.'"[^>]*\bselected\b/', $page->getContent());
+        $this->assertDoesNotMatchRegularExpression('/value="'.$profileB->id.'"[^>]*\bselected\b/', $page->getContent());
 
         $second = $this->place($ahmet, $apartment, $profileB);
 
@@ -140,13 +140,13 @@ class BillingProfileTest extends TestCase
             ->assertDontSee('Ahmet Profil A')
             ->assertDontSee('A Apartmanı Yönetimi');
 
-        $this->actingAs($mehmet)
+        $page = $this->actingAs($mehmet)
             ->get(route('subscriber.subscriptions.create'))
             ->assertOk()
             ->assertSee('Mehmet Profil C')
             ->assertDontSee('Ahmet Profil A')
-            ->assertDontSee('A Apartmanı Yönetimi')
-            ->assertDontSee('value="'.$profileC->id.'" selected', false);
+            ->assertDontSee('A Apartmanı Yönetimi');
+        $this->assertDoesNotMatchRegularExpression('/value="'.$profileC->id.'"[^>]*\bselected\b/', $page->getContent());
 
         $this->actingAs($mehmet)
             ->get(route('subscriber.billing-profiles.edit', $profileA))
@@ -202,8 +202,8 @@ class BillingProfileTest extends TestCase
 
     public function test_subscriber_can_keep_an_individual_profile(): void
     {
-        $ahmet = User::factory()->create(['name' => 'Ahmet']);
-        $other = User::factory()->create(['name' => 'Başka']);
+        [$ahmet] = $this->apartmentFor('Ahmet');
+        [$other] = $this->apartmentFor('Başka');
 
         $this->actingAs($ahmet)
             ->post(route('subscriber.billing-profiles.store'), [

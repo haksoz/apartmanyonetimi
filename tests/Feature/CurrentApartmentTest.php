@@ -20,11 +20,13 @@ class CurrentApartmentTest extends TestCase
             'user_id' => $user->id,
             'name' => 'Birinci Apartman',
             'unit_count' => 1,
+            'setup_completed_at' => now(),
         ]);
         $secondApartment = Apartment::create([
             'user_id' => $user->id,
             'name' => 'İkinci Apartman',
             'unit_count' => 1,
+            'setup_completed_at' => now(),
         ]);
         $firstApartment->members()->attach($user->id, ['role' => 'owner']);
         $secondApartment->members()->attach($user->id, ['role' => 'owner']);
@@ -72,9 +74,7 @@ class CurrentApartmentTest extends TestCase
         $this->withSession([CurrentApartment::SESSION_KEY => $secondApartment->id])
             ->actingAs($user)
             ->get(route('dashboard'))
-            ->assertStatus(200)
-            ->assertSee('İkinci Apartman')
-            ->assertSee('2');
+            ->assertRedirect(route('apartments.wizard.cash-box', $secondApartment));
     }
 
     public function test_dashboard_redirects_to_apartment_selection_when_user_has_apartments_but_no_selection(): void
@@ -107,6 +107,6 @@ class CurrentApartmentTest extends TestCase
         $this->post(route('login'), [
             'email' => $user->email,
             'password' => 'password',
-        ])->assertRedirect(route('current-apartment.select'));
+        ])->assertRedirect(route('subscriber.dashboard'));
     }
 }

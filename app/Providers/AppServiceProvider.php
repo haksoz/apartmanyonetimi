@@ -8,6 +8,7 @@ use App\Support\LegalConsent;
 use App\Support\ApartmentReset\UnavailableApartmentResetArchive;
 use App\Support\BuildingPlaces;
 use App\Support\CurrentApartment;
+use App\Support\SubscriberMenu;
 use App\Support\UserApartmentQuota;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
@@ -41,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
             $managementOffers = collect();
             $needsMembershipConsent = false;
             $needsPrivacyConsent = false;
+            $showSubscriberCommerce = false;
 
             if (auth()->check()) {
                 $user = auth()->user();
@@ -67,12 +69,10 @@ class AppServiceProvider extends ServiceProvider
                     && ! $user->isAdmin()
                     && (! $navIsOwner || app(BuildingPlaces::class)->hasResidenceIn($user, $currentApartment));
 
-                $homeUrl = match (true) {
-                    $user->isAdmin() => route('admin.dashboard'),
-                    $user->isSubscriber() => route('subscriber.dashboard'),
-                    $navIsOwner => route('dashboard'),
-                    default => route('residence.home'),
-                };
+                $homeUrl = $user->isAdmin()
+                    ? route('admin.dashboard')
+                    : route('subscriber.dashboard');
+                $showSubscriberCommerce = app(SubscriberMenu::class)->showsCommerce($user);
 
                 $managementOffers = ManagementOffer::query()
                     ->with('apartment:id,name')
@@ -105,6 +105,7 @@ class AppServiceProvider extends ServiceProvider
                 'managementOffers',
                 'needsMembershipConsent',
                 'needsPrivacyConsent',
+                'showSubscriberCommerce',
             ));
         });
     }

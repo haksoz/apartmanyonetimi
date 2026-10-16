@@ -48,10 +48,11 @@ class SubscriberApartmentSessionTest extends TestCase
             ->get(route('subscriber.dashboard'))
             ->assertStatus(200)
             ->assertSee('Abone Paneli')
-            ->assertDontSee('Apartmanlarım')
-            ->assertDontSee('Hesaplar')
-            ->assertDontSee('Giderler')
-            ->assertDontSee('Aidatlar');
+            ->assertSee('sidebar-text">Siparişlerim', false)
+            ->assertSee('sidebar-text">Hesabım', false)
+            ->assertDontSee('sidebar-text">Hesaplar', false)
+            ->assertDontSee('sidebar-text">Giderler', false)
+            ->assertDontSee('sidebar-text">Aidatlar', false);
     }
 
     public function test_selecting_new_apartment_from_subscriber_dashboard_updates_session(): void

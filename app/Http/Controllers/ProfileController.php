@@ -18,7 +18,7 @@ class ProfileController extends Controller
         $managed = $quota->currentCount($user);
         $remainingApartments = null;
 
-        if (! $user->isAdmin() && ! $user->canPurchaseSubscription()) {
+        if (! $user->isAdmin() && ! $user->managesBuilding()) {
             if ($limit === null) {
                 $remainingApartments = $user->isSubscriber() ? null : ($managed === 0 ? 1 : 0);
             } else {

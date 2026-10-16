@@ -323,9 +323,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('impersonate/{manager}', [AdminImpersonateController::class, 'start'])->name('impersonate.start');
 });
 
-Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscription.access'])->group(function () {
+Route::prefix('subscriber')->name('subscriber.')->middleware(['auth'])->group(function () {
     Route::get('/', SubscriberDashboardController::class)->name('dashboard');
 
+    Route::middleware('subscription.access')->group(function () {
     Route::get('apartments', [SubscriberApartmentController::class, 'index'])->name('apartments.index');
     Route::post('apartment', [SubscriberApartmentController::class, 'update'])->name('apartment.update');
     Route::post('apartments/{apartment}/trigger-aidat', [SubscriberApartmentController::class, 'triggerAidatGeneration'])->name('apartments.trigger-aidat');
@@ -338,7 +339,9 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscript
     Route::get('apartments/{apartment}', [SubscriberApartmentController::class, 'show'])->name('apartments.show');
     Route::get('apartments/{apartment}/edit', [ApartmentController::class, 'edit'])->name('apartments.edit');
     Route::put('apartments/{apartment}', [ApartmentController::class, 'update'])->name('apartments.update');
+    });
 
+    Route::middleware('subscriber.commerce')->group(function () {
     Route::get('billing-profiles', [SubscriberBillingProfileController::class, 'index'])->name('billing-profiles.index');
     Route::get('billing-profiles/create', [SubscriberBillingProfileController::class, 'create'])->name('billing-profiles.create');
     Route::post('billing-profiles', [SubscriberBillingProfileController::class, 'store'])->name('billing-profiles.store');
@@ -354,5 +357,6 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth', 'subscript
         Route::get('{subscription}/receipt', [SubscriberSubscriptionController::class, 'receipt'])->name('receipt');
         Route::post('{subscription}/cancel', [SubscriberSubscriptionController::class, 'cancel'])->name('cancel');
         Route::post('{subscription}/payment-info', [SubscriberSubscriptionController::class, 'paymentInfo'])->name('payment-info');
+    });
     });
 });

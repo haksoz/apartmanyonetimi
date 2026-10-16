@@ -24,9 +24,7 @@ class MemberHomeTest extends TestCase
         $this->post('/login', [
             'email' => $member->email,
             'password' => 'password',
-        ])->assertRedirect(route('residence.home'));
-
-        $this->assertSame($apartment->id, session(CurrentApartment::SESSION_KEY));
+        ])->assertRedirect(route('subscriber.dashboard'));
 
         $this->actingAs($member)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -111,7 +109,7 @@ class MemberHomeTest extends TestCase
         $this->post('/login', [
             'email' => $member->email,
             'password' => 'password',
-        ])->assertRedirect(route('onboarding.show'));
+        ])->assertRedirect(route('subscriber.dashboard'));
 
         $this->assertAuthenticatedAs($member);
     }
@@ -148,10 +146,11 @@ class MemberHomeTest extends TestCase
         $this->actingAs($member)
             ->get(route('profile.edit'))
             ->assertOk()
+            ->assertSeeInOrder(['Abone Panelim', 'Hesabım', 'Çıkış Yap'])
             ->assertSee('Parola değiştir')
             ->assertSee('Mevcut parola')
             ->assertSee('id="password-dialog" class="fixed inset-0 z-50 items-center justify-center bg-black/50 p-4 hidden"', false)
-            ->assertDontSee('sidebar-text">Abone Paneli', false);
+            ->assertSee('sidebar-text">Abone Paneli', false);
 
         $this->actingAs($member)
             ->from(route('profile.edit'))
@@ -213,10 +212,11 @@ class MemberHomeTest extends TestCase
         $this->actingAs($manager)
             ->get(route('profile.edit'))
             ->assertOk()
+            ->assertSeeInOrder(['Abone Panelim', 'Hesabım', 'Çıkış Yap'])
             ->assertSeeInOrder([
                 'sidebar-text">Abone Paneli',
                 'sidebar-text">Siparişlerim',
-                'sidebar-text">Fatura bilgileri',
+                'sidebar-text">Fatura bilgilerim',
                 'sidebar-text">Hesabım',
             ], false)
             ->assertDontSee('sidebar-text">Özet', false);
@@ -225,7 +225,8 @@ class MemberHomeTest extends TestCase
             ->get(route('subscriber.dashboard'))
             ->assertOk()
             ->assertSeeInOrder([
-                'sidebar-text">Fatura bilgileri',
+                'sidebar-text">Abone Paneli',
+                'sidebar-text">Fatura bilgilerim',
                 'sidebar-text">Hesabım',
             ], false);
     }

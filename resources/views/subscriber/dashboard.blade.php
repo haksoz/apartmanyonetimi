@@ -3,47 +3,56 @@
 @section('title', 'Abone Paneli')
 
 @section('content')
-    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-            <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">Abone Paneli</h1>
-            <p class="mt-1 text-sm text-slate-500">Apartmanlarınızın kullanım durumu ve şu anda yapmanız gereken işlem burada.</p>
-            @if ($apartmentLimit !== null && ! $canCreateApartment)
-                <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    @if ($apartments->isNotEmpty())
+        <section class="mb-8">
+            @if ($showApartmentCreate && $apartmentLimit !== null && ! $canCreateApartment)
+                <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     Apartman açma hakkınız {{ $apartmentCount }}/{{ $apartmentLimit }} dir. Tanımlı limitinize ulaştınız.
                     <span class="mt-1 block">Daha fazla apartman yönetimi için AidatCep ile iletişime geçin.</span>
                 </div>
-            @elseif ($apartmentLimit !== null && $canCreateApartment)
-                <div class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            @elseif ($showApartmentCreate && $apartmentLimit !== null && $canCreateApartment)
+                <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                     Apartman açma hakkınız {{ $apartmentCount }}/{{ $apartmentLimit }} dir. Yeni apartman oluşturabilirsiniz.
                     <a href="{{ route('subscriber.apartments.create') }}" class="font-semibold text-emerald-800 underline">+ Yeni Apartman Oluştur</a>
                 </div>
-            @endif
-        </div>
-        @if ($apartmentLimit === null)
-            <a href="{{ route('subscriber.apartments.create') }}" class="inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Yeni Apartman Oluştur</a>
-        @endif
-    </div>
-
-    @if ($apartments->count() === 0)
-        <div id="no-apartment-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div class="max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                <div class="text-center">
-                    <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-                        <svg class="h-8 w-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-bold text-slate-900">Apartman Ekleyin</h3>
-                    <p class="mt-2 text-sm text-slate-600">Sistemi kullanmaya başlamak için lütfen bir apartman oluşturun.</p>
-                    <div class="mt-6 flex justify-center gap-3">
-                        <a href="{{ route('subscriber.apartments.create') }}" class="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Apartman Oluştur</a>
-                        <button onclick="document.getElementById('no-apartment-modal').remove()" class="rounded-xl border border-slate-300 px-6 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Daha Sonra</button>
-                    </div>
+            @elseif ($showApartmentCreate && $apartmentLimit === null)
+                <div class="mb-4">
+                    <a href="{{ route('subscriber.apartments.create') }}" class="inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Yeni Apartman Oluştur</a>
                 </div>
+            @endif
+            @include('subscriber.partials.apartment-cards', ['showDetails' => true])
+        </section>
+    @elseif ($showApartmentCreate)
+        <section class="mb-8">
+            <a href="{{ route('subscriber.apartments.create') }}" class="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Yeni Apartman Oluştur</a>
+        </section>
+    @endif
+
+    @if ($residenceAccounts->isNotEmpty())
+        <section>
+            <h2 class="text-lg font-bold text-slate-950">Dairem</h2>
+            <p class="mt-1 text-sm text-slate-500">Oturduğunuz veya sahip olduğunuz daireler.</p>
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                @foreach ($residenceAccounts as $account)
+                    <article class="rounded-2xl bg-white p-5 shadow-sm">
+                        <p class="text-sm font-semibold text-slate-500">{{ $account->apartment->name }}</p>
+                        <h3 class="mt-1 text-lg font-bold text-slate-950">
+                            @if ($account->unit)
+                                Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                            @else
+                                {{ $account->name }}
+                            @endif
+                        </h3>
+                        <p class="mt-1 text-sm text-slate-500">{{ $account->type_label }}</p>
+                        <form method="POST" action="{{ route('current-apartment.update') }}" class="mt-4">
+                            @csrf
+                            <input type="hidden" name="apartment_id" value="{{ $account->apartment_id }}">
+                            <input type="hidden" name="destination" value="dairem">
+                            <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Daire durumum</button>
+                        </form>
+                    </article>
+                @endforeach
             </div>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Henüz apartman yok.</div>
-    @else
-        @include('subscriber.partials.apartment-cards', ['showDetails' => true])
+        </section>
     @endif
 @endsection

@@ -80,7 +80,7 @@ class UserInvitationTest extends TestCase
             'password' => 'yeni-parola',
             'password_confirmation' => 'yeni-parola',
             'accept_privacy' => '1',
-        ])->assertRedirect(route('residence.home'));
+        ])->assertRedirect(route('subscriber.dashboard'));
 
         $this->assertAuthenticatedAs($invited);
         $this->assertNotNull($invited->fresh()->activated_at);

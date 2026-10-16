@@ -44,7 +44,8 @@ class ManagementOfferTest extends TestCase
             ->assertOk()
             ->assertSee('Kabul penceresini aç')
             ->assertDontSee('Apartmanımı AidatCep')
-            ->assertDontSee('Abone Paneli');
+            ->assertSee('sidebar-text">Abone Paneli', false)
+            ->assertDontSee('sidebar-text">Özet', false);
 
         $this->actingAs($member)
             ->get(route('management-offers.show', $offer))
@@ -183,6 +184,30 @@ class ManagementOfferTest extends TestCase
         $this->assertSame(0, $quota->currentCount($manager));
         $this->assertSame(1, $quota->currentCount($opener));
         $this->assertSame($opener->id, $apartment->fresh()->user_id);
+
+        $this->actingAs($manager)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('apartman yönetmek istiyorum', false)
+            ->assertSee('Ücretsiz 1 apartman oluşturabilir ve yönetebilirsiniz.', false)
+            ->assertSee('Kuruluma git', false);
+
+        $former = User::factory()->create(['role' => 'manager']);
+        UserQuotaOverride::query()->create([
+            'user_id' => $former->id,
+            'max_apartments' => 1,
+        ]);
+        $apartment->members()->attach($former->id, ['role' => 'member', 'is_active' => true]);
+
+        $this->actingAs($former)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('apartman yönetmek istiyorum', false)
+            ->assertSee('Kuruluma git', false);
+
+        $this->actingAs($former)
+            ->post(route('profile.open-apartment'))
+            ->assertRedirect(route('apartments.create'));
     }
 
     public function test_a_member_opens_an_apartment_only_from_the_account_page(): void
