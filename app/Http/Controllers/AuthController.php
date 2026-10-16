@@ -70,6 +70,16 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+        $email = trim((string) $request->input('email'));
+
+        if ($email !== '') {
+            $existing = User::query()->where('email', $email)->first();
+
+            if ($existing) {
+                return $this->existingAccountResponse($request, $existing);
+            }
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
@@ -141,6 +151,21 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    private function existingAccountResponse(Request $request, User $existing)
+    {
+        if (! $existing->isActivated()) {
+            return back()->withErrors([
+                'email' => 'Bu e-posta için bir davet duruyor. Size iletilen davet bağlantısını kullanın.',
+            ])->onlyInput('name', 'email');
+        }
+
+        $request->session()->put('open_apartment_requested', true);
+
+        return redirect()
+            ->route('login')
+            ->with('status', 'Bu e-posta ile hesabınız var, giriş yapın.');
     }
 
     private function refreshHumanChallenge(): void

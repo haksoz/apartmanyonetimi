@@ -22,19 +22,38 @@ class MembershipConsentController extends Controller
     public function store(Request $request, LegalConsent $consent)
     {
         $user = $request->user();
+        $needsMembership = $consent->needsMembership($user);
+        $needsPrivacy = $consent->needsPrivacy($user);
 
-        if (! $consent->needsMembership($user)) {
-            return app(AccountEntry::class)->redirect($user);
+        if (! $needsMembership && ! $needsPrivacy) {
+            return redirect()->back();
         }
 
-        $request->validate([
-            'accept_membership' => ['accepted'],
-        ], [
-            'accept_membership.accepted' => 'Devam etmek için üyelik sözleşmesini kabul edin.',
-        ]);
+        $rules = [];
+        $messages = [];
 
-        $consent->recordMembership($user, $request);
+        if ($needsMembership) {
+            $rules['accept_membership'] = ['accepted'];
+            $messages['accept_membership.accepted'] = 'Devam etmek için üyelik sözleşmesini kabul edin.';
+        }
 
-        return app(AccountEntry::class)->redirect($user->fresh());
+        if ($needsPrivacy) {
+            $rules['accept_privacy'] = ['accepted'];
+            $messages['accept_privacy.accepted'] = 'Devam etmek için gizlilik ve KVKK aydınlatmasını kabul edin.';
+        }
+
+        $request->validate($rules, $messages);
+
+        if ($needsMembership) {
+            $consent->recordMembership($user, $request);
+        }
+
+        if ($needsPrivacy) {
+            $consent->recordPrivacy($user, $request);
+        }
+
+        return redirect()
+            ->back()
+            ->with('status', 'Onayınız kaydedildi.');
     }
 }

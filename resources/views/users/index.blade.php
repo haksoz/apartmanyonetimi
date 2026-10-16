@@ -89,6 +89,12 @@
                                     <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Erişim kapalı
                                 </span>
                             @elseif (! $isCurrentUser)
+                                <div class="space-y-1">
+                                @if ($pendingManagerIds->contains($user->id))
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Kabul bekliyor
+                                    </span>
+                                @endif
                                 <form method="POST" action="{{ route('users.role', $user) }}">
                                     @csrf
                                     @method('PATCH')
@@ -98,6 +104,7 @@
                                         <option value="owner"    {{ $role === 'owner'    ? 'selected' : '' }}>Yönetici</option>
                                     </select>
                                 </form>
+                                </div>
                             @else
                                 <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold {{ $role === 'owner' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700' }}">
                                     {{ $role === 'owner' ? 'Yönetici' : 'Üye' }} (Siz)
@@ -157,6 +164,10 @@
                         @if (! $isActive)
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
                                 <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Erişim kapalı
+                            </span>
+                        @elseif ($pendingManagerIds->contains($user->id))
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Kabul bekliyor
                             </span>
                         @elseif ($role === 'owner')
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\ManagementOffer;
 use App\Models\User;
 use App\Models\UserInvitation;
 use App\Support\CurrentApartment;
+use App\Support\ManagementOfferService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -65,7 +67,12 @@ class AccountUserController extends Controller
             ->with('unit')
             ->get();
 
-        return view('users.index', compact('apartment', 'users', 'linkedAccounts', 'availableAccounts'));
+        $pendingManagerIds = ManagementOffer::query()
+            ->where('apartment_id', $apartment->id)
+            ->openPending()
+            ->pluck('user_id');
+
+        return view('users.index', compact('apartment', 'users', 'linkedAccounts', 'availableAccounts', 'pendingManagerIds'));
     }
 
     /**
@@ -323,13 +330,7 @@ class AccountUserController extends Controller
             'role' => ['required', 'in:owner,member'],
         ]);
 
-        if ($validated['role'] === 'member' && ! $this->hasOtherActiveOwner($apartment, $account->user_id)) {
-            return back()->withErrors(['role' => 'Apartmanda en az bir yönetici olmalıdır.']);
-        }
-
-        $apartment->members()->updateExistingPivot($account->user_id, ['role' => $validated['role']]);
-
-        return back()->with('status', 'Kullanıcı rolü güncellendi.');
+        return $this->applyRole($apartment, User::query()->findOrFail($account->user_id), $validated['role']);
     }
 
     /**
@@ -346,11 +347,29 @@ class AccountUserController extends Controller
             'role' => ['required', 'in:owner,member'],
         ]);
 
-        if ($validated['role'] === 'member' && ! $this->hasOtherActiveOwner($apartment, $user->id)) {
+        return $this->applyRole($apartment, $user, $validated['role']);
+    }
+
+    private function applyRole(\App\Models\Apartment $apartment, User $user, string $role)
+    {
+        if ($role === 'owner') {
+            return app(ManagementOfferService::class)->offer($apartment, $user, auth()->user());
+        }
+
+        if (! $this->hasOtherActiveOwner($apartment, $user->id)) {
             return back()->withErrors(['role' => 'Apartmanda en az bir yönetici olmalıdır.']);
         }
 
-        $apartment->members()->updateExistingPivot($user->id, ['role' => $validated['role']]);
+        $apartment->members()->updateExistingPivot($user->id, ['role' => 'member']);
+
+        ManagementOffer::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('user_id', $user->id)
+            ->openPending()
+            ->update([
+                'status' => ManagementOffer::STATUS_REJECTED,
+                'rejected_at' => now(),
+            ]);
 
         return back()->with('status', 'Kullanıcı rolü güncellendi.');
     }

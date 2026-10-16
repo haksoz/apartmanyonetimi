@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Apartment;
+use App\Models\ManagementOffer;
 use App\Models\User;
 use App\Models\UserInvitation;
 use App\Models\UserQuotaOverride;
@@ -196,11 +197,24 @@ class UserInvitationTest extends TestCase
 
         $next->refresh();
         $this->assertSame('user', $next->role);
+        $this->assertSame('member', $apartment->members()->whereKey($next->id)->first()->pivot->role);
+
+        $offer = ManagementOffer::query()->where('user_id', $next->id)->where('status', ManagementOffer::STATUS_PENDING)->firstOrFail();
+
+        $this->actingAs($next)
+            ->post(route('management-offers.accept', $offer), [
+                'accept_resident_data' => '1',
+                'accept_privacy' => '1',
+            ])
+            ->assertRedirect(route('subscriber.dashboard'));
+
         $this->assertSame('owner', $apartment->members()->whereKey($next->id)->first()->pivot->role);
 
         $this->actingAs($next)
             ->get(route('subscriber.subscriptions.create'))
-            ->assertRedirect(route('legal.membership.accept'));
+            ->assertOk()
+            ->assertSee('id="legal-consent-prompt"', false)
+            ->assertSee('Üyelik sözleşmesini okudum, kabul ediyorum.');
 
         $this->actingAs($next)
             ->get(route('legal.membership.accept'))
@@ -208,12 +222,14 @@ class UserInvitationTest extends TestCase
             ->assertSee('Üyelik sözleşmesini okudum, kabul ediyorum.');
 
         $this->actingAs($next)
+            ->from(route('subscriber.subscriptions.create'))
             ->post(route('legal.membership.accept.store'))
             ->assertSessionHasErrors('accept_membership');
 
         $this->actingAs($next)
+            ->from(route('subscriber.subscriptions.create'))
             ->post(route('legal.membership.accept.store'), ['accept_membership' => '1'])
-            ->assertRedirect(route('subscriber.dashboard'));
+            ->assertRedirect(route('subscriber.subscriptions.create'));
 
         $this->assertDatabaseHas('legal_acceptances', [
             'user_id' => $next->id,
@@ -359,6 +375,33 @@ class UserInvitationTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.impersonate.start', $invitee))
             ->assertForbidden();
+    }
+
+    public function test_missing_kvkk_approval_is_collected_in_a_popup(): void
+    {
+        $user = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('id="legal-consent-prompt"', false)
+            ->assertSee('Gizlilik ve KVKK aydınlatmasını okudum, kabul ediyorum.')
+            ->assertDontSee('Üyelik sözleşmesini okudum, kabul ediyorum.');
+
+        $this->actingAs($user)
+            ->from(route('profile.edit'))
+            ->post(route('legal.membership.accept.store'), ['accept_privacy' => '1'])
+            ->assertRedirect(route('profile.edit'));
+
+        $this->assertDatabaseHas('legal_acceptances', [
+            'user_id' => $user->id,
+            'document_key' => LegalConsent::PRIVACY,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertDontSee('id="legal-consent-prompt"', false);
     }
 
     /**

@@ -19,14 +19,23 @@ class EnsurePromotedManagerMembership
             return $next($request);
         }
 
-        if ($request->routeIs('legal.membership.accept', 'legal.membership.accept.store', 'logout')) {
+        if ($request->routeIs(
+            'legal.membership.accept',
+            'legal.membership.accept.store',
+            'logout',
+            'management-offers.show',
+            'management-offers.accept',
+            'management-offers.reject',
+        )) {
             return $next($request);
         }
 
-        if (! $this->consent->needsMembership($user)) {
+        if (! $this->consent->needsMembership($user) || $request->isMethod('GET') || $request->isMethod('HEAD')) {
             return $next($request);
         }
 
-        return redirect()->route('legal.membership.accept');
+        return redirect()
+            ->back()
+            ->withErrors(['accept_membership' => 'Devam etmek için üyelik sözleşmesini kabul edin.']);
     }
 }

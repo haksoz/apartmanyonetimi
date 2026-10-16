@@ -42,6 +42,7 @@ use App\Http\Controllers\PaymentAllocationController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ManagementOfferController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UnitController;
@@ -99,6 +100,10 @@ Route::middleware('auth')->group(function () {
     Route::get('hesabim', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('hesabim', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('hesabim/parola', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::post('hesabim/apartman', [ProfileController::class, 'openApartment'])->name('profile.open-apartment');
+    Route::get('yonetici-kabul/{offer}', [ManagementOfferController::class, 'show'])->name('management-offers.show');
+    Route::post('yonetici-kabul/{offer}', [ManagementOfferController::class, 'accept'])->name('management-offers.accept');
+    Route::post('yonetici-kabul/{offer}/ret', [ManagementOfferController::class, 'reject'])->name('management-offers.reject');
 
     // Onboarding routes - no apartment required
     Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
@@ -175,7 +180,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     // Yönetici zorunlu
     Route::middleware('owner')->group(function () {
 
-        Route::resource('apartments', ApartmentController::class);
+        Route::resource('apartments', ApartmentController::class)->except(['create', 'store']);
         Route::post('apartments/{apartment}/destroy-all', [ApartmentController::class, 'destroyAll'])->name('apartments.destroy-all');
         Route::get('apartments/{apartment}/renew-setup', [ApartmentController::class, 'renewForm'])->name('apartments.renew-setup.create');
         Route::post('apartments/{apartment}/renew-setup', [ApartmentController::class, 'renewSetup'])->name('apartments.renew-setup');

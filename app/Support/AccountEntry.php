@@ -15,6 +15,20 @@ class AccountEntry
             return redirect()->route('admin.dashboard');
         }
 
+        if (session('open_apartment_requested')) {
+            $quota = app(UserApartmentQuota::class);
+
+            if ($quota->canCreate($user) || $quota->hasRoomForManagement($user)) {
+                return redirect()->route('apartments.create');
+            }
+
+            session()->forget('open_apartment_requested');
+
+            return redirect()
+                ->route('profile.edit')
+                ->with('status', UserApartmentQuota::CONTACT_MESSAGE);
+        }
+
         if ($this->currentApartment->availableFor($user)->count() > 1) {
             return redirect()->route('current-apartment.select');
         }

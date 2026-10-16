@@ -136,6 +136,8 @@ class OnboardingController extends Controller
             return $apartment;
         });
 
+        $request->session()->forget('open_apartment_requested');
+
         return redirect()->route('apartments.wizard.cash-box', $apartment)
             ->with('status', 'Apartmanınız oluşturuldu. Şimdi kasanızı oluşturun.');
     }

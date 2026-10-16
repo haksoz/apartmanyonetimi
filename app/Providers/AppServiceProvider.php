@@ -2,10 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\ManagementOffer;
 use App\Support\ApartmentReset\ApartmentResetArchive;
+use App\Support\LegalConsent;
 use App\Support\ApartmentReset\UnavailableApartmentResetArchive;
 use App\Support\BuildingPlaces;
 use App\Support\CurrentApartment;
+use App\Support\UserApartmentQuota;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -35,6 +38,9 @@ class AppServiceProvider extends ServiceProvider
             $navIsOwner = false;
             $showResidence = false;
             $homeUrl = route('dashboard');
+            $managementOffers = collect();
+            $needsMembershipConsent = false;
+            $needsPrivacyConsent = false;
 
             if (auth()->check()) {
                 $user = auth()->user();
@@ -67,9 +73,39 @@ class AppServiceProvider extends ServiceProvider
                     $navIsOwner => route('dashboard'),
                     default => route('residence.home'),
                 };
+
+                $managementOffers = ManagementOffer::query()
+                    ->with('apartment:id,name')
+                    ->where('user_id', $user->id)
+                    ->where(function ($query) {
+                        $query->openPending()
+                            ->orWhere('status', ManagementOffer::STATUS_BLOCKED);
+                    })
+                    ->get();
+
+                if (app(UserApartmentQuota::class)->hasRoomForManagement($user)) {
+                    $managementOffers = $managementOffers
+                        ->reject(fn (ManagementOffer $offer) => $offer->status === ManagementOffer::STATUS_BLOCKED)
+                        ->values();
+                }
+
+                if (! $user->isAdminPanelUser() && ! session()->has('impersonate_admin_id')) {
+                    $consent = app(LegalConsent::class);
+                    $needsMembershipConsent = $consent->needsMembership($user);
+                    $needsPrivacyConsent = $consent->needsPrivacy($user);
+                }
             }
 
-            $view->with(compact('availableApartments', 'currentApartment', 'navIsOwner', 'showResidence', 'homeUrl'));
+            $view->with(compact(
+                'availableApartments',
+                'currentApartment',
+                'navIsOwner',
+                'showResidence',
+                'homeUrl',
+                'managementOffers',
+                'needsMembershipConsent',
+                'needsPrivacyConsent',
+            ));
         });
     }
 }

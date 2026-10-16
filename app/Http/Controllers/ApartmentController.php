@@ -143,6 +143,7 @@ class ApartmentController extends Controller
 
         $currentApartment->setFor($user, $apartment->id);
         app(LegalConsent::class)->recordResidentData($user, $apartment, $request);
+        $request->session()->forget('open_apartment_requested');
 
         return redirect()->route('apartments.wizard.cash-box', $apartment)
             ->with('status', 'Apartman oluşturuldu. Şimdi kasanızı oluşturun.');

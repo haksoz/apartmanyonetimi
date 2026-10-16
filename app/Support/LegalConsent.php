@@ -109,6 +109,24 @@ class LegalConsent
             ->exists();
     }
 
+    public function needsResidentData(User $user, Apartment $apartment): bool
+    {
+        return ! LegalAcceptance::query()
+            ->where('user_id', $user->id)
+            ->where('apartment_id', $apartment->id)
+            ->where('document_key', self::RESIDENT_DATA)
+            ->exists();
+    }
+
+    public function needsPrivacy(User $user): bool
+    {
+        if ($user->isAdminPanelUser()) {
+            return false;
+        }
+
+        return ! $this->accepted($user, self::PRIVACY);
+    }
+
     public function needsMembership(User $user): bool
     {
         if ($user->isAdminPanelUser() || $user->isSubscriber() || ! $user->managesBuilding()) {

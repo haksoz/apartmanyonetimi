@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LegalAcceptance;
+use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
 
@@ -12,8 +13,22 @@ class ProfileController extends Controller
     {
         $user = auth()->user();
 
+        $quota = app(UserApartmentQuota::class);
+        $limit = $quota->definedLimit($user);
+        $managed = $quota->currentCount($user);
+        $remainingApartments = null;
+
+        if (! $user->isAdmin() && ! $user->canPurchaseSubscription()) {
+            if ($limit === null) {
+                $remainingApartments = $user->isSubscriber() ? null : ($managed === 0 ? 1 : 0);
+            } else {
+                $remainingApartments = max(0, $limit - $managed);
+            }
+        }
+
         return view('profile.edit', [
             'user' => $user,
+            'remainingApartments' => $remainingApartments,
             'acceptances' => LegalAcceptance::query()
                 ->where('user_id', $user->id)
                 ->with(['apartment:id,name', 'order:id,order_number'])
@@ -38,6 +53,13 @@ class ProfileController extends Controller
         return redirect()
             ->route('profile.edit')
             ->with('status', 'Ad ve telefon güncellendi.');
+    }
+
+    public function openApartment(Request $request)
+    {
+        $request->session()->put('open_apartment_requested', true);
+
+        return redirect()->route('apartments.create');
     }
 
     public function updatePassword(Request $request)

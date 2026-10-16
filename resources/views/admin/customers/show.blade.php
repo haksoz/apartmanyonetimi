@@ -133,7 +133,7 @@
 
     <section class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
         <h2 class="text-lg font-semibold text-slate-900">Aktif apartman limiti</h2>
-        <p class="mt-1 text-sm text-slate-500">Yalnızca aktif apartmanlar sayılır. Pasif apartmanlar ve başka apartman üyelikleri bu sayıya girmez. Boş bırakılırsa sınır yoktur.</p>
+        <p class="mt-1 text-sm text-slate-500">Yalnızca kabul edilmiş yönetici üyelikleri sayılır. Daire üyeliği ve pasif apartmanlar bu sayıya girmez. Boş bırakılırsa sınır yoktur.</p>
         <form method="POST" action="{{ route('admin.customers.quota.update', $customer) }}" class="mt-4 flex flex-wrap items-end gap-3">
             @csrf
             @method('PATCH')

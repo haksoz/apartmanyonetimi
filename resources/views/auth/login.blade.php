@@ -6,6 +6,9 @@
     <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
         <h1 class="text-2xl font-bold text-slate-950">Giriş Yap</h1>
         <p class="mt-2 text-sm text-slate-500">Apartman yönetim paneline erişmek için giriş yapın.</p>
+        @if (session('status'))
+            <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('status') }}</div>
+        @endif
 
         <form method="POST" action="{{ route('login') }}" class="mt-6 space-y-4">
             @csrf

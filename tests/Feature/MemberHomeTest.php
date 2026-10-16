@@ -148,17 +148,22 @@ class MemberHomeTest extends TestCase
         $this->actingAs($member)
             ->get(route('profile.edit'))
             ->assertOk()
-            ->assertSee('Parola')
+            ->assertSee('Parola değiştir')
             ->assertSee('Mevcut parola')
+            ->assertSee('id="password-dialog" class="fixed inset-0 z-50 items-center justify-center bg-black/50 p-4 hidden"', false)
             ->assertDontSee('sidebar-text">Abone Paneli', false);
 
         $this->actingAs($member)
+            ->from(route('profile.edit'))
+            ->followingRedirects()
             ->patch(route('profile.password'), [
                 'current_password' => 'yanlis-parola',
                 'password' => 'yeni-parola',
                 'password_confirmation' => 'yeni-parola',
             ])
-            ->assertSessionHasErrors('current_password');
+            ->assertOk()
+            ->assertSee('id="password-dialog" class="fixed inset-0 z-50 items-center justify-center bg-black/50 p-4 flex"', false)
+            ->assertSee('The password is incorrect.');
 
         $this->actingAs($member)
             ->patch(route('profile.password'), [
