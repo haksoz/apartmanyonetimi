@@ -3,29 +3,11 @@
 @section('content')
     @php
         $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
+        $lockedAccount = $accounts->firstWhere('id', (int) ($selectedAccountId ?? 0));
     @endphp
 
     @if ($selectedAccount)
-        {{-- Breadcrumb + Hesap Sekmeleri --}}
-        <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
-            <div class="flex items-center gap-2 min-w-0 overflow-x-auto">
-                <a href="{{ route('accounts.index') }}" class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-300 px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
-                    Hesaplar
-                </a>
-                <span class="text-slate-400">/</span>
-                <a href="{{ route('accounts.show', $selectedAccount) }}" class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-300 px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 bg-white hover:bg-slate-50">
-                    @if ($selectedAccount->unit)
-                        Daire {{ str_pad($selectedAccount->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                    @else
-                        {{ $selectedAccount->type_label }}
-                    @endif
-                </a>
-            </div>
-
-            <div class="flex items-center justify-end gap-2 shrink-0">
-                @include('accounts._tabs', ['account' => $selectedAccount, 'active' => 'due', 'withOverview' => false])
-            </div>
-        </div>
+        @include('accounts._page_heading', ['account' => $selectedAccount, 'active' => 'due'])
     @else
         <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
             <a href="{{ route('accounts.index') }}" class="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
@@ -52,7 +34,9 @@
             <div class="mt-5 grid gap-5 border-t border-slate-100 pt-5 md:grid-cols-2">
                 <div>
                     <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Hesap / Kiracı-Katmaliki</label>
-                    <select id="account_id" name="account_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <select id="account_id" name="{{ $lockedAccount ? null : 'account_id' }}" required
+                        {{ $lockedAccount ? 'disabled' : '' }}
+                        class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none {{ $lockedAccount ? 'bg-slate-100 cursor-not-allowed' : '' }}">
                         <option value="">Hesap seçin</option>
                         @foreach ($accounts as $account)
                             <option value="{{ $account->id }}" @selected((string) old('account_id', $selectedAccountId ?? '') === (string) $account->id)>
@@ -60,6 +44,9 @@
                             </option>
                         @endforeach
                     </select>
+                    @if ($lockedAccount)
+                        <input type="hidden" name="account_id" value="{{ $lockedAccount->id }}">
+                    @endif
                     @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 

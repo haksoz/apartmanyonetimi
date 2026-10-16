@@ -1,66 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
-        <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-bold text-slate-950">
-                <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
-                <span class="font-normal text-slate-400"> / </span>
-                <a href="{{ route('accounts.show', $account) }}" class="hover:text-slate-600">
-                    @if ($account->unit)
-                        Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                    @else
-                        {{ $account->name }}
-                    @endif
-                </a>
-                @if (!$account->is_active)
-                    <span class="ml-2 align-middle inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
-                @endif
-            </h1>
-            <p class="mt-1 text-sm text-slate-500">Tüm Hareketler</p>
-        </div>
-
-        <div class="flex items-center justify-end gap-2 shrink-0">
-            <div class="hidden lg:flex items-center gap-2">
-                <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'excel', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
-                   class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Excel
-                </a>
-                <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'pdf', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
-                   class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    PDF
-                </a>
-            </div>
-
-            <details class="lg:hidden relative group">
-                <summary class="cursor-pointer list-none min-h-[3.5rem] inline-flex items-center justify-center rounded-2xl bg-slate-950 px-5 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800 gap-2 focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                    İşlem
-                </summary>
-                <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
-                    <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'excel', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
-                       class="inline-flex w-full items-center gap-2 min-h-[3.5rem] rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        Excel
-                    </a>
-                    <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'pdf', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
-                       class="inline-flex w-full items-center gap-2 min-h-[3.5rem] rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                        PDF
-                    </a>
-                </div>
-            </details>
-        </div>
-    </div>
+    @include('accounts._page_heading', ['account' => $account, 'active' => 'statement'])
 
     <div class="rounded-2xl bg-white shadow-sm p-4 md:p-6 mb-6">
         <div class="mb-5">
-            <div class="text-xl font-bold text-slate-900">{{ $account->name }}</div>
-            <p class="mt-0.5 text-sm text-slate-400">{{ $account->type_label }}</p>
+            <div class="text-xl font-bold text-slate-900">Tüm Hareketler</div>
+            <p class="mt-0.5 text-sm text-slate-500">Seçilen tarih aralığındaki borç, alacak ve bakiye hareketleri.</p>
         </div>
         <form method="GET" action="{{ route('accounts.statement', $account) }}" class="border-t border-slate-100 pt-5">
             <div class="flex flex-row flex-wrap items-end gap-4">
@@ -74,17 +20,27 @@
                     <input type="date" name="date_to" value="{{ $dateTo }}"
                            class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-slate-950 focus:outline-none">
                 </div>
-                <div class="w-full md:w-auto flex gap-2">
+                <div class="flex w-full flex-nowrap items-center gap-2 md:w-auto">
                     <button type="submit"
-                            class="flex-1 md:flex-none rounded-xl bg-slate-950 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 whitespace-nowrap">
+                            class="inline-flex min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-xl bg-slate-950 px-2 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 sm:px-4 sm:text-sm md:flex-none md:px-6">
                         Filtrele
                     </button>
                     @if($dateFrom || $dateTo)
                         <a href="{{ route('accounts.statement', $account) }}"
-                           class="flex-1 md:flex-none text-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 whitespace-nowrap">
+                           class="inline-flex min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-xl border border-slate-300 px-2 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 sm:px-4 sm:text-sm md:flex-none">
                             Temizle
                         </a>
                     @endif
+                    <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'excel', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+                       class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-2 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm md:flex-none">
+                        <svg class="h-4 w-4 shrink-0 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Excel
+                    </a>
+                    <a href="{{ route('accounts.statement.export', ['id' => $account->id, 'type' => 'pdf', 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+                       class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-2 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm md:flex-none">
+                        <svg class="h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        PDF
+                    </a>
                 </div>
             </div>
         </form>

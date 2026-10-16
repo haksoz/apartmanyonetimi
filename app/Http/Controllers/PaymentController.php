@@ -28,6 +28,7 @@ class PaymentController extends Controller
         }
 
         $accounts = Account::query()
+            ->with('unit')
             ->where('apartment_id', $apartment->id)
             ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT, Account::TYPE_SUPPLIER])
             ->where('is_active', true)

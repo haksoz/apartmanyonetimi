@@ -127,6 +127,8 @@ class AccountPageTest extends TestCase
             ->assertStatus(200)
             ->assertSee('1. Daire')
             ->assertSee('Daire 01')
+            ->assertSee('1. Daire (Resident)', false)
+            ->assertSee('text-base font-semibold text-slate-800', false)
             ->assertSee('Resident')
             ->assertSee('Detaylar')
             ->assertDontSee('Hesap Türü')
@@ -882,17 +884,21 @@ class AccountPageTest extends TestCase
             ->assertSee('statement/export/excel', false)
             ->assertSee('statement/export/pdf', false)
             ->assertSee('Excel')
-            ->assertSee('Salih Sayan')
-            ->assertSee('Kat Maliki')
+            ->assertSee('h-4 w-4 shrink-0 text-green-600', false)
+            ->assertSee('h-4 w-4 shrink-0 text-red-500', false)
+            ->assertDontSee('hidden h-4 w-4 shrink-0 text-green-600', false)
+            ->assertSee('Salih Sayan (Kat Maliki)', false)
             ->assertSee('Daire 01')
             ->assertSee('Tüm Hareketler')
-            ->assertSee('İşlem')
+            ->assertSee('Seçilen tarih aralığındaki borç, alacak ve bakiye hareketleri.')
+            ->assertSee('Filtrele')
+            ->assertSee('Temizle')
             ->assertSee(route('accounts.show', $account), false)
             ->assertSee('PDF')
-            ->assertDontSee("Excel'e Aktar")
-            ->assertDontSee('+ Borçlandır')
-            ->assertDontSee('+ Tahsilat Ekle')
-            ->assertDontSee('Düzenle');
+            ->assertSee('+ Borçlandır')
+            ->assertSee('+ Tahsilat Ekle')
+            ->assertSee('Düzenle')
+            ->assertDontSee("Excel'e Aktar");
 
         $this->withSession($session)
             ->actingAs($user)
@@ -969,5 +975,41 @@ class AccountPageTest extends TestCase
             ->assertDontSee('Hareket 0')
             ->assertDontSee('Previous')
             ->assertDontSee('Next');
+    }
+
+    public function test_account_action_pages_use_the_statement_heading(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Salih Sayan',
+        ]);
+
+        $session = [CurrentApartment::SESSION_KEY => $apartment->id];
+
+        foreach ([
+            route('accounts.edit', $account),
+            route('payments.create', ['account_id' => $account->id]),
+        ] as $url) {
+            $this->withSession($session)
+                ->actingAs($user)
+                ->get($url)
+                ->assertOk()
+                ->assertSee('Daire 01')
+                ->assertSee('Salih Sayan (Kat Maliki)', false)
+                ->assertSee(route('accounts.show', $account), false);
+        }
     }
 }

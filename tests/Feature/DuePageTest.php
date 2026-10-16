@@ -37,6 +37,48 @@ class DuePageTest extends TestCase
             ->assertSee('Henüz aidat kaydı yok.');
     }
 
+    public function test_selected_account_due_create_uses_the_statement_heading(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Salih Sayan',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('dues.create', ['account_id' => $account->id]))
+            ->assertOk()
+            ->assertSee('Daire 01')
+            ->assertSee('Salih Sayan (Kat Maliki)', false)
+            ->assertSee('Borçlandır')
+            ->assertSee('text-base font-semibold text-slate-800', false)
+            ->assertSee(route('accounts.show', $account), false)
+            ->assertSee('disabled', false)
+            ->assertSee('name="account_id" value="'.$account->id.'"', false);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('dues.create'))
+            ->assertOk()
+            ->assertSee('Aidatlara Dön')
+            ->assertSee('name="account_id"', false)
+            ->assertDontSee('cursor-not-allowed', false)
+            ->assertDontSee('text-base font-semibold text-slate-800', false);
+    }
+
     public function test_search_form_preserves_active_filters(): void
     {
         $user = User::factory()->create();

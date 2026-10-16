@@ -1,26 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    {{-- Breadcrumb + Hesap Sekmeleri --}}
-    <div class="mb-6 flex flex-row items-center justify-between gap-2 md:gap-4 min-w-0">
-        <div class="flex items-center gap-2 min-w-0 overflow-x-auto">
-            <a href="{{ route('accounts.index') }}" class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-300 px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
-                Hesaplar
-            </a>
-            <span class="text-slate-400">/</span>
-            <a href="{{ route('accounts.show', $account) }}" class="shrink-0 min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-300 px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-slate-700 bg-white hover:bg-slate-50">
-                @if ($account->unit)
-                    Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                @else
-                    {{ $account->type_label }}
-                @endif
-            </a>
-        </div>
-
-        <div class="flex items-center justify-end gap-2 shrink-0">
-            @include('accounts._tabs', ['account' => $account, 'active' => 'edit', 'withOverview' => false])
-        </div>
-    </div>
+    @include('accounts._page_heading', ['account' => $account, 'active' => 'edit'])
 
     {{-- Başlık Kartı --}}
     <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-4">

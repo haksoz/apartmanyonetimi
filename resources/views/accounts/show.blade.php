@@ -18,6 +18,7 @@
                     <span class="ml-2 align-middle inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
                 @endif
             </h1>
+            <p class="mt-1 text-base font-semibold text-slate-800">{{ $account->name }} ({{ $account->type_label }})</p>
         </div>
 
         {{-- Hesap Sekmeleri --}}
