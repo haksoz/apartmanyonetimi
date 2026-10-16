@@ -90,6 +90,46 @@ class ExpensePageTest extends TestCase
             ->assertDontSee('Birinci Tedarikçi');
     }
 
+    public function test_expense_show_uses_the_account_heading(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $supplier = Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'ABC Elektrik',
+        ]);
+        $expense = Expense::create([
+            'apartment_id' => $apartment->id,
+            'account_id' => $supplier->id,
+            'category' => 'Bakım',
+            'description' => 'Asansör bakımı',
+            'amount' => 1500,
+            'expense_date' => '2026-05-01',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('expenses.show', $expense))
+            ->assertOk()
+            ->assertSee('Giderler')
+            ->assertSee(route('expenses.index'), false)
+            ->assertSee('ABC Elektrik')
+            ->assertSee('text-lg font-semibold text-slate-800', false)
+            ->assertSee('Tutar, ödeme durumu ve doküman bilgileri.')
+            ->assertSee('text-sm text-slate-500', false)
+            ->assertDontSee('Asansör bakımı (Bakım)', false)
+            ->assertSee('text-xl font-bold text-slate-900', false)
+            ->assertSee('text-sm text-slate-400', false)
+            ->assertSee('Detaylar')
+            ->assertDontSee('Gider Detayı');
+    }
+
     public function test_expense_create_form_opens_for_selected_apartment(): void
     {
         $user = User::factory()->create();

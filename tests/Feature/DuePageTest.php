@@ -488,6 +488,50 @@ class DuePageTest extends TestCase
         ]);
     }
 
+    public function test_due_show_uses_the_shared_heading(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT,
+            'name' => 'Tekin İdigü',
+            'is_active' => true,
+        ]);
+        $due = Due::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'account_id' => $account->id,
+            'due_type' => 'aidat',
+            'description' => 'Mayıs aidatı',
+            'amount' => 750,
+            'remaining_amount' => 750,
+            'due_date' => '2026-05-31',
+            'status' => 'unpaid',
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('dues.show', $due))
+            ->assertOk()
+            ->assertSee('Aidatlar')
+            ->assertSee(route('dues.index'), false)
+            ->assertSee('Tekin İdigü')
+            ->assertSee('text-lg font-semibold text-slate-800', false)
+            ->assertSee('Tutar, tahsilat durumu ve borç bilgileri.')
+            ->assertSee('Mayıs aidatı')
+            ->assertSee('text-xl font-bold text-slate-900', false)
+            ->assertSee('text-sm text-slate-400', false)
+            ->assertSee('Detaylar')
+            ->assertSee('<details class="group" open>', false)
+            ->assertSee('Daire 01')
+            ->assertDontSee('Aidat Detayı')
+            ->assertDontSee('Aidatlara Dön');
+    }
+
     public function test_due_detail_page_shows_transfer_button_for_open_due(): void
     {
         $user = User::factory()->create();
