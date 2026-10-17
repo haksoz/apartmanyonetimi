@@ -51,6 +51,11 @@ class Account extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function portalOffers(): HasMany
+    {
+        return $this->hasMany(AccountPortalOffer::class);
+    }
+
     public function defaultCategory(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'default_category_id');
@@ -126,5 +131,16 @@ class Account extends Model
             self::TYPE_SUPPLIER => 'Tedarikçi',
             default => ucfirst((string) $this->type),
         };
+    }
+
+    public function loginEmailIsLocked(): bool
+    {
+        $user = $this->user;
+
+        if (! $user || ! $user->isActivated() || ! filled($this->email)) {
+            return false;
+        }
+
+        return strcasecmp($this->email, $user->email) === 0;
     }
 }

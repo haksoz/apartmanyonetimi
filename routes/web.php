@@ -42,6 +42,7 @@ use App\Http\Controllers\PaymentAllocationController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AccountPortalOfferController;
 use App\Http\Controllers\ManagementOfferController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ReportController;
@@ -104,6 +105,8 @@ Route::middleware('auth')->group(function () {
     Route::get('yonetici-kabul/{offer}', [ManagementOfferController::class, 'show'])->name('management-offers.show');
     Route::post('yonetici-kabul/{offer}', [ManagementOfferController::class, 'accept'])->name('management-offers.accept');
     Route::post('yonetici-kabul/{offer}/ret', [ManagementOfferController::class, 'reject'])->name('management-offers.reject');
+    Route::post('portal-davet/{offer}/kabul', [AccountPortalOfferController::class, 'accept'])->name('portal-offers.accept');
+    Route::post('portal-davet/{offer}/ret', [AccountPortalOfferController::class, 'reject'])->name('portal-offers.reject');
 
     // Onboarding routes - no apartment required
     Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
@@ -203,16 +206,14 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::patch('accounts/{account}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
         Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
         Route::get('users', [AccountUserController::class, 'index'])->name('users.index');
-        Route::get('users/create', [AccountUserController::class, 'create'])->name('users.create');
-        Route::get('users/lookup', [AccountUserController::class, 'lookupEmail'])->name('users.lookup');
-        Route::post('users', [AccountUserController::class, 'storeUser'])->name('users.store');
         Route::get('users/{user}', [AccountUserController::class, 'show'])->name('users.show');
         Route::get('users/{user}/edit', [AccountUserController::class, 'edit'])->name('users.edit');
         Route::patch('users/{user}', [AccountUserController::class, 'update'])->name('users.update');
         Route::patch('users/{user}/password', [AccountUserController::class, 'updatePassword'])->name('users.password');
         Route::post('users/{user}/invite', [AccountUserController::class, 'refreshInvite'])->name('users.invite');
         Route::post('accounts/{account}/user', [AccountUserController::class, 'store'])->name('accounts.user.store');
-        Route::post('users/{user}/attach-accounts', [AccountUserController::class, 'attachAccounts'])->name('users.attach-accounts');
+        Route::post('accounts/{account}/user/invite', [AccountUserController::class, 'refreshAccountInvite'])->name('accounts.user.invite');
+        Route::post('accounts/{account}/user/identity', [AccountUserController::class, 'applyIdentity'])->name('accounts.user.identity');
         Route::patch('accounts/{account}/user/role', [AccountUserController::class, 'updateRole'])->name('accounts.user.role');
         Route::patch('users/{user}/role', [AccountUserController::class, 'updateUserRole'])->name('users.role');
         Route::patch('users/{user}/toggle-active', [AccountUserController::class, 'toggleActive'])->name('users.toggle-active');

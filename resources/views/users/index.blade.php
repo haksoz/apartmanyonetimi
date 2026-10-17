@@ -2,24 +2,10 @@
 
 @section('content')
     {{-- Header --}}
-    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-950">Kullanıcı Yönetimi</h1>
-            <p class="mt-1 text-sm text-slate-500">Apartmana erişimi olan tüm kullanıcıların rollerini yönetin.</p>
-        </div>
-        <div class="flex gap-2">
-            <a href="{{ route('users.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 text-center">
-                + Yeni Kullanıcı Oluştur
-            </a>
-        </div>
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-slate-950">Kullanıcılar</h1>
+        <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Yeni AidatCep kullanıcısı, ilgili hesabın detayından eklenir. Bu ekranda rol ve bina erişimi yönetilir.</div>
     </div>
-
-    @if ($availableAccounts->isEmpty() && $users->isEmpty())
-        <div class="mb-6 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 border border-amber-200">
-            <p class="font-medium">Henüz kullanıcı yok.</p>
-            <p class="mt-1">Önce <a href="{{ route('accounts.index') }}" class="underline font-medium">Hesaplar</a> sayfasından daire bilgilerini doldurun, sonra buradan kullanıcı oluşturun.</p>
-        </div>
-    @endif
 
     {{-- Desktop Table --}}
     <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">
@@ -113,6 +99,14 @@
                         </td>
                         <td class="px-5 py-4 text-right whitespace-nowrap">
                             <div class="flex items-center justify-end gap-2">
+                                @if (! $user->isActivated())
+                                    <form method="POST" action="{{ route('users.invite', $user) }}" onsubmit="return confirm('Yeni davet bağlantısı üretilir. Daha önce verilen bağlantı geçersiz olur.')">
+                                        @csrf
+                                        <button type="submit" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+                                            Davet bağlantısı
+                                        </button>
+                                    </form>
+                                @endif
                                 @if (! $isCurrentUser)
                                     <form method="POST" action="{{ route('users.toggle-active', $user) }}">
                                         @csrf
@@ -130,6 +124,13 @@
                             </div>
                         </td>
                     </tr>
+                    @if (session('invite_url') && (int) session('invite_user_id') === $user->id)
+                        <tr class="bg-slate-50">
+                            <td colspan="5" class="px-5 py-3">
+                                @include('users._invite_link')
+                            </td>
+                        </tr>
+                    @endif
                 @empty
                     <tr>
                         <td colspan="5" class="px-5 py-12 text-center text-slate-400">Henüz apartmana kullanıcı eklenmemiş.</td>
@@ -208,6 +209,14 @@
                 </div>
 
                 <div class="flex gap-2">
+                    @if (! $user->isActivated())
+                        <form method="POST" action="{{ route('users.invite', $user) }}" class="flex-1" onsubmit="return confirm('Yeni davet bağlantısı üretilir. Daha önce verilen bağlantı geçersiz olur.')">
+                            @csrf
+                            <button type="submit" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                Davet bağlantısı
+                            </button>
+                        </form>
+                    @endif
                     @if (! $isCurrentUser)
                         <form method="POST" action="{{ route('users.toggle-active', $user) }}" class="flex-1">
                             @csrf
@@ -223,6 +232,11 @@
                         Detay
                     </a>
                 </div>
+                @if (session('invite_url') && (int) session('invite_user_id') === $user->id)
+                    <div class="mt-3 border-t border-slate-100 pt-3">
+                        @include('users._invite_link')
+                    </div>
+                @endif
             </div>
         @empty
             <div class="rounded-xl bg-white p-8 text-center text-slate-500 shadow-sm">

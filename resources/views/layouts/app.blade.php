@@ -666,6 +666,7 @@
             });
         </script>
         @include('partials.legal-consent-prompt')
+        @include('partials.portal-offer-prompt')
     @endauth
 </body>
 </html>

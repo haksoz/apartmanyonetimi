@@ -62,7 +62,7 @@ class MemberHomeTest extends TestCase
             ->get(route('users.show', $member))
             ->assertOk()
             ->assertDontSee('Bilgileri Düzenle')
-            ->assertSee('kendisine aittir');
+            ->assertDontSee('kendisine aittir');
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])

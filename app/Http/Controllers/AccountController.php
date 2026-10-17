@@ -12,6 +12,7 @@ use App\Models\Due;
 use App\Models\Expense;
 use App\Models\TenantAssignment;
 use App\Models\Unit;
+use App\Models\User;
 use App\Models\CashBox;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
@@ -325,6 +326,7 @@ class AccountController extends Controller
             ->with([
                 'unit',
                 'user',
+                'portalOffers' => fn ($query) => $query->where('status', 'pending'),
                 'activeTenantAssignment',
                 'transactions' => fn ($query) => $query->orderBy('transaction_date')->orderBy('id'),
                 'dues' => fn ($query) => $query->where('remaining_amount', '>', 0)->where('is_imported', false)->orderByDesc('due_date'),
@@ -836,6 +838,7 @@ class AccountController extends Controller
         }
 
         $account = Account::query()
+            ->with('user')
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->findOrFail($id);
 
@@ -906,6 +909,36 @@ class AccountController extends Controller
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
         ]);
 
+        $account->loadMissing('user');
+        $linkedUser = $account->user;
+        $pendingEmailSync = false;
+
+        if ($account->loginEmailIsLocked() && strcasecmp((string) ($validated['email'] ?? ''), (string) $account->email) !== 0) {
+            return back()->withErrors(['email' => 'Daveti kabul eden kişinin giriş e-postası bu hesapta değiştirilemez.'])->withInput();
+        }
+
+        if ($linkedUser
+            && ! $linkedUser->isActivated()
+            && filled($account->email)
+            && strcasecmp($account->email, $linkedUser->email) === 0
+            && strcasecmp((string) ($validated['email'] ?? ''), $linkedUser->email) !== 0
+        ) {
+            if (blank($validated['email'] ?? null)) {
+                return back()->withErrors(['email' => 'Davet bekleyen kullanıcının giriş e-postası boş bırakılamaz.'])->withInput();
+            }
+
+            $emailTaken = User::query()
+                ->where('email', $validated['email'])
+                ->whereKeyNot($linkedUser->id)
+                ->exists();
+
+            if ($emailTaken) {
+                return back()->withErrors(['email' => 'Bu e-posta başka bir AidatCep kullanıcısında kayıtlı.'])->withInput();
+            }
+
+            $pendingEmailSync = true;
+        }
+
         // Mevcut type'ı validated'a ekle
         $validated['type'] = $account->type;
 
@@ -940,7 +973,7 @@ class AccountController extends Controller
             }
         }
 
-        DB::transaction(function () use ($account, $request, $validated) {
+        DB::transaction(function () use ($account, $request, $validated, $pendingEmailSync, $linkedUser) {
             $updateData = [
                 'unit_id' => in_array($validated['type'], [Account::TYPE_OWNER, Account::TYPE_TENANT], true) ? ($validated['unit_id'] ?? null) : null,
                 'type' => $validated['type'],
@@ -954,6 +987,10 @@ class AccountController extends Controller
             $updateData['email'] = $validated['email'] ?? null;
 
             $account->update($updateData);
+
+            if ($pendingEmailSync && $linkedUser) {
+                $linkedUser->update(['email' => $validated['email']]);
+            }
 
             if (! empty($validated['account_opening_date'])) {
                 $account->transactions()
