@@ -321,7 +321,7 @@
                         </a>
                     @endif
 
-                    @if(! $subscriberNav && ! auth()->user()->isAdmin())
+                    @if(! $subscriberNav && ! auth()->user()->isAdmin() && ! $showBuildingMenu)
                     <a href="{{ route('subscriber.dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
