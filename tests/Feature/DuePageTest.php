@@ -350,9 +350,14 @@ class DuePageTest extends TestCase
         $response->assertSessionHasNoErrors();
         $this->assertSame(route('dues.index'), $response->headers->get('Location'));
 
+        $aidatCategoryId = Category::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('name', 'Aidat')
+            ->value('id');
+
         $this->assertDatabaseHas('due_batches', [
             'apartment_id' => $apartment->id,
-            'category_id' => $dueCategory->id,
+            'category_id' => $aidatCategoryId,
             'source_type' => DueBatch::SOURCE_EXPENSES,
             'source_amount' => 1500,
         ]);
@@ -421,9 +426,14 @@ class DuePageTest extends TestCase
             ])
             ->assertRedirect(route('dues.index'));
 
+        $aidatCategoryId = Category::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('name', 'Aidat')
+            ->value('id');
+
         $this->assertDatabaseHas('dues', [
             'account_id' => $account->id,
-            'category_id' => $category->id,
+            'category_id' => $aidatCategoryId,
             'amount' => 450,
             'description' => 'Kumanda bedeli',
         ]);
@@ -1463,5 +1473,158 @@ class DuePageTest extends TestCase
             'id' => $due1->id,
             'account_id' => $account1->id,
         ]);
+    }
+
+    public function test_locked_due_types_assign_system_category_and_hide_selector(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Maliki', 'is_active' => true]);
+        $unit->update(['owner_account_id' => $account->id, 'occupant_account_id' => $account->id]);
+        $incomeCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Gelir Kalemi', 'type' => Category::TYPE_INCOME, 'is_active' => true]);
+        $aidatCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'is_system' => true, 'is_active' => true]);
+        $expenseCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Asansör Bakımı', 'type' => Category::TYPE_EXPENSE, 'is_active' => true]);
+        $allCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Ortak Kalem', 'type' => Category::TYPE_ALL, 'is_active' => true]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('dues.create'))
+            ->assertOk()
+            ->assertSee('id="category-field" class="hidden"', false)
+            ->assertSee('Gelir Kalemi')
+            ->assertSee('Ortak Kalem')
+            ->assertDontSee('Asansör Bakımı')
+            ->assertDontSee('value="'.$aidatCategory->id.'"', false);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('dues.store'), [
+                'source_type' => DueBatch::SOURCE_INDIVIDUAL,
+                'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
+                'target_audience' => 'owner_only',
+                'period' => '2026-07',
+                'due_date' => '2026-07-31',
+                'due_type' => \App\Enums\DueType::Ceza->value,
+                'account_id' => $account->id,
+                'individual_amount' => 100,
+            ])
+            ->assertRedirect(route('dues.index'));
+
+        $cezaCategoryId = Category::query()->where('apartment_id', $apartment->id)->where('name', 'Ceza')->value('id');
+        $this->assertDatabaseHas('categories', [
+            'id' => $cezaCategoryId,
+            'type' => Category::TYPE_INCOME,
+            'is_system' => true,
+        ]);
+        $this->assertDatabaseHas('dues', [
+            'account_id' => $account->id,
+            'due_type' => \App\Enums\DueType::Ceza->value,
+            'category_id' => $cezaCategoryId,
+            'amount' => 100,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('dues.store'), [
+                'source_type' => DueBatch::SOURCE_INDIVIDUAL,
+                'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
+                'target_audience' => 'owner_only',
+                'period' => '2026-08',
+                'due_date' => '2026-08-31',
+                'due_type' => \App\Enums\DueType::Faiz->value,
+                'account_id' => $account->id,
+                'individual_amount' => 50,
+            ])
+            ->assertRedirect(route('dues.index'));
+
+        $faizCategoryId = Category::query()->where('apartment_id', $apartment->id)->where('name', 'Faiz')->value('id');
+        $this->assertDatabaseHas('categories', [
+            'id' => $faizCategoryId,
+            'type' => Category::TYPE_INCOME,
+            'is_system' => true,
+        ]);
+        $this->assertDatabaseHas('dues', [
+            'account_id' => $account->id,
+            'due_type' => \App\Enums\DueType::Faiz->value,
+            'category_id' => $faizCategoryId,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('dues.store'), [
+                'source_type' => DueBatch::SOURCE_INDIVIDUAL,
+                'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
+                'target_audience' => 'owner_only',
+                'period' => '2026-09',
+                'due_date' => '2026-09-30',
+                'due_type' => \App\Enums\DueType::MalikPayi->value,
+                'category_id' => $allCategory->id,
+                'account_id' => $account->id,
+                'individual_amount' => 75,
+            ])
+            ->assertRedirect(route('dues.index'));
+
+        $this->assertDatabaseHas('dues', [
+            'account_id' => $account->id,
+            'due_type' => \App\Enums\DueType::MalikPayi->value,
+            'category_id' => $allCategory->id,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('dues.store'), [
+                'source_type' => DueBatch::SOURCE_INDIVIDUAL,
+                'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
+                'target_audience' => 'owner_only',
+                'period' => '2026-10',
+                'due_date' => '2026-10-31',
+                'due_type' => \App\Enums\DueType::MasrafYansitma->value,
+                'category_id' => $incomeCategory->id,
+                'account_id' => $account->id,
+                'individual_amount' => 80,
+            ])
+            ->assertRedirect(route('dues.index'));
+
+        $this->assertDatabaseHas('dues', [
+            'account_id' => $account->id,
+            'due_type' => \App\Enums\DueType::MasrafYansitma->value,
+            'category_id' => $incomeCategory->id,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->from(route('dues.create'))
+            ->post(route('dues.store'), [
+                'source_type' => DueBatch::SOURCE_INDIVIDUAL,
+                'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
+                'target_audience' => 'owner_only',
+                'period' => '2026-11',
+                'due_date' => '2026-11-30',
+                'due_type' => \App\Enums\DueType::MasrafYansitma->value,
+                'category_id' => $expenseCategory->id,
+                'account_id' => $account->id,
+                'individual_amount' => 90,
+            ])
+            ->assertRedirect(route('dues.create'))
+            ->assertSessionHasErrors('category_id');
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->from(route('dues.create'))
+            ->post(route('dues.store'), [
+                'source_type' => DueBatch::SOURCE_INDIVIDUAL,
+                'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
+                'target_audience' => 'owner_only',
+                'period' => '2026-12',
+                'due_date' => '2026-12-31',
+                'due_type' => \App\Enums\DueType::MalikPayi->value,
+                'category_id' => $aidatCategory->id,
+                'account_id' => $account->id,
+                'individual_amount' => 40,
+            ])
+            ->assertRedirect(route('dues.create'))
+            ->assertSessionHasErrors('category_id');
     }
 }

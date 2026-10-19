@@ -148,6 +148,8 @@ class ApartmentWizardTest extends TestCase
                 'Temizlik',
                 'Yönetim',
                 'Bakım',
+                'Ceza',
+                'Faiz',
                 'Yakıt',
                 'Diğer',
             ]);

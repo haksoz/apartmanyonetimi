@@ -30,4 +30,19 @@ enum DueType: string
     {
         return array_column(self::cases(), 'value');
     }
+
+    public function selectsCategory(): bool
+    {
+        return in_array($this, [self::MalikPayi, self::MasrafYansitma], true);
+    }
+
+    public function lockedCategoryName(): ?string
+    {
+        return match ($this) {
+            self::Aidat => 'Aidat',
+            self::Ceza => 'Ceza',
+            self::Faiz => 'Faiz',
+            default => null,
+        };
+    }
 }

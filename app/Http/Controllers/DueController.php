@@ -147,18 +147,7 @@ class DueController extends Controller
         }
 
         $dueTypes = DueType::options();
-        $categories = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-        $expenseCategories = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $categories = $this->selectableDueCategories($apartment->id);
         $accounts = Account::query()
             ->where('accounts.apartment_id', $apartment->id)
             ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
@@ -171,7 +160,7 @@ class DueController extends Controller
 
         $selectedAccountId = $request->query('account_id');
 
-        return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'expenseCategories', 'accounts', 'selectedAccountId'));
+        return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'accounts', 'selectedAccountId'));
     }
 
     public function createBatch(CurrentApartment $currentApartment)
@@ -183,17 +172,12 @@ class DueController extends Controller
         }
 
         $dueTypes = DueType::options();
-        $categories = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $categories = $this->selectableDueCategories($apartment->id);
         $expenseCategories = Category::query()
             ->where('apartment_id', $apartment->id)
             ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
             ->where('is_active', true)
-            ->orderBy('name')
+            ->orderedForDisplay()
             ->get();
 
         $unitsCollection = Unit::query()
@@ -287,7 +271,7 @@ class DueController extends Controller
             'period' => ['nullable', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'due_type' => ['required', Rule::in(DueType::values())],
-            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
+            'category_id' => $this->categoryRules($request, $apartment->id),
             'description' => ['nullable', 'string', 'max:255'],
             'created_at_manual' => ['nullable', 'date'],
             'source_period' => ['required_if:source_type,'.DueBatch::SOURCE_EXPENSES, 'nullable', 'date_format:Y-m'],
@@ -345,6 +329,12 @@ class DueController extends Controller
         if ($sourceAmount <= 0) {
             return back()->withErrors(['source_amount' => 'Borçlandırılacak toplam tutar sıfırdan büyük olmalıdır.'])->withInput();
         }
+
+        $validated['category_id'] = $this->resolveDueCategoryId(
+            $apartment->id,
+            $validated['due_type'],
+            $validated['category_id'] ?? null,
+        );
 
         DB::transaction(function () use ($apartment, $validated, $selectedExpenseIds, $sourceAmount, $roundToInteger) {
             $batch = DueBatch::create([
@@ -515,7 +505,7 @@ class DueController extends Controller
 
         $due->load('allocations');
         $dueTypes = DueType::options();
-        $categories = Category::where('apartment_id', $due->apartment_id)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->where('is_active', true)->orderBy('name')->get();
+        $categories = $this->selectableDueCategories($due->apartment_id);
         $accounts = Account::where('accounts.apartment_id', $due->apartment_id)
             ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
             ->with('unit')
@@ -537,7 +527,7 @@ class DueController extends Controller
         $validated = $request->validate([
             'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('apartment_id', $due->apartment_id)],
             'due_type' => ['nullable', Rule::in(DueType::values())],
-            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $due->apartment_id)->where('is_active', true)],
+            'category_id' => $this->categoryRules($request, $due->apartment_id),
             'period' => ['required', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -558,6 +548,12 @@ class DueController extends Controller
         $aidatCategory = $this->aidatReconciliation->categoryFor($apartment);
 
         $dueDueType = is_string($due->due_type) ? $due->due_type : $due->due_type->value;
+        $validated['due_type'] = $validated['due_type'] ?? $dueDueType;
+        $validated['category_id'] = $this->resolveDueCategoryId(
+            $due->apartment_id,
+            $validated['due_type'],
+            $validated['category_id'] ?? null,
+        );
 
         if (isset($validated['account_id']) && $validated['account_id'] != $due->account_id) {
             if ($dueDueType === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
@@ -843,6 +839,67 @@ class DueController extends Controller
         if ($due->apartment_id !== $apartment->id) {
             abort(404);
         }
+    }
+
+    private function selectableDueCategories(int $apartmentId)
+    {
+        return Category::query()
+            ->where('apartment_id', $apartmentId)
+            ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
+            ->where('name', '!=', 'Aidat')
+            ->where('is_active', true)
+            ->orderedForDisplay()
+            ->get();
+    }
+
+    private function categoryRules(Request $request, int $apartmentId): array
+    {
+        $selectsCategory = in_array($request->input('due_type'), [
+            DueType::MalikPayi->value,
+            DueType::MasrafYansitma->value,
+        ], true);
+
+        return [
+            Rule::requiredIf($selectsCategory),
+            'nullable',
+            'integer',
+            Rule::exists('categories', 'id')->where(function ($query) use ($apartmentId, $selectsCategory) {
+                $query->where('apartment_id', $apartmentId)->where('is_active', true);
+
+                if ($selectsCategory) {
+                    $query->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
+                        ->where('name', '!=', 'Aidat');
+                }
+            }),
+        ];
+    }
+
+    private function resolveDueCategoryId(int $apartmentId, string $dueType, ?int $submittedCategoryId): ?int
+    {
+        $type = DueType::tryFrom($dueType);
+
+        if ($type?->lockedCategoryName()) {
+            $category = Category::withTrashed()->firstOrCreate(
+                ['apartment_id' => $apartmentId, 'name' => $type->lockedCategoryName()],
+                ['type' => Category::TYPE_INCOME, 'is_active' => true, 'is_system' => true],
+            );
+
+            if ($category->trashed()) {
+                $category->restore();
+            }
+
+            if ($category->type !== Category::TYPE_INCOME || ! $category->is_system || ! $category->is_active) {
+                $category->update([
+                    'type' => Category::TYPE_INCOME,
+                    'is_active' => true,
+                    'is_system' => true,
+                ]);
+            }
+
+            return $category->id;
+        }
+
+        return $submittedCategoryId;
     }
 
     private function resolveApartment(CurrentApartment $currentApartment)
