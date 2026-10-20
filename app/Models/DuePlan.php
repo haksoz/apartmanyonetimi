@@ -33,6 +33,7 @@ class DuePlan extends Model
         'yearly_amount',
         'per_unit_amount',
         'distribution_type',
+        'round_to_integer',
         'target_audience',
         'due_day',
         'auto_generate',
@@ -43,17 +44,18 @@ class DuePlan extends Model
     ];
 
     protected $casts = [
-        'plan_year'       => 'integer',
-        'monthly_amount'  => 'decimal:2',
-        'yearly_amount'   => 'decimal:2',
-        'per_unit_amount' => 'decimal:2',
-        'due_day'         => 'integer',
-        'auto_generate'   => 'boolean',
-        'generate_day'    => 'integer',
-        'start_date'      => 'date',
-        'end_date'        => 'date',
-        'is_active'       => 'boolean',
-        'due_type'        => DueType::class,
+        'plan_year'         => 'integer',
+        'monthly_amount'    => 'decimal:2',
+        'yearly_amount'     => 'decimal:2',
+        'per_unit_amount'   => 'decimal:2',
+        'due_day'           => 'integer',
+        'auto_generate'     => 'boolean',
+        'round_to_integer'  => 'boolean',
+        'generate_day'      => 'integer',
+        'start_date'        => 'date',
+        'end_date'          => 'date',
+        'is_active'         => 'boolean',
+        'due_type'          => DueType::class,
     ];
 
     protected static function booted(): void

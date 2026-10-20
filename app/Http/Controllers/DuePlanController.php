@@ -181,6 +181,7 @@ class DuePlanController extends Controller
             'plan_year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'monthly_amount' => ['required', 'numeric', 'min:0.01'],
             'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
+            'round_to_integer' => ['nullable', 'boolean'],
             'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'due_day' => ['required', 'integer', 'min:1', 'max:28'],
             'generate_day' => ['required', 'integer', 'min:1', 'max:28'],
@@ -202,6 +203,7 @@ class DuePlanController extends Controller
             'amount_type' => 'monthly',
             'monthly_amount' => $validated['monthly_amount'],
             'distribution_type' => $validated['distribution_type'],
+            'round_to_integer' => $request->boolean('round_to_integer'),
             'target_audience' => $validated['target_audience'],
             'due_day' => $validated['due_day'],
             'generate_day' => $validated['generate_day'],
@@ -414,22 +416,44 @@ class DuePlanController extends Controller
         $totalWeight = array_sum(array_column($unitAccounts, 'weight'));
         $dueDate = $periodDate->copy()->setDay(min($duePlan->due_day, $periodDate->daysInMonth));
         $monthlyAmount = $duePlan->monthly_amount_resolved;
+        $roundToInteger = (bool) $duePlan->round_to_integer;
+        if ($roundToInteger) {
+            $monthlyAmount = (float) ceil($monthlyAmount);
+        }
         $monthName = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'][(int) $periodDate->format('n')];
         $batchDescription = $customDescription ?: "{$periodDate->year} {$monthName} - Aidat";
         $count = count($unitAccounts);
         $allocated = 0;
         $snapshot = [];
+        $billedTotal = 0.0;
 
         foreach ($unitAccounts as $index => $item) {
             $isLast = $index === $count - 1;
-            $amount = $duePlan->distribution_type === DuePlan::DISTRIBUTION_EQUAL
-                ? ($isLast ? round($monthlyAmount - $allocated, 2) : round($monthlyAmount / $count, 2))
-                : ($isLast ? round($monthlyAmount - $allocated, 2) : round($monthlyAmount * $item['weight'] / $totalWeight, 2));
-            $allocated += $amount;
+            if ($duePlan->distribution_type === DuePlan::DISTRIBUTION_EQUAL) {
+                $amount = $roundToInteger
+                    ? (float) ceil($monthlyAmount / $count)
+                    : ($isLast ? round($monthlyAmount - $allocated, 2) : round($monthlyAmount / $count, 2));
+            } else {
+                if ($totalWeight <= 0) {
+                    $amount = $roundToInteger
+                        ? (float) ceil($monthlyAmount / $count)
+                        : ($isLast ? round($monthlyAmount - $allocated, 2) : round($monthlyAmount / $count, 2));
+                } else {
+                    $amount = $roundToInteger
+                        ? (float) ceil($monthlyAmount * $item['weight'] / $totalWeight)
+                        : ($isLast ? round($monthlyAmount - $allocated, 2) : round($monthlyAmount * $item['weight'] / $totalWeight, 2));
+                }
+            }
+            if (! $roundToInteger) {
+                $allocated += $amount;
+            }
+            $billedTotal += $amount;
             $snapshot[$item['unit']->id] = $amount;
         }
 
-        DB::transaction(function () use ($duePlan, $period, $periodDate, $dueDate, $monthlyAmount, $batchDescription, $snapshot, $unitAccounts, $category) {
+        $sourceAmount = $roundToInteger ? $billedTotal : $monthlyAmount;
+
+        DB::transaction(function () use ($duePlan, $period, $periodDate, $dueDate, $sourceAmount, $batchDescription, $snapshot, $unitAccounts, $category) {
             $batch = DueBatch::query()->firstOrCreate(
                 ['due_plan_id' => $duePlan->id, 'period' => $period],
                 [
@@ -439,7 +463,7 @@ class DuePlanController extends Controller
                     'source_type' => DueBatch::SOURCE_MANUAL,
                     'distribution_type' => $duePlan->distribution_type,
                     'target_audience' => $duePlan->target_audience,
-                    'source_amount' => $monthlyAmount,
+                    'source_amount' => $sourceAmount,
                     'description' => $batchDescription,
                     'distribution_snapshot' => $snapshot,
                     'created_by' => auth()->id(),
@@ -448,7 +472,7 @@ class DuePlanController extends Controller
 
             $batch->update([
                 'category_id' => $category->id,
-                'source_amount' => $monthlyAmount,
+                'source_amount' => $sourceAmount,
                 'description' => $batchDescription,
                 'distribution_snapshot' => $snapshot,
                 'created_by' => auth()->id(),

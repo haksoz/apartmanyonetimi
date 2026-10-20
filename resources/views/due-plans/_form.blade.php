@@ -112,11 +112,19 @@
         <div class="space-y-4">
             <div>
                 <label class="mb-1 block text-sm font-medium text-slate-600">Dağıtım Yöntemi</label>
-                <select name="distribution_type" id="distribution_type" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none">
-                    <option value="equal" @selected(old('distribution_type', $plan?->distribution_type ?? 'equal') === 'equal')>Eşit dağıtım</option>
-                    <option value="square_meters" @selected(old('distribution_type', $plan?->distribution_type) === 'square_meters')>Metrekareye göre</option>
-                    <option value="share_coefficient" @selected(old('distribution_type', $plan?->distribution_type) === 'share_coefficient')>Pay çarpanına göre</option>
-                </select>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <select name="distribution_type" id="distribution_type" class="w-full sm:flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none">
+                        <option value="equal" @selected(old('distribution_type', $plan?->distribution_type ?? 'equal') === 'equal')>Eşit dağıtım</option>
+                        <option value="square_meters" @selected(old('distribution_type', $plan?->distribution_type) === 'square_meters')>Metrekareye göre</option>
+                        <option value="share_coefficient" @selected(old('distribution_type', $plan?->distribution_type) === 'share_coefficient')>Pay çarpanına göre</option>
+                    </select>
+                    <label class="inline-flex items-center gap-2 shrink-0">
+                        <input type="checkbox" id="round_to_integer" name="round_to_integer" value="1"
+                               @checked(old('round_to_integer', $plan?->round_to_integer))
+                               class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                        <span class="text-sm text-slate-600 whitespace-nowrap">Tamsayıya yuvarla</span>
+                    </label>
+                </div>
                 @error('distribution_type')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
@@ -192,18 +200,59 @@
             @foreach ($units as $u)
             {
                 label: {!! json_encode(($u->block ? $u->block . '/' : '') . $u->unit_no) !!},
-                sqm: {!! json_encode($u->square_meters) !!},
-                coef: {!! json_encode($u->share_coefficient) !!}
+                sqm: {{ (float) ($u->square_meters ?? 0) }},
+                coef: {{ (float) ($u->share_coefficient ?? 0) }}
             }@if (!$loop->last),@endif
             @endforeach
         ];
 
         const monthlyAmount = document.getElementById('monthly_amount');
         const distributionType = document.getElementById('distribution_type');
+        const roundToInteger = document.getElementById('round_to_integer');
         const calcSummary = document.getElementById('calc-summary');
 
-        const formatMoney = (amount) => {
-            return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' TL';
+        const formatMoney = (amount, fractionDigits = 2) => {
+            const n = Number(amount);
+            if (! Number.isFinite(n)) {
+                return '—';
+            }
+            return new Intl.NumberFormat('tr-TR', {
+                minimumFractionDigits: fractionDigits,
+                maximumFractionDigits: fractionDigits
+            }).format(n) + ' TL';
+        };
+
+        const getActiveUnits = (distType) => {
+            return unitsData.filter(u => {
+                if (distType === 'square_meters') return Number(u.sqm) > 0;
+                if (distType === 'share_coefficient') return Number(u.coef) > 0;
+                return true;
+            });
+        };
+
+        const getTotalWeight = (activeUnits, distType) => {
+            return activeUnits.reduce((s, u) => {
+                if (distType === 'square_meters') return s + Number(u.sqm);
+                if (distType === 'share_coefficient') return s + Number(u.coef);
+                return s + 1;
+            }, 0);
+        };
+
+        const getRoundedTotal = (total) => {
+            const distType = distributionType.value;
+            const activeUnits = getActiveUnits(distType);
+            if (! total || total <= 0 || activeUnits.length === 0) return 0;
+
+            const totalWeight = getTotalWeight(activeUnits, distType);
+            if (! totalWeight || ! Number.isFinite(totalWeight)) return 0;
+
+            const baseTotal = Math.ceil(total);
+            let sum = 0;
+            activeUnits.forEach(u => {
+                const w = distType === 'equal' ? 1 : (distType === 'square_meters' ? Number(u.sqm) : Number(u.coef));
+                sum += Math.ceil(baseTotal * w / totalWeight);
+            });
+            return sum;
         };
 
         const updateDistributionPreview = (total) => {
@@ -212,18 +261,15 @@
             const groupsEl = document.getElementById('preview-groups');
             const warningEl = document.getElementById('preview-warning');
             const totalLbl = document.getElementById('preview-total-label');
+            const round = roundToInteger?.checked;
+            const baseTotal = round ? Math.ceil(total) : total;
 
-            if (! total || total <= 0 || ! unitsData.length) {
+            if (! baseTotal || baseTotal <= 0 || ! unitsData.length) {
                 previewEl.classList.add('hidden');
                 return;
             }
 
-            const activeUnits = unitsData.filter(u => {
-                if (distType === 'square_meters') return u.sqm > 0;
-                if (distType === 'share_coefficient') return u.coef > 0;
-                return true;
-            });
-
+            const activeUnits = getActiveUnits(distType);
             const zeroCount = unitsData.length - activeUnits.length;
             if (distType !== 'equal' && zeroCount > 0) {
                 warningEl.textContent = zeroCount + ' dairenin ' + (distType === 'square_meters' ? 'metrekare' : 'pay çarpanı') + ' bilgisi 0 veya boş — bu daireler dağıtımdan hariç tutulur.';
@@ -237,26 +283,30 @@
                 return;
             }
 
-            const totalWeight = activeUnits.reduce((s, u) => {
-                if (distType === 'square_meters') return s + u.sqm;
-                if (distType === 'share_coefficient') return s + u.coef;
-                return s + 1;
-            }, 0);
+            const totalWeight = getTotalWeight(activeUnits, distType);
+            if (! totalWeight || ! Number.isFinite(totalWeight)) {
+                previewEl.classList.add('hidden');
+                return;
+            }
 
             let shares = [];
             let allocated = 0;
             activeUnits.forEach((u, idx) => {
-                const w = distType === 'equal' ? 1 : (distType === 'square_meters' ? u.sqm : u.coef);
-                const share = idx === activeUnits.length - 1
-                    ? Math.round((total - allocated) * 100) / 100
-                    : Math.round(total * w / totalWeight * 100) / 100;
+                const w = distType === 'equal' ? 1 : (distType === 'square_meters' ? Number(u.sqm) : Number(u.coef));
+                const share = round
+                    ? Math.ceil(baseTotal * w / totalWeight)
+                    : (idx === activeUnits.length - 1
+                        ? Math.round((baseTotal - allocated) * 100) / 100
+                        : Math.round(baseTotal * w / totalWeight * 100) / 100);
                 allocated += share;
                 shares.push({ unit: u, w, share });
             });
 
+            const totalToUse = round ? allocated : baseTotal;
+
             const groups = {};
             shares.forEach(s => {
-                const key = distType === 'equal' ? 'equal' : s.w.toString();
+                const key = distType === 'equal' ? 'equal' : String(s.w);
                 if (! groups[key]) groups[key] = { w: s.w, share: s.share, count: 0 };
                 groups[key].count++;
             });
@@ -266,26 +316,32 @@
             let html = '';
             sortedGroups.forEach(g => {
                 let weightLabel = distType === 'equal' ? 'Eşit dağıtım'
-                    : distType === 'square_meters' ? g.w.toLocaleString('tr-TR') + ' m²'
-                    : g.w.toLocaleString('tr-TR') + ' çarpan';
+                    : distType === 'square_meters' ? Number(g.w).toLocaleString('tr-TR') + ' m²'
+                    : Number(g.w).toLocaleString('tr-TR') + ' çarpan';
                 html += `<div class="flex items-center justify-between px-4 py-3 text-sm">
                     <div class="text-slate-700"><span class="font-medium">${weightLabel}</span> — <span class="text-slate-500">${g.count} daire</span></div>
-                    <div class="font-bold text-slate-900 tabular-nums">${formatMoney(g.share)} / daire</div>
+                    <div class="font-bold text-slate-900 tabular-nums">${formatMoney(g.share, round ? 0 : 2)} / daire</div>
                 </div>`;
             });
 
             groupsEl.innerHTML = html;
-            totalLbl.textContent = formatMoney(total) + ' · ' + activeUnits.length + ' daire';
+            totalLbl.textContent = formatMoney(totalToUse, round ? 0 : 2) + ' · ' + activeUnits.length + ' daire';
             previewEl.classList.remove('hidden');
         };
 
         const updateCalculation = () => {
-            const total = parseFloat(monthlyAmount?.value?.replace(',', '.')) || 0;
+            const total = parseFloat(String(monthlyAmount?.value ?? '').replace(',', '.')) || 0;
             updateDistributionPreview(total);
 
             if (unitsData.length && total > 0) {
-                const perUnit = total / unitsData.length;
-                calcSummary.textContent = `Toplam: ${formatMoney(total)} / Daire: ${formatMoney(perUnit)}`;
+                const round = roundToInteger?.checked;
+                const activeUnits = getActiveUnits(distributionType.value);
+                const unitCount = activeUnits.length || unitsData.length;
+                const displayTotal = round ? getRoundedTotal(total) : total;
+                const displayPerUnit = round
+                    ? (unitCount ? Math.ceil(displayTotal / unitCount) : 0)
+                    : (unitCount ? displayTotal / unitCount : 0);
+                calcSummary.textContent = `Toplam: ${formatMoney(displayTotal, round ? 0 : 2)} / Daire: ${formatMoney(displayPerUnit, round ? 0 : 2)}`;
                 calcSummary.classList.remove('hidden');
             } else {
                 calcSummary.classList.add('hidden');
@@ -294,6 +350,7 @@
 
         monthlyAmount?.addEventListener('input', updateCalculation);
         distributionType?.addEventListener('change', updateCalculation);
+        roundToInteger?.addEventListener('change', updateCalculation);
 
         updateCalculation();
     })();
