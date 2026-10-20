@@ -369,12 +369,15 @@
                     </a>
                     @endif
 
-                    @if($showBuildingMenu && (auth()->user()->isAdmin() || \App\Support\FeatureGate::allows($currentApartment, 'auto_dues')))
-                    <a href="{{ route('due-plans.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('due-plans.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                    @if($showBuildingMenu && (auth()->user()->isAdmin()
+                        || \App\Support\FeatureGate::allows($currentApartment, 'auto_dues')
+                        || \App\Support\FeatureGate::allows($currentApartment, 'expense_plans')
+                        || \App\Support\FeatureGate::allows($currentApartment, 'assessment_plans')))
+                    <a href="{{ route('financial-plans.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('financial-plans.*') || request()->routeIs('due-plans.*') || request()->routeIs('expense-plans.*') || request()->routeIs('assessment-plans.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
-                        <span class="sidebar-text">Aidat Planlama</span>
+                        <span class="sidebar-text">Finansal Planlama</span>
                     </a>
                     @endif
 

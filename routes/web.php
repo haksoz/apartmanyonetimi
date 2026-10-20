@@ -34,9 +34,12 @@ use App\Http\Controllers\CashController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ResidenceController;
+use App\Http\Controllers\AssessmentPlanController;
 use App\Http\Controllers\DueController;
 use App\Http\Controllers\DuePlanController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ExpensePlanController;
+use App\Http\Controllers\FinancialPlanController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\PaymentAllocationController;
 use App\Http\Controllers\PasswordResetController;
@@ -246,11 +249,36 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
         Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
         Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+        Route::get('financial-plans', [FinancialPlanController::class, 'index'])->name('financial-plans.index');
+        Route::get('financial-plans/create', [FinancialPlanController::class, 'create'])->name('financial-plans.create');
+        Route::post('financial-plans/select-type', [FinancialPlanController::class, 'selectType'])->name('financial-plans.select-type');
+
         Route::middleware('feature:auto_dues')->group(function () {
             Route::post('due-plans/{duePlan}/generate-month', [DuePlanController::class, 'generateMonth'])->name('due-plans.generate-month');
             Route::post('due-plans/{duePlan}/regenerate-period', [DuePlanController::class, 'regeneratePeriod'])->name('due-plans.regenerate-period');
+            Route::post('due-plans/{duePlan}/confirm-past-periods', [DuePlanController::class, 'confirmPastPeriods'])->name('due-plans.confirm-past-periods');
             Route::patch('due-plans/{duePlan}/deactivate', [DuePlanController::class, 'deactivate'])->name('due-plans.deactivate');
+            Route::patch('due-plans/{duePlan}/activate', [DuePlanController::class, 'activate'])->name('due-plans.activate');
             Route::resource('due-plans', DuePlanController::class);
+        });
+
+        Route::middleware('feature:expense_plans')->group(function () {
+            Route::get('expense-plans/create', [ExpensePlanController::class, 'create'])->name('expense-plans.create');
+            Route::post('expense-plans', [ExpensePlanController::class, 'store'])->name('expense-plans.store');
+            Route::get('expense-plans/{expensePlan}', [ExpensePlanController::class, 'show'])->name('expense-plans.show');
+            Route::put('expense-plans/{expensePlan}', [ExpensePlanController::class, 'update'])->name('expense-plans.update');
+            Route::patch('expense-plans/{expensePlan}/deactivate', [ExpensePlanController::class, 'deactivate'])->name('expense-plans.deactivate');
+            Route::post('expense-plans/{expensePlan}/generate-month', [ExpensePlanController::class, 'generateMonth'])->name('expense-plans.generate-month');
+        });
+
+        Route::middleware('feature:assessment_plans')->group(function () {
+            Route::get('assessment-plans/create', [AssessmentPlanController::class, 'create'])->name('assessment-plans.create');
+            Route::post('assessment-plans', [AssessmentPlanController::class, 'store'])->name('assessment-plans.store');
+            Route::get('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'show'])->name('assessment-plans.show');
+            Route::post('assessment-plans/{assessmentPlan}/confirm-past', [AssessmentPlanController::class, 'confirmPast'])->name('assessment-plans.confirm-past');
+            Route::patch('assessment-plans/{assessmentPlan}/deactivate', [AssessmentPlanController::class, 'deactivate'])->name('assessment-plans.deactivate');
+            Route::get('assessment-plans/{assessmentPlan}/cancel-preview', [AssessmentPlanController::class, 'previewCancel'])->name('assessment-plans.cancel-preview');
+            Route::post('assessment-plans/{assessmentPlan}/cancel-future', [AssessmentPlanController::class, 'cancelFuture'])->name('assessment-plans.cancel-future');
         });
         Route::get('dues/batch/create', [DueController::class, 'createBatch'])->name('dues.batch.create');
         Route::delete('dues/bulk-destroy', [DueController::class, 'bulkDestroy'])->name('dues.bulk-destroy');

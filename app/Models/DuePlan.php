@@ -17,11 +17,15 @@ class DuePlan extends Model
     public const DISTRIBUTION_SQUARE_METERS     = 'square_meters';
     public const DISTRIBUTION_SHARE_COEFFICIENT = 'share_coefficient';
 
+    public const GENERATION_ON_SCHEDULE   = 'on_schedule';
+    public const GENERATION_CREATE_ALL_NOW = 'create_all_now';
+
     protected $fillable = [
         'apartment_id',
         'due_type',
         'category_id',
         'name',
+        'plan_year',
         'start_date',
         'end_date',
         'amount_type',
@@ -32,12 +36,14 @@ class DuePlan extends Model
         'target_audience',
         'due_day',
         'auto_generate',
+        'generation_mode',
         'generate_day',
         'description',
         'is_active',
     ];
 
     protected $casts = [
+        'plan_year'       => 'integer',
         'monthly_amount'  => 'decimal:2',
         'yearly_amount'   => 'decimal:2',
         'per_unit_amount' => 'decimal:2',
@@ -49,6 +55,24 @@ class DuePlan extends Model
         'is_active'       => 'boolean',
         'due_type'        => DueType::class,
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (DuePlan $plan) {
+            if ($plan->plan_year) {
+                $plan->start_date = sprintf('%04d-01-01', $plan->plan_year);
+                $plan->end_date = sprintf('%04d-12-31', $plan->plan_year);
+            } elseif ($plan->start_date && ! $plan->plan_year) {
+                $plan->plan_year = (int) $plan->start_date->format('Y');
+                $plan->start_date = sprintf('%04d-01-01', $plan->plan_year);
+                $plan->end_date = sprintf('%04d-12-31', $plan->plan_year);
+            }
+
+            if (! $plan->generation_mode) {
+                $plan->generation_mode = self::GENERATION_ON_SCHEDULE;
+            }
+        });
+    }
 
     public function apartment(): BelongsTo
     {
@@ -78,7 +102,7 @@ class DuePlan extends Model
         if ($this->amount_type === self::AMOUNT_TYPE_YEARLY) {
             return round((float) $this->yearly_amount / 12, 2);
         }
-        // per_unit: daire başı tutar * daire sayısı = aylık toplam (aidat oluşturma sırasında hesaplanır)
+
         return (float) number_format((float) $this->per_unit_amount, 2, '.', '');
     }
 
@@ -88,6 +112,11 @@ class DuePlan extends Model
             ->where('period', $period)
             ->whereHas('dues')
             ->exists();
+    }
+
+    public function createsOnSchedule(): bool
+    {
+        return ($this->generation_mode ?: self::GENERATION_ON_SCHEDULE) === self::GENERATION_ON_SCHEDULE;
     }
 
     public function getDistributionLabelAttribute(): string

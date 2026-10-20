@@ -1,35 +1,55 @@
 <input type="hidden" name="name" value="Aidat Kararı">
-<input type="hidden" name="auto_generate" value="1">
 <input type="hidden" name="amount_type" value="monthly">
 <input type="hidden" name="due_type" value="aidat">
 <input type="hidden" name="category_id" value="">
 
 <div class="space-y-5">
     <div>
-        <h3 class="text-sm font-semibold text-slate-700 mb-3">Plan Dönemi</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label for="start_date" class="block text-sm font-medium text-slate-600 mb-1">Başlangıç Tarihi</label>
-                <input type="date" id="start_date" name="start_date"
-                       value="{{ old('start_date', $plan?->start_date?->format('Y-m-d')) }}"
-                       class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none"
-                       required>
-                @error('start_date')
-                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label for="end_date" class="block text-sm font-medium text-slate-600 mb-1">Bitiş Tarihi</label>
-                <input type="date" id="end_date" name="end_date"
-                       value="{{ old('end_date', $plan?->end_date?->format('Y-m-d')) }}"
-                       class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none"
-                       required>
-                @error('end_date')
-                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
+        <h3 class="text-sm font-semibold text-slate-700 mb-3">Plan Yılı</h3>
+        <div class="md:w-1/2">
+            <label for="plan_year" class="block text-sm font-medium text-slate-600 mb-1">Takvim Yılı</label>
+            <input type="number" id="plan_year" name="plan_year"
+                   value="{{ old('plan_year', $plan?->plan_year ?? $selectedYear ?? now()->year) }}"
+                   min="2000" max="2100" required
+                   @disabled($plan?->exists)
+                   class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none">
+            @if ($plan?->exists)
+                <input type="hidden" name="plan_year" value="{{ $plan->plan_year }}">
+                <p class="mt-1 text-xs text-slate-500">Plan yılı oluşturulduktan sonra değiştirilemez. Kapsam: 1 Ocak – 31 Aralık.</p>
+            @else
+                <p class="mt-1 text-xs text-slate-500">Plan 1 Ocak – 31 Aralık dönemini kapsar. Aynı yıl için tek plan oluşturulabilir.</p>
+            @endif
+            @error('plan_year')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
         </div>
+    </div>
+
+    <hr class="border-slate-100">
+
+    <div>
+        <h3 class="text-sm font-semibold text-slate-700 mb-3">Borç Oluşturma Yöntemi</h3>
+        <div class="flex flex-col sm:flex-row gap-3">
+            <label class="cursor-pointer flex-1">
+                <input type="radio" name="generation_mode" value="on_schedule" class="peer sr-only"
+                       @checked(old('generation_mode', $plan?->generation_mode ?? 'on_schedule') === 'on_schedule')>
+                <div class="rounded-lg border border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50 h-full">
+                    <div class="font-semibold text-slate-800 text-sm">Zamanı geldikçe oluştur</div>
+                    <div class="text-xs text-slate-500 mt-0.5">Varsayılan. Borçlar oluşturma gününde üretilir.</div>
+                </div>
+            </label>
+            <label class="cursor-pointer flex-1">
+                <input type="radio" name="generation_mode" value="create_all_now" class="peer sr-only"
+                       @checked(old('generation_mode', $plan?->generation_mode) === 'create_all_now')>
+                <div class="rounded-lg border border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50 h-full">
+                    <div class="font-semibold text-slate-800 text-sm">Tümünü şimdi oluştur</div>
+                    <div class="text-xs text-slate-500 mt-0.5">Uygun dönemlerin borçları hemen oluşturulur. Geçmiş dönemler için onay istenir.</div>
+                </div>
+            </label>
+        </div>
+        @error('generation_mode')
+            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+        @enderror
     </div>
 
     <hr class="border-slate-100">
@@ -74,6 +94,7 @@
                    value="{{ old('monthly_amount', $plan?->monthly_amount) }}"
                    class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none font-semibold"
                    placeholder="0,00" required>
+            <p class="mt-1 text-xs text-slate-500">Değişiklik yalnızca henüz oluşturulmamış dönemlere uygulanır. Mevcut borçlar otomatik güncellenmez.</p>
             @error('monthly_amount')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
             @enderror
@@ -153,7 +174,7 @@
     <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
         <div>
             <p class="text-sm font-medium text-slate-700">Aktif / Pasif</p>
-            <p class="text-xs text-slate-500 mt-0.5">Plan aktifken aidatlar otomatik oluşturulur.</p>
+            <p class="text-xs text-slate-500 mt-0.5">Pasif planda otomatik ve plan üzerinden manuel aidat oluşturulmaz.</p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
             <input type="hidden" name="is_active" value="0">

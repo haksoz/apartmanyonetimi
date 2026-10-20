@@ -21,18 +21,36 @@ class DuePlanController extends Controller
     {
     }
 
-    public function index(CurrentApartment $currentApartment)
+    public function index(CurrentApartment $currentApartment, Request $request)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+
+        $plans = DuePlan::query()
+            ->where('apartment_id', $apartment->id)
+            ->orderByDesc('plan_year')
+            ->orderByDesc('id')
+            ->get();
+
+        $selectedYear = (int) $request->input('year', $plans->first()?->plan_year ?? now()->year);
 
         $plan = DuePlan::query()
             ->with(['batches' => fn ($q) => $q->withCount('dues')->orderBy('period')])
             ->where('apartment_id', $apartment->id)
-            ->orderByDesc('id')
-            ->firstOrNew();
+            ->where('plan_year', $selectedYear)
+            ->firstOrNew([
+                'apartment_id' => $apartment->id,
+                'plan_year' => $selectedYear,
+            ]);
 
-        $plan->apartment_id = $apartment->id;
+        if (! $plan->exists) {
+            $plan->apartment_id = $apartment->id;
+            $plan->plan_year = $selectedYear;
+            $plan->generation_mode = DuePlan::GENERATION_ON_SCHEDULE;
+            $plan->is_active = true;
+        }
 
         $units = Unit::query()
             ->where('apartment_id', $apartment->id)
@@ -44,9 +62,26 @@ class DuePlanController extends Controller
         $currentPeriod = now()->format('Y-m');
         $shouldPromptGenerate = session('prompt_generate_period') === $currentPeriod
             && $plan->exists
-            && $plan->is_active;
+            && $plan->is_active
+            && (int) session('prompt_generate_plan_id') === (int) $plan->id;
 
-        return view('due-plans.index', compact('plan', 'apartment', 'units', 'periods', 'currentPeriod', 'shouldPromptGenerate'));
+        $shouldPromptPastPeriods = session('prompt_past_periods_plan_id') == $plan->id
+            && $plan->exists
+            && $plan->is_active;
+        $pastPeriodsToConfirm = session('prompt_past_periods', []);
+
+        return view('due-plans.index', compact(
+            'plan',
+            'plans',
+            'apartment',
+            'units',
+            'periods',
+            'currentPeriod',
+            'shouldPromptGenerate',
+            'shouldPromptPastPeriods',
+            'pastPeriodsToConfirm',
+            'selectedYear',
+        ));
     }
 
     private function buildPeriodsList(DuePlan $plan, $units): array
@@ -56,19 +91,20 @@ class DuePlanController extends Controller
         }
 
         $periods = [];
-        $cursor  = $plan->start_date->copy()->startOfMonth();
-        $end     = $plan->end_date->copy()->startOfMonth();
+        $cursor = $plan->start_date->copy()->startOfMonth();
+        $end = $plan->end_date->copy()->startOfMonth();
+        $planStopped = ! $plan->is_active;
 
         while ($cursor <= $end) {
-            $period      = $cursor->format('Y-m');
-            $periodDate  = $cursor->copy();
+            $period = $cursor->format('Y-m');
+            $periodDate = $cursor->copy();
             $batch = $plan->batches->firstWhere('period', $period);
             $reconciliation = $this->aidatReconciliation->reconcile($plan, $period);
             $activeCount = count($reconciliation['completed_account_ids']);
             $expectedCount = $reconciliation['target_accounts']->count();
 
             if ($activeCount === 0) {
-                $status = 'not_generated';
+                $status = $planStopped ? 'stopped' : 'not_generated';
             } elseif ($activeCount < $expectedCount) {
                 $status = 'incomplete';
             } else {
@@ -76,12 +112,13 @@ class DuePlanController extends Controller
             }
 
             $periods[] = [
-                'period'         => $period,
-                'label'          => $periodDate->locale('tr')->isoFormat('MMMM YYYY'),
-                'status'         => $status,
-                'active_count'   => $activeCount,
+                'period' => $period,
+                'label' => $periodDate->locale('tr')->isoFormat('MMMM YYYY'),
+                'status' => $status,
+                'active_count' => $activeCount,
                 'expected_count' => $expectedCount,
-                'batch_id'       => $batch?->id,
+                'batch_id' => $batch?->id,
+                'is_past' => $period < now()->format('Y-m'),
             ];
 
             $cursor->addMonth();
@@ -98,145 +135,252 @@ class DuePlanController extends Controller
     public function regeneratePeriod(Request $request, CurrentApartment $currentApartment, DuePlan $duePlan)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
-        if ($duePlan->apartment_id !== $apartment->id) abort(404);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        if ($duePlan->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+
+        if (! $duePlan->is_active) {
+            return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
+                ->with('error', 'Pasif plan üzerinden eksik aidat oluşturulamaz.');
+        }
 
         $validated = $request->validate([
             'period' => ['required', 'date_format:Y-m'],
         ]);
 
         $period = $validated['period'];
-        $periodDate = Carbon::parse($period . '-01');
+        $periodDate = Carbon::parse($period.'-01');
 
-        if (
-            $periodDate->copy()->endOfMonth()->toDateString() < $duePlan->start_date->toDateString()
-            || $periodDate->copy()->startOfMonth()->toDateString() > $duePlan->end_date->toDateString()
-        ) {
-            return redirect()->route('due-plans.index')
-                ->with('error', 'Seçilen dönem planın başlangıç/bitiş tarihleri arasında değil.');
+        if (! $this->periodWithinPlan($duePlan, $periodDate)) {
+            return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
+                ->with('error', 'Seçilen dönem plan yılı içinde değil.');
         }
 
         $createdCount = $this->createDuesForPeriod($duePlan, $period);
 
         if ($createdCount === 0) {
-            return redirect()->route('due-plans.index')
+            return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
                 ->with('status', 'Seçilen dönemde eksik aidat bulunmuyor.');
         }
 
-        return redirect()->route('due-plans.index')
+        return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
             ->with('status', "{$period} dönemi için {$createdCount} eksik aidat oluşturuldu.");
     }
 
     public function store(Request $request, CurrentApartment $currentApartment)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
-
-        $validated = $request->validate([
-            'start_date'        => ['required', 'date'],
-            'end_date'          => ['required', 'date', 'after_or_equal:start_date'],
-            'monthly_amount'    => ['required', 'numeric', 'min:0.01'],
-            'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
-            'target_audience'   => ['required', Rule::in(['tenant_priority', 'owner_only'])],
-            'due_day'           => ['required', 'integer', 'min:1', 'max:28'],
-            'generate_day'      => ['required', 'integer', 'min:1', 'max:28'],
-            'description'       => ['nullable', 'string', 'max:255'],
-            'is_active'         => ['boolean'],
-        ]);
-
-        $validated = array_merge($validated, [
-            'apartment_id'  => $apartment->id,
-            'name'          => 'Aidat Kararı',
-            'amount_type'   => 'monthly',
-            'due_type'      => 'aidat',
-            'category_id'   => $this->aidatReconciliation->categoryFor($apartment)->id,
-            'auto_generate' => true,
-            'is_active'     => $request->boolean('is_active', true),
-        ]);
-
-        $plan = DuePlan::query()->where('apartment_id', $apartment->id)->first();
-
-        if ($plan) {
-            $plan->update($validated);
-        } else {
-            $plan = DuePlan::create($validated);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
         }
 
-        // Aynı apartmanda başka plan kalmasın
-        DuePlan::where('apartment_id', $apartment->id)
-            ->where('id', '!=', $plan->id)
-            ->delete();
+        $validated = $request->validate([
+            'plan_year' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'monthly_amount' => ['required', 'numeric', 'min:0.01'],
+            'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
+            'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
+            'due_day' => ['required', 'integer', 'min:1', 'max:28'],
+            'generate_day' => ['required', 'integer', 'min:1', 'max:28'],
+            'generation_mode' => ['required', Rule::in([DuePlan::GENERATION_ON_SCHEDULE, DuePlan::GENERATION_CREATE_ALL_NOW])],
+            'include_past_periods' => ['nullable', 'boolean'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $planYear = (int) $validated['plan_year'];
+        $generationMode = $validated['generation_mode'];
+
+        $payload = [
+            'apartment_id' => $apartment->id,
+            'name' => 'Aidat Kararı',
+            'plan_year' => $planYear,
+            'start_date' => sprintf('%04d-01-01', $planYear),
+            'end_date' => sprintf('%04d-12-31', $planYear),
+            'amount_type' => 'monthly',
+            'monthly_amount' => $validated['monthly_amount'],
+            'distribution_type' => $validated['distribution_type'],
+            'target_audience' => $validated['target_audience'],
+            'due_day' => $validated['due_day'],
+            'generate_day' => $validated['generate_day'],
+            'generation_mode' => $generationMode,
+            'description' => $validated['description'] ?? null,
+            'due_type' => 'aidat',
+            'category_id' => $this->aidatReconciliation->categoryFor($apartment)->id,
+            'auto_generate' => $generationMode === DuePlan::GENERATION_ON_SCHEDULE,
+            'is_active' => $request->boolean('is_active', true),
+        ];
+
+        $plan = DuePlan::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('plan_year', $planYear)
+            ->first();
+
+        if ($plan) {
+            $plan->update($payload);
+        } else {
+            $plan = DuePlan::create($payload);
+        }
+
+        $plan->refresh();
+
+        if ($plan->is_active && $generationMode === DuePlan::GENERATION_CREATE_ALL_NOW) {
+            $pastPeriods = $this->ungeneratedPastPeriods($plan);
+            $includePast = $request->boolean('include_past_periods');
+
+            if ($pastPeriods !== [] && ! $request->has('include_past_periods')) {
+                return redirect()->route('due-plans.index', ['year' => $plan->plan_year])
+                    ->with('prompt_past_periods_plan_id', $plan->id)
+                    ->with('prompt_past_periods', $pastPeriods)
+                    ->with('status', 'Aidat planı kaydedildi. Geçmiş dönemler için onay bekleniyor.');
+            }
+
+            $created = $this->generateAllEligiblePeriods($plan, $includePast);
+            $message = $created > 0
+                ? "Aidat planı kaydedildi. {$created} daireye aidat oluşturuldu."
+                : 'Aidat planı kaydedildi. Oluşturulacak eksik aidat bulunamadı.';
+
+            return redirect()->route('due-plans.index', ['year' => $plan->plan_year])
+                ->with('status', $message);
+        }
 
         $currentPeriod = now()->format('Y-m');
-        $today         = now()->toDateString();
+        $today = now()->toDateString();
 
         if (
             $plan->is_active
+            && $plan->createsOnSchedule()
             && $today >= $plan->start_date->toDateString()
             && $today <= $plan->end_date->toDateString()
             && ! $plan->isGeneratedForPeriod($currentPeriod)
         ) {
-            return redirect()->route('due-plans.index')
+            return redirect()->route('due-plans.index', ['year' => $plan->plan_year])
                 ->with('prompt_generate_period', $currentPeriod)
                 ->with('prompt_generate_plan_id', $plan->id)
-                ->with('status', 'Aidat kararı ayarları kaydedildi.');
+                ->with('status', 'Aidat planı kaydedildi.');
         }
 
-        return redirect()->route('due-plans.index')->with('status', 'Aidat kararı ayarları kaydedildi.');
+        return redirect()->route('due-plans.index', ['year' => $plan->plan_year])
+            ->with('status', 'Aidat planı kaydedildi.');
+    }
+
+    public function confirmPastPeriods(Request $request, CurrentApartment $currentApartment, DuePlan $duePlan)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        if ($duePlan->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+
+        if (! $duePlan->is_active) {
+            return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
+                ->with('error', 'Pasif plan üzerinden aidat oluşturulamaz.');
+        }
+
+        $includePast = $request->boolean('include_past_periods');
+        $created = $this->generateAllEligiblePeriods($duePlan, $includePast);
+
+        return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
+            ->with('status', $created > 0
+                ? "{$created} daireye aidat oluşturuldu."
+                : 'Oluşturulacak eksik aidat bulunamadı.');
     }
 
     public function edit(CurrentApartment $currentApartment, DuePlan $duePlan)
     {
-        return redirect()->route('due-plans.index');
+        return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year]);
     }
 
     public function update(Request $request, CurrentApartment $currentApartment, DuePlan $duePlan)
     {
-        return redirect()->route('due-plans.index');
+        return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year]);
     }
 
     public function destroy(CurrentApartment $currentApartment, DuePlan $duePlan)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
-        if ($duePlan->apartment_id !== $apartment->id) abort(404);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        if ($duePlan->apartment_id !== $apartment->id) {
+            abort(404);
+        }
 
+        $year = $duePlan->plan_year;
         $duePlan->delete();
 
-        return redirect()->route('due-plans.index')->with('status', 'Aidat planı silindi.');
+        return redirect()->route('due-plans.index', ['year' => $year])->with('status', 'Aidat planı silindi.');
     }
 
     public function deactivate(CurrentApartment $currentApartment, DuePlan $duePlan)
     {
-        return redirect()->route('due-plans.index');
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        if ($duePlan->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+
+        $duePlan->update(['is_active' => false]);
+
+        return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
+            ->with('status', 'Aidat planı durduruldu. Mevcut borçlar korundu.');
+    }
+
+    public function activate(CurrentApartment $currentApartment, DuePlan $duePlan)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        if ($duePlan->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+
+        $duePlan->update(['is_active' => true]);
+
+        return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
+            ->with('status', 'Aidat planı yeniden aktifleştirildi.');
     }
 
     public function generateMonth(Request $request, CurrentApartment $currentApartment, DuePlan $duePlan)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
-        if ($duePlan->apartment_id !== $apartment->id) abort(404);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        if ($duePlan->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+
+        if (! $duePlan->is_active) {
+            return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
+                ->with('error', 'Pasif plan üzerinden aidat oluşturulamaz.');
+        }
 
         $validated = $request->validate([
-            'period'      => ['required', 'date_format:Y-m'],
+            'period' => ['required', 'date_format:Y-m'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
         $period = $validated['period'];
+        $periodDate = Carbon::parse($period.'-01');
 
-        $periodDate = Carbon::parse($period . '-01');
-        if (
-            $periodDate->copy()->endOfMonth()->toDateString() < $duePlan->start_date->toDateString()
-            || $periodDate->copy()->startOfMonth()->toDateString() > $duePlan->end_date->toDateString()
-        ) {
-            return redirect()->route('due-plans.index')
-                ->with('error', 'Seçilen dönem planın başlangıç/bitiş tarihleri arasında değil.');
+        if (! $this->periodWithinPlan($duePlan, $periodDate)) {
+            return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
+                ->with('error', 'Seçilen dönem plan yılı içinde değil.');
         }
 
         $count = $this->createDuesForPeriod($duePlan, $period, $validated['description'] ?? null);
 
         if ($count === 0) {
-            return redirect()->route('due-plans.index')->with('error', 'Seçilen dönem için oluşturulacak eksik aidat bulunmuyor.');
+            return redirect()->route('due-plans.index', ['year' => $duePlan->plan_year])
+                ->with('error', 'Seçilen dönem için oluşturulacak eksik aidat bulunmuyor.');
         }
 
         return redirect()->route('dues.index')
@@ -245,12 +389,13 @@ class DuePlanController extends Controller
 
     public function createDuesForPeriod(DuePlan $duePlan, string $period, ?string $customDescription = null, bool $allowPartial = true): int
     {
-        $periodDate = Carbon::parse($period . '-01');
+        if (! $duePlan->is_active) {
+            return 0;
+        }
 
-        if (
-            $periodDate->copy()->endOfMonth()->toDateString() < $duePlan->start_date->toDateString()
-            || $periodDate->copy()->startOfMonth()->toDateString() > $duePlan->end_date->toDateString()
-        ) {
+        $periodDate = Carbon::parse($period.'-01');
+
+        if (! $this->periodWithinPlan($duePlan, $periodDate)) {
             return 0;
         }
 
@@ -343,6 +488,68 @@ class DuePlanController extends Controller
         return $count;
     }
 
+    private function generateAllEligiblePeriods(DuePlan $plan, bool $includePast): int
+    {
+        if (! $plan->is_active) {
+            return 0;
+        }
+
+        $currentPeriod = now()->format('Y-m');
+        $total = 0;
+        $cursor = $plan->start_date->copy()->startOfMonth();
+        $end = $plan->end_date->copy()->startOfMonth();
+
+        while ($cursor <= $end) {
+            $period = $cursor->format('Y-m');
+            $isPast = $period < $currentPeriod;
+
+            if ($isPast && ! $includePast) {
+                $cursor->addMonth();
+                continue;
+            }
+
+            $total += $this->createDuesForPeriod($plan, $period);
+            $cursor->addMonth();
+        }
+
+        return $total;
+    }
+
+    private function ungeneratedPastPeriods(DuePlan $plan): array
+    {
+        $currentPeriod = now()->format('Y-m');
+        $past = [];
+        $cursor = $plan->start_date->copy()->startOfMonth();
+        $end = $plan->end_date->copy()->startOfMonth();
+
+        while ($cursor <= $end) {
+            $period = $cursor->format('Y-m');
+            if ($period >= $currentPeriod) {
+                break;
+            }
+
+            $reconciliation = $this->aidatReconciliation->reconcile($plan, $period);
+            if ($reconciliation['missing_accounts']->isNotEmpty()) {
+                $past[] = [
+                    'period' => $period,
+                    'label' => $cursor->copy()->locale('tr')->isoFormat('MMMM YYYY'),
+                ];
+            }
+
+            $cursor->addMonth();
+        }
+
+        return $past;
+    }
+
+    private function periodWithinPlan(DuePlan $duePlan, Carbon $periodDate): bool
+    {
+        return ! (
+            $periodDate->copy()->endOfMonth()->toDateString() < $duePlan->start_date->toDateString()
+            || $periodDate->copy()->startOfMonth()->toDateString() > $duePlan->end_date->toDateString()
+        );
+    }
+
     private function getAccountForPeriod(Unit $unit, Carbon $periodDate, string $targetAudience): ?\App\Models\Account
     {
         if ($targetAudience === 'owner_only') {
@@ -372,7 +579,7 @@ class DuePlanController extends Controller
             ->get();
 
         $unitAccounts = [];
-        $totalWeight  = 0;
+        $totalWeight = 0;
 
         foreach ($units as $unit) {
             $account = $this->getAccountForPeriod($unit, $periodDate, $duePlan->target_audience);
@@ -381,9 +588,9 @@ class DuePlanController extends Controller
             }
 
             $weight = match ($duePlan->distribution_type) {
-                DuePlan::DISTRIBUTION_SQUARE_METERS     => (float) ($unit->square_meters ?? 0),
+                DuePlan::DISTRIBUTION_SQUARE_METERS => (float) ($unit->square_meters ?? 0),
                 DuePlan::DISTRIBUTION_SHARE_COEFFICIENT => (float) ($unit->share_coefficient ?? 0),
-                default                                  => 1,
+                default => 1,
             };
 
             if ($weight <= 0 && $duePlan->distribution_type !== DuePlan::DISTRIBUTION_EQUAL) {

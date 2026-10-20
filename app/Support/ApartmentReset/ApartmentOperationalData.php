@@ -8,11 +8,16 @@ use App\Models\Apartment;
 use App\Models\CashBox;
 use App\Models\Category;
 use App\Models\CashTransaction;
+use App\Models\AssessmentInstallmentLine;
+use App\Models\AssessmentInstallment;
+use App\Models\AssessmentPlan;
+use App\Models\AssessmentUnitShare;
 use App\Models\Due;
 use App\Models\DueBatch;
 use App\Models\DuePlan;
 use App\Models\Expense;
 use App\Models\ExpenseDocument;
+use App\Models\ExpensePlan;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Models\TenantAssignment;
@@ -35,7 +40,14 @@ class ApartmentOperationalData
         Due::where('apartment_id', $apartment->id)->delete();
         DueBatch::where('apartment_id', $apartment->id)->delete();
         DuePlan::where('apartment_id', $apartment->id)->delete();
+
+        AssessmentInstallmentLine::whereIn('assessment_plan_id', AssessmentPlan::where('apartment_id', $apartment->id)->select('id'))->delete();
+        AssessmentUnitShare::whereIn('assessment_plan_id', AssessmentPlan::where('apartment_id', $apartment->id)->select('id'))->delete();
+        AssessmentInstallment::whereIn('assessment_plan_id', AssessmentPlan::where('apartment_id', $apartment->id)->select('id'))->delete();
+        AssessmentPlan::where('apartment_id', $apartment->id)->delete();
+
         Expense::where('apartment_id', $apartment->id)->delete();
+        ExpensePlan::where('apartment_id', $apartment->id)->delete();
         AccountTransaction::where('apartment_id', $apartment->id)->delete();
     }
 

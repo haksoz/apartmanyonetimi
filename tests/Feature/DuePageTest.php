@@ -907,7 +907,7 @@ class DuePageTest extends TestCase
             ->actingAs($user)
             ->get(route('due-plans.index'))
             ->assertStatus(200)
-            ->assertSee('Aidat Kararı Tanımlama')
+            ->assertSee('Aidat Planı')
             ->assertDontSee('Silinmiş Plan')
             ->assertSee('Mayıs 2026')
             ->assertSee('Oluşturulmadı');
@@ -955,7 +955,7 @@ class DuePageTest extends TestCase
             ->actingAs($user)
             ->get(route('due-plans.index'))
             ->assertStatus(200)
-            ->assertSee('Aidat Kararı Tanımlama')
+            ->assertSee('Aidat Planı')
             ->assertSee('Plan Ayları')
             ->assertSee('Haziran 2026')
             ->assertSee('Tamamlandı');
@@ -1018,7 +1018,7 @@ class DuePageTest extends TestCase
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
             ->post(route('due-plans.regenerate-period', $plan), ['period' => '2026-06'])
-            ->assertRedirect(route('due-plans.index'));
+            ->assertRedirect(route('due-plans.index', ['year' => 2026]));
 
         $this->assertCount(4, $batch->fresh()->dues);
 
@@ -1043,16 +1043,16 @@ class DuePageTest extends TestCase
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
             ->post(route('due-plans.store'), [
-                'start_date' => '2026-01-01',
-                'end_date' => '2026-12-31',
+                'plan_year' => 2026,
                 'monthly_amount' => 1000,
                 'distribution_type' => 'equal',
                 'target_audience' => 'owner_only',
                 'due_day' => 1,
                 'generate_day' => 1,
+                'generation_mode' => 'on_schedule',
                 'is_active' => true,
             ])
-            ->assertRedirect(route('due-plans.index'));
+            ->assertRedirect(route('due-plans.index', ['year' => 2026]));
 
         $plan = DuePlan::query()->where('apartment_id', $apartment->id)->first();
         $this->assertNotNull($plan);

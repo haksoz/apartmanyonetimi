@@ -16,6 +16,8 @@ class Expense extends Model
 
     protected $fillable = [
         'apartment_id',
+        'expense_plan_id',
+        'plan_occurrence_key',
         'account_id',
         'category_id',
         'category',
@@ -42,9 +44,24 @@ class Expense extends Model
         'is_imported' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::deleting(function (Expense $expense) {
+            if ($expense->plan_occurrence_key) {
+                $expense->plan_occurrence_key = null;
+                $expense->saveQuietly();
+            }
+        });
+    }
+
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
+    }
+
+    public function expensePlan(): BelongsTo
+    {
+        return $this->belongsTo(ExpensePlan::class);
     }
 
     public function account(): BelongsTo
