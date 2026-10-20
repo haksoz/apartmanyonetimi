@@ -83,6 +83,7 @@ class AutoGenerateFinancialPlans extends Command
 
         $plans = ExpensePlan::query()
             ->where('is_active', true)
+            ->where('generation_mode', ExpensePlan::GENERATION_ON_SCHEDULE)
             ->whereDate('start_date', '<=', $today)
             ->where(function ($q) use ($today) {
                 $q->whereNull('end_date')->orWhereDate('end_date', '>=', $today);

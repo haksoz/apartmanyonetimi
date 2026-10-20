@@ -560,6 +560,7 @@ class ExpenseController extends Controller
         $expense->load([
             'paymentAllocations.payment' => fn ($q) => $q->withCount('allocations'),
             'documents',
+            'expensePlan',
         ]);
 
         return view('expenses.show', compact('expense'));

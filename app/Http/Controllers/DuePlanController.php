@@ -65,11 +65,6 @@ class DuePlanController extends Controller
             && $plan->is_active
             && (int) session('prompt_generate_plan_id') === (int) $plan->id;
 
-        $shouldPromptPastPeriods = session('prompt_past_periods_plan_id') == $plan->id
-            && $plan->exists
-            && $plan->is_active;
-        $pastPeriodsToConfirm = session('prompt_past_periods', []);
-
         return view('due-plans.index', compact(
             'plan',
             'plans',
@@ -78,8 +73,6 @@ class DuePlanController extends Controller
             'periods',
             'currentPeriod',
             'shouldPromptGenerate',
-            'shouldPromptPastPeriods',
-            'pastPeriodsToConfirm',
             'selectedYear',
         ));
     }
@@ -229,15 +222,7 @@ class DuePlanController extends Controller
         $plan->refresh();
 
         if ($plan->is_active && $generationMode === DuePlan::GENERATION_CREATE_ALL_NOW) {
-            $pastPeriods = $this->ungeneratedPastPeriods($plan);
             $includePast = $request->boolean('include_past_periods');
-
-            if ($pastPeriods !== [] && ! $request->has('include_past_periods')) {
-                return redirect()->route('due-plans.index', ['year' => $plan->plan_year])
-                    ->with('prompt_past_periods_plan_id', $plan->id)
-                    ->with('prompt_past_periods', $pastPeriods)
-                    ->with('status', 'Aidat planı kaydedildi. Geçmiş dönemler için onay bekleniyor.');
-            }
 
             $created = $this->generateAllEligiblePeriods($plan, $includePast);
             $message = $created > 0
@@ -537,33 +522,6 @@ class DuePlanController extends Controller
         }
 
         return $total;
-    }
-
-    private function ungeneratedPastPeriods(DuePlan $plan): array
-    {
-        $currentPeriod = now()->format('Y-m');
-        $past = [];
-        $cursor = $plan->start_date->copy()->startOfMonth();
-        $end = $plan->end_date->copy()->startOfMonth();
-
-        while ($cursor <= $end) {
-            $period = $cursor->format('Y-m');
-            if ($period >= $currentPeriod) {
-                break;
-            }
-
-            $reconciliation = $this->aidatReconciliation->reconcile($plan, $period);
-            if ($reconciliation['missing_accounts']->isNotEmpty()) {
-                $past[] = [
-                    'period' => $period,
-                    'label' => $cursor->copy()->locale('tr')->isoFormat('MMMM YYYY'),
-                ];
-            }
-
-            $cursor->addMonth();
-        }
-
-        return $past;
     }
 
     private function periodWithinPlan(DuePlan $duePlan, Carbon $periodDate): bool

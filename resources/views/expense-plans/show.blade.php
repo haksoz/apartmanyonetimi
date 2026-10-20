@@ -1,22 +1,27 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-            <a href="{{ route('financial-plans.index') }}" class="text-sm text-slate-500 hover:underline">← Finansal Planlama</a>
-            <h1 class="mt-2 text-2xl font-bold text-slate-900">{{ $plan->name }}</h1>
-            <p class="mt-1 text-sm text-slate-500">
-                {{ $plan->account?->name }} · {{ number_format((float) $plan->amount, 2, ',', '.') }} ₺ / ay
-                · {{ $plan->is_active ? 'Aktif' : 'Pasif' }}
-            </p>
+    @php $editing = request()->boolean('edit') || $errors->any(); @endphp
+    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+        <div class="min-w-0 flex-1">
+            <h1 class="text-2xl font-bold text-slate-950">
+                <a href="{{ route('financial-plans.index') }}" class="hover:text-slate-600">Finansal Planlama</a>
+                <span class="font-normal text-slate-400"> / </span>
+                <span class="text-lg font-semibold text-slate-800">Gider Planı · {{ $plan->name }}</span>
+            </h1>
+            <p class="mt-1 text-sm text-slate-500">Aylık gider tutarı, oluşturma yöntemi ve vade bilgileri.</p>
         </div>
-        @if ($plan->is_active)
-            <form method="POST" action="{{ route('expense-plans.deactivate', $plan) }}">
-                @csrf
-                @method('PATCH')
-                <button class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Planı Durdur</button>
-            </form>
-        @endif
+        <div class="flex flex-wrap items-center justify-end gap-2 shrink-0">
+            @unless ($editing)
+                <a href="{{ route('expense-plans.show', ['expensePlan' => $plan, 'edit' => 1]) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+            @endunless
+            <a href="{{ route('financial-plans.index') }}" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                </svg>
+                Geri
+            </a>
+        </div>
     </div>
 
     @if (session('status'))
@@ -26,39 +31,23 @@
         <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ session('error') }}</div>
     @endif
 
-    <div class="mb-8 max-w-2xl rounded-2xl bg-white p-6 shadow-sm">
-        <form method="POST" action="{{ route('expense-plans.update', $plan) }}" class="space-y-4">
-            @csrf
-            @method('PUT')
-            <div>
-                <label class="mb-1 block text-sm font-medium text-slate-600">Plan adı</label>
-                <input name="name" value="{{ old('name', $plan->name) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm">
-            </div>
-            <div>
-                <label class="mb-1 block text-sm font-medium text-slate-600">Açıklama</label>
-                <input name="description" value="{{ old('description', $plan->description) }}" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm">
-            </div>
-            <div class="grid gap-4 sm:grid-cols-3">
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-slate-600">Tutar</label>
-                    <input type="number" step="0.01" name="amount" value="{{ old('amount', $plan->amount) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm">
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-slate-600">Bitiş</label>
-                    <input type="date" name="end_date" value="{{ old('end_date', $plan->end_date?->format('Y-m-d')) }}" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm">
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-slate-600">Oluşturma günü</label>
-                    <input type="number" min="1" max="28" name="generate_day" value="{{ old('generate_day', $plan->generate_day) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm">
-                </div>
-            </div>
-            <input type="hidden" name="is_active" value="{{ $plan->is_active ? 1 : 0 }}">
-            <button class="rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white">Güncelle</button>
-        </form>
-    </div>
+    @if ($editing)
+    <form id="expense-plan-form" method="POST" action="{{ route('expense-plans.update', $plan) }}" class="mb-8 space-y-4">
+        @csrf
+        @method('PUT')
+        <fieldset id="expense-plan-fields" class="min-w-0 space-y-4">
+        @include('expense-plans._form', [
+            'accounts' => collect([$plan->account])->filter(),
+            'categories' => collect([$plan->category])->filter(),
+        ])
+        </fieldset>
+    </form>
+    @else
+        @include('expense-plans._details')
+    @endif
 
     <h2 class="mb-3 text-base font-semibold text-slate-900">Plan Dönemleri</h2>
-    <div class="rounded-2xl bg-white shadow-sm overflow-hidden max-w-3xl">
+    <div class="rounded-2xl bg-white shadow-sm overflow-x-auto">
         <table class="min-w-full text-sm">
             <thead class="bg-slate-50">
                 <tr>

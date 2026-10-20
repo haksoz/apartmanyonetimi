@@ -8,16 +8,23 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ExpensePlan extends Model
 {
+    public const GENERATION_ON_SCHEDULE = 'on_schedule';
+
+    public const GENERATION_CREATE_ALL_NOW = 'create_all_now';
+
     protected $fillable = [
         'apartment_id',
         'name',
         'description',
+        'description_suffix',
         'category_id',
         'account_id',
         'amount',
         'start_date',
         'end_date',
         'generate_day',
+        'generation_mode',
+        'due_days',
         'is_active',
     ];
 
@@ -26,6 +33,7 @@ class ExpensePlan extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'generate_day' => 'integer',
+        'due_days' => 'integer',
         'is_active' => 'boolean',
     ];
 

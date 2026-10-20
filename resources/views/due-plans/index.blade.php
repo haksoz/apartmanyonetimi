@@ -1,25 +1,27 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900">Aidat Planı</h1>
-            <p class="mt-1 text-sm text-slate-500">Yıllık aidat planı tanımlayın; sistem seçilen yönteme göre aidatları oluşturur.</p>
+    @php $editing = ! $plan->exists || request()->boolean('edit') || $errors->any(); @endphp
+    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+        <div class="min-w-0 flex-1">
+            <h1 class="text-2xl font-bold text-slate-950">
+                <a href="{{ route('financial-plans.index') }}" class="hover:text-slate-600">Finansal Planlama</a>
+                <span class="font-normal text-slate-400"> / </span>
+                <span class="text-lg font-semibold text-slate-800">Aidat Planı · {{ $selectedYear }}</span>
+            </h1>
+            <p class="mt-1 text-sm text-slate-500">Yıllık aidat tutarı, oluşturma yöntemi ve vade bilgileri.</p>
         </div>
-        @if (($plans ?? collect())->isNotEmpty())
-            <form method="GET" action="{{ route('due-plans.index') }}" class="flex items-center gap-2">
-                <label for="year" class="text-sm text-slate-600">Plan yılı</label>
-                <select id="year" name="year" onchange="this.form.submit()"
-                        class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none">
-                    @foreach ($plans as $p)
-                        <option value="{{ $p->plan_year }}" @selected((int) $selectedYear === (int) $p->plan_year)>{{ $p->plan_year }}</option>
-                    @endforeach
-                    @if (! $plans->contains(fn ($p) => (int) $p->plan_year === (int) $selectedYear))
-                        <option value="{{ $selectedYear }}" selected>{{ $selectedYear }} (yeni)</option>
-                    @endif
-                </select>
-            </form>
-        @endif
+        <div class="flex flex-wrap items-center justify-end gap-2 shrink-0">
+            @unless ($editing)
+                <a href="{{ route('due-plans.index', ['year' => $selectedYear, 'edit' => 1]) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+            @endunless
+            <a href="{{ route('financial-plans.index') }}" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                </svg>
+                Geri
+            </a>
+        </div>
     </div>
 
     @if (session('status'))
@@ -40,6 +42,7 @@
         </div>
     @endif
 
+    @if ($editing)
     <div class="rounded-2xl bg-white p-6 shadow-sm max-w-4xl">
         <form method="POST" action="{{ route('due-plans.store') }}" class="space-y-6">
             @csrf
@@ -57,6 +60,11 @@
                         </button>
                     @endif
                 </div>
+                @if ($plan->exists)
+                    <a href="{{ route('due-plans.index', ['year' => $selectedYear]) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
+                @else
+                    <a href="{{ route('financial-plans.index') }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
+                @endif
                 <button type="submit" class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
                     Kaydet
                 </button>
@@ -74,6 +82,10 @@
             </form>
         @endif
     </div>
+
+    @else
+        @include('due-plans._details')
+    @endif
 
     @if ($shouldPromptGenerate ?? false)
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -94,38 +106,6 @@
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
-    @endif
-
-    @if ($shouldPromptPastPeriods ?? false)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                <h2 class="text-lg font-bold text-slate-900 mb-2">Geçmiş Dönemler</h2>
-                <p class="text-sm text-slate-600 mb-3">
-                    Aşağıdaki geçmiş dönemlerde henüz aidat yok. Bunları da şimdi oluşturmak ister misiniz?
-                </p>
-                <ul class="mb-5 max-h-40 overflow-y-auto text-sm text-slate-700 list-disc pl-5 space-y-1">
-                    @foreach ($pastPeriodsToConfirm as $pp)
-                        <li>{{ $pp['label'] ?? $pp['period'] }}</li>
-                    @endforeach
-                </ul>
-                <div class="flex flex-col sm:flex-row gap-2 justify-end">
-                    <form method="POST" action="{{ route('due-plans.confirm-past-periods', $plan) }}">
-                        @csrf
-                        <input type="hidden" name="include_past_periods" value="0">
-                        <button type="submit" class="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
-                            Geçmişi atla
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('due-plans.confirm-past-periods', $plan) }}">
-                        @csrf
-                        <input type="hidden" name="include_past_periods" value="1">
-                        <button type="submit" class="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
-                            Geçmişi de oluştur
-                        </button>
-                    </form>
-                </div>
             </div>
         </div>
     @endif

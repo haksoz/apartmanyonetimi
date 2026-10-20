@@ -159,6 +159,29 @@ class AssessmentPlanController extends Controller
         ]);
     }
 
+    public function update(Request $request, CurrentApartment $currentApartment, AssessmentPlan $assessmentPlan)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        if ($assessmentPlan->apartment_id !== $apartment->id) {
+            abort(404);
+        }
+        $this->authorizeFeature($apartment);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'generate_day' => ['required', 'integer', 'min:1', 'max:28'],
+            'is_active' => ['required', 'boolean'],
+        ]);
+        $assessmentPlan->update($validated);
+
+        return redirect()->route('assessment-plans.show', $assessmentPlan)
+            ->with('status', 'Plan güncellendi. Mevcut taksitler ve borçlar korundu.');
+    }
+
     public function confirmPast(Request $request, CurrentApartment $currentApartment, AssessmentPlan $assessmentPlan)
     {
         $apartment = $this->resolveApartment($currentApartment);

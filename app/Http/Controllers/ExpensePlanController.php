@@ -11,6 +11,7 @@ use App\Support\ExpensePlanGenerator;
 use App\Support\FeatureGate;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ExpensePlanController extends Controller
@@ -53,9 +54,11 @@ class ExpensePlanController extends Controller
         }
         $this->authorizeFeature($apartment);
 
+        $request->mergeIfMissing(['generation_mode' => ExpensePlan::GENERATION_ON_SCHEDULE]);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
+            'description_suffix' => ['nullable', 'string', 'max:100'],
             'category_id' => [
                 'required',
                 'integer',
@@ -70,19 +73,27 @@ class ExpensePlanController extends Controller
             ],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'start_date' => ['required', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'end_date' => ['required_if:generation_mode,create_all_now', 'nullable', 'date', 'after_or_equal:start_date'],
+            'generation_mode' => ['required', Rule::in([ExpensePlan::GENERATION_ON_SCHEDULE, ExpensePlan::GENERATION_CREATE_ALL_NOW])],
+            'include_past_periods' => ['sometimes', 'boolean'],
             'generate_day' => ['required', 'integer', 'min:1', 'max:28'],
+            'due_days' => ['nullable', 'integer', 'min:0', 'max:365'],
             'is_active' => ['boolean'],
         ]);
 
-        $plan = ExpensePlan::create([
-            ...$validated,
-            'apartment_id' => $apartment->id,
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        unset($validated['include_past_periods']);
+        [$plan, $message] = DB::transaction(function () use ($validated, $apartment, $request) {
+            $plan = ExpensePlan::create([
+                ...$validated,
+                'apartment_id' => $apartment->id,
+                'is_active' => $request->boolean('is_active', true),
+            ]);
+
+            return [$plan, 'Gider planı oluşturuldu.'.$this->generateIfRequested($plan, $request)];
+        });
 
         return redirect()->route('expense-plans.show', $plan)
-            ->with('status', 'Gider planı oluşturuldu.');
+            ->with('status', $message);
     }
 
     public function show(CurrentApartment $currentApartment, ExpensePlan $expensePlan)
@@ -117,22 +128,46 @@ class ExpensePlanController extends Controller
         }
         $this->authorizeFeature($apartment);
 
+        $request->mergeIfMissing(['generation_mode' => $expensePlan->generation_mode ?: ExpensePlan::GENERATION_ON_SCHEDULE]);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
+            'description_suffix' => ['nullable', 'string', 'max:100'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:'.$expensePlan->start_date->toDateString()],
+            'end_date' => ['required_if:generation_mode,create_all_now', 'nullable', 'date', 'after_or_equal:'.$expensePlan->start_date->toDateString()],
+            'generation_mode' => ['required', Rule::in([ExpensePlan::GENERATION_ON_SCHEDULE, ExpensePlan::GENERATION_CREATE_ALL_NOW])],
+            'include_past_periods' => ['sometimes', 'boolean'],
             'generate_day' => ['required', 'integer', 'min:1', 'max:28'],
+            'due_days' => ['nullable', 'integer', 'min:0', 'max:365'],
             'is_active' => ['boolean'],
         ]);
 
-        $expensePlan->update([
-            ...$validated,
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        unset($validated['include_past_periods']);
+        $message = DB::transaction(function () use ($expensePlan, $validated, $request) {
+            $expensePlan->update([
+                ...$validated,
+                'is_active' => $request->boolean('is_active', true),
+            ]);
+
+            return 'Gider planı güncellendi. Mevcut gider kayıtları değişmedi.'.$this->generateIfRequested($expensePlan, $request);
+        });
 
         return redirect()->route('expense-plans.show', $expensePlan)
-            ->with('status', 'Gider planı güncellendi. Mevcut gider kayıtları değişmedi.');
+            ->with('status', $message);
+    }
+
+    private function generateIfRequested(ExpensePlan $plan, Request $request): string
+    {
+        if ($plan->generation_mode !== ExpensePlan::GENERATION_CREATE_ALL_NOW) {
+            return '';
+        }
+        if (! $plan->is_active) {
+            return ' Plan pasif olduğu için gider oluşturulmadı.';
+        }
+
+        $result = $this->generator->generateAll($plan, $request->boolean('include_past_periods'));
+
+        return " {$result['created']} gider oluşturuldu. {$result['existing']} mevcut dönem atlandı. {$result['excluded']} geçmiş dönem dahil edilmedi.";
     }
 
     public function deactivate(CurrentApartment $currentApartment, ExpensePlan $expensePlan)

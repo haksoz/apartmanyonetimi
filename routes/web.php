@@ -275,6 +275,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
             Route::get('assessment-plans/create', [AssessmentPlanController::class, 'create'])->name('assessment-plans.create');
             Route::post('assessment-plans', [AssessmentPlanController::class, 'store'])->name('assessment-plans.store');
             Route::get('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'show'])->name('assessment-plans.show');
+            Route::put('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'update'])->name('assessment-plans.update');
             Route::post('assessment-plans/{assessmentPlan}/confirm-past', [AssessmentPlanController::class, 'confirmPast'])->name('assessment-plans.confirm-past');
             Route::patch('assessment-plans/{assessmentPlan}/deactivate', [AssessmentPlanController::class, 'deactivate'])->name('assessment-plans.deactivate');
             Route::get('assessment-plans/{assessmentPlan}/cancel-preview', [AssessmentPlanController::class, 'previewCancel'])->name('assessment-plans.cancel-preview');

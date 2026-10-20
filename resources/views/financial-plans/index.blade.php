@@ -39,7 +39,9 @@
                             </td>
                             <td class="px-5 py-3 text-slate-600">{{ $row['period_label'] }}</td>
                             <td class="px-5 py-3">
-                                @if ($row['is_active'])
+                                @if ($row['is_expired'] ?? false)
+                                    <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">Süresi Doldu</span>
+                                @elseif ($row['is_active'])
                                     <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Aktif</span>
                                 @else
                                     <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">Pasif</span>

@@ -160,6 +160,19 @@
                         <div class="font-semibold text-slate-900">{{ $periodText ?? '-' }}</div>
                     </div>
 
+                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                        <div class="text-xs text-slate-500">Kaynak</div>
+                        <div class="font-semibold text-slate-900 text-right">
+                            @if ($expense->expensePlan)
+                                <a href="{{ route('expense-plans.show', $expense->expensePlan) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100">Gider Planı: {{ $expense->expensePlan->name }}</a>
+                            @elseif ($expense->is_imported)
+                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">İçe Aktarma</span>
+                            @else
+                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">Manuel</span>
+                            @endif
+                        </div>
+                    </div>
+
                     @if ($expense->reference_number)
                         <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                             <div class="text-xs text-slate-500">Referans</div>

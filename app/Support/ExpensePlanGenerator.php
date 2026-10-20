@@ -11,6 +11,30 @@ use Illuminate\Support\Facades\DB;
 
 class ExpensePlanGenerator
 {
+    public function generateAll(ExpensePlan $plan, bool $includePast = false): array
+    {
+        $result = ['created' => 0, 'existing' => 0, 'excluded' => 0];
+        if (! $plan->is_active || ! $plan->end_date) {
+            return $result;
+        }
+
+        $cursor = $plan->start_date->copy()->startOfMonth();
+        $end = $plan->end_date->copy()->startOfMonth();
+        $currentMonth = now()->startOfMonth();
+        while ($cursor <= $end) {
+            $period = $cursor->format('Y-m');
+            if (! $includePast && $cursor < $currentMonth) {
+                $result['excluded']++;
+            } else {
+                $created = $this->generateForPeriod($plan, $period);
+                $result[$created ? 'created' : 'existing']++;
+            }
+            $cursor->addMonth();
+        }
+
+        return $result;
+    }
+
     /**
      * Planlanan ay için ödenmemiş gider + tedarikçi credit oluşturur.
      * Payment / kasa hareketi yazmaz. Gizli tedarikçi açmaz.
@@ -48,7 +72,11 @@ class ExpensePlanGenerator
                 $expenseDate = $periodDate->copy()->setDay(min($locked->generate_day, $periodDate->daysInMonth));
                 $category = $locked->category;
                 $description = $locked->description
-                    ?: ($locked->name.' — '.$periodDate->locale('tr')->isoFormat('MMMM YYYY'));
+                    ?: ($periodDate->locale('tr')->isoFormat('YYYY MMMM').' - '.($category?->name ?: $locked->name));
+                $suffix = trim($locked->description_suffix ?? '');
+                if ($suffix !== '') {
+                    $description .= ' '.$suffix;
+                }
 
                 $expense = Expense::create([
                     'apartment_id' => $locked->apartment_id,
@@ -60,7 +88,9 @@ class ExpensePlanGenerator
                     'description' => $description,
                     'amount' => $locked->amount,
                     'expense_date' => $expenseDate->toDateString(),
-                    'due_date' => null,
+                    'due_date' => $locked->due_days !== null
+                        ? $expenseDate->copy()->addDays($locked->due_days)->toDateString()
+                        : null,
                     'period_month' => $periodDate->toDateString(),
                     'is_paid' => false,
                 ]);

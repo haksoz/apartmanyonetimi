@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+    @php $editing = request()->boolean('edit') || $errors->any(); @endphp
     <div class="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
             <a href="{{ route('financial-plans.index') }}" class="text-sm text-slate-500 hover:underline">← Finansal Planlama</a>
@@ -11,13 +12,19 @@
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
-            @if ($plan->is_active)
+            @unless ($editing)
+                <a href="{{ route('assessment-plans.show', ['assessmentPlan' => $plan, 'edit' => 1]) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+            @endunless
+            <a href="{{ route('financial-plans.index') }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri</a>
+            @if ($editing && $plan->is_active)
                 <form method="POST" action="{{ route('assessment-plans.deactivate', $plan) }}">
                     @csrf @method('PATCH')
                     <button class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Planı Durdur</button>
                 </form>
             @endif
-            <a href="{{ route('assessment-plans.cancel-preview', $plan) }}" class="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Gelecek Taksitleri İptal Et</a>
+            @if ($editing)
+                <a href="{{ route('assessment-plans.cancel-preview', $plan) }}" class="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Gelecek Taksitleri İptal Et</a>
+            @endif
         </div>
     </div>
 
@@ -52,6 +59,12 @@
                 </div>
             </div>
         </div>
+    @endif
+
+    @if ($editing)
+        @include('assessment-plans._edit')
+    @else
+        @include('assessment-plans._details')
     @endif
 
     <h2 class="mb-3 text-base font-semibold text-slate-900">Taksitler</h2>

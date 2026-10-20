@@ -4,6 +4,15 @@
 <input type="hidden" name="category_id" value="">
 
 <div class="space-y-5">
+    @if ($plan?->exists)
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span class="font-medium text-slate-600">Takvim Yılı</span>
+            <span class="font-semibold text-slate-900">{{ $plan->plan_year }}</span>
+            <span class="text-xs text-slate-500">1 Ocak – 31 Aralık</span>
+            <input id="plan_year" type="hidden" name="plan_year" value="{{ $plan->plan_year }}">
+        </div>
+        @error('plan_year')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+    @else
     <div>
         <h3 class="text-sm font-semibold text-slate-700 mb-3">Plan Yılı</h3>
         <div class="md:w-1/2">
@@ -11,19 +20,15 @@
             <input type="number" id="plan_year" name="plan_year"
                    value="{{ old('plan_year', $plan?->plan_year ?? $selectedYear ?? now()->year) }}"
                    min="2000" max="2100" required
-                   @disabled($plan?->exists)
                    class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none">
-            @if ($plan?->exists)
-                <input type="hidden" name="plan_year" value="{{ $plan->plan_year }}">
-                <p class="mt-1 text-xs text-slate-500">Plan yılı oluşturulduktan sonra değiştirilemez. Kapsam: 1 Ocak – 31 Aralık.</p>
-            @else
                 <p class="mt-1 text-xs text-slate-500">Plan 1 Ocak – 31 Aralık dönemini kapsar. Aynı yıl için tek plan oluşturulabilir.</p>
-            @endif
             @error('plan_year')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
             @enderror
         </div>
     </div>
+
+    @endif
 
     <hr class="border-slate-100">
 
@@ -43,20 +48,28 @@
                        @checked(old('generation_mode', $plan?->generation_mode) === 'create_all_now')>
                 <div class="rounded-lg border border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50 h-full">
                     <div class="font-semibold text-slate-800 text-sm">Tümünü şimdi oluştur</div>
-                    <div class="text-xs text-slate-500 mt-0.5">Uygun dönemlerin borçları hemen oluşturulur. Geçmiş dönemler için onay istenir.</div>
+                    <div class="text-xs text-slate-500 mt-0.5">Uygun dönemlerin borçları kaydedince oluşturulur.</div>
                 </div>
             </label>
         </div>
         @error('generation_mode')
             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
         @enderror
+        <input type="hidden" name="include_past_periods" value="0">
+        <div id="aidat-past-periods-field" class="mt-3 hidden rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <label class="flex cursor-pointer items-start gap-2 text-sm text-amber-900">
+                <input id="include_past_periods" name="include_past_periods" type="checkbox" value="1" @checked(old('include_past_periods', false)) aria-describedby="aidat-past-periods-help" class="mt-0.5 rounded border-amber-300">
+                Geçmiş aylara ait aidatları da oluştur
+            </label>
+            <p id="aidat-past-periods-help" class="mt-1 text-xs text-amber-800">Seçilen yılın geçmiş ayları dahil edilir. İşaretlemezseniz bu aydan önceki dönemler atlanır.</p>
+        </div>
+        @error('include_past_periods')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
     </div>
 
     <hr class="border-slate-100">
 
     <div>
-        <h3 class="text-sm font-semibold text-slate-700 mb-3">Vade ve Oluşturma Günleri</h3>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div>
                 <label for="generate_day" class="block text-sm font-medium text-slate-600 mb-1">Oluşturma Günü</label>
                 <input type="number" id="generate_day" name="generate_day"
@@ -81,14 +94,7 @@
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
             </div>
-        </div>
-    </div>
-
-    <hr class="border-slate-100">
-
-    <div>
-        <h3 class="text-sm font-semibold text-slate-700 mb-3">Tutar Girişi</h3>
-        <div class="md:w-1/2">
+        <div class="md:col-span-2">
             <label for="monthly_amount" class="mb-1 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Aylık Tutar</label>
             <input id="monthly_amount" name="monthly_amount" type="number" min="0.01" step="0.01"
                    value="{{ old('monthly_amount', $plan?->monthly_amount) }}"
@@ -98,6 +104,7 @@
             @error('monthly_amount')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
             @enderror
+        </div>
         </div>
     </div>
 
@@ -196,6 +203,24 @@
 
 <script>
     (() => {
+        const generationModes = document.querySelectorAll('input[name="generation_mode"]');
+        const planYearInput = document.getElementById('plan_year');
+        const pastPeriodsField = document.getElementById('aidat-past-periods-field');
+        const includePastInput = document.getElementById('include_past_periods');
+        const currentYear = {{ now()->year }};
+        const currentMonth = {{ now()->month }};
+        const syncPastPeriods = () => {
+            const year = Number(planYearInput.value);
+            const bulk = document.querySelector('input[name="generation_mode"]:checked')?.value === 'create_all_now';
+            const hasPast = year >= 2000 && (year < currentYear || (year === currentYear && currentMonth > 1));
+            const visible = bulk && hasPast;
+            pastPeriodsField.classList.toggle('hidden', !visible);
+            includePastInput.disabled = !visible;
+        };
+        generationModes.forEach(input => input.addEventListener('change', syncPastPeriods));
+        planYearInput.addEventListener('input', syncPastPeriods);
+        syncPastPeriods();
+
         const unitsData = [
             @foreach ($units as $u)
             {

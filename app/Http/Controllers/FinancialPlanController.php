@@ -40,6 +40,7 @@ class FinancialPlanController extends Controller
                         'name' => $plan->name.' ('.$plan->plan_year.')',
                         'period_label' => (string) $plan->plan_year,
                         'is_active' => (bool) $plan->is_active,
+                        'is_expired' => $plan->is_active && $plan->end_date?->lt(today()),
                         'amount' => $plan->monthly_amount,
                         'url' => route('due-plans.index', ['year' => $plan->plan_year]),
                         'sort' => sprintf('%04d-aidat-%d', $plan->plan_year, $plan->id),
@@ -112,7 +113,12 @@ class FinancialPlanController extends Controller
             abort(403);
         }
 
-        return view('financial-plans.create', compact('apartment', 'canAidat', 'canExpense', 'canAssessment'));
+        $hasCurrentYearAidatPlan = DuePlan::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('plan_year', now()->year)
+            ->exists();
+
+        return view('financial-plans.create', compact('apartment', 'canAidat', 'canExpense', 'canAssessment', 'hasCurrentYearAidatPlan'));
     }
 
     public function selectType(Request $request, CurrentApartment $currentApartment)
@@ -125,6 +131,14 @@ class FinancialPlanController extends Controller
         $validated = $request->validate([
             'type' => ['required', 'in:aidat,expense,assessment'],
         ]);
+
+        if ($validated['type'] === 'aidat' && DuePlan::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('plan_year', now()->year)
+            ->exists()) {
+            return redirect()->route('financial-plans.create')
+                ->withErrors(['type' => 'Bu yılın aidat planı zaten oluşturulmuş. Mevcut planı Finansal Planlama listesinden düzenleyebilirsiniz.']);
+        }
 
         return match ($validated['type']) {
             'aidat' => redirect()->route('due-plans.index', ['year' => now()->year]),
