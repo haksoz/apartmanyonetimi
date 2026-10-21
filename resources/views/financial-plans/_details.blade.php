@@ -12,7 +12,13 @@
         @foreach ($details as $label => $value)
             <div class="min-w-0 border-t border-slate-100 pt-3">
                 <dt class="text-xs text-slate-500">{{ $label }}</dt>
-                <dd class="mt-1 break-words text-sm font-medium text-slate-900">{{ $value === null || $value === '' ? '—' : $value }}</dd>
+                <dd class="mt-1 break-words text-sm font-medium text-slate-900">
+                    @if ($value === 'Zamanı geldikçe oluştur')
+                        <span class="inline-flex items-center gap-2">@include('financial-plans._clock') {{ $value }}</span>
+                    @else
+                        {{ $value === null || $value === '' ? '—' : $value }}
+                    @endif
+                </dd>
             </div>
         @endforeach
     </dl>

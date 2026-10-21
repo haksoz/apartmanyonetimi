@@ -2,24 +2,23 @@
 
 @section('content')
     @php $editing = ! $plan->exists || request()->boolean('edit') || $errors->any(); @endphp
-    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+    <div class="mb-6 flex min-w-0 flex-row items-start justify-between gap-3 sm:items-center">
         <div class="min-w-0 flex-1">
             <h1 class="text-2xl font-bold text-slate-950">
-                <a href="{{ route('financial-plans.index') }}" class="hover:text-slate-600">Finansal Planlama</a>
-                <span class="font-normal text-slate-400"> / </span>
-                <span class="text-lg font-semibold text-slate-800">Aidat Planı · {{ $selectedYear }}</span>
+                <span class="inline-block"><a href="{{ route('financial-plans.index') }}" class="hover:text-slate-600">Finansal Planlama</a><span class="font-normal text-slate-400"> / </span></span>
+                <span class="block text-lg font-semibold text-slate-800 sm:inline">{{ $plan->exists ? 'Aidat Planı · '.$selectedYear : 'Aidat Planı Oluştur' }}</span>
             </h1>
-            <p class="mt-1 text-sm text-slate-500">Yıllık aidat tutarı, oluşturma yöntemi ve vade bilgileri.</p>
+            <p class="mt-1 text-sm text-slate-500">Aylık aidat tutarı, dağıtım ve vade bilgileri.</p>
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2 shrink-0">
             @unless ($editing)
-                <a href="{{ route('due-plans.index', ['year' => $selectedYear, 'edit' => 1]) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+                <a href="{{ route('due-plans.index', [...$plan->pageParameters(), 'edit' => 1]) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
             @endunless
-            <a href="{{ route('financial-plans.index') }}" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+            <a href="{{ route('financial-plans.index') }}" aria-label="Finansal planlamaya geri dön" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
                 </svg>
-                Geri
+                <span class="hidden sm:inline">Geri</span>
             </a>
         </div>
     </div>
@@ -43,25 +42,15 @@
     @endif
 
     @if ($editing)
-    <div class="rounded-2xl bg-white p-6 shadow-sm max-w-4xl">
+    <div class="rounded-2xl bg-white p-6 shadow-sm">
         <form method="POST" action="{{ route('due-plans.store') }}" class="space-y-6">
             @csrf
             @include('due-plans._form', ['plan' => $plan, 'selectedYear' => $selectedYear ?? now()->year])
 
-            <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-100">
-                <div class="flex gap-2">
-                    @if ($plan->exists && $plan->is_active)
-                        <button type="submit" form="deactivate-form" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
-                            Planı Durdur
-                        </button>
-                    @elseif ($plan->exists && ! $plan->is_active)
-                        <button type="submit" form="activate-form" class="rounded-xl border border-emerald-300 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors">
-                            Yeniden Aktifleştir
-                        </button>
-                    @endif
-                </div>
+            <div class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-5">
+                <p class="mr-auto text-xs text-slate-500">Onayınızdan önce kayıt yapılmaz.</p>
                 @if ($plan->exists)
-                    <a href="{{ route('due-plans.index', ['year' => $selectedYear]) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
+                    <a href="{{ route('due-plans.index', $plan->pageParameters()) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
                 @else
                     <a href="{{ route('financial-plans.index') }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
                 @endif
@@ -70,17 +59,7 @@
                 </button>
             </div>
         </form>
-        @if ($plan->exists && $plan->is_active)
-            <form id="deactivate-form" method="POST" action="{{ route('due-plans.deactivate', $plan) }}" class="hidden">
-                @csrf
-                @method('PATCH')
-            </form>
-        @elseif ($plan->exists && ! $plan->is_active)
-            <form id="activate-form" method="POST" action="{{ route('due-plans.activate', $plan) }}" class="hidden">
-                @csrf
-                @method('PATCH')
-            </form>
-        @endif
+
     </div>
 
     @else
@@ -98,7 +77,7 @@
                     @csrf
                     <input type="hidden" name="period" value="{{ $currentPeriod }}">
                     <div class="flex gap-3 justify-end">
-                        <a href="{{ route('due-plans.index', ['year' => $plan->plan_year]) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+                        <a href="{{ route('due-plans.index', $plan->pageParameters()) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
                             Hayır
                         </a>
                         <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
@@ -111,15 +90,16 @@
     @endif
 
     @if ($plan->exists && ! empty($periods))
-        <div class="mt-8 max-w-4xl">
+        <div class="mt-8">
             <h2 class="text-base font-semibold text-slate-900 mb-3">Plan Ayları — {{ $plan->plan_year }}</h2>
 
-            <div class="hidden md:block rounded-2xl bg-white shadow-sm overflow-hidden">
+            <div class="hidden md:block rounded-2xl bg-white shadow-sm overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 text-left">
                         <tr>
                             <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Dönem</th>
                             <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Durum</th>
+                            <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Planlanan Oluşturma</th>
                             <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Aidat / Daire</th>
                             <th class="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">İşlem</th>
                         </tr>
@@ -134,37 +114,22 @@
                                     @elseif ($p['status'] === 'incomplete')
                                         <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">Eksik</span>
                                         <span class="ml-1 text-xs text-slate-500">{{ $p['active_count'] }} / {{ $p['expected_count'] }}</span>
-                                    @elseif ($p['status'] === 'stopped')
-                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">Durduruldu</span>
+                                    @elseif (in_array($p['status'], ['stopped', 'skipped'], true))
+                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">{{ $p['status'] === 'skipped' ? 'Atlandı' : 'Durduruldu' }}</span>
                                     @else
                                         <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">Oluşturulmadı</span>
                                     @endif
                                 </td>
+                                <td class="px-5 py-3">@include('due-plans._schedule')</td>
                                 <td class="px-5 py-3 text-right text-slate-500 tabular-nums">
-                                    @if ($p['status'] !== 'not_generated' && $p['status'] !== 'stopped')
+                                    @if (! in_array($p['status'], ['not_generated', 'stopped', 'skipped'], true))
                                         {{ $p['active_count'] }} / {{ $p['expected_count'] }}
                                     @else
                                         –
                                     @endif
                                 </td>
                                 <td class="px-5 py-3 text-right">
-                                    @if ($p['status'] === 'complete')
-                                        <a href="{{ route('dues.index', ['batch_id' => $p['batch_id']]) }}" class="text-xs font-medium text-slate-700 hover:text-slate-900 underline">Görüntüle</a>
-                                    @elseif ($plan->is_active && $p['status'] === 'incomplete')
-                                        <form method="POST" action="{{ route('due-plans.regenerate-period', $plan) }}" class="inline">
-                                            @csrf
-                                            <input type="hidden" name="period" value="{{ $p['period'] }}">
-                                            <button type="submit" class="text-xs font-medium text-emerald-700 hover:text-emerald-800 underline">Eksikleri Tamamla</button>
-                                        </form>
-                                    @elseif ($plan->is_active && $p['status'] === 'not_generated')
-                                        <form method="POST" action="{{ route('due-plans.generate-month', $plan) }}" class="inline">
-                                            @csrf
-                                            <input type="hidden" name="period" value="{{ $p['period'] }}">
-                                            <button type="submit" class="text-xs font-medium text-slate-700 hover:text-slate-900 underline">Oluştur</button>
-                                        </form>
-                                    @else
-                                        <span class="text-xs text-slate-400">—</span>
-                                    @endif
+                                    @include('due-plans._period-actions')
                                 </td>
                             </tr>
                         @endforeach
@@ -182,29 +147,28 @@
                                     <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Tamamlandı</span>
                                 @elseif ($p['status'] === 'incomplete')
                                     <span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">Eksik</span>
-                                @elseif ($p['status'] === 'stopped')
-                                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Durduruldu</span>
+                                @elseif (in_array($p['status'], ['stopped', 'skipped'], true))
+                                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{{ $p['status'] === 'skipped' ? 'Atlandı' : 'Durduruldu' }}</span>
                                 @else
                                     <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Oluşturulmadı</span>
                                 @endif
                             </div>
                         </div>
+                        @if ($p['scheduled_for'])
+                            <div class="mt-2">@include('due-plans._schedule')</div>
+                        @endif
+                        <div class="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500">
+                            <span>Aidat / Daire</span>
+                            <span class="tabular-nums">
+                                @if (! in_array($p['status'], ['not_generated', 'stopped', 'skipped'], true))
+                                    {{ $p['active_count'] }} / {{ $p['expected_count'] }}
+                                @else
+                                    –
+                                @endif
+                            </span>
+                        </div>
                         <div class="mt-2 flex justify-end">
-                            @if ($p['status'] === 'complete')
-                                <a href="{{ route('dues.index', ['batch_id' => $p['batch_id']]) }}" class="text-xs font-medium text-slate-700 hover:text-slate-900 underline">Görüntüle</a>
-                            @elseif ($plan->is_active && $p['status'] === 'incomplete')
-                                <form method="POST" action="{{ route('due-plans.regenerate-period', $plan) }}" class="inline">
-                                    @csrf
-                                    <input type="hidden" name="period" value="{{ $p['period'] }}">
-                                    <button type="submit" class="text-xs font-medium text-emerald-700 hover:text-emerald-800 underline">Eksikleri Tamamla</button>
-                                </form>
-                            @elseif ($plan->is_active && $p['status'] === 'not_generated')
-                                <form method="POST" action="{{ route('due-plans.generate-month', $plan) }}" class="inline">
-                                    @csrf
-                                    <input type="hidden" name="period" value="{{ $p['period'] }}">
-                                    <button type="submit" class="text-xs font-medium text-slate-700 hover:text-slate-900 underline">Oluştur</button>
-                                </form>
-                            @endif
+                            @include('due-plans._period-actions')
                         </div>
                     </div>
                 @endforeach

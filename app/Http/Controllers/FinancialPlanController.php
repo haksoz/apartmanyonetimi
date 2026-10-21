@@ -37,12 +37,13 @@ class FinancialPlanController extends Controller
                     $rows->push([
                         'type' => 'aidat',
                         'type_label' => 'Aidat Planı',
+                        'generation_mode' => $plan->generation_mode ?: 'on_schedule',
                         'name' => $plan->name.' ('.$plan->plan_year.')',
                         'period_label' => (string) $plan->plan_year,
                         'is_active' => (bool) $plan->is_active,
                         'is_expired' => $plan->is_active && $plan->end_date?->lt(today()),
                         'amount' => $plan->monthly_amount,
-                        'url' => route('due-plans.index', ['year' => $plan->plan_year]),
+                        'url' => route('due-plans.index', $plan->pageParameters()),
                         'sort' => sprintf('%04d-aidat-%d', $plan->plan_year, $plan->id),
                     ]);
                 });
@@ -57,6 +58,7 @@ class FinancialPlanController extends Controller
                     $rows->push([
                         'type' => 'expense',
                         'type_label' => 'Gider Planı',
+                        'generation_mode' => $plan->generation_mode ?: 'on_schedule',
                         'name' => $plan->name,
                         'period_label' => $plan->start_date?->format('m.Y')
                             .($plan->end_date ? ' – '.$plan->end_date->format('m.Y') : ' – devam'),
@@ -77,6 +79,7 @@ class FinancialPlanController extends Controller
                     $rows->push([
                         'type' => 'assessment',
                         'type_label' => 'Ek Borçlandırma',
+                        'generation_mode' => $plan->generation_mode ?: 'on_schedule',
                         'name' => $plan->name,
                         'period_label' => $plan->installment_count.' taksit',
                         'is_active' => (bool) $plan->is_active,
@@ -116,6 +119,7 @@ class FinancialPlanController extends Controller
         $hasCurrentYearAidatPlan = DuePlan::query()
             ->where('apartment_id', $apartment->id)
             ->where('plan_year', now()->year)
+            ->where('is_active', true)
             ->exists();
 
         return view('financial-plans.create', compact('apartment', 'canAidat', 'canExpense', 'canAssessment', 'hasCurrentYearAidatPlan'));
@@ -135,13 +139,14 @@ class FinancialPlanController extends Controller
         if ($validated['type'] === 'aidat' && DuePlan::query()
             ->where('apartment_id', $apartment->id)
             ->where('plan_year', now()->year)
+            ->where('is_active', true)
             ->exists()) {
             return redirect()->route('financial-plans.create')
-                ->withErrors(['type' => 'Bu yılın aidat planı zaten oluşturulmuş. Mevcut planı Finansal Planlama listesinden düzenleyebilirsiniz.']);
+                ->withErrors(['type' => 'Bu yıl için aktif bir aidat planı zaten var.']);
         }
 
         return match ($validated['type']) {
-            'aidat' => redirect()->route('due-plans.index', ['year' => now()->year]),
+            'aidat' => redirect()->route('due-plans.index', ['year' => now()->year, 'new' => 1]),
             'expense' => redirect()->route('expense-plans.create'),
             'assessment' => redirect()->route('assessment-plans.create'),
         };

@@ -6,6 +6,21 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function saveAidatPlan(array $payload): \Illuminate\Testing\TestResponse
+    {
+        $preview = $this->post(route('due-plans.store'), $payload);
+        if ($preview->status() !== 200) {
+            return $preview;
+        }
+        if ($preview->viewData('summary')['current']['eligible'] && $preview->viewData('summary')['current']['action'] === null) {
+            $preview = $this->post(route('due-plans.store'), [
+                'confirmation_token' => $preview->viewData('token'), 'current_month_action' => 'skip',
+            ]);
+        }
+
+        return $this->post(route('due-plans.store'), ['confirmation_token' => $preview->viewData('token')]);
+    }
+
     protected function billingSelection(\App\Models\User $user, array $overrides = []): array
     {
         $profile = \App\Models\BillingProfile::query()->create(array_merge([

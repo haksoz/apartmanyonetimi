@@ -76,6 +76,7 @@
                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase text-slate-500">Vade</th>
                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase text-slate-500">Durum</th>
                     <th class="px-5 py-3 text-right text-xs font-semibold uppercase text-slate-500">Tutar</th>
+                    <th class="px-5 py-3 text-right text-xs font-semibold uppercase text-slate-500">İşlem</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -95,6 +96,13 @@
                             @endif
                         </td>
                         <td class="px-5 py-3 text-right tabular-nums">{{ number_format((float) $inst->lines->sum('amount'), 2, ',', '.') }} ₺</td>
+                        <td class="px-5 py-3 text-right">
+                            @if ($inst->status === 'generated')
+                                <a href="{{ route('dues.index', ['due_type' => $plan->due_type->value, 'source' => 'assessment', 'plan' => 'assessment:'.$plan->id, 'period' => $inst->period]) }}" class="text-xs font-medium text-slate-700 underline hover:text-slate-900">Görüntüle</a>
+                            @else
+                                <span class="text-xs text-slate-400">—</span>
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

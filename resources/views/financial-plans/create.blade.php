@@ -24,7 +24,7 @@
                 <input type="radio" name="type" value="aidat" class="mt-1" required @disabled($hasCurrentYearAidatPlan) @checked($selectedType === 'aidat')>
                 <span>
                     <span class="block font-semibold text-slate-900">Aidat Planı</span>
-                    <span class="text-sm text-slate-500">{{ $hasCurrentYearAidatPlan ? now()->year.' yılı aidat planı zaten oluşturuldu.' : 'Yıllık aidat planı ve aylık borç üretimi' }}</span>
+                    <span class="text-sm text-slate-500">{{ $hasCurrentYearAidatPlan ? now()->year.' yılı için aktif aidat planı var.' : 'Yıllık aidat planı ve aylık borç üretimi' }}</span>
                 </span>
             </label>
         @endif

@@ -1042,7 +1042,7 @@ class DuePageTest extends TestCase
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
-            ->post(route('due-plans.store'), [
+            ->saveAidatPlan([
                 'plan_year' => 2026,
                 'monthly_amount' => 1000,
                 'distribution_type' => 'equal',
@@ -1112,6 +1112,20 @@ class DuePageTest extends TestCase
             'due_date' => '2026-06-01',
             'status' => 'unpaid',
         ]);
+
+        // Kısmi dönem kontrolünde yalnızca bu planın kendi kaydı dikkate alınır.
+        $batch = DueBatch::create([
+            'apartment_id' => $apartment->id,
+            'due_plan_id' => $plan->id,
+            'due_type' => 'aidat',
+            'category_id' => $category->id,
+            'source_type' => 'manual',
+            'distribution_type' => 'equal',
+            'target_audience' => 'owner_only',
+            'period' => '2026-06',
+            'source_amount' => 1000,
+        ]);
+        Due::where('account_id', $accounts[1]->id)->update(['due_batch_id' => $batch->id]);
 
         // Komut generate_day kontrolü nedeniyle çalışmaz, reconciliation mantığını test edelim
         $reconciliationResult = $reconciliation->reconcile($plan, '2026-06');

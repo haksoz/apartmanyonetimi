@@ -33,13 +33,14 @@ class AidatPeriodReconciliation
     public function reconcile(DuePlan $plan, string $period): array
     {
         $periodDate = Carbon::parse($period.'-01');
-        $category = $this->categoryFor($plan->apartment);
+        $category = Category::query()->where('apartment_id', $plan->apartment_id)->where('name', 'Aidat')->first();
         $targetAccounts = $this->targetAccounts($plan, $periodDate);
         $completedAccountIds = Due::query()
             ->where('apartment_id', $plan->apartment_id)
             ->where('period', $period)
             ->where('due_type', DueType::Aidat->value)
-            ->where('category_id', $category->id)
+            ->where('category_id', $category?->id)
+            ->whereHas('batch', fn ($query) => $query->where('due_plan_id', $plan->id ?? 0))
             ->whereIn('account_id', $targetAccounts->pluck('account.id'))
             ->pluck('account_id')
             ->unique()
@@ -65,7 +66,7 @@ class AidatPeriodReconciliation
             ->get();
 
         return $units->map(function (Unit $unit) use ($plan, $periodDate) {
-            $account = $this->accountForPeriod($unit, $periodDate, $plan->target_audience);
+            $account = $this->accountForPeriod($unit, $periodDate, 'tenant_priority');
             if (! $account) {
                 return null;
             }

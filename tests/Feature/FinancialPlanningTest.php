@@ -70,7 +70,7 @@ class FinancialPlanningTest extends TestCase
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
-            ->post(route('due-plans.store'), [
+            ->saveAidatPlan([
                 'plan_year' => 2026,
                 'monthly_amount' => 1000,
                 'distribution_type' => 'equal',
@@ -384,46 +384,371 @@ class FinancialPlanningTest extends TestCase
             ->assertSee('Finansal Planlama');
     }
 
-    public function test_aidat_bulk_generation_uses_the_past_periods_form_choice(): void
+    public function test_aidat_plan_only_creates_approved_past_and_current_periods(): void
     {
-        $this->travelTo(\Carbon\Carbon::parse('2026-10-20 12:00:00'));
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-21 12:00:00'));
         [$user, $apartment] = $this->setupApartment();
         $payload = [
-            'plan_year' => 2026,
-            'monthly_amount' => 1000,
-            'distribution_type' => 'equal',
-            'target_audience' => 'owner_only',
-            'due_day' => 5,
-            'generate_day' => 1,
-            'generation_mode' => DuePlan::GENERATION_CREATE_ALL_NOW,
-            'is_active' => 1,
+            'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
+            'due_day' => 5, 'generate_day' => 1, 'is_active' => 1, 'generation_mode' => 'create_all_now',
+        ];
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->get(route('due-plans.index', ['year' => 2026]))->assertOk()
+            ->assertDontSee('Geçmiş aylara ait aidatları da oluştur')
+            ->assertDontSee('Tümünü şimdi oluştur')->assertDontSee('name="generation_mode"', false);
+        $this->saveAidatPlan([...$payload, 'is_active' => 0, 'include_past_periods' => 1])->assertRedirect();
+        $this->assertSame(0, Due::count());
+        $this->saveAidatPlan($payload)->assertRedirect();
+        $this->assertSame(0, Due::count());
+        $this->saveAidatPlan([...$payload, 'include_past_periods' => 1])->assertRedirect();
+        $this->assertSame(18, Due::count());
+        $this->saveAidatPlan([...$payload, 'include_past_periods' => 1])->assertRedirect();
+        $this->assertSame(18, Due::count());
+        $this->saveAidatPlan([...$payload, 'current_month_action' => 'create'])->assertRedirect();
+        $this->assertSame(20, Due::count());
+        $plan = DuePlan::firstOrFail();
+        $this->assertSame('on_schedule', $plan->generation_mode);
+        $this->assertTrue($plan->auto_generate);
+        $this->assertSame(0, app(\App\Http\Controllers\DuePlanController::class)->createDuesForPeriod($plan, '2026-11'));
+        $this->assertSame(0, Due::where('period', '>', '2026-10')->count());
+        $this->travelBack();
+    }
+
+    public function test_aidat_plan_only_deduplicates_its_own_source(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-21 12:00:00'));
+        [$user, $apartment, $units] = $this->setupApartment();
+        $reconciliation = app(\App\Support\AidatPeriodReconciliation::class);
+        $category = $reconciliation->categoryFor($apartment);
+        $planData = [
+            'apartment_id' => $apartment->id, 'name' => 'Aidat Kararı',
+            'plan_year' => 2026, 'category_id' => $category->id, 'due_type' => 'aidat',
+            'amount_type' => 'monthly', 'monthly_amount' => 1000,
+            'distribution_type' => 'equal', 'target_audience' => 'owner_only',
+            'due_day' => 5, 'generate_day' => 1, 'generation_mode' => 'on_schedule', 'is_active' => true,
+        ];
+        $plan = DuePlan::create($planData);
+        $batchData = [
+            'apartment_id' => $apartment->id, 'due_type' => 'aidat', 'category_id' => $category->id,
+            'source_type' => 'manual', 'distribution_type' => 'equal', 'target_audience' => 'owner_only',
+            'period' => '2026-10', 'source_amount' => 1000,
+        ];
+        $manualBatch = \App\Models\DueBatch::create($batchData);
+        $dueData = [
+            'apartment_id' => $apartment->id, 'unit_id' => $units[0]->id,
+            'account_id' => $units[0]->owner_account_id, 'category_id' => $category->id,
+            'due_type' => 'aidat', 'period' => '2026-10', 'amount' => 123,
+            'remaining_amount' => 123, 'due_date' => '2026-10-05', 'status' => 'unpaid',
+        ];
+        $manual = Due::create($dueData);
+        Due::create([...$dueData, 'due_batch_id' => $manualBatch->id]);
+        $otherPlan = DuePlan::create([...$planData, 'plan_year' => 2025]);
+        $otherBatch = \App\Models\DueBatch::create([...$batchData, 'due_plan_id' => $otherPlan->id]);
+        Due::create([...$dueData, 'due_batch_id' => $otherBatch->id]);
+
+        $this->assertCount(0, $reconciliation->reconcile($plan, '2026-10')['completed_account_ids']);
+        $this->assertCount(2, $reconciliation->reconcile($plan, '2026-10')['missing_accounts']);
+        $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
+        $planDues = Due::whereHas('batch', fn ($query) => $query->where('due_plan_id', $plan->id))->get();
+        $this->assertCount(2, $planDues);
+        $this->assertSame(['500.00', '500.00'], $planDues->pluck('amount')->all());
+        $this->assertSame('123.00', $manual->fresh()->amount);
+        $this->assertCount(2, $reconciliation->reconcile($plan, '2026-10')['completed_account_ids']);
+        $controller = app(\App\Http\Controllers\DuePlanController::class);
+        $this->assertSame(0, $controller->createDuesForPeriod($plan, '2026-10'));
+        $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
+        $this->assertSame(5, Due::where('apartment_id', $apartment->id)->count());
+        $query = ['due_type' => 'aidat', 'source' => 'plan', 'plan' => 'aidat:'.$plan->id, 'period' => '2026-10'];
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
+            ->get(route('due-plans.index', ['year' => 2026]))->assertOk()
+            ->assertSee(route('dues.index', $query));
+        $filtered = $this->get(route('dues.index', $query))->assertOk()
+            ->assertSee('Plan: Aidat Kararı (2026)')
+            ->assertSee('Kaynak: Aidat Planı')
+            ->assertSee('Borç Türü: Aidat')
+            ->assertDontSee('Borçlandırma Grubu #')
+            ->assertSee(route('dues.index', ['due_type' => 'aidat', 'source' => 'plan', 'period' => '2026-10']))
+            ->assertSee('Tümünü temizle');
+        $this->assertSame(2, $filtered->viewData('dues')->total());
+        $this->assertEqualsCanonicalizing($planDues->pluck('id')->all(), $filtered->viewData('dues')->pluck('id')->all());
+        $this->get(route('dues.index', ['period' => '2026-10', 'source' => 'plan']))->assertOk()
+            ->assertDontSee('Borçlandırma Grubu #');
+        $this->assertSame(5, $this->get(route('dues.index'))->viewData('dues')->total());
+        $this->travelBack();
+    }
+
+    public function test_aidat_save_requires_preview_and_confirmation_for_new_and_existing_plans(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-21 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $payload = [
+            'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
+            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 1,
+            'current_month_action' => 'create', 'is_active' => 1,
+        ];
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $preview = $this->post(route('due-plans.store'), $payload)->assertOk()
+            ->assertViewIs('due-plans.confirm')->assertSee('Henüz kayıt yapılmadı.');
+        $this->assertSame(2, $preview->viewData('summary')['count']);
+        $this->assertEquals(1000, $preview->viewData('summary')['amount']);
+        $this->assertSame(0, DuePlan::count());
+        $this->assertSame(0, Due::count());
+        $this->assertSame(0, Category::count());
+        $token = $preview->viewData('token');
+        $this->post(route('due-plans.store'), ['confirmation_token' => $token, 'monthly_amount' => 99999])
+            ->assertRedirect(route('due-plans.index', ['year' => 2026]));
+        $plan = DuePlan::firstOrFail();
+        $this->assertSame('1000.00', $plan->monthly_amount);
+        $this->assertSame(2, Due::count());
+        $this->post(route('due-plans.store'), ['confirmation_token' => $token])->assertSessionHas('error');
+        $this->assertSame(2, Due::count());
+
+        $preview = $this->post(route('due-plans.store'), [...$payload, 'include_past_periods' => 1])->assertOk();
+        $this->assertSame(18, $preview->viewData('summary')['count']);
+        $this->assertEquals(9000, $preview->viewData('summary')['amount']);
+        $this->assertSame(2, Due::count());
+        $this->post(route('due-plans.store'), ['confirmation_token' => $preview->viewData('token'), 'return_to_form' => 1])
+            ->assertRedirect(route('due-plans.index', ['year' => 2026, 'edit' => 1]));
+        $this->assertSame(2, Due::count());
+
+        $preview = $this->post(route('due-plans.store'), [...$payload, 'include_past_periods' => 1])->assertOk();
+        // The saved plan changes while the summary is being reviewed.
+        $plan->update(['monthly_amount' => 1200]);
+        $refreshed = $this->post(route('due-plans.store'), ['confirmation_token' => $preview->viewData('token')])
+            ->assertOk()->assertViewHas('changed', true);
+        $this->assertSame(2, Due::count());
+        $this->assertSame('1200.00', $plan->fresh()->monthly_amount);
+        $this->post(route('due-plans.store'), ['confirmation_token' => $refreshed->viewData('token')])->assertRedirect();
+        $this->assertSame(20, Due::count());
+        $preview = $this->post(route('due-plans.store'), [...$payload, 'include_past_periods' => 1])->assertOk();
+        $this->assertSame(0, $preview->viewData('summary')['count']);
+        $this->assertEquals(0, $preview->viewData('summary')['amount']);
+        $this->travelBack();
+    }
+
+    public function test_partial_aidat_confirmation_uses_full_plan_shares(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-12-21 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $payload = [
+            'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
+            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 1,
+            'current_month_action' => 'create', 'is_active' => 1,
         ];
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
-            ->get(route('due-plans.index', ['year' => 2026]))
-            ->assertOk()->assertSee('Geçmiş aylara ait aidatları da oluştur')
-            ->assertSee('id="include_past_periods"', false);
+            ->saveAidatPlan($payload)->assertRedirect();
+        Due::orderBy('id')->firstOrFail()->delete();
+        $preview = $this->post(route('due-plans.store'), $payload)->assertOk();
+        $this->assertSame(1, $preview->viewData('summary')['count']);
+        $this->assertEquals(500, $preview->viewData('summary')['amount']);
+        $this->post(route('due-plans.store'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $this->assertSame(2, Due::count());
+        $this->assertEquals(1000, Due::sum('amount'));
+        $this->travelBack();
+    }
 
-        $this->post(route('due-plans.store'), [...$payload, 'is_active' => 0, 'include_past_periods' => 1])
-            ->assertSessionHasNoErrors();
-        $this->assertSame(0, Due::where('apartment_id', $apartment->id)->count());
+    public function test_scheduled_plan_requires_current_month_choice_and_persists_skip(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-21 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $payload = [
+            'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
+            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 1,
+            'generation_mode' => 'on_schedule', 'is_active' => 1,
+        ];
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $preview = $this->post(route('due-plans.store'), $payload)->assertOk()
+            ->assertSee('Bu ayı atla, gelecek aydan başlat.');
+        $this->assertTrue($preview->viewData('summary')['current']['eligible']);
+        $this->assertSame(2, $preview->viewData('summary')['current']['count']);
+        $this->assertSame(0, DuePlan::count());
+        $noChoice = $this->post(route('due-plans.store'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
+        $this->assertSame(0, DuePlan::count());
+        $skip = $this->post(route('due-plans.store'), [
+            'confirmation_token' => $noChoice->viewData('token'), 'current_month_action' => 'skip',
+        ])->assertOk();
+        $this->assertSame(0, $skip->viewData('summary')['count']);
+        $this->post(route('due-plans.store'), ['confirmation_token' => $skip->viewData('token')])->assertRedirect();
+        $plan = DuePlan::firstOrFail();
+        $this->assertTrue($plan->skipsPeriod('2026-10'));
+        $this->artisan('dues:auto-generate')->assertExitCode(0);
+        $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
+        $this->assertSame(0, Due::count());
+        $this->get(route('due-plans.index', ['year' => 2026]))->assertOk()->assertSee('Atlandı');
 
-        // An unchecked or omitted field excludes past months without a second prompt.
-        $this->post(route('due-plans.store'), $payload)
-            ->assertSessionHasNoErrors()
-            ->assertSessionMissing('prompt_past_periods_plan_id')
-            ->assertRedirect(route('due-plans.index', ['year' => 2026]));
-        $this->assertSame(6, Due::where('apartment_id', $apartment->id)->count());
-        $this->post(route('due-plans.store'), [...$payload, 'include_past_periods' => 0])
-            ->assertSessionHasNoErrors()->assertSessionMissing('prompt_past_periods_plan_id');
-        $this->assertSame(6, Due::where('apartment_id', $apartment->id)->count());
+        $preview = $this->post(route('due-plans.store'), $payload)->assertOk();
+        $create = $this->post(route('due-plans.store'), [
+            'confirmation_token' => $preview->viewData('token'), 'current_month_action' => 'create',
+        ])->assertOk();
+        $this->assertSame(2, $create->viewData('summary')['count']);
+        $this->assertEquals(1000, $create->viewData('summary')['amount']);
+        $this->assertSame(0, Due::count());
+        $this->post(route('due-plans.store'), ['confirmation_token' => $create->viewData('token')])->assertRedirect();
+        $this->assertFalse($plan->fresh()->skipsPeriod('2026-10'));
+        $this->assertSame(2, Due::count());
+        $complete = $this->post(route('due-plans.store'), $payload)->assertOk();
+        $this->assertFalse($complete->viewData('summary')['current']['eligible']);
 
-        $this->post(route('due-plans.store'), [...$payload, 'include_past_periods' => 1])
-            ->assertSessionHasNoErrors()->assertSessionMissing('prompt_past_periods_plan_id');
-        $this->assertSame(24, Due::where('apartment_id', $apartment->id)->count());
-        $this->post(route('due-plans.store'), [...$payload, 'include_past_periods' => 1])->assertSessionHasNoErrors();
-        $this->assertSame(24, Due::where('apartment_id', $apartment->id)->count());
+        Due::firstOrFail()->delete();
+        $partial = $this->post(route('due-plans.store'), [...$payload, 'current_month_action' => 'create'])->assertOk();
+        $this->assertSame(1, $partial->viewData('summary')['count']);
+        $this->assertEquals(500, $partial->viewData('summary')['amount']);
+        $this->post(route('due-plans.store'), ['confirmation_token' => $partial->viewData('token')])->assertRedirect();
+        $this->assertSame(2, Due::count());
+        $this->assertEquals(1000, Due::sum('amount'));
+
+        $plan->refresh()->update(['skipped_periods' => ['2026-10']]);
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-01 12:00:00'));
+        $this->artisan('dues:auto-generate')->assertExitCode(0);
+        $this->assertSame(2, Due::where('period', '2026-11')->count());
+        $this->assertTrue($plan->fresh()->skipsPeriod('2026-10'));
+        $this->travelBack();
+    }
+
+    public function test_current_month_question_only_appears_when_needed(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-21 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $payload = [
+            'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
+            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 28,
+            'generation_mode' => 'on_schedule', 'is_active' => 1,
+        ];
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        foreach ([$payload, [...$payload, 'generate_day' => 1, 'is_active' => 0], [...$payload, 'plan_year' => 2027, 'generate_day' => 1], [...$payload, 'generation_mode' => 'create_all_now']] as $input) {
+            $preview = $this->post(route('due-plans.store'), $input)->assertOk();
+            $this->assertFalse($preview->viewData('summary')['current']['eligible']);
+        }
+        $dueToday = $this->post(route('due-plans.store'), [...$payload, 'generate_day' => 21])->assertOk();
+        $this->assertTrue($dueToday->viewData('summary')['current']['eligible']);
+        $this->travelBack();
+    }
+
+    public function test_aidat_plan_always_bills_the_tenant_with_owner_fallback(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-21 12:00:00'));
+        [$user, $apartment, $units] = $this->setupApartment();
+        $tenant = Account::create([
+            'apartment_id' => $apartment->id, 'unit_id' => $units[0]->id,
+            'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true,
+        ]);
+        \App\Models\TenantAssignment::create([
+            'apartment_id' => $apartment->id, 'unit_id' => $units[0]->id,
+            'account_id' => $tenant->id, 'move_in_date' => '2026-10-01',
+        ]);
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         $this->get(route('due-plans.index', ['year' => 2026]))->assertOk()
-            ->assertDontSee('Geçmişi de oluştur')->assertDontSee('Geçmişi atla');
+            ->assertSee('İlgili dönemde kiracı varsa kiracıya, yoksa malike borçlandırılır.')
+            ->assertDontSee('name="target_audience"', false)->assertDontSee('Sadece Sahipler');
+        $preview = $this->post(route('due-plans.store'), [
+            'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
+            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 1,
+            'current_month_action' => 'create', 'generation_mode' => 'create_all_now', 'is_active' => 1,
+        ])->assertOk();
+        $this->assertSame('tenant_priority', $preview->viewData('proposed')->target_audience);
+        $this->post(route('due-plans.store'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $plan = DuePlan::firstOrFail();
+        $this->assertSame('tenant_priority', $plan->target_audience);
+        $this->assertSame(1, Due::where('account_id', $tenant->id)->count());
+        $this->assertSame(0, Due::where('account_id', $units[0]->owner_account_id)->count());
+        $this->assertSame(1, Due::where('account_id', $units[1]->owner_account_id)->count());
+        $plan->update(['target_audience' => 'owner_only']);
+        $this->assertSame('tenant_priority', $plan->fresh()->target_audience);
+        \App\Models\TenantAssignment::where('account_id', $tenant->id)->update(['move_out_date' => '2026-10-31']);
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-01 12:00:00'));
+        $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
+        $this->assertSame(1, Due::where('account_id', $tenant->id)->count());
+        $this->assertDatabaseHas('dues', ['account_id' => $units[0]->owner_account_id, 'period' => '2026-11']);
+        $this->travelBack();
+    }
+
+    public function test_a_new_aidat_plan_can_replace_an_inactive_plan_for_the_same_year(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-21 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $data = [
+            'apartment_id' => $apartment->id, 'name' => 'Önceki Aidat Planı', 'plan_year' => 2026,
+            'due_type' => 'aidat', 'amount_type' => 'monthly', 'monthly_amount' => 1000,
+            'distribution_type' => 'equal', 'due_day' => 5, 'generate_day' => 28, 'is_active' => false,
+        ];
+        $old = DuePlan::create($data);
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->get(route('financial-plans.create'))->assertOk()->assertViewHas('hasCurrentYearAidatPlan', false);
+        $this->post(route('financial-plans.select-type'), ['type' => 'aidat'])
+            ->assertRedirect(route('due-plans.index', ['year' => 2026, 'new' => 1]));
+        $this->get(route('due-plans.index', ['year' => 2026, 'new' => 1]))->assertOk()
+            ->assertViewHas('plan', fn ($plan) => ! $plan->exists)
+            ->assertSee('name="creating_new"', false);
+        $payload = [
+            'creating_new' => 1, 'plan_year' => 2026, 'monthly_amount' => 2000,
+            'distribution_type' => 'equal', 'due_day' => 5, 'generate_day' => 28, 'is_active' => 1,
+        ];
+        $preview = $this->post(route('due-plans.store'), $payload)->assertOk();
+        $this->assertSame(1, DuePlan::count());
+        $this->post(route('due-plans.store'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $active = DuePlan::where('is_active', true)->firstOrFail();
+        $this->assertNotSame($old->id, $active->id);
+        $this->assertSame('1000.00', $old->fresh()->monthly_amount);
+        $this->assertFalse($old->fresh()->is_active);
+        $this->assertSame('2000.00', $active->monthly_amount);
+        $this->assertSame(2, DuePlan::where('plan_year', 2026)->count());
+        $this->get(route('financial-plans.index'))->assertOk()
+            ->assertSee(route('due-plans.index', ['year' => 2026, 'plan_id' => $old->id]))
+            ->assertSee(route('due-plans.index', ['year' => 2026, 'plan_id' => $active->id]));
+        $this->get(route('due-plans.index', ['year' => 2026, 'plan_id' => $old->id]))
+            ->assertOk()->assertViewHas('plan', fn ($plan) => $plan->id === $old->id);
+        $this->get(route('due-plans.index', ['year' => 2026]))
+            ->assertOk()->assertViewHas('plan', fn ($plan) => $plan->id === $active->id);
+        $this->get(route('financial-plans.create'))->assertViewHas('hasCurrentYearAidatPlan', true);
+        $this->post(route('due-plans.store'), $payload)->assertSessionHasErrors('plan_year');
+        $this->post(route('due-plans.store'), [...$payload, 'creating_new' => 0, 'plan_id' => $old->id])
+            ->assertSessionHasErrors('is_active');
+        $this->patch(route('due-plans.activate', $old))->assertSessionHasErrors('is_active');
+        $this->assertSame(1, DuePlan::where('plan_year', 2026)->where('is_active', true)->count());
+        $this->travelBack();
+    }
+
+    public function test_past_period_choice_is_made_in_the_confirmation_summary(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-21 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->get(route('due-plans.index', ['year' => 2026, 'new' => 1]))->assertOk()
+            ->assertSee('Kaydet')->assertDontSee('Özeti Gör')->assertDontSee('id="include_past_periods"', false);
+        $preview = $this->post(route('due-plans.store'), [
+            'creating_new' => 1, 'plan_year' => 2026, 'monthly_amount' => 1000,
+            'distribution_type' => 'equal', 'generate_day' => 1, 'due_day' => 5, 'is_active' => 1,
+        ])->assertOk()->assertSee('Geçmiş Aylar')->assertSee('Geçmiş aylara ait aidatları da oluştur');
+        $this->assertSame(18, $preview->viewData('summary')['past']['count']);
+        $this->assertFalse($preview->viewData('summary')['past']['included']);
+        $updated = $this->post(route('due-plans.store'), [
+            'confirmation_token' => $preview->viewData('token'), 'include_past_periods' => 1,
+            'current_month_action' => 'skip', 'update_summary' => 1,
+        ])->assertOk()->assertViewHas('changed', false);
+        $this->assertSame(18, $updated->viewData('summary')['count']);
+        $this->assertEquals(9000, $updated->viewData('summary')['amount']);
+        $this->assertSame(0, DuePlan::count());
+        $this->assertSame(0, Due::count());
+        $unchecked = $this->post(route('due-plans.store'), [
+            'confirmation_token' => $updated->viewData('token'), 'include_past_periods' => 0,
+            'current_month_action' => 'skip', 'update_summary' => 1,
+        ])->assertOk();
+        $this->assertSame(0, $unchecked->viewData('summary')['count']);
+        $unchanged = $this->post(route('due-plans.store'), [
+            'confirmation_token' => $unchecked->viewData('token'), 'include_past_periods' => 0,
+            'current_month_action' => 'skip', 'update_summary' => 1,
+        ])->assertOk();
+        $this->assertSame(0, DuePlan::count());
+        $final = $this->post(route('due-plans.store'), [
+            'confirmation_token' => $unchanged->viewData('token'), 'include_past_periods' => 1,
+            'current_month_action' => 'skip',
+        ])->assertOk();
+        $this->post(route('due-plans.store'), [
+            'confirmation_token' => $final->viewData('token'), 'include_past_periods' => 1,
+            'current_month_action' => 'skip',
+        ])->assertRedirect();
+        $this->assertSame(18, Due::count());
+        $this->assertSame(0, Due::where('period', '>=', '2026-10')->count());
         $this->travelBack();
     }
 
@@ -502,7 +827,7 @@ class FinancialPlanningTest extends TestCase
         $this->get(route('financial-plans.create'))
             ->assertOk()
             ->assertViewHas('hasCurrentYearAidatPlan', true)
-            ->assertSee('2026 yılı aidat planı zaten oluşturuldu.')
+            ->assertSee('2026 yılı için aktif aidat planı var.')
             ->assertSee('cursor-not-allowed bg-slate-50 opacity-50', false)
             ->assertSee('value="aidat" class="mt-1" required disabled', false)
             ->assertDontSee('Mevcut aidat planını düzenle');
@@ -513,7 +838,7 @@ class FinancialPlanningTest extends TestCase
             ->assertRedirect(route('expense-plans.create'));
 
         DuePlan::where('plan_year', 2026)->update(['is_active' => false]);
-        $this->get(route('financial-plans.create'))->assertViewHas('hasCurrentYearAidatPlan', true);
+        $this->get(route('financial-plans.create'))->assertViewHas('hasCurrentYearAidatPlan', false);
         DuePlan::where('plan_year', 2026)->update(['is_active' => true]);
 
         $this->travelTo(\Carbon\Carbon::parse('2027-01-01 00:00:00'));
@@ -521,7 +846,7 @@ class FinancialPlanningTest extends TestCase
         $this->assertTrue($rows['2026']['is_expired']);
         $this->get(route('financial-plans.create'))->assertOk()->assertViewHas('hasCurrentYearAidatPlan', false);
         $this->post(route('financial-plans.select-type'), ['type' => 'aidat'])
-            ->assertRedirect(route('due-plans.index', ['year' => 2027]));
+            ->assertRedirect(route('due-plans.index', ['year' => 2027, 'new' => 1]));
         $this->travelBack();
     }
 

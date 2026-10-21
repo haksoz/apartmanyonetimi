@@ -6,6 +6,7 @@ use App\Enums\DueType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class DuePlan extends Model
 {
@@ -18,7 +19,6 @@ class DuePlan extends Model
     public const DISTRIBUTION_SHARE_COEFFICIENT = 'share_coefficient';
 
     public const GENERATION_ON_SCHEDULE   = 'on_schedule';
-    public const GENERATION_CREATE_ALL_NOW = 'create_all_now';
 
     protected $fillable = [
         'apartment_id',
@@ -41,6 +41,7 @@ class DuePlan extends Model
         'generate_day',
         'description',
         'is_active',
+        'skipped_periods',
     ];
 
     protected $casts = [
@@ -55,12 +56,16 @@ class DuePlan extends Model
         'start_date'        => 'date',
         'end_date'          => 'date',
         'is_active'         => 'boolean',
+        'skipped_periods'   => 'array',
         'due_type'          => DueType::class,
     ];
 
     protected static function booted(): void
     {
         static::saving(function (DuePlan $plan) {
+            $plan->target_audience = 'tenant_priority';
+            $plan->generation_mode = self::GENERATION_ON_SCHEDULE;
+            $plan->auto_generate = true;
             if ($plan->plan_year) {
                 $plan->start_date = sprintf('%04d-01-01', $plan->plan_year);
                 $plan->end_date = sprintf('%04d-12-31', $plan->plan_year);
@@ -70,6 +75,11 @@ class DuePlan extends Model
                 $plan->end_date = sprintf('%04d-12-31', $plan->plan_year);
             }
 
+            if (($plan->is_active ?? true) && self::query()->where('apartment_id', $plan->apartment_id)
+                ->where('plan_year', $plan->plan_year)->where('is_active', true)
+                ->when($plan->exists, fn ($query) => $query->whereKeyNot($plan->id))->exists()) {
+                throw ValidationException::withMessages(['is_active' => 'Bu yıl için başka bir aktif aidat planı var. Önce onu pasife alın.']);
+            }
             if (! $plan->generation_mode) {
                 $plan->generation_mode = self::GENERATION_ON_SCHEDULE;
             }
@@ -79,6 +89,15 @@ class DuePlan extends Model
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
+    }
+
+    public function pageParameters(): array
+    {
+        $parameters = ['year' => $this->plan_year];
+        if (self::where('apartment_id', $this->apartment_id)->where('plan_year', $this->plan_year)->count() > 1) {
+            $parameters['plan_id'] = $this->id;
+        }
+        return $parameters;
     }
 
     public function category(): BelongsTo
@@ -119,6 +138,11 @@ class DuePlan extends Model
     public function createsOnSchedule(): bool
     {
         return ($this->generation_mode ?: self::GENERATION_ON_SCHEDULE) === self::GENERATION_ON_SCHEDULE;
+    }
+
+    public function skipsPeriod(string $period): bool
+    {
+        return $this->createsOnSchedule() && in_array($period, $this->skipped_periods ?? [], true);
     }
 
     public function getDistributionLabelAttribute(): string

@@ -46,6 +46,9 @@ class AutoGenerateFinancialPlans extends Command
             ->get();
 
         foreach ($plans as $plan) {
+            if ($plan->skipsPeriod($period)) {
+                continue;
+            }
             $apartment = $plan->apartment;
             if (! $apartment || ! FeatureGate::allows($apartment, 'auto_dues')) {
                 continue;
