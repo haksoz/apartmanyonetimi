@@ -107,12 +107,12 @@
             <span class="text-xs font-medium text-slate-500">Aktif filtreler:</span>
             @if ($filters['filterDueType'])
                 <a href="{{ route('dues.index', request()->except(['due_type', 'page'])) }}" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    Borç Türü: {{ \App\Enums\DueType::from($filters['filterDueType'])->label() }} <span>&times;</span>
+                    {{ \App\Enums\DueType::from($filters['filterDueType'])->label() }} <span>&times;</span>
                 </a>
             @endif
             @if ($filters['filterPlan'])
                 <a href="{{ route('dues.index', request()->except(['plan', 'page'])) }}" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    Plan: {{ $selectedPlan['label'] ?? 'Plan bulunamadı' }} <span>&times;</span>
+                    {{ $selectedPlan['label'] ?? 'Plan bulunamadı' }} <span>&times;</span>
                 </a>
             @endif
             @if ($filters['filterBatchId'])
@@ -164,7 +164,7 @@
             @if ($filters['filterSource'])
                 <a href="{{ route('dues.index', request()->except('source')) }}"
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    Kaynak: {{ $sourceLabels[$filters['filterSource']] ?? $filters['filterSource'] }}
+                    {{ $sourceLabels[$filters['filterSource']] ?? $filters['filterSource'] }}
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif

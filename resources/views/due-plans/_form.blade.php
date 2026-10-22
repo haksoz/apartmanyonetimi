@@ -7,21 +7,39 @@
 
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
     <h2 class="mb-4 text-sm font-semibold text-slate-700">Plan Bilgileri</h2>
-    <div class="grid gap-4 md:grid-cols-2">
+    <div>
         <div>
             <p class="mb-2 text-sm font-medium text-slate-600">Plan Adı</p>
             <p class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{{ $plan?->name ?: 'Aidat Kararı' }}</p>
             <p class="mt-1 text-xs text-slate-500">Plan adı otomatik belirlenir.</p>
         </div>
+    </div>
+    <div class="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
+    @unless ($plan?->exists)
+        <div class="col-span-2 min-w-0 md:col-span-1">
+            <label for="plan_year" class="mb-2 block text-sm font-medium text-slate-600">Takvim Yılı</label>
+            <input id="plan_year" name="plan_year" type="number" min="2000" max="2100" required value="{{ old('plan_year', $selectedYear ?? now()->year) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+            <p class="mt-1 text-xs text-slate-500">1 Ocak–31 Aralık. Her yıl için tek aktif plan.</p>
+            @error('plan_year')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+        </div>
+    @endunless
+
+    @if ($plan?->exists)
+        <div class="col-span-2 md:col-span-1"><p class="mb-2 text-sm font-medium text-slate-600">Takvim Yılı</p><p class="text-sm font-semibold text-slate-800">{{ $plan->plan_year }}</p><p class="mt-1 text-xs text-slate-500">1 Ocak–31 Aralık.</p></div>
+    @endif
             <div>
-                <label for="monthly_amount" class="mb-2 block text-sm font-medium text-slate-600">Aylık Tutar</label>
-                <div class="relative">
-                    <input id="monthly_amount" name="monthly_amount" type="number" min="0.01" step="0.01" required value="{{ old('monthly_amount', $plan?->monthly_amount) }}" placeholder="0,00" aria-describedby="amount-help" class="w-full rounded-xl border border-slate-300 py-3 pl-4 pr-12 text-sm font-semibold focus:border-emerald-500 focus:outline-none">
-                    <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-slate-400">₺</span>
-                </div>
-                <p id="amount-help" class="mt-1 text-xs text-slate-500">Dairelere dağıtılacak toplam aylık tutar.</p>
-                @error('monthly_amount')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                <label for="generate_day" class="mb-2 block text-sm font-medium text-slate-600">Oluşturma Günü</label>
+                <input id="generate_day" name="generate_day" type="number" min="1" max="28" required value="{{ old('generate_day', $plan?->generate_day ?? 1) }}" aria-describedby="generate-day-help" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                <p id="generate-day-help" class="mt-1 text-xs text-slate-500">Her ayın 1–28. günü.</p>
+                @error('generate_day')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
+            <div>
+                <label for="due_day" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Günü</label>
+                <input id="due_day" name="due_day" type="number" min="1" max="28" required value="{{ old('due_day', $plan?->due_day ?? 20) }}" aria-describedby="due-day-help" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                <p id="due-day-help" class="mt-1 text-xs text-slate-500">Her ayın 1–28. günü.</p>
+                @error('due_day')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+
     </div>
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
@@ -34,9 +52,16 @@
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
     <h2 class="mb-4 text-sm font-semibold text-slate-700">İşlem Bilgileri</h2>
-    <div class="space-y-3">
-        <div class="flex flex-col gap-3 md:flex-row md:items-end">
-            <div class="min-w-0 flex-1">
+    <div class="mb-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <div>
+                <label for="monthly_amount" class="mb-2 block text-sm font-medium text-slate-600">Aylık Dağıtılacak Toplam Tutar</label>
+                <div class="relative">
+                    <input id="monthly_amount" name="monthly_amount" type="number" min="0.01" step="0.01" required value="{{ old('monthly_amount', $plan?->monthly_amount) }}" placeholder="0,00" class="w-full rounded-xl border border-slate-300 py-3 pl-4 pr-12 text-sm font-semibold focus:border-emerald-500 focus:outline-none">
+                    <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-slate-400">₺</span>
+                </div>
+                @error('monthly_amount')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div class="min-w-0">
                 <label for="distribution_type" class="mb-2 block text-sm font-medium text-slate-600">Dağıtım Yöntemi</label>
                 <select id="distribution_type" name="distribution_type" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
                     <option value="equal" @selected(old('distribution_type', $plan?->distribution_type ?? 'equal') === 'equal')>Eşit dağıtım</option>
@@ -44,11 +69,12 @@
                     <option value="share_coefficient" @selected(old('distribution_type', $plan?->distribution_type) === 'share_coefficient')>Pay çarpanına göre</option>
                 </select>
             </div>
-            <label class="inline-flex shrink-0 cursor-pointer items-center gap-2 py-3 text-sm text-slate-600">
+            <label class="inline-flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap py-3 text-sm text-slate-600 md:mt-7">
                 <input id="round_to_integer" name="round_to_integer" type="checkbox" value="1" @checked(old('round_to_integer', $plan?->round_to_integer)) class="h-4 w-4 rounded border-slate-300 accent-emerald-600">
                 Tamsayıya yuvarla
             </label>
-        </div>
+    </div>
+    <div class="space-y-3">
         @error('distribution_type')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
         @error('round_to_integer')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
         <div id="calc-summary" class="hidden text-sm font-medium text-slate-600"></div>
@@ -66,35 +92,6 @@
         <p class="mb-1 text-xs font-medium text-slate-500">Borçlanacak Kişiler</p>
         <p class="text-sm text-slate-700">İlgili dönemde kiracı varsa kiracıya, yoksa malike borçlandırılır.</p>
         <p class="mt-2 text-xs text-slate-500">Borç türü ve kategori: Aidat.</p>
-    </div>
-</section>
-<section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
-    <h2 class="mb-4 text-sm font-semibold text-slate-700">Takvim</h2>
-    @unless ($plan?->exists)
-        <div class="min-w-0">
-            <label for="plan_year" class="mb-2 block text-sm font-medium text-slate-600">Takvim Yılı</label>
-            <input id="plan_year" name="plan_year" type="number" min="2000" max="2100" required value="{{ old('plan_year', $selectedYear ?? now()->year) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-            <p class="mt-1 text-xs text-slate-500">1 Ocak–31 Aralık. Her yıl için tek aktif plan.</p>
-        </div>
-    @endunless
-    @error('plan_year')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
-
-    @if ($plan?->exists)
-        <div><p class="mb-2 text-sm font-medium text-slate-600">Takvim Yılı</p><p class="text-sm font-semibold text-slate-800">{{ $plan->plan_year }}</p><p class="mt-1 text-xs text-slate-500">1 Ocak–31 Aralık.</p></div>
-    @endif
-    <div class="mt-4 grid grid-cols-2 gap-4">
-            <div>
-                <label for="generate_day" class="mb-2 block text-sm font-medium text-slate-600">Oluşturma Günü</label>
-                <input id="generate_day" name="generate_day" type="number" min="1" max="28" required value="{{ old('generate_day', $plan?->generate_day ?? 1) }}" aria-describedby="generate-day-help" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                <p id="generate-day-help" class="mt-1 text-xs text-slate-500">Her ayın 1–28. günü.</p>
-                @error('generate_day')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-            </div>
-            <div>
-                <label for="due_day" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Günü</label>
-                <input id="due_day" name="due_day" type="number" min="1" max="28" required value="{{ old('due_day', $plan?->due_day ?? 1) }}" aria-describedby="due-day-help" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                <p id="due-day-help" class="mt-1 text-xs text-slate-500">Son ödeme günü (1–28).</p>
-                @error('due_day')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-            </div>
     </div>
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">

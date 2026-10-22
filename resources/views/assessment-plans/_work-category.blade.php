@@ -6,7 +6,8 @@
     </div>
 @else
     @php $categoryMode = old('category_mode', 'new'); @endphp
-    <fieldset class="min-w-0 md:col-span-2">
+    <div class="grid min-w-0 gap-4 md:col-span-2 md:grid-cols-2">
+        <fieldset class="min-w-0">
         <legend class="mb-2 text-sm font-medium text-slate-600">İşin Kategorisi</legend>
         <p class="mb-3 text-xs text-slate-500">Bu kategori, planın borçlarında ve ilgili giderlerde kullanılabilir.</p>
         <div class="mb-3 flex flex-wrap gap-4 text-sm text-slate-700">
@@ -14,6 +15,8 @@
             <label class="inline-flex cursor-pointer items-center gap-2"><input type="radio" name="category_mode" value="existing" @checked($categoryMode === 'existing')> Mevcut kategoriyi kullan</label>
         </div>
         @error('category_mode')<p class="mb-2 text-sm text-red-600">{{ $message }}</p>@enderror
+        </fieldset>
+        <div class="min-w-0">
         <div id="new-work-category" @class(['hidden' => $categoryMode !== 'new'])>
             <label for="category_name" class="mb-2 block text-sm font-medium text-slate-600">Kategori Adı <span class="text-red-500">*</span></label>
             <input id="category_name" name="category_name" maxlength="255" value="{{ old('category_name', old('name', '')) }}" @required($categoryMode === 'new') @disabled($categoryMode !== 'new') aria-describedby="work-category-help" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
@@ -31,7 +34,8 @@
             <p class="mt-2 text-xs text-slate-500">Gelir ve giderde kullanılabilen aktif kategoriler listelenir. Mevcut kategorinin adı ve tipi değiştirilmez.</p>
             @error('category_id')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
-    </fieldset>
+        </div>
+    </div>
     <script>
         (() => {
             const planName = document.getElementById('name');

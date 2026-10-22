@@ -65,11 +65,11 @@
             <h2 class="px-4 py-4 text-sm font-semibold text-slate-700">Taksitlere Göre İşlem Dökümü</h2>
             <div class="hidden overflow-x-auto md:block">
                 <table class="min-w-full text-left text-sm">
-                    <thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-4 py-3">Taksit / Vade</th><th class="px-4 py-3">Planlanan Oluşturma</th><th class="px-4 py-3">İşlem</th><th class="px-4 py-3">Mevcut / Yeni Borç</th><th class="px-4 py-3 text-right">Yeni Tutar</th></tr></thead>
+                    <thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-4 py-3">Taksit / Oluşturma Tarihi</th><th class="px-4 py-3">İşlem</th><th class="px-4 py-3">Mevcut / Yeni Borç</th><th class="px-4 py-3 text-right">Yeni Tutar</th></tr></thead>
                     <tbody class="divide-y divide-slate-100">
                         @foreach ($summary['rows'] as $row)
-                            <tr><td class="px-4 py-3"><p class="font-medium">{{ $row['sequence'] }}. Taksit</p><p class="mt-1 break-words text-xs text-slate-600">{{ $row['description'] }}</p><p class="mt-1 text-xs text-slate-500">{{ $row['date'] }}</p></td><td class="px-4 py-3">{{ $proposed->createsOnSchedule() ? $row['scheduled_date'] : 'Son onayda' }}</td><td class="px-4 py-3">{{ $row['status'] }}</td><td class="px-4 py-3 tabular-nums">{{ $row['existing'] }} / {{ $row['count'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ number_format($row['amount'], 2, ',', '.') }} ₺</td></tr>
-                            <tr><td colspan="5" class="px-4 pb-3">@include('assessment-plans._summary-accounts')</td></tr>
+                            <tr><td class="px-4 py-3"><p class="font-medium">{{ $row['sequence'] }}. Taksit · {{ $row['creation_date'] }}</p><p class="mt-1 break-words text-xs text-slate-600">{{ $row['description'] }}</p></td><td class="px-4 py-3">{{ $row['status'] }}</td><td class="px-4 py-3 tabular-nums">{{ $row['existing'] }} / {{ $row['count'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ number_format($row['amount'], 2, ',', '.') }} ₺</td></tr>
+                            <tr><td colspan="4" class="px-4 pb-3">@include('assessment-plans._summary-accounts')</td></tr>
                         @endforeach
                     </tbody>
                 </table>
@@ -77,9 +77,8 @@
             <div class="divide-y divide-slate-100 md:hidden">
                 @foreach ($summary['rows'] as $row)
                     <article class="min-w-0 p-4 text-sm">
-                        <div class="flex flex-wrap justify-between gap-2"><h3 class="font-semibold text-slate-900">{{ $row['sequence'] }}. Taksit</h3><span class="text-slate-600">{{ $row['status'] }}</span></div>
+                        <div class="flex flex-wrap justify-between gap-2"><h3 class="font-semibold text-slate-900">{{ $row['sequence'] }}. Taksit · {{ $row['creation_date'] }}</h3><span class="text-slate-600">{{ $row['status'] }}</span></div>
                         <p class="mt-2 break-words text-slate-600">{{ $row['description'] }}</p>
-                        <p class="mt-2 text-xs text-slate-500">Vade: {{ $row['date'] }} · Oluşturma: {{ $proposed->createsOnSchedule() ? $row['scheduled_date'] : 'Son onayda' }}</p>
                         <p class="mt-2 text-xs text-slate-500">Mevcut: {{ $row['existing'] }} · Yeni: {{ $row['count'] }} borç</p>
                         <p class="mt-2 font-semibold tabular-nums text-slate-900">Yeni tutar: {{ number_format($row['amount'], 2, ',', '.') }} ₺</p>
                         <div class="mt-3">@include('assessment-plans._summary-accounts')</div>
@@ -87,20 +86,19 @@
                 @endforeach
             </div>
         </section>
-        <details class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
-            <summary class="cursor-pointer text-sm font-semibold text-slate-700">Daire Payları · {{ count($summary['shares']) }} daire</summary>
-            <ul class="mt-3 divide-y divide-slate-100 text-sm">
-                @foreach ($summary['shares'] as $share)
-                    <li class="flex flex-wrap justify-between gap-2 py-2"><span class="break-words text-slate-600">Daire {{ $share['unit'] }}</span><span class="font-medium tabular-nums text-slate-900">{{ number_format($share['amount'], 2, ',', '.') }} ₺</span></li>
-                @endforeach
-            </ul>
-        </details>
+        <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+            <h2 class="mb-3 text-sm font-semibold text-slate-700">Daire Payları · {{ count($summary['shares']) }} daire</h2>
+            @if (count($summary['shares']) > 0)
+                <button type="button" data-period-accounts="shares" aria-haspopup="dialog" aria-controls="period-accounts-dialog" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Daire paylarını göster</button>
+            @endif
+        </section>
         <div class="flex flex-wrap items-center justify-end gap-3">
             <p class="mr-auto text-xs text-slate-500">Son onayınıza kadar plan, taksit ve borç kaydı yapılmaz.</p>
             <button type="submit" name="return_to_form" value="1" formnovalidate class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">İptal</button>
             <button id="confirm-assessment" type="submit" @disabled($summary['current_eligible'] && $summary['current_action'] === null) class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Onayla ve Kaydet</button>
         </div>
     </form>
+    @include('assessment-plans._summary-accounts-dialog')
     <script>
         document.querySelectorAll('input[name="current_month_action"], input[type="checkbox"][name="include_past_installments"]').forEach(input => {
             input.addEventListener('change', () => {

@@ -23,24 +23,6 @@
         </div>
     </div>
 
-    @if (session('status'))
-        <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 mb-6">
-            {{ session('status') }}
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mb-6">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    @if (session('error_html'))
-        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mb-6">
-            {!! session('error_html') !!}
-        </div>
-    @endif
-
     @if ($editing)
         <form method="POST" action="{{ route('due-plans.store') }}" class="space-y-4">
             @csrf

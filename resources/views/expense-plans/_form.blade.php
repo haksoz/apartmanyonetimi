@@ -14,20 +14,6 @@
     </div>
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
-    <h2 class="mb-4 text-sm font-semibold text-slate-700">Açıklama</h2>
-    <div class="grid gap-4 md:grid-cols-2">
-                @if (isset($plan) && $plan->description)
-                    <div class="md:col-span-2">
-                        <label for="description" class="mb-2 block text-sm font-medium text-slate-600">Mevcut Özel Açıklama</label>
-                        <input id="description" name="description" value="{{ old('description', $plan->description) }}" maxlength="255" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        <p class="mt-1 text-xs text-slate-500">Ay, yıl ve kategoriyle otomatik açıklamaya geçmek için bu alanı boşaltın.</p>
-                        @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                    </div>
-                @endif
-        @include('expense-plans._description')
-    </div>
-</section>
-<section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
     <h2 class="mb-4 text-sm font-semibold text-slate-700">İşlem Bilgileri</h2>
     <div class="grid gap-4 md:grid-cols-2">
                 <div>
@@ -54,6 +40,20 @@
                     </select>
                     @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
+    </div>
+</section>
+<section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+    <h2 class="mb-4 text-sm font-semibold text-slate-700">Açıklama</h2>
+    <div class="grid gap-4 md:grid-cols-2">
+                @if (isset($plan) && $plan->description)
+                    <div class="md:col-span-2">
+                        <label for="description" class="mb-2 block text-sm font-medium text-slate-600">Mevcut Özel Açıklama</label>
+                        <input id="description" name="description" value="{{ old('description', $plan->description) }}" maxlength="255" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        <p class="mt-1 text-xs text-slate-500">Ay, yıl ve kategoriyle otomatik açıklamaya geçmek için bu alanı boşaltın.</p>
+                        @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+                @endif
+        @include('expense-plans._description')
     </div>
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">

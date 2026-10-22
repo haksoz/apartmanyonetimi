@@ -53,6 +53,7 @@ class AidatPlanSummary
                     'account_id' => $item['account']->id,
                     'unit_id' => $item['unit']->id,
                     'label' => 'Daire '.$item['unit']->unit_no.' · '.$item['account']->name,
+                    'account_type_label' => $item['account']->type_label,
                     'amount' => $calculation['snapshot'][$item['unit']->id],
                 ];
             }

@@ -90,13 +90,7 @@
                             </tr>
                             @if ($row['count'])
                                 <tr><td colspan="5" class="px-4 pb-3">
-                                    <details><summary class="cursor-pointer text-xs font-semibold text-slate-600">Hesapları ve tutarları göster</summary>
-                                        <ul class="mt-2 space-y-1 text-xs text-slate-600">
-                                            @foreach ($row['accounts'] as $account)
-                                                <li>{{ $account['label'] }} — {{ number_format($account['amount'], 2, ',', '.') }} ₺</li>
-                                            @endforeach
-                                        </ul>
-                                    </details>
+                                    <button type="button" data-period-accounts="{{ $row['period'] }}" aria-haspopup="dialog" aria-controls="period-accounts-dialog" aria-label="{{ $row['label'] }} hesaplarını ve tutarlarını göster" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Hesapları ve tutarları göster</button>
                                 </td></tr>
                             @endif
                         @endforeach
@@ -116,14 +110,9 @@
                             <div class="col-span-2"><dt class="text-slate-500">Yeni Tutar</dt><dd class="mt-1 break-all text-sm font-semibold tabular-nums text-slate-900">{{ number_format($row['amount'], 2, ',', '.') }} ₺</dd></div>
                         </dl>
                         @if ($row['count'])
-                            <details class="mt-3">
-                                <summary class="cursor-pointer text-xs font-semibold text-slate-600">Hesapları ve tutarları göster</summary>
-                                <ul class="mt-2 space-y-1 break-words text-xs text-slate-600">
-                                    @foreach ($row['accounts'] as $account)
-                                        <li>{{ $account['label'] }} — {{ number_format($account['amount'], 2, ',', '.') }} ₺</li>
-                                    @endforeach
-                                </ul>
-                            </details>
+                            <div class="mt-3">
+                                    <button type="button" data-period-accounts="{{ $row['period'] }}" aria-haspopup="dialog" aria-controls="period-accounts-dialog" aria-label="{{ $row['label'] }} hesaplarını ve tutarlarını göster" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Hesapları ve tutarları göster</button>
+                            </div>
                         @endif
                     </article>
                 @endforeach
@@ -136,6 +125,7 @@
             <button id="confirm-plan-button" type="submit" @disabled($summary['current']['eligible'] && $summary['current']['action'] === null) class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Onayla ve Kaydet</button>
         </div>
     </form>
+    @include('due-plans._summary-accounts-dialog')
     <script>
         document.querySelectorAll('input[name="current_month_action"], input[type="checkbox"][name="include_past_periods"]').forEach(input => {
             input.addEventListener('change', () => {

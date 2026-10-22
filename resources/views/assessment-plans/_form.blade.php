@@ -2,22 +2,23 @@
     <h2 id="plan-info-title" class="mb-4 text-sm font-semibold text-slate-700">Plan Bilgileri</h2>
     <div class="grid gap-4 md:grid-cols-2">
         <div>
-            <label for="name" class="mb-2 block text-sm font-medium text-slate-600">Plan Adı</label>
+            <label for="name" class="mb-2 block text-sm font-medium text-slate-600">Plan Adı <span class="text-red-500">*</span></label>
             <input id="name" name="name" value="{{ old('name', $plan->name ?? '') }}" required maxlength="255" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
             @error('name')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
-        @unless (isset($plan))
-            <div>
-                <label for="total_amount" class="mb-2 block text-sm font-medium text-slate-600">Toplam Tutar</label>
-                <input id="total_amount" type="number" name="total_amount" step="0.01" min="0.01" value="{{ old('total_amount') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
-                @error('total_amount')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
-            </div>
+        @isset($plan)
+            <div><p class="mb-2 text-sm font-medium text-slate-600">Borç Türü</p><p class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{{ $plan->due_type->label() }}</p></div>
         @else
             <div>
-                <p class="mb-2 text-sm font-medium text-slate-600">Toplam Tutar</p>
-                <p class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">{{ number_format($plan->total_amount, 2, ',', '.') }} ₺ <span class="ml-2 text-xs font-normal text-slate-500">Değiştirilemez</span></p>
+                <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
+                <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
+                    @foreach (\App\Models\AssessmentPlan::debtTypes() as $type)
+                        <option value="{{ $type->value }}" data-selects-category="{{ $type->selectsCategory() ? '1' : '0' }}" @selected(old('due_type', 'masraf_yansitma') === $type->value)>{{ $type->label() }}</option>
+                    @endforeach
+                </select>
+                @error('due_type')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
-        @endunless
+        @endisset
         @include('assessment-plans._work-category')
     </div>
 </section>
@@ -45,24 +46,32 @@
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5" aria-labelledby="debt-info-title">
     <h2 id="debt-info-title" class="mb-4 text-sm font-semibold text-slate-700">İşlem Bilgileri</h2>
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
         @isset($plan)
-            <div class="md:col-span-2">
+            <div>
+                <p class="mb-2 text-sm font-medium text-slate-600">Toplam Tutar</p>
+                <p class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">{{ number_format($plan->total_amount, 2, ',', '.') }} ₺ <span class="ml-2 text-xs font-normal text-slate-500">Değiştirilemez</span></p>
+            </div>
+            <div>
+                <p class="mb-2 text-sm font-medium text-slate-600">Taksit Sayısı</p>
+                <p class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{{ $plan->installment_count }}</p>
+            </div>
+            <div class="col-span-2">
                 <p class="mb-2 text-sm font-medium text-slate-600">Dağıtım Yöntemi</p>
                 <p class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{{ match ($plan->distribution_type) { 'square_meters' => 'Metrekareye göre', 'share_coefficient' => 'Pay çarpanına göre', default => 'Eşit dağıtım' } }}</p>
             </div>
-            <div class="md:col-span-2">
-                <p class="mb-2 text-sm font-medium text-slate-600">Borçlanacak Kişiler</p>
-                <p class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{{ $plan->target_audience === 'owner_only' ? 'Yalnızca malikler' : 'Kiracı öncelikli' }}</p>
-            </div>
-            <div><p class="mb-2 text-sm font-medium text-slate-600">Borç Türü</p><p class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{{ $plan->due_type->label() }}</p></div>
         @else
+            <div>
+                <label for="total_amount" class="mb-2 block text-sm font-medium text-slate-600">Toplam Tutar</label>
+                <input id="total_amount" type="number" name="total_amount" step="0.01" min="0.01" value="{{ old('total_amount') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
+                @error('total_amount')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
                 <div>
                     <label for="installment_count" class="mb-2 block text-sm font-medium text-slate-600">Taksit Sayısı</label>
                     <input id="installment_count" type="number" name="installment_count" min="1" max="60" value="{{ old('installment_count', 5) }}" required class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm">
                     @error('installment_count')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
-            <div>
+            <div class="col-span-2">
                 <label for="distribution_type" class="mb-2 block text-sm font-medium text-slate-600">Dağıtım Yöntemi</label>
                 <select id="distribution_type" name="distribution_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
                     @foreach (['equal' => 'Eşit dağıtım', 'square_meters' => 'Metrekareye göre', 'share_coefficient' => 'Pay çarpanına göre'] as $value => $label)
@@ -71,6 +80,15 @@
                 </select>
                 @error('distribution_type')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
+        @endisset
+    </div>
+    <div class="grid gap-4 md:grid-cols-2">
+        @isset($plan)
+            <div class="md:col-span-2">
+                <p class="mb-2 text-sm font-medium text-slate-600">Borçlanacak Kişiler</p>
+                <p class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{{ $plan->target_audience === 'owner_only' ? 'Yalnızca malikler' : 'Kiracı öncelikli' }}</p>
+            </div>
+        @else
             <div class="min-w-0 md:col-span-2">
                 @include('assessment-plans._distribution-preview')
             </div>
@@ -86,21 +104,37 @@
                 </div>
                 @error('target_audience')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
             </fieldset>
-            <div>
-                <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
-                <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
-                    @foreach (\App\Models\AssessmentPlan::debtTypes() as $type)
-                        <option value="{{ $type->value }}" data-selects-category="{{ $type->selectsCategory() ? '1' : '0' }}" @selected(old('due_type', 'masraf_yansitma') === $type->value)>{{ $type->label() }}</option>
-                    @endforeach
-                </select>
-                @error('due_type')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
-            </div>
         @endisset
     </div>
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5" aria-labelledby="calendar-title">
     <h2 id="calendar-title" class="mb-4 text-sm font-semibold text-slate-700">Takvim</h2>
     <div class="grid grid-cols-2 gap-4">
+        @isset($plan)
+            <div class="col-span-2">
+                <p class="mb-3 text-xs text-slate-500">Taksit sayısı ve vadeler değiştirilemez.</p>
+                <dl class="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <div><dt class="text-xs text-slate-500">Başlangıç Ayı</dt><dd class="mt-1 text-slate-700">{{ $plan->installments->first()?->due_date?->format('m.Y') ?? '—' }}</dd></div>
+                    <div><dt class="text-xs text-slate-500">Son Taksit Tarihi</dt><dd class="mt-1 text-slate-700">{{ $plan->installments->last()?->due_date?->format('d.m.Y') ?? '—' }}</dd></div>
+                    <div><dt class="text-xs text-slate-500">Taksit Sayısı</dt><dd class="mt-1 text-slate-700">{{ $plan->installment_count }}</dd></div>
+                    @if ($plan->installments->count() > 1)
+                        <div><dt class="text-xs text-slate-500">Taksit Aralığı (ay)</dt><dd class="mt-1 text-slate-700">{{ (int) $plan->installments->first()->due_date->copy()->startOfMonth()->diffInMonths($plan->installments->get(1)->due_date->copy()->startOfMonth()) }}</dd></div>
+                    @endif
+                </dl>
+            </div>
+        @else
+            <div class="min-w-0">
+                <label for="start_period" class="mb-2 block text-sm font-medium text-slate-600">Başlangıç Ayı</label>
+                <input id="start_period" type="month" name="start_period" value="{{ old('start_period', now()->addMonth()->format('Y-m')) }}" required class="min-w-0 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
+                <p class="mt-2 text-xs text-slate-500">İlk taksit bu ay başlar. Diğer taksitler seçilen ay aralığıyla devam eder.</p>
+                @error('start_period')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+                <div>
+                    <label for="due_interval_months" class="mb-2 block text-sm font-medium text-slate-600">Taksit Aralığı (ay)</label>
+                    <input id="due_interval_months" type="number" name="due_interval_months" min="1" max="12" value="{{ old('due_interval_months', 1) }}" required class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm">
+                    @error('due_interval_months')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+                </div>
+        @endisset
         <div>
             <label for="generate_day" class="mb-2 block text-sm font-medium text-slate-600">Oluşturma Günü (1–28)</label>
             <input id="generate_day" type="number" name="generate_day" min="1" max="28" value="{{ old('generate_day', $plan->generate_day ?? 1) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
@@ -118,31 +152,6 @@
                 @error('due_day')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
             @endisset
         </div>
-        @isset($plan)
-            <div class="col-span-2">
-                <p class="mb-3 text-xs text-slate-500">Taksit sayısı ve vadeler değiştirilemez.</p>
-                <dl class="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-                    <div><dt class="text-xs text-slate-500">Başlangıç Ayı</dt><dd class="mt-1 text-slate-700">{{ $plan->installments->first()?->due_date?->format('m.Y') ?? '—' }}</dd></div>
-                    <div><dt class="text-xs text-slate-500">Son Taksit Tarihi</dt><dd class="mt-1 text-slate-700">{{ $plan->installments->last()?->due_date?->format('d.m.Y') ?? '—' }}</dd></div>
-                    <div><dt class="text-xs text-slate-500">Taksit Sayısı</dt><dd class="mt-1 text-slate-700">{{ $plan->installment_count }}</dd></div>
-                    @if ($plan->installments->count() > 1)
-                        <div><dt class="text-xs text-slate-500">Taksit Aralığı (ay)</dt><dd class="mt-1 text-slate-700">{{ (int) $plan->installments->first()->due_date->copy()->startOfMonth()->diffInMonths($plan->installments->get(1)->due_date->copy()->startOfMonth()) }}</dd></div>
-                    @endif
-                </dl>
-            </div>
-        @else
-                <div>
-                    <label for="due_interval_months" class="mb-2 block text-sm font-medium text-slate-600">Taksit Aralığı (ay)</label>
-                    <input id="due_interval_months" type="number" name="due_interval_months" min="1" max="12" value="{{ old('due_interval_months', 1) }}" required class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm">
-                    @error('due_interval_months')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-            <div class="col-span-2">
-                <label for="start_period" class="mb-2 block text-sm font-medium text-slate-600">Başlangıç Ayı</label>
-                <input id="start_period" type="month" name="start_period" value="{{ old('start_period', now()->addMonth()->format('Y-m')) }}" required class="min-w-0 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
-                <p class="mt-2 text-xs text-slate-500">İlk taksit bu ay başlar. Diğer taksitler seçilen ay aralığıyla devam eder.</p>
-                @error('start_period')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
-            </div>
-        @endisset
     </div>
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5" aria-labelledby="generation-title">

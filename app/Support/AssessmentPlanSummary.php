@@ -76,6 +76,7 @@ class AssessmentPlanSummary
                 $accounts[] = [
                     'unit_id' => $line['unit']?->id, 'unit' => $line['unit']?->unit_no ?? '—',
                     'account_id' => $account?->id, 'account' => $account?->name,
+                    'account_type_label' => $account?->type_label,
                     'amount' => $line['amount'], 'existing' => $liveDue, 'linked' => $line['due_id'] !== null,
                 ];
             }
@@ -103,6 +104,7 @@ class AssessmentPlanSummary
                 'date' => $date->format('d.m.Y'), 'due_date' => $date->toDateString(),
                 'description' => $spec['description'] ?? $plan->installmentDescription($spec['sequence']),
                 'scheduled_date' => $date->copy()->startOfMonth()->day($plan->generate_day)->format('d.m.Y'),
+                'creation_date' => $date->copy()->startOfMonth()->day($plan->generate_day)->format('d.m.Y'),
                 'status' => $status, 'existing' => $existing, 'count' => $rowCount, 'amount' => $cents / 100,
                 'total' => array_sum(array_column($accounts, 'amount')), 'accounts' => $accounts,
                 'selected' => $selected, 'missing_accounts' => $missingAccounts,

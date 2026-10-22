@@ -633,6 +633,7 @@ class FinancialPlanningTest extends TestCase
         $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
         $this->assertSame(['2027-01-28', '2027-03-28', '2027-05-28'], array_column($preview->viewData('summary')['rows'], 'due_date'));
         $this->assertSame(['02.01.2027', '02.03.2027', '02.05.2027'], array_column($preview->viewData('summary')['rows'], 'scheduled_date'));
+        $this->assertSame(['02.01.2027', '02.03.2027', '02.05.2027'], array_column($preview->viewData('summary')['rows'], 'creation_date'));
         $this->assertSame(0, AssessmentPlan::count());
         $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
         $plan = AssessmentPlan::firstOrFail();
@@ -810,9 +811,9 @@ class FinancialPlanningTest extends TestCase
             ->get(route('due-plans.index', ['year' => 2026]))->assertOk()
             ->assertSee(route('dues.index', $query));
         $filtered = $this->get(route('dues.index', $query))->assertOk()
-            ->assertSee('Plan: Aidat Kararı (2026)')
-            ->assertSee('Kaynak: Aidat Planı')
-            ->assertSee('Borç Türü: Aidat')
+            ->assertSee('Aidat Kararı (2026)')
+            ->assertSee('Aidat Planı')
+            ->assertSee('Aidat')
             ->assertDontSee('Borçlandırma Grubu #')
             ->assertSee(route('dues.index', ['due_type' => 'aidat', 'source' => 'plan', 'period' => '2026-10']))
             ->assertSee('Tümünü temizle');
