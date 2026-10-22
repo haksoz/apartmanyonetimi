@@ -127,8 +127,15 @@ class ExpensePageTest extends TestCase
             ->assertSee('text-xl font-bold text-slate-900', false)
             ->assertSee('text-sm text-slate-400', false)
             ->assertSee('Detaylar')
+            ->assertSee('Kaynak')
+            ->assertSee('Manuel')
             ->assertSee('history.back()', false)
             ->assertDontSee('Gider Detayı');
+
+        $expense->update(['is_imported' => true]);
+        $this->get(route('expenses.show', $expense))
+            ->assertOk()
+            ->assertSee('İçe Aktarma');
     }
 
     public function test_expense_create_form_opens_for_selected_apartment(): void

@@ -12,6 +12,12 @@
                 <a href="{{ route('dues.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 text-center">Borçlandır</a>
                 <a href="{{ route('dues.batch.create') }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 text-center">Toplu Borçlandır</a>
             @endif
+            <button type="button" onclick="history.back()" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                </svg>
+                Geri
+            </button>
         </div>
     </div>
 
@@ -19,6 +25,8 @@
     <div class="mb-4 flex flex-row items-center justify-between gap-3">
         {{-- Arama --}}
         <form method="GET" action="{{ route('dues.index') }}" class="flex gap-2 flex-1 min-w-0">
+            @if ($filters['filterDueType'])<input type="hidden" name="due_type" value="{{ $filters['filterDueType'] }}">@endif
+            @if ($filters['filterPlan'])<input type="hidden" name="plan" value="{{ $filters['filterPlan'] }}">@endif
             @if ($filters['filterBatchId'])
                 <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
             @endif
@@ -64,6 +72,9 @@
 
         @php
             $activeFilterCount = 0;
+            if ($filters['filterDueType']) $activeFilterCount++;
+            if ($filters['filterPlan']) $activeFilterCount++;
+            if ($filters['filterBatchId']) $activeFilterCount++;
             if ($filters['filterStartDate'] || $filters['filterEndDate']) $activeFilterCount++;
             if ($filters['filterPeriod']) $activeFilterCount++;
             if ($filters['filterStatus']) $activeFilterCount++;
@@ -78,7 +89,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.238 2.022l-3.158 1.579A2.25 2.25 0 018.25 20.05v-5.83a2.25 2.25 0 00-.659-1.591L2.659 7.197A2.25 2.25 0 012 5.606V4.562c0-.54.384-1.006.917-1.096A49.32 49.32 0 0112 3z"/>
             </svg>
-            <span class="hidden md:inline">Filitrele</span>
+            <span class="hidden md:inline">Filtrele</span>
             @if ($activeFilterCount > 0)
                 <span class="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-950">{{ $activeFilterCount }}</span>
             @endif
@@ -88,12 +99,30 @@
     @php
         $statusLabels = ['unpaid' => 'Bekliyor', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
         $accountTypeLabels = ['owner' => 'Kat Maliki', 'tenant' => 'Kiracı', 'supplier' => 'Tedarikçi'];
-        $sourceLabels = ['plan' => 'Aidat Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel'];
+        $sourceLabels = ['plan' => 'Aidat Planı', 'assessment' => 'Taksitli Borç Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel'];
     @endphp
 
     @if ($activeFilterCount > 0)
         <div class="mb-4 flex flex-wrap items-center gap-2">
             <span class="text-xs font-medium text-slate-500">Aktif filtreler:</span>
+            @if ($filters['filterDueType'])
+                <a href="{{ route('dues.index', request()->except(['due_type', 'page'])) }}" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    {{ \App\Enums\DueType::from($filters['filterDueType'])->label() }} <span>&times;</span>
+                </a>
+            @endif
+            @if ($filters['filterPlan'])
+                <a href="{{ route('dues.index', request()->except(['plan', 'page'])) }}" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    {{ $selectedPlan['label'] ?? 'Plan bulunamadı' }} <span>&times;</span>
+                </a>
+            @endif
+            @if ($filters['filterBatchId'])
+                <a href="{{ route('dues.index', request()->except(['batch_id', 'page'])) }}"
+                   aria-label="Borçlandırma grubu filtresini kaldır"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    Borçlandırma Grubu #{{ $filters['filterBatchId'] }}
+                    <span class="text-slate-500">&times;</span>
+                </a>
+            @endif
             @if ($filters['filterStartDate'] || $filters['filterEndDate'])
                 <a href="{{ route('dues.index', request()->except(['start_date', 'end_date'])) }}"
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
@@ -146,7 +175,7 @@
                     <span class="text-blue-500">&times;</span>
                 </a>
             @endif
-            <a href="{{ route('dues.index', request()->only(['search', 'batch_id', 'sort_by', 'sort_direction'])) }}"
+            <a href="{{ route('dues.index', request()->only(['search', 'sort_by', 'sort_direction'])) }}"
                class="ml-1 text-xs font-medium text-slate-400 hover:text-slate-600 underline">
                 Tümünü temizle
             </a>
@@ -181,6 +210,15 @@
                 @endif
 
                 <div class="flex-1 space-y-4">
+                    <div>
+                        <label for="filter-due-type" class="mb-1.5 block text-sm font-medium text-slate-700">Borç Türü</label>
+                        <select id="filter-due-type" name="due_type" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                            <option value="">Tüm Borç Türleri</option>
+                            @foreach ($dueTypeOptions as $option)
+                                <option value="{{ $option['value'] }}" @selected($filters['filterDueType'] === $option['value'])>{{ $option['label'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">Başlangıç Tarihi</label>
                         <input type="date" name="start_date" value="{{ $filters['filterStartDate'] }}"
@@ -232,11 +270,22 @@
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">Kaynak</label>
-                        <select name="source" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
+                        <select id="filter-source" name="source" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
                             <option value="">Tüm Kaynaklar</option>
                             <option value="plan"   {{ $filters['filterSource'] === 'plan'   ? 'selected' : '' }}>Aidat Planı</option>
+                            <option value="assessment" @selected($filters['filterSource'] === 'assessment')>Taksitli Borç Planı</option>
                             <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
                             <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
+                        </select>
+                    </div>
+
+                    <div id="filter-plan-field">
+                        <label for="filter-plan" class="mb-1.5 block text-sm font-medium text-slate-700">Plan</label>
+                        <select id="filter-plan" name="plan" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                            <option value="">Tüm Planlar</option>
+                            @foreach ($planOptions as $option)
+                                <option value="{{ $option['value'] }}" data-source="{{ $option['source'] }}" @selected($filters['filterPlan'] === $option['value'])>{{ $option['label'] }}</option>
+                            @endforeach
                         </select>
                     </div>
 
@@ -268,13 +317,6 @@
             </form>
         </div>
     </div>
-
-    @if ($filters['filterBatchId'])
-        <div class="mb-3 flex items-center gap-1.5 rounded-full bg-violet-50 border border-violet-200 px-3 py-1.5 text-xs font-semibold text-violet-700 w-fit">
-            Toplu kayıt filtresi aktif
-            <a href="{{ route('dues.index') }}" class="ml-1 text-violet-500 hover:text-violet-800">&times;</a>
-        </div>
-    @endif
 
     {{-- Toplu Aksiyon Barı --}}
     <form id="form-bulk-destroy" method="POST" action="{{ route('dues.bulk-destroy') }}" onsubmit="return confirmBulkDelete()">
@@ -343,6 +385,8 @@
                             <div class="text-xs text-slate-500 mt-1">
                                 @if ($due->batch?->plan)
                                     Aidat Planı ile
+                                @elseif ($due->batch?->assessment_plan_id)
+                                    Taksitli Borç Planı
                                 @elseif ($due->batch)
                                     Toplu Borçlandırma
                                 @else
@@ -574,6 +618,24 @@
             if (cb) cb.checked = false;
             form.submit();
         }
+
+        (() => {
+            const source = document.getElementById('filter-source');
+            const plan = document.getElementById('filter-plan');
+            const field = document.getElementById('filter-plan-field');
+            const syncPlans = () => {
+                const allowed = !source.value || ['plan', 'assessment'].includes(source.value);
+                field.classList.toggle('hidden', !allowed);
+                plan.disabled = !allowed;
+                for (const option of plan.options) {
+                    option.hidden = !!option.value && !!source.value && option.dataset.source !== source.value;
+                    option.disabled = option.hidden;
+                }
+                if (!allowed || plan.selectedOptions[0]?.disabled) plan.value = '';
+            };
+            source.addEventListener('change', syncPlans);
+            syncPlans();
+        })();
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') closeFilterModal();

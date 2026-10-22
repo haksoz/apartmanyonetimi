@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\AccountPortalOffer;
 use App\Models\ManagementOffer;
 use App\Models\User;
 use App\Models\UserInvitation;
@@ -59,73 +60,12 @@ class AccountUserController extends Controller
             ->get()
             ->groupBy('user_id');
 
-        // Sadece user'a bağlı olmayan boşta hesapları getir (sadece aktif ve tedarikçi olmayan)
-        $availableAccounts = Account::where('apartment_id', $apartment->id)
-            ->whereNull('user_id')
-            ->where('is_active', true)
-            ->where('type', '!=', Account::TYPE_SUPPLIER)
-            ->with('unit')
-            ->get();
-
         $pendingManagerIds = ManagementOffer::query()
             ->where('apartment_id', $apartment->id)
             ->openPending()
             ->pluck('user_id');
 
-        return view('users.index', compact('apartment', 'users', 'linkedAccounts', 'availableAccounts', 'pendingManagerIds'));
-    }
-
-    /**
-     * Yeni kullanıcı oluşturma formu.
-     */
-    public function create(CurrentApartment $currentApartment)
-    {
-        $apartment = $currentApartment->getFor(auth()->user());
-
-        // Boşta hesapları getir (sadece aktif ve tedarikçi olmayan)
-        $availableAccounts = Account::where('apartment_id', $apartment->id)
-            ->whereNull('user_id')
-            ->where('is_active', true)
-            ->where('type', '!=', Account::TYPE_SUPPLIER)
-            ->with('unit')
-            ->get();
-
-        // Sadece kullanıcı bağlanmamış hesap isimleri (Ad Soyad için öneri)
-        $accountNames = Account::where('apartment_id', $apartment->id)
-            ->whereNull('user_id')
-            ->where('type', '!=', Account::TYPE_SUPPLIER)
-            ->whereNotNull('name')
-            ->pluck('name')
-            ->unique()
-            ->values();
-
-        return view('users.create', compact('apartment', 'availableAccounts', 'accountNames'));
-    }
-
-    /**
-     * E-posta adresine göre sistemde kayıtlı kullanıcı ara (JSON).
-     */
-    public function lookupEmail(Request $request, CurrentApartment $currentApartment)
-    {
-        $apartment = $currentApartment->getFor(auth()->user());
-        $email = $request->query('email', '');
-
-        $user = User::where('email', $email)->first();
-
-        if (! $user) {
-            return response()->json(['found' => false]);
-        }
-
-        $isMember = $apartment
-            ? $apartment->members()->whereKey($user->id)->exists()
-            : false;
-
-        return response()->json([
-            'found'     => true,
-            'name'      => $user->name,
-            'phone'     => $user->phone,
-            'is_member' => $isMember,
-        ]);
+        return view('users.index', compact('apartment', 'users', 'linkedAccounts', 'pendingManagerIds'));
     }
 
     /**
@@ -140,44 +80,15 @@ class AccountUserController extends Controller
             ->with('unit')
             ->get();
 
-        $availableAccounts = Account::where('apartment_id', $apartment->id)
-            ->whereNull('user_id')
-            ->where('is_active', true)
-            ->where('type', '!=', Account::TYPE_SUPPLIER)
-            ->with('unit')
-            ->get();
-
-        return view('users.show', compact('apartment', 'user', 'linkedAccounts', 'availableAccounts'));
+        return view('users.show', compact('apartment', 'user', 'linkedAccounts'));
     }
 
     /**
-     * Kullanıcı düzenleme formu.
+     * Eski düzenleme adresi detaya döner.
      */
-    public function edit(CurrentApartment $currentApartment, User $user)
+    public function edit(User $user)
     {
-        if ($user->isActivated()) {
-            return redirect()
-                ->route('users.show', $user)
-                ->withErrors(['name' => 'Daveti kabul eden kişinin ad, e-posta ve telefonunu kendisi düzenler.']);
-        }
-
-        $apartment = $currentApartment->getFor(auth()->user());
-
-        // Kullanıcının bağlı olduğu hesaplar
-        $linkedAccounts = Account::where('apartment_id', $apartment->id)
-            ->where('user_id', $user->id)
-            ->with('unit')
-            ->get();
-
-        // Bağlanabilecek boşta hesaplar (sadece aktif ve tedarikçi olmayan)
-        $availableAccounts = Account::where('apartment_id', $apartment->id)
-            ->whereNull('user_id')
-            ->where('is_active', true)
-            ->where('type', '!=', Account::TYPE_SUPPLIER)
-            ->with('unit')
-            ->get();
-
-        return view('users.edit', compact('apartment', 'user', 'linkedAccounts', 'availableAccounts'));
+        return redirect()->route('users.show', $user);
     }
 
     /**
@@ -193,11 +104,21 @@ class AccountUserController extends Controller
 
         $apartment = $currentApartment->getFor(auth()->user());
 
+        $hasLinkedAccount = Account::query()
+            ->where('apartment_id', $apartment->id)
+            ->where('user_id', $user->id)
+            ->exists();
+
+        if ($hasLinkedAccount) {
+            return redirect()
+                ->route('users.show', $user)
+                ->withErrors(['name' => 'Bu kişinin adı, e-postası ve telefonu bağlı hesabından düzenlenir.']);
+        }
+
         $validated = $request->validate([
-            'name'             => ['required', 'string', 'max:255'],
-            'email'            => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
-            'phone'            => ['nullable', 'string', 'max:255'],
-            'sync_account_info'=> ['nullable', 'boolean'],
+            'name'  => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'phone' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user->update([
@@ -206,102 +127,124 @@ class AccountUserController extends Controller
             'phone' => $validated['phone'] ?? null,
         ]);
 
-        // Bağlı hesapları sadece kullanıcı onaylarsa güncelle
-        if (! empty($validated['sync_account_info'])) {
-            Account::where('apartment_id', $apartment->id)
-                ->where('user_id', $user->id)
-                ->update([
-                    'name'  => $user->name,
-                    'phone' => $user->phone,
-                    'email' => $user->email,
-                ]);
-        }
-
         return redirect()->route('users.show', $user)->with('status', $user->name.' kullanıcısı güncellendi.');
     }
 
     /**
-     * Hesaba mevcut kullanıcıyı e-posta ile bağla (varsa) veya yeni oluştur.
+     * Hesabın e-postasıyla AidatCep kullanıcısı aç veya mevcut kullanıcıyı bağla.
      */
-    public function store(Request $request, CurrentApartment $currentApartment, Account $account)
+    public function store(CurrentApartment $currentApartment, Account $account)
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
         abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
+        abort_unless(in_array($account->type, [Account::TYPE_OWNER, Account::TYPE_TENANT], true), 404);
 
-        $validated = $request->validate([
-            'name'  => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:255'],
-        ]);
+        if ($account->user_id) {
+            return back()->withErrors(['email' => 'Bu hesabın AidatCep kullanıcısı zaten var.']);
+        }
 
-        $user = DB::transaction(function () use ($validated, $account, $apartment) {
-            $user = User::query()->where('email', $validated['email'])->first();
+        if (! filled($account->email)) {
+            return back()->withErrors(['email' => 'Önce bu hesaba e-posta yazın.']);
+        }
+
+        $user = DB::transaction(function () use ($account, $apartment) {
+            $user = User::query()->where('email', $account->email)->first();
 
             if (! $user) {
                 $user = User::create([
-                    'name' => $validated['name'],
-                    'email' => $validated['email'],
-                    'phone' => $validated['phone'] ?? null,
+                    'name' => $account->name,
+                    'email' => $account->email,
+                    'phone' => $account->phone,
                     'password' => Str::random(32),
                     'role' => 'user',
                     'activated_at' => null,
                 ]);
             }
 
+            $alreadyMember = $apartment->members()->whereKey($user->id)->exists();
+
+            if ($user->isActivated() && ! $alreadyMember) {
+                AccountPortalOffer::query()
+                    ->where('account_id', $account->id)
+                    ->where('status', AccountPortalOffer::STATUS_PENDING)
+                    ->update([
+                        'status' => AccountPortalOffer::STATUS_REJECTED,
+                        'rejected_at' => now(),
+                    ]);
+
+                AccountPortalOffer::query()->create([
+                    'apartment_id' => $apartment->id,
+                    'account_id' => $account->id,
+                    'user_id' => $user->id,
+                    'offered_by' => auth()->id(),
+                    'status' => AccountPortalOffer::STATUS_PENDING,
+                ]);
+
+                return $user;
+            }
+
             $account->update([
                 'user_id' => $user->id,
             ]);
 
-            if (! $apartment->members()->whereKey($user->id)->exists()) {
-                $apartment->members()->attach($user->id, ['role' => 'member']);
+            if (! $alreadyMember) {
+                $apartment->members()->attach($user->id, ['role' => 'member', 'is_active' => true]);
             }
 
             return $user;
         });
 
-        return $this->redirectAfterProvision($user, 'Kullanıcı hesaba bağlandı.');
+        $redirect = redirect()
+            ->route('accounts.show', $account)
+            ->with('status', $account->fresh()->user_id
+                ? ($user->isActivated()
+                    ? 'AidatCep kullanıcısı bu hesaba bağlandı.'
+                    : 'AidatCep kullanıcısı eklendi. Davet bağlantısını iletin.')
+                : 'Davet iletildi. Kişi oturum açınca kabul veya ret edecek.');
+
+        if ($user->isActivated()) {
+            return $redirect;
+        }
+
+        return $redirect->with('invite_url', route('invite.show', UserInvitation::issue($user)));
     }
 
-    /**
-     * Mevcut kullanıcıya hesap bağla.
-     */
-    public function attachAccounts(Request $request, CurrentApartment $currentApartment, User $user)
+    public function refreshAccountInvite(CurrentApartment $currentApartment, Account $account)
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
-        abort_unless($apartment, 403);
+        abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
+        abort_unless($account->user_id, 404);
 
-        $validated = $request->validate([
-            'account_ids'       => ['required', 'array', 'min:1'],
-            'account_ids.*'     => ['integer', 'exists:accounts,id'],
-            'sync_account_info' => ['nullable', 'boolean'],
-        ]);
+        $user = User::query()->findOrFail($account->user_id);
 
-        $accounts = Account::where('apartment_id', $apartment->id)
-            ->whereNull('user_id')
-            ->whereIn('id', $validated['account_ids'])
-            ->get();
-
-        $syncInfo = ! empty($validated['sync_account_info']);
-
-        foreach ($accounts as $account) {
-            $updateData = ['user_id' => $user->id];
-
-            if ($syncInfo) {
-                $updateData['name']  = $user->name;
-                $updateData['phone'] = $user->phone;
-                $updateData['email'] = $user->email;
-            }
-
-            $account->update($updateData);
-
-            if ($account->type === Account::TYPE_TENANT && $account->unit) {
-                $account->unit->update(['occupant_account_id' => $account->id]);
-            }
+        if ($user->isActivated()) {
+            return back()->withErrors(['invite' => 'Bu kullanıcı daveti zaten kabul etti.']);
         }
 
-        return back()->with('status', 'Hesap(lar) kullanıcıya bağlandı.');
+        return redirect()
+            ->route('accounts.show', $account)
+            ->with('invite_url', route('invite.show', UserInvitation::issue($user)))
+            ->with('status', 'Yeni davet bağlantısı hazır.');
+    }
+
+    public function applyIdentity(CurrentApartment $currentApartment, Account $account)
+    {
+        $apartment = $currentApartment->getFor(auth()->user());
+
+        abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
+        abort_unless($account->user_id, 404);
+
+        $user = User::query()->findOrFail($account->user_id);
+        abort_unless($user->isActivated(), 403);
+
+        $account->update([
+            'name' => $user->name,
+            'phone' => $user->phone,
+        ]);
+
+        return back()->with('status', 'AidatCep adı ve telefonu bu hesaba yazıldı.');
     }
 
     /**
@@ -392,72 +335,6 @@ class AccountUserController extends Controller
         return back()->withErrors(['password' => 'Parola kişiye aittir. Hesabım sayfasından değiştirilir.']);
     }
 
-    /**
-     * Yeni kullanıcı oluştur ve seçilen hesaplara bağla.
-     */
-    public function storeUser(Request $request, CurrentApartment $currentApartment)
-    {
-        $apartment = $currentApartment->getFor(auth()->user());
-
-        $validated = $request->validate([
-            'name'            => ['required', 'string', 'max:255'],
-            'email'           => ['required', 'email', 'max:255'],
-            'phone'           => ['nullable', 'string', 'max:255'],
-            'account_ids'     => ['nullable', 'array'],
-            'account_ids.*'   => ['integer', 'exists:accounts,id'],
-            'sync_account_info' => ['nullable', 'boolean'],
-        ]);
-
-        $user = User::query()->where('email', $validated['email'])->first();
-
-        if ($user && $apartment->members()->whereKey($user->id)->exists()) {
-            return back()->withErrors(['email' => $user->name.' zaten bu apartmanın üyesi.'])->withInput();
-        }
-
-        if (! $user) {
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'phone' => $validated['phone'] ?? null,
-                'password' => Str::random(32),
-                'role' => 'user',
-                'activated_at' => null,
-            ]);
-        }
-
-        // Apartmana ekle
-        $apartment->members()->attach($user->id, ['role' => 'member']);
-
-        // Seçilen hesaplara bağla
-        if (! empty($validated['account_ids'])) {
-            $accounts = Account::where('apartment_id', $apartment->id)
-                ->whereNull('user_id')
-                ->whereIn('id', $validated['account_ids'])
-                ->get();
-
-            $syncInfo = ! empty($validated['sync_account_info']);
-
-            foreach ($accounts as $account) {
-                $updateData = ['user_id' => $user->id];
-
-                if ($syncInfo) {
-                    $updateData['name']  = $user->name;
-                    $updateData['phone'] = $user->phone;
-                    $updateData['email'] = $user->email;
-                }
-
-                $account->update($updateData);
-
-                // Tenant ise unit occupant'ını güncelle
-                if ($account->type === Account::TYPE_TENANT && $account->unit) {
-                    $account->unit->update(['occupant_account_id' => $account->id]);
-                }
-            }
-        }
-
-        return $this->redirectAfterProvision($user, $user->name.' kullanıcısı oluşturuldu ve hesaplara bağlandı.');
-    }
-
     public function refreshInvite(CurrentApartment $currentApartment, User $user)
     {
         $apartment = $currentApartment->getFor(auth()->user());
@@ -471,23 +348,9 @@ class AccountUserController extends Controller
 
         $plain = UserInvitation::issue($user);
 
-        return redirect()
-            ->route('users.show', $user)
+        return back()
             ->with('invite_url', route('invite.show', $plain))
-            ->with('status', 'Yeni davet bağlantısı hazır.');
-    }
-
-    private function redirectAfterProvision(User $user, string $status)
-    {
-        $redirect = redirect()->route('users.show', $user)->with('status', $status);
-
-        if ($user->isActivated()) {
-            return $redirect;
-        }
-
-        $plain = UserInvitation::issue($user);
-
-        return $redirect->with('invite_url', route('invite.show', $plain));
+            ->with('invite_user_id', $user->id);
     }
 
     /**
@@ -528,10 +391,20 @@ class AccountUserController extends Controller
         $userId = $account->user_id;
         $account->update(['user_id' => null]);
 
+        AccountPortalOffer::query()
+            ->where('account_id', $account->id)
+            ->where('status', AccountPortalOffer::STATUS_PENDING)
+            ->update([
+                'status' => AccountPortalOffer::STATUS_REJECTED,
+                'rejected_at' => now(),
+            ]);
+
         if ($userId && ! $apartment->members()->whereKey($userId)->exists()) {
             $apartment->members()->attach($userId, ['role' => 'member']);
         }
 
-        return back()->with('status', 'Kullanıcı bağlantısı kaldırıldı.');
+        return back()->with('status', $userId
+            ? 'AidatCep bağlantısı kaldırıldı.'
+            : 'Bekleyen davet iptal edildi.');
     }
 }

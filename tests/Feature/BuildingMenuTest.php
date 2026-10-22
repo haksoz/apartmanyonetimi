@@ -44,6 +44,8 @@ class BuildingMenuTest extends TestCase
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->get(route('accounts.index'))
             ->assertOk()
+            ->assertSee('Abone Panelim')
+            ->assertDontSee('sidebar-text">Abone Paneli', false)
             ->assertSee('sidebar-text">Özet', false)
             ->assertDontSee('sidebar-text">Dairem', false)
             ->assertDontSee('sidebar-text">Dashboard', false);
@@ -59,7 +61,8 @@ class BuildingMenuTest extends TestCase
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->get(route('accounts.index'))
             ->assertOk()
-            ->assertSee('sidebar-text">Abone Paneli', false)
+            ->assertSee('Abone Panelim')
+            ->assertDontSee('sidebar-text">Abone Paneli', false)
             ->assertSee('sidebar-text">Raporlar', false)
             ->assertDontSee('sidebar-text">Dairem', false);
 

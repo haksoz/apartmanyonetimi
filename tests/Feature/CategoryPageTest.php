@@ -122,6 +122,18 @@ class CategoryPageTest extends TestCase
             'type' => Category::TYPE_EXPENSE,
             'is_system' => false,
         ]);
+        $this->assertDatabaseHas('categories', [
+            'apartment_id' => $apartment->id,
+            'name' => 'Ceza',
+            'type' => Category::TYPE_INCOME,
+            'is_system' => true,
+        ]);
+        $this->assertDatabaseHas('categories', [
+            'apartment_id' => $apartment->id,
+            'name' => 'Faiz',
+            'type' => Category::TYPE_INCOME,
+            'is_system' => true,
+        ]);
     }
     public function test_system_category_cannot_be_deleted(): void
     {

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Account;
 use App\Models\Apartment;
 use App\Models\ManagementOffer;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\UserInvitation;
 use App\Models\UserQuotaOverride;
@@ -24,14 +26,24 @@ class UserInvitationTest extends TestCase
     {
         [$manager, $apartment] = $this->managerApartment();
 
+        $unit = Unit::create([
+            'apartment_id' => $apartment->id,
+            'unit_no' => '1',
+        ]);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER,
+            'name' => 'Davet Edilen',
+            'email' => 'davet@example.com',
+            'phone' => '5551112233',
+            'is_active' => true,
+        ]);
+
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->post(route('users.store'), [
-                'name' => 'Davet Edilen',
-                'email' => 'davet@example.com',
-                'phone' => '5551112233',
-            ])
-            ->assertRedirect();
+            ->post(route('accounts.user.store', $account))
+            ->assertRedirect(route('accounts.show', $account));
 
         $invited = User::query()->where('email', 'davet@example.com')->firstOrFail();
         $this->assertNull($invited->activated_at);
@@ -43,10 +55,12 @@ class UserInvitationTest extends TestCase
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->get(route('users.show', $invited))
+            ->get(route('accounts.show', $account))
             ->assertOk()
-            ->assertSee($url, false)
-            ->assertSee('Bağlantıyı yenile')
+            ->assertSee('Kullanıcılar', false)
+            ->assertSee('ekranından takip edin ve yönetin')
+            ->assertSee('AidatCep Portal Erişimi')
+            ->assertSee('Açık')
             ->assertDontSee('Şifre Belirle');
 
         $invited->update(['password' => 'bilinen-parola']);
@@ -110,11 +124,12 @@ class UserInvitationTest extends TestCase
 
         $response = $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->from(route('users.index'))
             ->followingRedirects()
             ->post(route('users.invite', $invited));
 
         $response->assertOk();
-        $this->assertSame(1, substr_count($response->getContent(), 'Yeni davet bağlantısı hazır.'));
+        $this->assertSame(2, substr_count($response->getContent(), 'Yeni davet bağlantısı hazır.'));
         preg_match('#/davet/([^"\s<]+)#', $response->getContent(), $invite);
         $second = $invite[1];
         $this->assertNotSame($first, $second);

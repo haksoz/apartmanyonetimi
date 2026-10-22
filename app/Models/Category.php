@@ -68,6 +68,8 @@ class Category extends Model
             'Temizlik' => 6,
             'Yönetim' => 7,
             'Bakım' => 8,
+            'Ceza' => 9,
+            'Faiz' => 10,
             'Diğer' => 1000,
         ];
 
@@ -91,6 +93,8 @@ class Category extends Model
             ['name' => 'Temizlik', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
             ['name' => 'Yönetim', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
             ['name' => 'Bakım', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
+            ['name' => 'Ceza', 'type' => self::TYPE_INCOME, 'is_system' => true],
+            ['name' => 'Faiz', 'type' => self::TYPE_INCOME, 'is_system' => true],
             ['name' => 'Diğer', 'type' => self::TYPE_ALL, 'is_system' => true],
         ];
 

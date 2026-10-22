@@ -11,6 +11,8 @@ use App\Models\CashTransaction;
 use App\Models\Category;
 use App\Models\Due;
 use App\Models\DueBatch;
+use App\Models\DuePlan;
+use App\Models\AssessmentPlan;
 use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\TenantAssignment;
@@ -54,6 +56,14 @@ class DueController extends Controller
         $filterSearch  = $request->query('search');
         $filterUnitId  = $request->query('unit_id');
         $filterAccountType = $request->query('account_type');
+        $request->validate([
+            'due_type' => ['nullable', Rule::in(DueType::values())],
+            'plan' => ['nullable', 'regex:/^(aidat|assessment):[1-9][0-9]*$/'],
+            'source' => ['nullable', Rule::in(['plan', 'assessment', 'batch', 'manual'])],
+        ]);
+        $filterDueType = $request->query('due_type');
+        $filterPlan = $request->query('plan');
+        [$planType, $planId] = $filterPlan ? explode(':', $filterPlan) : [null, null];
         $showImported = $request->boolean('show_imported', false);
 
         $isOwner = $this->isOwnerOf($apartment);
@@ -92,12 +102,15 @@ class DueController extends Controller
                 }
             })
             ->when($filterPeriod, fn ($q) => $q->where('period', $filterPeriod))
+            ->when($filterDueType, fn ($q) => $q->where('due_type', $filterDueType))
+            ->when($filterPlan, fn ($q) => $q->whereHas('batch', fn ($b) => $b->where($planType === 'aidat' ? 'due_plan_id' : 'assessment_plan_id', $planId)))
             ->when($filterStatus,  fn ($q) => $this->applyStatusFilter($q, $filterStatus))
             ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))
             ->when($filterUnitId,  fn ($q) => $q->where('unit_id', $filterUnitId))
             ->when($filterAccountType, fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $filterAccountType)))
             ->when($filterSource === 'plan',   fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('due_plan_id')))
-            ->when($filterSource === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNull('due_plan_id')))
+            ->when($filterSource === 'assessment', fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('assessment_plan_id')))
+            ->when($filterSource === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNull('due_plan_id')->whereNull('assessment_plan_id')))
             ->when($filterSource === 'manual', fn ($q) => $q->whereNull('due_batch_id'))
             ->when(! $showImported, fn ($q) => $q->where('is_imported', false));
 
@@ -123,7 +136,24 @@ class DueController extends Controller
                 ->get()
             : collect();
 
-        $filters = compact('filterStartDate', 'filterEndDate', 'filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'showImported');
+        $planOptions = collect();
+        if ($apartment) {
+            $visibleBatches = DueBatch::query()->where('apartment_id', $apartment->id)
+                ->when($memberAccountIds !== null, fn ($q) => $q->whereHas('dues', fn ($d) => $d->whereIn('account_id', $memberAccountIds)));
+            foreach (DuePlan::where('apartment_id', $apartment->id)
+                ->when($memberAccountIds !== null, fn ($q) => $q->whereIn('id', (clone $visibleBatches)->select('due_plan_id')))
+                ->orderByDesc('plan_year')->get() as $plan) {
+                $planOptions->push(['value' => 'aidat:'.$plan->id, 'source' => 'plan', 'label' => $plan->name.' ('.$plan->plan_year.')']);
+            }
+            foreach (AssessmentPlan::where('apartment_id', $apartment->id)
+                ->when($memberAccountIds !== null, fn ($q) => $q->whereIn('id', (clone $visibleBatches)->select('assessment_plan_id')))
+                ->orderByDesc('id')->get() as $plan) {
+                $planOptions->push(['value' => 'assessment:'.$plan->id, 'source' => 'assessment', 'label' => $plan->name]);
+            }
+        }
+        $selectedPlan = $planOptions->firstWhere('value', $filterPlan);
+        $dueTypeOptions = DueType::options();
+        $filters = compact('filterStartDate', 'filterEndDate', 'filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'filterDueType', 'filterPlan', 'showImported');
 
         $hasImported = Due::query()
             ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
@@ -131,7 +161,7 @@ class DueController extends Controller
             ->where('is_imported', true)
             ->exists();
 
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'cashBoxes', 'showImported', 'hasImported'));
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'cashBoxes', 'showImported', 'hasImported', 'planOptions', 'selectedPlan', 'dueTypeOptions'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)
@@ -147,18 +177,7 @@ class DueController extends Controller
         }
 
         $dueTypes = DueType::options();
-        $categories = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-        $expenseCategories = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $categories = $this->selectableDueCategories($apartment->id);
         $accounts = Account::query()
             ->where('accounts.apartment_id', $apartment->id)
             ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
@@ -171,7 +190,7 @@ class DueController extends Controller
 
         $selectedAccountId = $request->query('account_id');
 
-        return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'expenseCategories', 'accounts', 'selectedAccountId'));
+        return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'accounts', 'selectedAccountId'));
     }
 
     public function createBatch(CurrentApartment $currentApartment)
@@ -183,17 +202,12 @@ class DueController extends Controller
         }
 
         $dueTypes = DueType::options();
-        $categories = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $categories = $this->selectableDueCategories($apartment->id);
         $expenseCategories = Category::query()
             ->where('apartment_id', $apartment->id)
             ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
             ->where('is_active', true)
-            ->orderBy('name')
+            ->orderedForDisplay()
             ->get();
 
         $unitsCollection = Unit::query()
@@ -287,7 +301,7 @@ class DueController extends Controller
             'period' => ['nullable', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'due_type' => ['required', Rule::in(DueType::values())],
-            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
+            'category_id' => $this->categoryRules($request, $apartment->id),
             'description' => ['nullable', 'string', 'max:255'],
             'created_at_manual' => ['nullable', 'date'],
             'source_period' => ['required_if:source_type,'.DueBatch::SOURCE_EXPENSES, 'nullable', 'date_format:Y-m'],
@@ -345,6 +359,12 @@ class DueController extends Controller
         if ($sourceAmount <= 0) {
             return back()->withErrors(['source_amount' => 'Borçlandırılacak toplam tutar sıfırdan büyük olmalıdır.'])->withInput();
         }
+
+        $validated['category_id'] = $this->resolveDueCategoryId(
+            $apartment->id,
+            $validated['due_type'],
+            $validated['category_id'] ?? null,
+        );
 
         DB::transaction(function () use ($apartment, $validated, $selectedExpenseIds, $sourceAmount, $roundToInteger) {
             $batch = DueBatch::create([
@@ -515,7 +535,7 @@ class DueController extends Controller
 
         $due->load('allocations');
         $dueTypes = DueType::options();
-        $categories = Category::where('apartment_id', $due->apartment_id)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->where('is_active', true)->orderBy('name')->get();
+        $categories = $this->selectableDueCategories($due->apartment_id);
         $accounts = Account::where('accounts.apartment_id', $due->apartment_id)
             ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
             ->with('unit')
@@ -537,7 +557,7 @@ class DueController extends Controller
         $validated = $request->validate([
             'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('apartment_id', $due->apartment_id)],
             'due_type' => ['nullable', Rule::in(DueType::values())],
-            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $due->apartment_id)->where('is_active', true)],
+            'category_id' => $this->categoryRules($request, $due->apartment_id),
             'period' => ['required', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -558,6 +578,12 @@ class DueController extends Controller
         $aidatCategory = $this->aidatReconciliation->categoryFor($apartment);
 
         $dueDueType = is_string($due->due_type) ? $due->due_type : $due->due_type->value;
+        $validated['due_type'] = $validated['due_type'] ?? $dueDueType;
+        $validated['category_id'] = $this->resolveDueCategoryId(
+            $due->apartment_id,
+            $validated['due_type'],
+            $validated['category_id'] ?? null,
+        );
 
         if (isset($validated['account_id']) && $validated['account_id'] != $due->account_id) {
             if ($dueDueType === DueType::Aidat->value && $due->category_id === $aidatCategory->id) {
@@ -843,6 +869,21 @@ class DueController extends Controller
         if ($due->apartment_id !== $apartment->id) {
             abort(404);
         }
+    }
+
+    private function selectableDueCategories(int $apartmentId)
+    {
+        return app(\App\Support\DueCategorySelection::class)->options($apartmentId);
+    }
+
+    private function categoryRules(Request $request, int $apartmentId): array
+    {
+        return app(\App\Support\DueCategorySelection::class)->rules($request->input('due_type'), $apartmentId);
+    }
+
+    private function resolveDueCategoryId(int $apartmentId, string $dueType, ?int $submittedCategoryId): ?int
+    {
+        return app(\App\Support\DueCategorySelection::class)->resolve($apartmentId, $dueType, $submittedCategoryId);
     }
 
     private function resolveApartment(CurrentApartment $currentApartment)

@@ -34,14 +34,18 @@ use App\Http\Controllers\CashController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ResidenceController;
+use App\Http\Controllers\AssessmentPlanController;
 use App\Http\Controllers\DueController;
 use App\Http\Controllers\DuePlanController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ExpensePlanController;
+use App\Http\Controllers\FinancialPlanController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\PaymentAllocationController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AccountPortalOfferController;
 use App\Http\Controllers\ManagementOfferController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ReportController;
@@ -104,6 +108,8 @@ Route::middleware('auth')->group(function () {
     Route::get('yonetici-kabul/{offer}', [ManagementOfferController::class, 'show'])->name('management-offers.show');
     Route::post('yonetici-kabul/{offer}', [ManagementOfferController::class, 'accept'])->name('management-offers.accept');
     Route::post('yonetici-kabul/{offer}/ret', [ManagementOfferController::class, 'reject'])->name('management-offers.reject');
+    Route::post('portal-davet/{offer}/kabul', [AccountPortalOfferController::class, 'accept'])->name('portal-offers.accept');
+    Route::post('portal-davet/{offer}/ret', [AccountPortalOfferController::class, 'reject'])->name('portal-offers.reject');
 
     // Onboarding routes - no apartment required
     Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
@@ -203,16 +209,14 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::patch('accounts/{account}/terminate-tenancy', [AccountController::class, 'terminateTenancy'])->name('accounts.terminate-tenancy');
         Route::patch('accounts/{account}/terminate-ownership', [AccountController::class, 'terminateOwnership'])->name('accounts.terminate-ownership');
         Route::get('users', [AccountUserController::class, 'index'])->name('users.index');
-        Route::get('users/create', [AccountUserController::class, 'create'])->name('users.create');
-        Route::get('users/lookup', [AccountUserController::class, 'lookupEmail'])->name('users.lookup');
-        Route::post('users', [AccountUserController::class, 'storeUser'])->name('users.store');
         Route::get('users/{user}', [AccountUserController::class, 'show'])->name('users.show');
         Route::get('users/{user}/edit', [AccountUserController::class, 'edit'])->name('users.edit');
         Route::patch('users/{user}', [AccountUserController::class, 'update'])->name('users.update');
         Route::patch('users/{user}/password', [AccountUserController::class, 'updatePassword'])->name('users.password');
         Route::post('users/{user}/invite', [AccountUserController::class, 'refreshInvite'])->name('users.invite');
         Route::post('accounts/{account}/user', [AccountUserController::class, 'store'])->name('accounts.user.store');
-        Route::post('users/{user}/attach-accounts', [AccountUserController::class, 'attachAccounts'])->name('users.attach-accounts');
+        Route::post('accounts/{account}/user/invite', [AccountUserController::class, 'refreshAccountInvite'])->name('accounts.user.invite');
+        Route::post('accounts/{account}/user/identity', [AccountUserController::class, 'applyIdentity'])->name('accounts.user.identity');
         Route::patch('accounts/{account}/user/role', [AccountUserController::class, 'updateRole'])->name('accounts.user.role');
         Route::patch('users/{user}/role', [AccountUserController::class, 'updateUserRole'])->name('users.role');
         Route::patch('users/{user}/toggle-active', [AccountUserController::class, 'toggleActive'])->name('users.toggle-active');
@@ -245,11 +249,39 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
         Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
         Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+        Route::get('financial-plans', [FinancialPlanController::class, 'index'])->name('financial-plans.index');
+        Route::get('financial-plans/create', [FinancialPlanController::class, 'create'])->name('financial-plans.create');
+        Route::post('financial-plans/select-type', [FinancialPlanController::class, 'selectType'])->name('financial-plans.select-type');
+
         Route::middleware('feature:auto_dues')->group(function () {
             Route::post('due-plans/{duePlan}/generate-month', [DuePlanController::class, 'generateMonth'])->name('due-plans.generate-month');
             Route::post('due-plans/{duePlan}/regenerate-period', [DuePlanController::class, 'regeneratePeriod'])->name('due-plans.regenerate-period');
+            Route::post('due-plans/{duePlan}/confirm-past-periods', [DuePlanController::class, 'confirmPastPeriods'])->name('due-plans.confirm-past-periods');
             Route::patch('due-plans/{duePlan}/deactivate', [DuePlanController::class, 'deactivate'])->name('due-plans.deactivate');
+            Route::patch('due-plans/{duePlan}/activate', [DuePlanController::class, 'activate'])->name('due-plans.activate');
             Route::resource('due-plans', DuePlanController::class);
+        });
+
+        Route::middleware('feature:expense_plans')->group(function () {
+            Route::get('expense-plans/create', [ExpensePlanController::class, 'create'])->name('expense-plans.create');
+            Route::post('expense-plans', [ExpensePlanController::class, 'store'])->name('expense-plans.store');
+            Route::post('expense-plans/confirm', [ExpensePlanController::class, 'confirm'])->block(60, 10)->name('expense-plans.confirm');
+            Route::get('expense-plans/{expensePlan}', [ExpensePlanController::class, 'show'])->name('expense-plans.show');
+            Route::put('expense-plans/{expensePlan}', [ExpensePlanController::class, 'update'])->name('expense-plans.update');
+            Route::patch('expense-plans/{expensePlan}/deactivate', [ExpensePlanController::class, 'deactivate'])->name('expense-plans.deactivate');
+            Route::post('expense-plans/{expensePlan}/generate-month', [ExpensePlanController::class, 'generateMonth'])->name('expense-plans.generate-month');
+        });
+
+        Route::middleware('feature:assessment_plans')->group(function () {
+            Route::get('assessment-plans/create', [AssessmentPlanController::class, 'create'])->name('assessment-plans.create');
+            Route::post('assessment-plans/distribution-preview', [AssessmentPlanController::class, 'previewDistribution'])->name('assessment-plans.distribution-preview');
+            Route::post('assessment-plans', [AssessmentPlanController::class, 'store'])->name('assessment-plans.store');
+            Route::post('assessment-plans/confirm', [AssessmentPlanController::class, 'confirm'])->block(60, 10)->name('assessment-plans.confirm');
+            Route::get('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'show'])->name('assessment-plans.show');
+            Route::put('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'update'])->name('assessment-plans.update');
+            Route::patch('assessment-plans/{assessmentPlan}/deactivate', [AssessmentPlanController::class, 'deactivate'])->name('assessment-plans.deactivate');
+            Route::get('assessment-plans/{assessmentPlan}/cancel-preview', [AssessmentPlanController::class, 'previewCancel'])->name('assessment-plans.cancel-preview');
+            Route::post('assessment-plans/{assessmentPlan}/cancel-future', [AssessmentPlanController::class, 'cancelFuture'])->name('assessment-plans.cancel-future');
         });
         Route::get('dues/batch/create', [DueController::class, 'createBatch'])->name('dues.batch.create');
         Route::delete('dues/bulk-destroy', [DueController::class, 'bulkDestroy'])->name('dues.bulk-destroy');

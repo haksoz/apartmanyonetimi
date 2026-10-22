@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\AccountPortalOffer;
 use App\Models\ManagementOffer;
 use App\Support\ApartmentReset\ApartmentResetArchive;
 use App\Support\LegalConsent;
@@ -42,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
             $managementOffers = collect();
             $needsMembershipConsent = false;
             $needsPrivacyConsent = false;
+            $portalOffer = null;
             $showSubscriberCommerce = false;
 
             if (auth()->check()) {
@@ -89,6 +91,15 @@ class AppServiceProvider extends ServiceProvider
                         ->values();
                 }
 
+                if (! session()->has('impersonate_admin_id')) {
+                    $portalOffer = AccountPortalOffer::query()
+                        ->with(['apartment:id,name', 'account.unit', 'offerer:id,name'])
+                        ->where('user_id', $user->id)
+                        ->where('status', AccountPortalOffer::STATUS_PENDING)
+                        ->latest()
+                        ->first();
+                }
+
                 if (! $user->isAdminPanelUser() && ! session()->has('impersonate_admin_id')) {
                     $consent = app(LegalConsent::class);
                     $needsMembershipConsent = $consent->needsMembership($user);
@@ -105,6 +116,7 @@ class AppServiceProvider extends ServiceProvider
                 'managementOffers',
                 'needsMembershipConsent',
                 'needsPrivacyConsent',
+                'portalOffer',
                 'showSubscriberCommerce',
             ));
         });

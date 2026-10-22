@@ -63,9 +63,10 @@
                     @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
-                <div>
-                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-xs text-slate-400">(isteğe bağlı)</span></label>
-                    <select id="category_id" name="category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                @php $showCategory = in_array(old('due_type', $due->due_type?->value), ['malik_payi', 'masraf_yansitma'], true); @endphp
+                <div id="category-field" class="{{ $showCategory ? '' : 'hidden' }}">
+                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
+                    <select id="category_id" name="category_id" @disabled(! $showCategory) @required($showCategory) class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Kategori seçin</option>
                         @foreach ($categories as $cat)
                             <option value="{{ $cat->id }}" @selected((string) old('category_id', $due->category_id) === (string) $cat->id)>{{ $cat->name }}</option>
@@ -112,8 +113,23 @@
 
     <script>
         (() => {
+            const typeSelect = document.getElementById('due_type');
+            const topicSelect = document.getElementById('category_id');
+            const categoryField = document.getElementById('category-field');
+            const selectableDueTypes = ['malik_payi', 'masraf_yansitma'];
             const periodInput = document.getElementById('period');
             const createdAtInput = document.getElementById('created_at_manual');
+
+            const syncCategoryField = () => {
+                const show = selectableDueTypes.includes(typeSelect?.value);
+                categoryField?.classList.toggle('hidden', !show);
+                if (!topicSelect) return;
+                topicSelect.disabled = !show;
+                topicSelect.required = show;
+                if (!show) topicSelect.value = '';
+            };
+
+            typeSelect?.addEventListener('change', syncCategoryField);
 
             const syncPeriodFromCreatedAt = () => {
                 const dateVal = createdAtInput?.value;
@@ -125,6 +141,7 @@
             createdAtInput?.addEventListener('change', syncPeriodFromCreatedAt);
 
             // Init
+            syncCategoryField();
             syncPeriodFromCreatedAt();
         })();
     </script>

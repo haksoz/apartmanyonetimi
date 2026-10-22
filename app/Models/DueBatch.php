@@ -28,6 +28,8 @@ class DueBatch extends Model
     protected $fillable = [
         'apartment_id',
         'due_plan_id',
+        'assessment_plan_id',
+        'assessment_installment_id',
         'due_type',
         'category_id',
         'source_type',

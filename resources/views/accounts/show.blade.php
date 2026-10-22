@@ -52,28 +52,18 @@
 
                 {{-- Daire bilgileri --}}
                 @if ($account->unit)
-                    @if ($account->unit->floor)
-                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                        <div class="text-xs text-slate-500">Kat</div>
-                        <div class="font-semibold text-slate-900">{{ $account->unit->floor }}</div>
-                    </div>
-                    @endif
-                    @if ($account->unit->block)
-                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                        <div class="text-xs text-slate-500">Blok</div>
-                        <div class="font-semibold text-slate-900">{{ $account->unit->block }}</div>
-                    </div>
-                    @endif
-                    @if ($account->unit->square_meters)
-                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                        <div class="text-xs text-slate-500">Alan</div>
-                        <div class="font-semibold text-slate-900">{{ number_format($account->unit->square_meters, 0, ',', '.') }} m²</div>
-                    </div>
-                    @endif
-                    @if ($account->unit->share_coefficient)
-                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                        <div class="text-xs text-slate-500">Hisse Katsayısı</div>
-                        <div class="font-semibold text-slate-900">{{ $account->unit->share_coefficient }}</div>
+                    @php
+                        $floor = $account->unit->floor;
+                        $unitFacts = array_filter([
+                            $account->unit->block ? $account->unit->block.' Blok' : null,
+                            ($floor !== null && $floor !== '') ? 'Kat '.$floor : null,
+                            $account->unit->square_meters ? number_format($account->unit->square_meters, 0, ',', '.').'m2 Daire' : null,
+                            $account->unit->share_coefficient ? 'Katsayı '.number_format($account->unit->share_coefficient, 2, '.', '') : null,
+                        ]);
+                    @endphp
+                    @if ($unitFacts)
+                    <div class="bg-white px-4 py-3">
+                        <div class="text-xs text-slate-500">{{ implode(', ', $unitFacts) }}</div>
                     </div>
                     @endif
                 @endif
@@ -82,7 +72,7 @@
                 @if ($account->phone)
                 <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                     <div class="text-xs text-slate-500">Telefon</div>
-                    <div class="font-semibold text-slate-900">{{ $account->phone }}</div>
+                    <div class="text-xs text-slate-500">{{ $account->phone }}</div>
                 </div>
                 @endif
 
@@ -90,15 +80,9 @@
                 @if ($account->email)
                 <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                     <div class="text-xs text-slate-500">E-posta</div>
-                    <div class="font-semibold text-slate-900">{{ $account->email }}</div>
+                    <div class="text-xs text-slate-500">{{ $account->email }}</div>
                 </div>
                 @endif
-
-                {{-- Portal erişimi --}}
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                    <div class="text-xs text-slate-500">Portal Erişimi</div>
-                    <div class="font-semibold text-slate-900">{{ $account->user ? 'Var' : 'Yok' }}</div>
-                </div>
 
                 {{-- Açılış tarihi --}}
                 <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
@@ -107,7 +91,7 @@
                         @else Hesap Açılışı
                         @endif
                     </div>
-                    <div class="font-semibold text-slate-900">
+                    <div class="text-xs text-slate-500">
                         @if ($account->type === App\Models\Account::TYPE_TENANT && $account->active_tenant_assignment)
                             {{ $account->active_tenant_assignment->move_in_date->format('d.m.Y') }}
                         @else
@@ -125,23 +109,11 @@
                         @else Hesap Kapanışı
                         @endif
                     </div>
-                    <div class="font-semibold text-red-600">{{ $account->account_end_date->format('d.m.Y') }}</div>
+                    <div class="text-xs text-slate-500">{{ $account->account_end_date->format('d.m.Y') }}</div>
                 </div>
                 @endif
 
-                {{-- Kullanıcı bilgileri --}}
-                @if ($account->user)
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                    <div class="text-xs text-slate-500">E-posta</div>
-                    <div class="font-semibold text-slate-900">{{ $account->user->email }}</div>
-                </div>
-                @if ($account->user->phone)
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                    <div class="text-xs text-slate-500">Telefon</div>
-                    <div class="font-semibold text-slate-900">{{ $account->user->phone }}</div>
-                </div>
-                @endif
-                @endif
+                @include('accounts._aidatcep', ['account' => $account])
 
             </div>
         </details>
