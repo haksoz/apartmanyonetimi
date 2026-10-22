@@ -265,6 +265,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::middleware('feature:expense_plans')->group(function () {
             Route::get('expense-plans/create', [ExpensePlanController::class, 'create'])->name('expense-plans.create');
             Route::post('expense-plans', [ExpensePlanController::class, 'store'])->name('expense-plans.store');
+            Route::post('expense-plans/confirm', [ExpensePlanController::class, 'confirm'])->block(60, 10)->name('expense-plans.confirm');
             Route::get('expense-plans/{expensePlan}', [ExpensePlanController::class, 'show'])->name('expense-plans.show');
             Route::put('expense-plans/{expensePlan}', [ExpensePlanController::class, 'update'])->name('expense-plans.update');
             Route::patch('expense-plans/{expensePlan}/deactivate', [ExpensePlanController::class, 'deactivate'])->name('expense-plans.deactivate');
@@ -273,10 +274,11 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
         Route::middleware('feature:assessment_plans')->group(function () {
             Route::get('assessment-plans/create', [AssessmentPlanController::class, 'create'])->name('assessment-plans.create');
+            Route::post('assessment-plans/distribution-preview', [AssessmentPlanController::class, 'previewDistribution'])->name('assessment-plans.distribution-preview');
             Route::post('assessment-plans', [AssessmentPlanController::class, 'store'])->name('assessment-plans.store');
+            Route::post('assessment-plans/confirm', [AssessmentPlanController::class, 'confirm'])->block(60, 10)->name('assessment-plans.confirm');
             Route::get('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'show'])->name('assessment-plans.show');
             Route::put('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'update'])->name('assessment-plans.update');
-            Route::post('assessment-plans/{assessmentPlan}/confirm-past', [AssessmentPlanController::class, 'confirmPast'])->name('assessment-plans.confirm-past');
             Route::patch('assessment-plans/{assessmentPlan}/deactivate', [AssessmentPlanController::class, 'deactivate'])->name('assessment-plans.deactivate');
             Route::get('assessment-plans/{assessmentPlan}/cancel-preview', [AssessmentPlanController::class, 'previewCancel'])->name('assessment-plans.cancel-preview');
             Route::post('assessment-plans/{assessmentPlan}/cancel-future', [AssessmentPlanController::class, 'cancelFuture'])->name('assessment-plans.cancel-future');

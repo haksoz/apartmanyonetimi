@@ -78,7 +78,7 @@ class FinancialPlanController extends Controller
                 ->each(function (AssessmentPlan $plan) use ($rows) {
                     $rows->push([
                         'type' => 'assessment',
-                        'type_label' => 'Ek Borçlandırma',
+                        'type_label' => 'Taksitli Borç',
                         'generation_mode' => $plan->generation_mode ?: 'on_schedule',
                         'name' => $plan->name,
                         'period_label' => $plan->installment_count.' taksit',

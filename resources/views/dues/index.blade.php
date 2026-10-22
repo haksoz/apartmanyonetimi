@@ -99,7 +99,7 @@
     @php
         $statusLabels = ['unpaid' => 'Bekliyor', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
         $accountTypeLabels = ['owner' => 'Kat Maliki', 'tenant' => 'Kiracı', 'supplier' => 'Tedarikçi'];
-        $sourceLabels = ['plan' => 'Aidat Planı', 'assessment' => 'Ek Borçlandırma Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel'];
+        $sourceLabels = ['plan' => 'Aidat Planı', 'assessment' => 'Taksitli Borç Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel'];
     @endphp
 
     @if ($activeFilterCount > 0)
@@ -273,7 +273,7 @@
                         <select id="filter-source" name="source" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
                             <option value="">Tüm Kaynaklar</option>
                             <option value="plan"   {{ $filters['filterSource'] === 'plan'   ? 'selected' : '' }}>Aidat Planı</option>
-                            <option value="assessment" @selected($filters['filterSource'] === 'assessment')>Ek Borçlandırma Planı</option>
+                            <option value="assessment" @selected($filters['filterSource'] === 'assessment')>Taksitli Borç Planı</option>
                             <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
                             <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
                         </select>
@@ -386,7 +386,7 @@
                                 @if ($due->batch?->plan)
                                     Aidat Planı ile
                                 @elseif ($due->batch?->assessment_plan_id)
-                                    Ek Borçlandırma Planı
+                                    Taksitli Borç Planı
                                 @elseif ($due->batch)
                                     Toplu Borçlandırma
                                 @else

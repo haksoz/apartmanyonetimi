@@ -51,7 +51,7 @@ class DueFilterTest extends TestCase
             $this->assertEqualsCanonicalizing($ids, $response->viewData('dues')->pluck('id')->all());
         }
         $this->get(route('dues.index', ['source' => 'assessment', 'plan' => 'assessment:'.$assessment->id]))
-            ->assertSee('Plan: Çatı Yenileme')->assertSee('Kaynak: Ek Borçlandırma Planı');
+            ->assertSee('Plan: Çatı Yenileme')->assertSee('Kaynak: Taksitli Borç Planı');
         $this->get(route('dues.index', ['batch_id' => $batch->id]))->assertOk()
             ->assertViewHas('dues', fn ($dues) => $dues->total() === 1);
         $other = Apartment::create(['user_id' => $user->id, 'name' => 'Diğer Apartman', 'unit_count' => 1]);

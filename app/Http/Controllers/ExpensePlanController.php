@@ -3,27 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\Apartment;
 use App\Models\Category;
 use App\Models\Expense;
 use App\Models\ExpensePlan;
 use App\Support\CurrentApartment;
 use App\Support\ExpensePlanGenerator;
+use App\Support\ExpensePlanSummary;
 use App\Support\FeatureGate;
-use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ExpensePlanController extends Controller
 {
-    public function __construct(private readonly ExpensePlanGenerator $generator)
-    {
-    }
+    public function __construct(private readonly ExpensePlanGenerator $generator) {}
 
     public function create(CurrentApartment $currentApartment)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+        if ($apartment instanceof RedirectResponse) {
             return $apartment;
         }
         $this->authorizeFeature($apartment);
@@ -38,7 +39,7 @@ class ExpensePlanController extends Controller
 
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
-            ->where('type', Category::TYPE_EXPENSE)
+            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -49,7 +50,7 @@ class ExpensePlanController extends Controller
     public function store(Request $request, CurrentApartment $currentApartment)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+        if ($apartment instanceof RedirectResponse) {
             return $apartment;
         }
         $this->authorizeFeature($apartment);
@@ -62,7 +63,7 @@ class ExpensePlanController extends Controller
             'category_id' => [
                 'required',
                 'integer',
-                Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('is_active', true),
+                Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])->where('is_active', true),
             ],
             'account_id' => [
                 'required',
@@ -81,25 +82,13 @@ class ExpensePlanController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        unset($validated['include_past_periods']);
-        [$plan, $message] = DB::transaction(function () use ($validated, $apartment, $request) {
-            $plan = ExpensePlan::create([
-                ...$validated,
-                'apartment_id' => $apartment->id,
-                'is_active' => $request->boolean('is_active', true),
-            ]);
-
-            return [$plan, 'Gider planı oluşturuldu.'.$this->generateIfRequested($plan, $request)];
-        });
-
-        return redirect()->route('expense-plans.show', $plan)
-            ->with('status', $message);
+        return $this->preview($request, $apartment, $validated);
     }
 
     public function show(CurrentApartment $currentApartment, ExpensePlan $expensePlan)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+        if ($apartment instanceof RedirectResponse) {
             return $apartment;
         }
         if ($expensePlan->apartment_id !== $apartment->id) {
@@ -120,7 +109,7 @@ class ExpensePlanController extends Controller
     public function update(Request $request, CurrentApartment $currentApartment, ExpensePlan $expensePlan)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+        if ($apartment instanceof RedirectResponse) {
             return $apartment;
         }
         if ($expensePlan->apartment_id !== $apartment->id) {
@@ -142,38 +131,103 @@ class ExpensePlanController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        unset($validated['include_past_periods']);
-        $message = DB::transaction(function () use ($expensePlan, $validated, $request) {
-            $expensePlan->update([
-                ...$validated,
-                'is_active' => $request->boolean('is_active', true),
-            ]);
-
-            return 'Gider planı güncellendi. Mevcut gider kayıtları değişmedi.'.$this->generateIfRequested($expensePlan, $request);
-        });
-
-        return redirect()->route('expense-plans.show', $expensePlan)
-            ->with('status', $message);
+        return $this->preview($request, $apartment, $validated, $expensePlan);
     }
 
-    private function generateIfRequested(ExpensePlan $plan, Request $request): string
+    private function preview(Request $request, $apartment, array $input, ?ExpensePlan $plan = null)
     {
-        if ($plan->generation_mode !== ExpensePlan::GENERATION_CREATE_ALL_NOW) {
-            return '';
-        }
-        if (! $plan->is_active) {
-            return ' Plan pasif olduğu için gider oluşturulmadı.';
-        }
+        unset($input['include_past_periods']);
+        $input['is_active'] = $request->boolean('is_active', true);
+        $pending = [
+            'token' => (string) Str::uuid(), 'apartment_id' => $apartment->id,
+            'user_id' => auth()->id(), 'plan_id' => $plan?->id, 'input' => $input,
+            'include_past' => false, 'current_action' => null,
+        ];
 
-        $result = $this->generator->generateAll($plan, $request->boolean('include_past_periods'));
+        return $this->confirmationView($request, $pending, $plan);
+    }
 
-        return " {$result['created']} gider oluşturuldu. {$result['existing']} mevcut dönem atlandı. {$result['excluded']} geçmiş dönem dahil edilmedi.";
+    private function confirmationView(Request $request, array $pending, ?ExpensePlan $plan, bool $changed = false)
+    {
+        $proposed = $plan ? clone $plan : new ExpensePlan(['apartment_id' => $pending['apartment_id']]);
+        $proposed->fill($pending['input']);
+        $proposed->load(['category', 'account']);
+        $summary = app(ExpensePlanSummary::class)->build($proposed, $pending['include_past'], $pending['current_action']);
+        $pending['token'] = (string) Str::uuid();
+        $pending['fingerprint'] = hash('sha256', json_encode($summary));
+        $request->session()->put('expense_plan_confirmation', $pending);
+
+        return view('expense-plans.confirm', [
+            'proposed' => $proposed, 'summary' => $summary, 'changed' => $changed, 'token' => $pending['token'],
+        ]);
+    }
+
+    public function confirm(Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof RedirectResponse) {
+            return $apartment;
+        }
+        $this->authorizeFeature($apartment);
+        $pending = $request->session()->get('expense_plan_confirmation');
+        abort_unless($pending && is_string($request->input('confirmation_token'))
+            && hash_equals($pending['token'], $request->input('confirmation_token'))
+            && $pending['apartment_id'] === $apartment->id && $pending['user_id'] === auth()->id(), 419);
+        $plan = $pending['plan_id'] ? ExpensePlan::where('apartment_id', $apartment->id)->findOrFail($pending['plan_id']) : null;
+        $back = $plan ? route('expense-plans.show', ['expensePlan' => $plan, 'edit' => 1]) : route('expense-plans.create');
+        if ($request->boolean('return_to_form')) {
+            $request->session()->forget('expense_plan_confirmation');
+
+            return redirect($back)->withInput($pending['input']);
+        }
+        $decisions = $request->validate([
+            'include_past_periods' => ['sometimes', 'boolean'],
+            'current_month_action' => ['nullable', Rule::in(['create', 'skip'])],
+        ]);
+        $pending['include_past'] = (bool) ($decisions['include_past_periods'] ?? $pending['include_past']);
+        $pending['current_action'] = $decisions['current_month_action'] ?? $pending['current_action'];
+
+        return DB::transaction(function () use ($request, $apartment, $pending, $plan) {
+            // Serialize confirmations and scheduled generation against the same plan.
+            Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
+            $locked = $plan ? ExpensePlan::whereKey($plan->id)->lockForUpdate()->firstOrFail() : new ExpensePlan(['apartment_id' => $apartment->id]);
+            $proposed = clone $locked;
+            $proposed->fill($pending['input']);
+            $proposed->load(['category', 'account']);
+            $summary = app(ExpensePlanSummary::class)->build($proposed, $pending['include_past'], $pending['current_action']);
+            $changed = ! hash_equals($pending['fingerprint'], hash('sha256', json_encode($summary)));
+            if ($changed || $request->boolean('update_summary') || ($summary['current_eligible'] && $pending['current_action'] === null)) {
+                return $this->confirmationView($request, $pending, $locked->exists ? $locked : null, $changed);
+            }
+            // Validate referenced records again immediately before writing.
+            abort_unless(Account::where('apartment_id', $apartment->id)->where('type', Account::TYPE_SUPPLIER)->whereKey($proposed->account_id)->exists(), 422);
+            abort_unless(Category::where('apartment_id', $apartment->id)->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])->whereKey($proposed->category_id)->exists(), 422);
+            $skipped = $locked->skipped_periods ?? [];
+            if ($summary['current_eligible']) {
+                $skipped = array_values(array_diff($skipped, [now()->format('Y-m')]));
+                if ($pending['current_action'] === 'skip') {
+                    $skipped[] = now()->format('Y-m');
+                }
+            }
+            $locked->fill($pending['input']);
+            $locked->skipped_periods = $skipped;
+            $locked->save();
+            $created = 0;
+            foreach ($summary['rows'] as $row) {
+                if ($row['create']) {
+                    $created += $this->generator->generateForPeriod($locked, $row['period']);
+                }
+            }
+            $request->session()->forget('expense_plan_confirmation');
+
+            return redirect()->route('expense-plans.show', $locked)->with('status', "Gider planı kaydedildi. {$created} gider oluşturuldu. {$summary['existing']} mevcut kayıt korundu.");
+        });
     }
 
     public function deactivate(CurrentApartment $currentApartment, ExpensePlan $expensePlan)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+        if ($apartment instanceof RedirectResponse) {
             return $apartment;
         }
         if ($expensePlan->apartment_id !== $apartment->id) {
@@ -190,7 +244,7 @@ class ExpensePlanController extends Controller
     public function generateMonth(Request $request, CurrentApartment $currentApartment, ExpensePlan $expensePlan)
     {
         $apartment = $this->resolveApartment($currentApartment);
-        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+        if ($apartment instanceof RedirectResponse) {
             return $apartment;
         }
         if ($expensePlan->apartment_id !== $apartment->id) {
@@ -231,17 +285,23 @@ class ExpensePlanController extends Controller
 
             if ($expense) {
                 $status = 'complete';
+            } elseif (in_array($period, $plan->skipped_periods ?? [], true)) {
+                $status = 'skipped';
             } elseif (! $plan->is_active) {
                 $status = 'stopped';
             } else {
                 $status = 'not_generated';
             }
 
+            $plannedDate = $cursor->copy()->day(min($plan->generate_day, $cursor->daysInMonth));
             $periods[] = [
                 'period' => $period,
                 'label' => $cursor->copy()->locale('tr')->isoFormat('MMMM YYYY'),
                 'status' => $status,
                 'expense_id' => $expense?->id,
+                'expense_date' => $expense?->expense_date?->format('d.m.Y') ?? $plannedDate->format('d.m.Y'),
+                'due_date' => $expense ? $expense->due_date?->format('d.m.Y') : ($plan->due_days !== null ? $plannedDate->copy()->addDays($plan->due_days)->format('d.m.Y') : null),
+                'amount' => $expense?->amount ?? $plan->amount,
             ];
             $cursor->addMonth();
         }

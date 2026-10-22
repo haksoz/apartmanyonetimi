@@ -873,63 +873,17 @@ class DueController extends Controller
 
     private function selectableDueCategories(int $apartmentId)
     {
-        return Category::query()
-            ->where('apartment_id', $apartmentId)
-            ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
-            ->where('name', '!=', 'Aidat')
-            ->where('is_active', true)
-            ->orderedForDisplay()
-            ->get();
+        return app(\App\Support\DueCategorySelection::class)->options($apartmentId);
     }
 
     private function categoryRules(Request $request, int $apartmentId): array
     {
-        $selectsCategory = in_array($request->input('due_type'), [
-            DueType::MalikPayi->value,
-            DueType::MasrafYansitma->value,
-        ], true);
-
-        return [
-            Rule::requiredIf($selectsCategory),
-            'nullable',
-            'integer',
-            Rule::exists('categories', 'id')->where(function ($query) use ($apartmentId, $selectsCategory) {
-                $query->where('apartment_id', $apartmentId)->where('is_active', true);
-
-                if ($selectsCategory) {
-                    $query->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
-                        ->where('name', '!=', 'Aidat');
-                }
-            }),
-        ];
+        return app(\App\Support\DueCategorySelection::class)->rules($request->input('due_type'), $apartmentId);
     }
 
     private function resolveDueCategoryId(int $apartmentId, string $dueType, ?int $submittedCategoryId): ?int
     {
-        $type = DueType::tryFrom($dueType);
-
-        if ($type?->lockedCategoryName()) {
-            $category = Category::withTrashed()->firstOrCreate(
-                ['apartment_id' => $apartmentId, 'name' => $type->lockedCategoryName()],
-                ['type' => Category::TYPE_INCOME, 'is_active' => true, 'is_system' => true],
-            );
-
-            if ($category->trashed()) {
-                $category->restore();
-            }
-
-            if ($category->type !== Category::TYPE_INCOME || ! $category->is_system || ! $category->is_active) {
-                $category->update([
-                    'type' => Category::TYPE_INCOME,
-                    'is_active' => true,
-                    'is_system' => true,
-                ]);
-            }
-
-            return $category->id;
-        }
-
-        return $submittedCategoryId;
+        return app(\App\Support\DueCategorySelection::class)->resolve($apartmentId, $dueType, $submittedCategoryId);
     }
 
     private function resolveApartment(CurrentApartment $currentApartment)

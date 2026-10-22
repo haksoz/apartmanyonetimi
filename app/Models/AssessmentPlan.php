@@ -13,6 +13,11 @@ class AssessmentPlan extends Model
 
     public const GENERATION_CREATE_ALL_NOW = 'create_all_now';
 
+    public static function debtTypes(): array
+    {
+        return [DueType::MasrafYansitma, DueType::MalikPayi];
+    }
+
     protected $fillable = [
         'apartment_id',
         'name',
@@ -26,6 +31,7 @@ class AssessmentPlan extends Model
         'generation_mode',
         'generate_day',
         'is_active',
+        'skipped_periods',
     ];
 
     protected $casts = [
@@ -33,6 +39,7 @@ class AssessmentPlan extends Model
         'installment_count' => 'integer',
         'generate_day' => 'integer',
         'is_active' => 'boolean',
+        'skipped_periods' => 'array',
         'due_type' => DueType::class,
     ];
 
@@ -64,5 +71,10 @@ class AssessmentPlan extends Model
     public function createsOnSchedule(): bool
     {
         return $this->generation_mode === self::GENERATION_ON_SCHEDULE;
+    }
+
+    public function installmentDescription(int $sequence): string
+    {
+        return $this->name.' '.$sequence.'/'.$this->installment_count;
     }
 }

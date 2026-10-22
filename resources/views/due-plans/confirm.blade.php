@@ -1,16 +1,16 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="min-w-0">
             <h1 class="text-2xl font-bold text-slate-950">Aidat Planı · {{ $planYear }} · İşlem Özeti</h1>
             <p class="mt-1 text-sm text-slate-500">Henüz kayıt yapılmadı. Oluşturulacak aidatları seçip özeti onaylayın.</p>
         </div>
-        <div class="flex shrink-0 items-center gap-3">
+        <div class="flex shrink-0 items-center justify-end gap-2">
             <button type="submit" form="aidat-plan-confirm" name="update_summary" value="1" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white">Özeti Güncelle</button>
-            <button type="submit" form="aidat-plan-confirm" name="return_to_form" value="1" formnovalidate class="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">
+            <button type="submit" form="aidat-plan-confirm" name="return_to_form" value="1" formnovalidate aria-label="Forma geri dön" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-3 text-sm font-semibold text-slate-700 sm:px-4">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m7 7-7-7 7-7" /></svg>
-                Geri
+                <span class="hidden sm:inline">Geri</span>
             </button>
         </div>
     </div>
@@ -64,7 +64,7 @@
 
         <section class="rounded-2xl bg-white p-5 shadow-sm" aria-label="Onaylanacak işlem">
             <p id="summary-dirty" role="status" class="mb-4 hidden rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Seçimleriniz değişti. Güncel kayıt sayısı ve tutarı görmek için Özeti Güncelle butonuna basın.</p>
-            <div id="summary-totals" class="grid gap-4 sm:grid-cols-3">
+            <div id="summary-totals" class="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <div><p class="text-xs text-slate-500">Şimdi Oluşturulacak</p><p class="mt-1 text-xl font-bold text-slate-900">{{ $summary['count'] }} kayıt</p></div>
                 <div><p class="text-xs text-slate-500">Toplam Tutar</p><p class="mt-1 text-xl font-bold text-slate-900">{{ number_format($summary['amount'], 2, ',', '.') }} ₺</p></div>
                 <div><p class="text-xs text-slate-500">Gelecek Aylar</p><p class="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-slate-700">@include('financial-plans._clock') Zamanı geldikçe</p></div>
@@ -74,7 +74,7 @@
 
         <details open class="overflow-hidden rounded-2xl bg-white shadow-sm">
             <summary class="cursor-pointer px-5 py-4 text-sm font-semibold text-slate-700">Dönemlere Göre İşlem Dökümü</summary>
-            <div class="overflow-x-auto">
+            <div class="hidden overflow-x-auto md:block">
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 text-left text-xs text-slate-500"><tr>
                         <th class="px-4 py-3">Dönem</th><th class="px-4 py-3">Yapılacak İşlem</th><th class="px-4 py-3">Mevcut Kayıt</th><th class="px-4 py-3">Yeni Kayıt</th><th class="px-4 py-3 text-right">Yeni Tutar</th>
@@ -102,6 +102,31 @@
                         @endforeach
                     </tbody>
                 </table>
+            </div>
+            <div class="divide-y divide-slate-100 md:hidden">
+                @foreach ($summary['rows'] as $row)
+                    <article class="min-w-0 p-4 text-sm">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <h3 class="font-semibold text-slate-900">{{ $row['label'] }}</h3>
+                            <span class="text-slate-600">{{ $row['status'] }}</span>
+                        </div>
+                        <dl class="mt-3 grid grid-cols-2 gap-3 text-xs">
+                            <div><dt class="text-slate-500">Mevcut Kayıt</dt><dd class="mt-1 font-medium tabular-nums text-slate-900">{{ $row['existing'] }}</dd></div>
+                            <div><dt class="text-slate-500">Yeni Kayıt</dt><dd class="mt-1 font-medium tabular-nums text-slate-900">{{ $row['count'] }}</dd></div>
+                            <div class="col-span-2"><dt class="text-slate-500">Yeni Tutar</dt><dd class="mt-1 break-all text-sm font-semibold tabular-nums text-slate-900">{{ number_format($row['amount'], 2, ',', '.') }} ₺</dd></div>
+                        </dl>
+                        @if ($row['count'])
+                            <details class="mt-3">
+                                <summary class="cursor-pointer text-xs font-semibold text-slate-600">Hesapları ve tutarları göster</summary>
+                                <ul class="mt-2 space-y-1 break-words text-xs text-slate-600">
+                                    @foreach ($row['accounts'] as $account)
+                                        <li>{{ $account['label'] }} — {{ number_format($account['amount'], 2, ',', '.') }} ₺</li>
+                                    @endforeach
+                                </ul>
+                            </details>
+                        @endif
+                    </article>
+                @endforeach
             </div>
         </details>
 

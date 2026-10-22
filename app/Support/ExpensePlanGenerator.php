@@ -56,7 +56,8 @@ class ExpensePlanGenerator
         try {
             return DB::transaction(function () use ($plan, $periodYm, $key) {
                 $locked = ExpensePlan::query()->whereKey($plan->id)->lockForUpdate()->first();
-                if (! $locked || ! $locked->is_active) {
+                if (! $locked || ! $locked->is_active || ! $locked->coversPeriod($periodYm)
+                    || in_array($periodYm, $locked->skipped_periods ?? [], true)) {
                     return 0;
                 }
 

@@ -188,7 +188,7 @@ class FinancialPlanningTest extends TestCase
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
-            ->post(route('expense-plans.store'), [
+            ->saveExpensePlan(route('expense-plans.store'), [
                 'name' => 'Ortak alan temizliği',
                 'category_id' => $category->id,
                 'account_id' => $supplier->id,
@@ -228,13 +228,13 @@ class FinancialPlanningTest extends TestCase
         $this->assertTrue(str_contains($editResponse->getContent(), 'id="expense-plan-form"'), 'Explicit edit link must open form.');
         $editResponse->assertSee('name="amount"', false)->assertSee('İptal');
         $this->from(route('expense-plans.show', ['expensePlan' => $suffixPlan, 'edit' => 1]))
-            ->put(route('expense-plans.update', $suffixPlan), ['name' => ''])
+            ->saveExpensePlanUpdate($suffixPlan, ['name' => ''])
             ->assertSessionHasErrors('name')
             ->assertRedirect(route('expense-plans.show', ['expensePlan' => $suffixPlan, 'edit' => 1]));
         $errorResponse = $this->get(route('expense-plans.show', ['expensePlan' => $suffixPlan, 'edit' => 1]))->assertOk();
         $this->assertTrue(str_contains($errorResponse->getContent(), 'id="expense-plan-form"'), 'Validation errors must keep form open.');
 
-        $this->put(route('expense-plans.update', $suffixPlan), [
+        $this->saveExpensePlanUpdate($suffixPlan, [
             'name' => $suffixPlan->name,
             'amount' => 2500,
             'generate_day' => 1,
@@ -265,7 +265,7 @@ class FinancialPlanningTest extends TestCase
             'due_date' => '2026-03-15 00:00:00',
         ]);
 
-        $this->put(route('expense-plans.update', $suffixPlan), [
+        $this->saveExpensePlanUpdate($suffixPlan, [
             'name' => $suffixPlan->name,
             'amount' => 2500,
             'generate_day' => 1,
@@ -281,7 +281,7 @@ class FinancialPlanningTest extends TestCase
         ]);
 
         foreach ([-1, 366, 1.5] as $invalidDays) {
-            $this->put(route('expense-plans.update', $suffixPlan), [
+            $this->saveExpensePlanUpdate($suffixPlan, [
                 'name' => $suffixPlan->name,
                 'amount' => 2500,
                 'generate_day' => 1,
@@ -311,20 +311,21 @@ class FinancialPlanningTest extends TestCase
         $category = Category::create([
             'apartment_id' => $apartment->id,
             'name' => 'Malik Payı',
-            'type' => Category::TYPE_INCOME,
+            'type' => Category::TYPE_ALL,
             'is_active' => true,
         ]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
-            ->post(route('assessment-plans.store'), [
+            ->saveAssessmentPlan(route('assessment-plans.store'), [
+                'due_type' => 'malik_payi', 'category_mode' => 'existing',
                 'name' => 'Çatı Yenileme',
                 'total_amount' => 1000,
                 'distribution_type' => 'equal',
                 'target_audience' => 'owner_only',
                 'category_id' => $category->id,
                 'installment_count' => 2,
-                'first_due_date' => now()->addMonth()->startOfMonth()->format('Y-m-d'),
+                'start_period' => now()->addMonth()->format('Y-m'), 'due_day' => 1,
                 'due_interval_months' => 1,
                 'generation_mode' => 'create_all_now',
                 'generate_day' => 1,
@@ -350,7 +351,7 @@ class FinancialPlanningTest extends TestCase
             ->assertDontSee('name="name"', false);
         $this->get(route('assessment-plans.show', ['assessmentPlan' => $plan, 'edit' => 1]))
             ->assertOk()->assertSee('name="name"', false)->assertSee('İptal');
-        $this->put(route('assessment-plans.update', $plan), [
+        $this->saveAssessmentPlanUpdate($plan, [
             'name' => 'Çatı Bakımı',
             'description' => 'Güncel açıklama',
             'generate_day' => 5,
@@ -368,9 +369,355 @@ class FinancialPlanningTest extends TestCase
         $otherApartment->members()->attach($user->id, ['role' => 'owner']);
         $this->grantPaidFeatures($otherApartment);
         $this->withSession([CurrentApartment::SESSION_KEY => $otherApartment->id])
-            ->put(route('assessment-plans.update', $plan), [
+            ->saveAssessmentPlanUpdate($plan, [
                 'name' => 'Yetkisiz değişiklik', 'generate_day' => 1, 'is_active' => 1,
             ])->assertNotFound();
+    }
+
+    private function assessmentPayload(array $overrides = []): array
+    {
+        return [...[
+            'due_type' => 'masraf_yansitma', 'name' => 'Çatı Yenileme', 'total_amount' => 1000.01, 'distribution_type' => 'equal',
+            'target_audience' => 'owner_only', 'installment_count' => 3, 'start_period' => '2026-09', 'due_day' => 10,
+            'due_interval_months' => 1, 'generation_mode' => 'create_all_now', 'generate_day' => 5, 'is_active' => 1,
+        ], ...$overrides];
+    }
+
+    public function test_assessment_summary_defers_all_writes_and_preserves_distribution_totals(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->get(route('assessment-plans.create'))->assertOk()->assertSee('Borçlanacak Kişi')->assertSee('Kaydet');
+        $payload = $this->assessmentPayload();
+        $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk()->assertViewIs('assessment-plans.confirm');
+        $this->assertSame(0, AssessmentPlan::count());
+        $this->assertSame(0, AssessmentInstallment::count());
+        $this->assertDatabaseCount('assessment_unit_shares', 0);
+        $this->assertSame(4, $preview->viewData('summary')['count']);
+        $updated = $this->post(route('assessment-plans.confirm'), [
+            'confirmation_token' => $preview->viewData('token'), 'include_past_installments' => 1, 'update_summary' => 1,
+        ])->assertOk();
+        $this->assertSame(6, $updated->viewData('summary')['count']);
+        $this->assertSame(1000.01, $updated->viewData('summary')['amount']);
+        $this->assertSame(0, AssessmentPlan::count());
+        $token = $updated->viewData('token');
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $token, 'total_amount' => 1])->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $this->assertSame('1000.01', $plan->total_amount);
+        $this->assertSame(6, Due::count());
+        $this->assertEquals(1000.01, (float) $plan->installmentLines()->sum('amount'));
+        $this->assertEquals(1000.01, (float) $plan->unitShares()->sum('share_amount'));
+        $this->assertEquals(1000.01, (float) Due::sum('amount'));
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $token])->assertStatus(419);
+        $this->assertSame(1, AssessmentPlan::count());
+        $this->get(route('assessment-plans.show', $plan))->assertOk()->assertSee('Borç / Daire:')->assertDontSee('Planı Durdur');
+        $this->travelBack();
+    }
+
+    public function test_assessment_scheduled_summary_generates_only_approved_past_and_current_installments(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $payload = $this->assessmentPayload(['generation_mode' => 'on_schedule']);
+        $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
+        $this->assertTrue($preview->viewData('summary')['current_eligible']);
+        $this->assertSame(1, $preview->viewData('summary')['past_count']);
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
+        $this->assertSame(0, AssessmentPlan::count());
+        $updated = $this->post(route('assessment-plans.confirm'), [
+            'confirmation_token' => session('assessment_plan_confirmation.token'),
+            'include_past_installments' => 1, 'current_month_action' => 'skip', 'update_summary' => 1,
+        ])->assertOk();
+        $this->assertSame(2, $updated->viewData('summary')['count']);
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $this->assertSame(['2026-10'], $plan->skipped_periods);
+        $this->assertSame(2, Due::count());
+        $this->assertSame(0, Due::where('period', '>', '2026-09')->count());
+        $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
+        $this->assertSame(2, Due::count());
+        app(AssessmentPlanGenerator::class)->generateEligibleInstallments($plan, true);
+        $this->assertSame(2, Due::count(), 'Geçmiş seçimi gelecekteki taksitleri oluşturmamalı.');
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-05 12:00:00'));
+        $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
+        $this->assertSame(4, Due::count());
+        $this->assertSame(0, Due::where('period', '2026-10')->count());
+        $this->travelBack();
+    }
+
+    public function test_assessment_current_create_does_not_include_unselected_past_or_future(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $preview = $this->post(route('assessment-plans.store'), $this->assessmentPayload(['generation_mode' => 'on_schedule']))->assertOk();
+        $updated = $this->post(route('assessment-plans.confirm'), [
+            'confirmation_token' => $preview->viewData('token'), 'current_month_action' => 'create',
+        ])->assertOk();
+        $this->assertSame(2, $updated->viewData('summary')['count']);
+        $this->assertSame(0, Due::count());
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
+        $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
+        $this->assertSame(2, Due::count());
+        $this->assertSame(2, Due::where('period', '2026-10')->count());
+        $this->assertSame(0, Due::where('period', '<', '2026-10')->count());
+        $this->assertSame(0, Due::where('period', '>', '2026-10')->count());
+        $this->travelBack();
+    }
+
+    public function test_assessment_summary_rechecks_distribution_and_can_return_without_saving(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment, $units] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $payload = $this->assessmentPayload(['distribution_type' => 'square_meters']);
+        $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
+        $units[0]->update(['square_meters' => 100]);
+        $updated = $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
+        $this->assertTrue($updated->viewData('changed'));
+        $this->assertSame(0, AssessmentPlan::count());
+        $this->assertEquals(666.67, $updated->viewData('summary')['shares'][0]['amount']);
+        $this->post(route('assessment-plans.confirm'), [
+            'confirmation_token' => $updated->viewData('token'), 'return_to_form' => 1,
+        ])->assertRedirect(route('assessment-plans.create'))->assertSessionHasInput('name', $payload['name']);
+        $this->assertSame(0, AssessmentPlan::count());
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertStatus(419);
+        $this->travelBack();
+    }
+
+    public function test_assessment_edit_requires_confirmation_and_rechecks_cancelled_installments(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->saveAssessmentPlan(route('assessment-plans.store'), $this->assessmentPayload(['is_active' => 0]))->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $preview = $this->put(route('assessment-plans.update', $plan), [
+            'name' => 'Güncel Plan', 'generate_day' => 5, 'is_active' => 1,
+            'total_amount' => 1, 'distribution_type' => 'square_meters', 'installment_count' => 1,
+        ])->assertOk();
+        $this->assertSame('Çatı Yenileme', $plan->fresh()->name);
+        $this->assertFalse($plan->fresh()->is_active);
+        $plan->installments()->where('sequence', 3)->update(['status' => AssessmentInstallment::STATUS_CANCELLED]);
+        $updated = $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
+        $this->assertTrue($updated->viewData('changed'));
+        $this->assertSame(2, $updated->viewData('summary')['count']);
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
+        $plan->refresh();
+        $this->assertSame('Güncel Plan', $plan->name);
+        $this->assertSame('1000.01', $plan->total_amount);
+        $this->assertSame('equal', $plan->distribution_type);
+        $this->assertSame(3, $plan->installment_count);
+        $this->assertSame(2, Due::count());
+        $this->assertEquals(1000.01, (float) $plan->installmentLines()->sum('amount'));
+        $this->get(route('assessment-plans.show', ['assessmentPlan' => $plan, 'edit' => 1]))->assertOk()->assertSee('Değiştirilemez')->assertSee('Kaydet');
+        $this->travelBack();
+    }
+
+    public function test_assessment_debt_type_and_category_are_applied_to_every_generated_debt(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Isınma', 'type' => Category::TYPE_ALL, 'is_active' => true]);
+        foreach (AssessmentPlan::debtTypes() as $type) {
+            $payload = $this->assessmentPayload([
+                'name' => $type->label().' Planı', 'due_type' => $type->value,
+                'category_mode' => 'existing', 'category_id' => $category->id,
+                'start_period' => '2026-11', 'due_day' => 10, 'installment_count' => 2,
+            ]);
+            $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
+            $this->assertSame($type, $preview->viewData('proposed')->due_type);
+            $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+            $plan = AssessmentPlan::latest('id')->firstOrFail();
+            $this->assertSame($type, $plan->due_type);
+            $resolvedCategory = $type->selectsCategory() ? $category->id : Category::where('apartment_id', $apartment->id)->where('name', $type->lockedCategoryName())->firstOrFail()->id;
+            $this->assertSame($resolvedCategory, $plan->category_id);
+            $dues = Due::whereHas('batch', fn ($query) => $query->where('assessment_plan_id', $plan->id))->get();
+            $this->assertCount(4, $dues);
+            foreach ($dues as $due) {
+                $this->assertSame($type, $due->due_type);
+                $this->assertSame($resolvedCategory, $due->category_id);
+                $this->assertSame($type, $due->batch->due_type);
+                $this->assertSame($resolvedCategory, $due->batch->category_id);
+            }
+            $this->get(route('assessment-plans.show', $plan))->assertOk()->assertSee($type->label());
+        }
+        $this->travelBack();
+    }
+
+    public function test_assessment_limits_debt_types_and_requires_usable_work_categories(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $payload = $this->assessmentPayload();
+        foreach (['aidat', 'ceza', 'faiz', 'invalid', ''] as $type) {
+            $this->post(route('assessment-plans.store'), [...$payload, 'due_type' => $type])->assertSessionHasErrors('due_type');
+        }
+        $this->post(route('assessment-plans.store'), [...$payload, 'category_mode' => 'existing'])->assertSessionHasErrors('category_id');
+        $this->post(route('assessment-plans.store'), [...$payload, 'category_name' => ' '])->assertSessionHasErrors('category_name');
+        foreach (['Gelir', 'Gider', 'Pasif', 'Silinmiş'] as $name) {
+            $category = Category::create([
+                'apartment_id' => $apartment->id, 'name' => $name,
+                'type' => $name === 'Gelir' ? Category::TYPE_INCOME : ($name === 'Gider' ? Category::TYPE_EXPENSE : Category::TYPE_ALL),
+                'is_active' => $name !== 'Pasif',
+            ]);
+            if ($name === 'Silinmiş') $category->delete();
+            $this->post(route('assessment-plans.store'), [...$payload, 'category_mode' => 'existing', 'category_id' => $category->id])->assertSessionHasErrors('category_id');
+            $this->post(route('assessment-plans.store'), [...$payload, 'category_name' => $name])->assertSessionHasErrors('category_name');
+            $this->assertSame($name === 'Gelir' ? Category::TYPE_INCOME : ($name === 'Gider' ? Category::TYPE_EXPENSE : Category::TYPE_ALL), $category->fresh()->type);
+        }
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Onarım', 'type' => Category::TYPE_ALL, 'is_active' => true]);
+        $preview = $this->post(route('assessment-plans.store'), [...$payload, 'category_mode' => 'existing', 'category_id' => $category->id])->assertOk();
+        $category->update(['is_active' => false]);
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertSessionHasErrors('category_id');
+        $this->assertSame(0, AssessmentPlan::count());
+    }
+
+    public function test_assessment_creates_work_category_only_on_confirmation_and_does_not_rename_it(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $payload = $this->assessmentPayload(['category_name' => 'Çatı Onarımı']);
+        $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
+        $this->assertTrue($preview->viewData('summary')['category']['is_new']);
+        $this->assertSame('Çatı Onarımı', $preview->viewData('summary')['category']['name']);
+        $this->assertFalse(Category::where('apartment_id', $apartment->id)->where('name', 'Çatı Onarımı')->exists());
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $category = $plan->category;
+        $this->assertSame(Category::TYPE_ALL, $category->type);
+        $this->assertSame('Çatı Onarımı', $category->name);
+        $this->assertTrue($category->is_active);
+        $this->assertSame(0, Due::where('category_id', '!=', $category->id)->count());
+        $this->get(route('expense-plans.create'))->assertOk()->assertViewHas('categories', fn ($categories) => $categories->contains('id', $category->id));
+        $this->saveAssessmentPlanUpdate($plan, ['name' => 'Yeni Plan Adı', 'generate_day' => 5, 'is_active' => 1])->assertRedirect();
+        $this->assertSame('Çatı Onarımı', $category->fresh()->name);
+        $this->assertSame($category->id, $plan->fresh()->category_id);
+        $this->travelBack();
+    }
+
+    public function test_assessment_reuses_matching_work_category_and_rechecks_it_before_saving(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $payload = $this->assessmentPayload();
+        $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => $payload['name'], 'type' => Category::TYPE_ALL, 'is_active' => true]);
+        $updated = $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
+        $this->assertTrue($updated->viewData('changed'));
+        $this->assertFalse($updated->viewData('summary')['category']['is_new']);
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
+        $this->assertSame($category->id, AssessmentPlan::firstOrFail()->category_id);
+        $this->assertSame(1, Category::where('apartment_id', $apartment->id)->where('name', $payload['name'])->count());
+        $this->saveAssessmentPlan(route('assessment-plans.store'), [...$payload, 'category_name' => 'çatı yenileme'])->assertRedirect();
+        $this->assertSame($category->id, AssessmentPlan::latest('id')->firstOrFail()->category_id);
+    }
+
+    public function test_assessment_calendar_uses_due_day_start_month_and_installment_interval(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $payload = $this->assessmentPayload([
+            'start_period' => '2027-01', 'generate_day' => 2, 'due_day' => 28,
+            'installment_count' => 3, 'due_interval_months' => 2,
+        ]);
+        foreach ([0, 29, 1.5] as $invalidDay) {
+            $this->post(route('assessment-plans.store'), [...$payload, 'due_day' => $invalidDay])->assertSessionHasErrors('due_day');
+        }
+        $this->post(route('assessment-plans.store'), [...$payload, 'start_period' => '2027-13'])->assertSessionHasErrors('start_period');
+        $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
+        $this->assertSame(['2027-01-28', '2027-03-28', '2027-05-28'], array_column($preview->viewData('summary')['rows'], 'due_date'));
+        $this->assertSame(['02.01.2027', '02.03.2027', '02.05.2027'], array_column($preview->viewData('summary')['rows'], 'scheduled_date'));
+        $this->assertSame(0, AssessmentPlan::count());
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $this->assertSame(2, $plan->generate_day);
+        $this->assertSame(['2027-01-28', '2027-03-28', '2027-05-28'], $plan->installments->map(fn ($installment) => $installment->due_date->toDateString())->all());
+        $this->assertSame(6, Due::count());
+        $this->travelBack();
+    }
+
+    public function test_assessment_live_preview_groups_equal_shares_and_retains_rounding_ranges(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $response = $this->postJson(route('assessment-plans.distribution-preview'), [
+            'total_amount' => 1000.01, 'installment_count' => 3, 'distribution_type' => 'equal',
+        ])->assertOk()->assertJsonPath('unit_count', 2)->assertJsonCount(1, 'groups');
+        $group = $response->json('groups.0');
+        $this->assertSame(2, $group['count']);
+        $this->assertEquals(500, $group['share_min']);
+        $this->assertEquals(500.01, $group['share_max']);
+        $this->assertEquals(166.67, $group['installment_min']);
+        $this->assertEquals(166.67, $group['installment_max']);
+        $this->assertEquals(166.66, $group['last_min']);
+        $this->assertEquals(166.67, $group['last_max']);
+        $this->assertSame(0, AssessmentPlan::count());
+        $this->assertSame(0, AssessmentInstallment::count());
+        $this->assertSame(0, Due::count());
+        $this->assertArrayNotHasKey('unit_id', $group);
+        $this->assertArrayNotHasKey('accounts', $group);
+    }
+
+    public function test_assessment_live_preview_groups_by_weight_and_excludes_units_without_weights(): void
+    {
+        [$user, $apartment, $units] = $this->setupApartment();
+        $units[0]->update(['square_meters' => 80, 'share_coefficient' => 1]);
+        $units[1]->update(['square_meters' => 120, 'share_coefficient' => 2]);
+        Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '3', 'square_meters' => 80, 'share_coefficient' => 1]);
+        Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '4', 'square_meters' => 0, 'share_coefficient' => 0]);
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->postJson(route('assessment-plans.distribution-preview'), [
+            'total_amount' => 28000, 'installment_count' => 4, 'distribution_type' => 'square_meters',
+            'apartment_id' => 999999,
+        ])->assertOk()->assertJsonPath('unit_count', 3)->assertJsonPath('excluded_count', 1)
+            ->assertJsonCount(2, 'groups')->assertJsonPath('groups.0.count', 2)
+            ->assertJsonPath('groups.1.count', 1)->assertJsonFragment(['share_min' => 8000, 'installment_min' => 2000])
+            ->assertJsonFragment(['share_min' => 12000, 'installment_min' => 3000]);
+        $this->postJson(route('assessment-plans.distribution-preview'), [
+            'total_amount' => 16000, 'installment_count' => 4, 'distribution_type' => 'share_coefficient',
+        ])->assertOk()->assertJsonCount(2, 'groups')->assertJsonPath('excluded_count', 1)
+            ->assertJsonFragment(['share_min' => 4000, 'installment_min' => 1000])
+            ->assertJsonFragment(['share_min' => 8000, 'installment_min' => 2000]);
+        $this->postJson(route('assessment-plans.distribution-preview'), [
+            'total_amount' => 0, 'installment_count' => 61, 'distribution_type' => 'invalid',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['total_amount', 'installment_count', 'distribution_type']);
+        $this->assertSame(0, AssessmentPlan::count());
+    }
+
+    public function test_assessment_descriptions_are_automatic_and_preserved_for_existing_debts(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->get(route('assessment-plans.create'))->assertOk()->assertDontSee('name="description"', false)->assertSee('Oluşacak Borç Açıklaması');
+        $payload = $this->assessmentPayload([
+            'name' => 'Çatı Yenileme', 'installment_count' => 4, 'start_period' => '2027-01',
+            'description' => 'Elle yazılmış açıklama',
+        ]);
+        $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
+        $this->assertSame(['Çatı Yenileme 1/4', 'Çatı Yenileme 2/4', 'Çatı Yenileme 3/4', 'Çatı Yenileme 4/4'], array_column($preview->viewData('summary')['rows'], 'description'));
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $this->assertNull($plan->description);
+        $this->assertSame(8, Due::count());
+        foreach ($plan->installments as $installment) {
+            $description = 'Çatı Yenileme '.$installment->sequence.'/4';
+            $this->assertSame($description, $installment->batch->description);
+            foreach ($installment->lines as $line) {
+                $this->assertSame($description, $line->due->description);
+                $this->assertDatabaseHas('account_transactions', ['transactionable_type' => Due::class, 'transactionable_id' => $line->due_id, 'description' => $description]);
+            }
+        }
+        $this->saveAssessmentPlanUpdate($plan, ['name' => 'Yeni Plan Adı', 'generate_day' => 5, 'is_active' => 1, 'description' => 'Değiştir'])->assertRedirect();
+        $this->assertNull($plan->fresh()->description);
+        $this->assertSame(2, Due::where('description', 'Çatı Yenileme 1/4')->count());
+        $this->travelBack();
     }
 
     public function test_financial_plans_hub_loads(): void
@@ -850,13 +1197,115 @@ class FinancialPlanningTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_expense_confirmation_defers_writes_and_can_return_to_form(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-20 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $payload = $this->expensePlanPayload($apartment);
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $preview = $this->post(route('expense-plans.store'), $payload)->assertOk()->assertViewIs('expense-plans.confirm');
+        $this->assertSame(0, ExpensePlan::count());
+        $this->assertSame(0, Expense::count());
+        $this->assertSame(3, $preview->viewData('summary')['count']);
+        $this->assertSame(3750.0, (float) $preview->viewData('summary')['amount']);
+        $this->post(route('expense-plans.confirm'), [
+            'confirmation_token' => $preview->viewData('token'), 'return_to_form' => 1,
+        ])->assertRedirect(route('expense-plans.create'))->assertSessionHasInput('name', $payload['name']);
+        $this->assertSame(0, ExpensePlan::count());
+        $this->post(route('expense-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertStatus(419);
+
+        $preview = $this->post(route('expense-plans.store'), $payload)->assertOk();
+        $token = $preview->viewData('token');
+        $this->post(route('expense-plans.confirm'), ['confirmation_token' => $token, 'amount' => 1])->assertRedirect();
+        $plan = ExpensePlan::firstOrFail();
+        $this->assertSame('1250.00', $plan->amount);
+        $this->assertSame(3, $plan->expenses()->count());
+        $this->post(route('expense-plans.confirm'), ['confirmation_token' => $token])->assertStatus(419);
+        $this->assertSame(1, ExpensePlan::count());
+        $this->travelBack();
+    }
+
+    public function test_scheduled_expense_summary_creates_past_and_persists_current_skip(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-20 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $payload = [...$this->expensePlanPayload($apartment), 'generation_mode' => 'on_schedule'];
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $preview = $this->post(route('expense-plans.store'), $payload)->assertOk();
+        $this->assertTrue($preview->viewData('summary')['current_eligible']);
+        $this->assertSame(9, $preview->viewData('summary')['past_count']);
+        $this->post(route('expense-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])
+            ->assertOk()->assertViewIs('expense-plans.confirm');
+        $this->assertSame(0, ExpensePlan::count());
+        $token = session('expense_plan_confirmation.token');
+        $preview = $this->post(route('expense-plans.confirm'), [
+            'confirmation_token' => $token, 'include_past_periods' => 1,
+            'current_month_action' => 'skip', 'update_summary' => 1,
+        ])->assertOk();
+        $this->assertSame(9, $preview->viewData('summary')['count']);
+        $this->assertSame(0, ExpensePlan::count());
+        $this->post(route('expense-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $plan = ExpensePlan::firstOrFail();
+        $this->assertSame(['2026-10'], $plan->skipped_periods);
+        $this->assertSame(9, $plan->expenses()->count());
+        $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
+        $this->assertSame(9, $plan->expenses()->count());
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-05 12:00:00'));
+        $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
+        $this->assertSame(10, $plan->expenses()->count());
+        $this->travelBack();
+    }
+
+    public function test_expense_summary_rechecks_existing_records_and_changed_plan_before_confirm(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-20 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $payload = $this->expensePlanPayload($apartment);
+        $plan = ExpensePlan::create([...$payload, 'apartment_id' => $apartment->id]);
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $preview = $this->put(route('expense-plans.update', $plan), [...$payload, 'amount' => 2000])->assertOk();
+        $this->assertSame('1250.00', $plan->fresh()->amount);
+        app(ExpensePlanGenerator::class)->generateForPeriod($plan, '2026-10');
+        $plan->update(['name' => 'Başka oturumda değişti']);
+        $updated = $this->post(route('expense-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
+        $this->assertTrue($updated->viewData('changed'));
+        $this->assertSame(2, $updated->viewData('summary')['count']);
+        $this->assertSame(1, $updated->viewData('summary')['existing']);
+        $this->assertSame('1250.00', $plan->fresh()->amount);
+        $this->post(route('expense-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
+        $this->assertSame('2000.00', $plan->fresh()->amount);
+        $this->assertSame(3, $plan->expenses()->count());
+        $this->assertSame('1250.00', $plan->expenses()->orderBy('expense_date')->firstOrFail()->amount);
+        $this->travelBack();
+    }
+
+    public function test_scheduled_expense_current_create_requires_refreshed_summary(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-20 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $payload = [...$this->expensePlanPayload($apartment), 'generation_mode' => 'on_schedule'];
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $preview = $this->post(route('expense-plans.store'), $payload)->assertOk();
+        $updated = $this->post(route('expense-plans.confirm'), [
+            'confirmation_token' => $preview->viewData('token'), 'current_month_action' => 'create',
+        ])->assertOk();
+        $this->assertSame(1, $updated->viewData('summary')['count']);
+        $this->assertSame(0, ExpensePlan::count());
+        $this->post(route('expense-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
+        $plan = ExpensePlan::firstOrFail();
+        $this->assertSame(1, $plan->expenses()->count());
+        $this->assertSame('2026-10-05', $plan->expenses()->firstOrFail()->expense_date->toDateString());
+        $this->assertSame([], $plan->skipped_periods);
+        $this->travelBack();
+    }
+
     public function test_expense_plan_bulk_generation_skips_past_and_existing_periods(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-10-20 12:00:00'));
         [$user, $apartment] = $this->setupApartment();
         $payload = $this->expensePlanPayload($apartment);
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
-            ->post(route('expense-plans.store'), $payload)
+            ->saveExpensePlan(route('expense-plans.store'), $payload)
             ->assertSessionHasNoErrors()->assertRedirect();
 
         $plan = ExpensePlan::where('apartment_id', $apartment->id)->firstOrFail();
@@ -868,13 +1317,13 @@ class FinancialPlanningTest extends TestCase
         $this->assertFalse($expense->is_paid);
 
         $payload['amount'] = 2000;
-        $this->put(route('expense-plans.update', $plan), $payload)
+        $this->saveExpensePlanUpdate($plan, $payload)
             ->assertSessionHasNoErrors()->assertSessionHas('status', fn ($message) => str_contains($message, '3 mevcut'));
         $this->assertSame(3, $plan->expenses()->count());
         $this->assertSame('1250.00', $expense->fresh()->amount);
 
         $payload['include_past_periods'] = 1;
-        $this->put(route('expense-plans.update', $plan), $payload)->assertSessionHasNoErrors();
+        $this->saveExpensePlanUpdate($plan, $payload)->assertSessionHasNoErrors();
         $this->assertSame(12, $plan->expenses()->count());
         $this->assertSame(12, \App\Models\AccountTransaction::where('account_id', $payload['account_id'])->count());
         $this->assertSame('2000.00', $plan->expenses()->orderBy('expense_date')->firstOrFail()->amount);
@@ -887,16 +1336,16 @@ class FinancialPlanningTest extends TestCase
         [$user, $apartment] = $this->setupApartment();
         $payload = $this->expensePlanPayload($apartment);
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
-            ->post(route('expense-plans.store'), [...$payload, 'end_date' => ''])
+            ->saveExpensePlan(route('expense-plans.store'), [...$payload, 'end_date' => ''])
             ->assertSessionHasErrors('end_date');
         $this->assertSame(0, ExpensePlan::count());
-        $this->post(route('expense-plans.store'), [...$payload, 'generation_mode' => 'invalid'])
+        $this->saveExpensePlan(route('expense-plans.store'), [...$payload, 'generation_mode' => 'invalid'])
             ->assertSessionHasErrors('generation_mode');
-        $this->post(route('expense-plans.store'), [...$payload, 'is_active' => 0, 'include_past_periods' => 1])
+        $this->saveExpensePlan(route('expense-plans.store'), [...$payload, 'is_active' => 0, 'include_past_periods' => 1])
             ->assertSessionHasNoErrors();
         $plan = ExpensePlan::firstOrFail();
         $this->assertSame(0, $plan->expenses()->count());
-        $this->put(route('expense-plans.update', $plan), [...$payload, 'include_past_periods' => 1])
+        $this->saveExpensePlanUpdate($plan, [...$payload, 'include_past_periods' => 1])
             ->assertSessionHasNoErrors();
         $this->assertSame(12, $plan->expenses()->count());
     }
@@ -916,7 +1365,7 @@ class FinancialPlanningTest extends TestCase
         $this->assertSame(1, $scheduled->expenses()->count());
         $this->assertSame(0, $bulk->expenses()->count());
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
-            ->put(route('expense-plans.update', $scheduled), [...$payload, 'include_past_periods' => 1])
+            ->saveExpensePlanUpdate($scheduled, [...$payload, 'include_past_periods' => 1])
             ->assertSessionHasNoErrors();
         $this->assertSame(12, $scheduled->expenses()->count());
         $this->travelBack();

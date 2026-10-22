@@ -26,6 +26,7 @@ class ExpensePlan extends Model
         'generation_mode',
         'due_days',
         'is_active',
+        'skipped_periods',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class ExpensePlan extends Model
         'generate_day' => 'integer',
         'due_days' => 'integer',
         'is_active' => 'boolean',
+        'skipped_periods' => 'array',
     ];
 
     public function apartment(): BelongsTo

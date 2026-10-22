@@ -42,25 +42,22 @@
     @endif
 
     @if ($editing)
-    <div class="rounded-2xl bg-white p-6 shadow-sm">
-        <form method="POST" action="{{ route('due-plans.store') }}" class="space-y-6">
+        <form method="POST" action="{{ route('due-plans.store') }}" class="space-y-4">
             @csrf
             @include('due-plans._form', ['plan' => $plan, 'selectedYear' => $selectedYear ?? now()->year])
 
-            <div class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-5">
-                <p class="mr-auto text-xs text-slate-500">Onayınızdan önce kayıt yapılmaz.</p>
+            <div class="flex flex-wrap items-center justify-end gap-3">
+                <p class="mr-auto text-xs text-slate-500">Son onayınıza kadar kayıt yapılmaz.</p>
                 @if ($plan->exists)
-                    <a href="{{ route('due-plans.index', $plan->pageParameters()) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
+                    <a href="{{ route('due-plans.index', $plan->pageParameters()) }}" class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
                 @else
-                    <a href="{{ route('financial-plans.index') }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
+                    <a href="{{ route('financial-plans.index') }}" class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
                 @endif
-                <button type="submit" class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
+                <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
                     Kaydet
                 </button>
             </div>
         </form>
-
-    </div>
 
     @else
         @include('due-plans._details')

@@ -4,7 +4,7 @@
     <div class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-900">Finansal Planlama</h1>
-            <p class="mt-1 text-sm text-slate-500">Aidat, gider ve ek borçlandırma planlarını buradan yönetin.</p>
+            <p class="mt-1 text-sm text-slate-500">Aidat, gider ve taksitli borç planlarını buradan yönetin.</p>
         </div>
         <a href="{{ route('financial-plans.create') }}"
            class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">

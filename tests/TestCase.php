@@ -6,6 +6,50 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function saveAssessmentPlan(string $url, array $payload, string $method = 'post'): \Illuminate\Testing\TestResponse
+    {
+        $preview = $this->{$method}($url, $payload);
+        if ($preview->status() !== 200) {
+            return $preview;
+        }
+        $decisions = ['include_past_installments' => $payload['include_past_installments'] ?? 0];
+        if ($preview->viewData('summary')['current_eligible']) {
+            $decisions['current_month_action'] = $payload['current_month_action'] ?? 'skip';
+        }
+        $preview = $this->post(route('assessment-plans.confirm'), [
+            ...$decisions, 'confirmation_token' => $preview->viewData('token'), 'update_summary' => 1,
+        ]);
+
+        return $this->post(route('assessment-plans.confirm'), [...$decisions, 'confirmation_token' => $preview->viewData('token')]);
+    }
+
+    protected function saveAssessmentPlanUpdate(\App\Models\AssessmentPlan $plan, array $payload): \Illuminate\Testing\TestResponse
+    {
+        return $this->saveAssessmentPlan(route('assessment-plans.update', $plan), $payload, 'put');
+    }
+
+    protected function saveExpensePlan(string $url, array $payload, string $method = 'post'): \Illuminate\Testing\TestResponse
+    {
+        $preview = $this->{$method}($url, $payload);
+        if ($preview->status() !== 200) {
+            return $preview;
+        }
+        $decisions = ['include_past_periods' => $payload['include_past_periods'] ?? 0];
+        if ($preview->viewData('summary')['current_eligible']) {
+            $decisions['current_month_action'] = 'skip';
+        }
+        $preview = $this->post(route('expense-plans.confirm'), [
+            ...$decisions, 'confirmation_token' => $preview->viewData('token'), 'update_summary' => 1,
+        ]);
+
+        return $this->post(route('expense-plans.confirm'), [...$decisions, 'confirmation_token' => $preview->viewData('token')]);
+    }
+
+    protected function saveExpensePlanUpdate(\App\Models\ExpensePlan $plan, array $payload): \Illuminate\Testing\TestResponse
+    {
+        return $this->saveExpensePlan(route('expense-plans.update', $plan), $payload, 'put');
+    }
+
     protected function saveAidatPlan(array $payload): \Illuminate\Testing\TestResponse
     {
         $preview = $this->post(route('due-plans.store'), $payload);

@@ -4,8 +4,8 @@
     @php
         $availableTypes = [];
         if (($canAidat || auth()->user()->isAdmin()) && ! $hasCurrentYearAidatPlan) $availableTypes[] = 'aidat';
-        if ($canExpense || auth()->user()->isAdmin()) $availableTypes[] = 'expense';
         if ($canAssessment || auth()->user()->isAdmin()) $availableTypes[] = 'assessment';
+        if ($canExpense || auth()->user()->isAdmin()) $availableTypes[] = 'expense';
         $selectedType = in_array(old('type'), $availableTypes, true) ? old('type') : ($availableTypes[0] ?? null);
     @endphp
     <div class="mb-6">
@@ -28,21 +28,21 @@
                 </span>
             </label>
         @endif
+        @if ($canAssessment || auth()->user()->isAdmin())
+            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
+                <input type="radio" name="type" value="assessment" class="mt-1" required @checked($selectedType === 'assessment')>
+                <span>
+                    <span class="block font-semibold text-slate-900">Taksitli Borç Planı</span>
+                    <span class="text-sm text-slate-500">Tek seferlik maliyetin taksitli dağıtımı</span>
+                </span>
+            </label>
+        @endif
         @if ($canExpense || auth()->user()->isAdmin())
             <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
                 <input type="radio" name="type" value="expense" class="mt-1" required @checked($selectedType === 'expense')>
                 <span>
                     <span class="block font-semibold text-slate-900">Gider Planı</span>
                     <span class="text-sm text-slate-500">Sözleşmeli tekrarlayan giderler</span>
-                </span>
-            </label>
-        @endif
-        @if ($canAssessment || auth()->user()->isAdmin())
-            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50">
-                <input type="radio" name="type" value="assessment" class="mt-1" required @checked($selectedType === 'assessment')>
-                <span>
-                    <span class="block font-semibold text-slate-900">Ek Borçlandırma Planı</span>
-                    <span class="text-sm text-slate-500">Tek seferlik maliyetin taksitli dağıtımı</span>
                 </span>
             </label>
         @endif

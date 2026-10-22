@@ -18,7 +18,7 @@ class AutoGenerateFinancialPlans extends Command
 {
     protected $signature = 'financial-plans:auto-generate {--dry-run : Gerçekten oluşturmadan göster}';
 
-    protected $description = 'Zamanı gelen aidat, gider ve ek borçlandırma plan kayıtlarını oluşturur.';
+    protected $description = 'Zamanı gelen aidat, gider ve taksitli borç plan kayıtlarını oluşturur.';
 
     public function handle(
         DuePlanController $duePlanController,
@@ -66,11 +66,13 @@ class AutoGenerateFinancialPlans extends Command
             }
             if ($completedCount > 0) {
                 $this->warn("[Aidat:{$plan->name}] {$period} kısmi; yönetici onayı bekleniyor.");
+
                 continue;
             }
 
             if ($this->option('dry-run')) {
                 $this->info("[DRY-RUN][Aidat] {$plan->name} {$period}");
+
                 continue;
             }
 
@@ -106,6 +108,7 @@ class AutoGenerateFinancialPlans extends Command
 
             if ($this->option('dry-run')) {
                 $this->info("[DRY-RUN][Gider] {$plan->name} {$period}");
+
                 continue;
             }
 
@@ -136,18 +139,19 @@ class AutoGenerateFinancialPlans extends Command
 
             $installments = $plan->installments()
                 ->where('status', AssessmentInstallment::STATUS_PENDING)
-                ->where('period', '<=', $period)
+                ->where('period', $period)
                 ->get();
 
             foreach ($installments as $installment) {
                 if ($this->option('dry-run')) {
-                    $this->info("[DRY-RUN][EkBorç] {$plan->name} taksit {$installment->sequence}");
+                    $this->info("[DRY-RUN][TaksitliBorç] {$plan->name} taksit {$installment->sequence}");
+
                     continue;
                 }
 
                 $count = $generator->generateInstallment($plan, $installment);
                 if ($count > 0) {
-                    $this->info("[EkBorç] {$plan->name} taksit {$installment->sequence}: {$count} borç");
+                    $this->info("[TaksitliBorç] {$plan->name} taksit {$installment->sequence}: {$count} borç");
                 }
             }
         }

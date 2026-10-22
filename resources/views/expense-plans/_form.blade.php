@@ -1,9 +1,35 @@
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
-            @unless (isset($plan))
-                <h1 class="text-2xl font-bold text-slate-950">Gider Planı Oluştur</h1>
-                <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }} için düzenli gider planı oluşturun. Tedarikçi zorunludur.</p>
-            @endunless
-            <div @class(['grid gap-5 md:grid-cols-2', 'mt-5 border-t border-slate-100 pt-5' => ! isset($plan)])>
+<section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+    <h2 class="mb-4 text-sm font-semibold text-slate-700">Plan Bilgileri</h2>
+    <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label for="name" class="mb-2 block text-sm font-medium text-slate-600">Plan Adı</label>
+                    <input id="name" name="name" type="text" value="{{ old('name', $plan->name ?? '') }}" required maxlength="255" placeholder="Örn. Aylık asansör bakımı" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('name')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+                <div>
+                    <label for="amount" class="mb-2 block text-sm font-medium text-slate-600">Aylık Tutar</label>
+                    <input id="amount" name="amount" type="number" value="{{ old('amount', $plan->amount ?? '') }}" required min="0.01" step="0.01" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    @error('amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+    </div>
+</section>
+<section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+    <h2 class="mb-4 text-sm font-semibold text-slate-700">Açıklama</h2>
+    <div class="grid gap-4 md:grid-cols-2">
+                @if (isset($plan) && $plan->description)
+                    <div class="md:col-span-2">
+                        <label for="description" class="mb-2 block text-sm font-medium text-slate-600">Mevcut Özel Açıklama</label>
+                        <input id="description" name="description" value="{{ old('description', $plan->description) }}" maxlength="255" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        <p class="mt-1 text-xs text-slate-500">Ay, yıl ve kategoriyle otomatik açıklamaya geçmek için bu alanı boşaltın.</p>
+                        @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+                @endif
+        @include('expense-plans._description')
+    </div>
+</section>
+<section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+    <h2 class="mb-4 text-sm font-semibold text-slate-700">İşlem Bilgileri</h2>
+    <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label for="account_id" class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-medium text-slate-600">Hesap / Tedarikçi
                         @isset($plan)<span class="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">Değiştirilemez</span>@endisset
@@ -28,32 +54,11 @@
                     </select>
                     @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
-                <div>
-                    <label for="name" class="mb-2 block text-sm font-medium text-slate-600">Plan Adı</label>
-                    <input id="name" name="name" type="text" value="{{ old('name', $plan->name ?? '') }}" required maxlength="255" placeholder="Örn. Aylık asansör bakımı" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('name')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-                <div>
-                    <label for="amount" class="mb-2 block text-sm font-medium text-slate-600">Aylık Tutar</label>
-                    <input id="amount" name="amount" type="number" value="{{ old('amount', $plan->amount ?? '') }}" required min="0.01" step="0.01" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-                @if (isset($plan) && $plan->description)
-                    <div class="md:col-span-2">
-                        <label for="description" class="mb-2 block text-sm font-medium text-slate-600">Mevcut Özel Açıklama</label>
-                        <input id="description" name="description" value="{{ old('description', $plan->description) }}" maxlength="255" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        <p class="mt-1 text-xs text-slate-500">Ay, yıl ve kategoriyle otomatik açıklamaya geçmek için bu alanı boşaltın.</p>
-                        @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                    </div>
-                @endif
-                @include('expense-plans._description')
-            </div>
-        </div>
-
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <h3 class="mb-4 text-sm font-semibold text-slate-700">Planlama Bilgisi</h3>
-            @include('expense-plans._generation-mode')
-            <div class="grid gap-5 md:grid-cols-2">
+    </div>
+</section>
+<section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+    <h2 class="mb-4 text-sm font-semibold text-slate-700">Takvim</h2>
+    <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label for="start_date" class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-medium text-slate-600">Başlangıç Tarihi
                         @isset($plan)<span class="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">Değiştirilemez</span>@endisset
@@ -72,14 +77,16 @@
                     @error('generate_day')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
                 @include('expense-plans._due-days')
-                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 md:col-span-2">
-                    <p class="mb-1 text-sm font-semibold text-slate-700">İşlem Özeti</p>
-                    <p id="generation-summary" aria-live="polite" class="text-sm text-slate-600">Giderler seçilen yönteme göre oluşturulur. Mevcut giderler değişmez.</p>
-                </div>
+    </div>
+</section>
+<section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+    <h2 class="mb-4 text-sm font-semibold text-slate-700">Oluşturma ve Durum</h2>
+    @include('expense-plans._generation-mode')
+    <div class="grid gap-4 md:grid-cols-2">
                 <div class="md:col-span-2">
                     <div class="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                         <div>
-                            <label for="is_active" class="text-sm font-medium text-slate-700">Aktif / Pasif</label>
+                            <label for="is_active" class="text-sm font-medium text-slate-700">Plan Durumu</label>
                             <p id="is-active-help" class="mt-0.5 text-xs text-slate-500">Pasif planda otomatik ve plan üzerinden manuel gider oluşturulmaz.</p>
                         </div>
                         <label for="is_active" class="relative inline-flex shrink-0 cursor-pointer items-center">
@@ -90,15 +97,13 @@
                     </div>
                     @error('is_active')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
-            </div>
-            <p class="mt-4 text-xs text-slate-500">Oluşturulan giderler ödenmemiş olarak kaydedilir.</p>
-        </div>
-
-        <div id="expense-plan-actions" @class(['flex flex-col-reverse gap-3 md:flex-row md:justify-end', 'hidden' => isset($plan) && ! ($editing ?? false) && ! $errors->any()])>
-            <a href="{{ isset($plan) ? route('expense-plans.show', $plan) : route('financial-plans.index') }}" class="rounded-xl border border-slate-300 px-4 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">İptal</a>
-            <button id="save-expense-plan" type="submit" class="w-full rounded-xl bg-slate-950 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800 md:w-auto">{{ isset($plan) ? 'Değişiklikleri Kaydet' : 'Gider Planını Kaydet' }}</button>
-        </div>
-
+    </div>
+</section>
+<div id="expense-plan-actions" class="flex flex-wrap items-center justify-end gap-3">
+    <p class="mr-auto text-xs text-slate-500">Son onayınıza kadar kayıt yapılmaz.</p>
+    <a href="{{ isset($plan) ? route('expense-plans.show', $plan) : route('financial-plans.index') }}" class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">İptal</a>
+    <button id="save-expense-plan" type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white">Kaydet</button>
+</div>
     <script>
         (() => {
             const account = document.getElementById('account_id');
