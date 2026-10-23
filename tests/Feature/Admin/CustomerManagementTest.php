@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Account;
+use App\Models\AccountTransaction;
 use App\Models\Apartment;
 use App\Models\Due;
 use App\Models\Subscription;
@@ -10,6 +12,7 @@ use App\Models\SubscriptionPayment;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Support\SubscriptionCheckout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -403,7 +406,7 @@ class CustomerManagementTest extends TestCase
         $customer = User::factory()->create(['name' => 'Temel Musteri']);
         $apartment = Apartment::factory()->forUser($customer)->create(['name' => 'Temel Apartman']);
         $this->member($customer, $apartment);
-        $record = app(\App\Support\SubscriptionCheckout::class)->openFree($customer, $apartment);
+        $record = app(SubscriptionCheckout::class)->openFree($customer, $apartment);
 
         $legacyFree = $this->order($customer, [
             'subscription_id' => $record->id,
@@ -595,7 +598,7 @@ class CustomerManagementTest extends TestCase
         $this->assertNull($customer->fresh()->deactivated_at);
     }
 
-    public function test_admin_permanently_deletes_a_customer_and_owned_records(): void
+    public function test_admin_cannot_delete_a_customer_with_buildings_and_payment_history(): void
     {
         $admin = User::factory()->admin()->create();
         $customer = User::factory()->create(['name' => 'Silinecek Musteri']);
@@ -633,19 +636,86 @@ class CustomerManagementTest extends TestCase
             ->delete(route('admin.customers.destroy', $customer), [
                 'current_password' => 'password',
             ])
-            ->assertRedirect(route('admin.customers.index'));
+            ->assertSessionHasErrors('customer_deletion');
 
-        $this->assertDatabaseMissing('users', ['id' => $customer->id]);
-        $this->assertDatabaseMissing('apartments', ['id' => $owned->id]);
-        $this->assertDatabaseMissing('user_subscriptions', ['id' => $order->id]);
-        $this->assertDatabaseMissing('subscription_payments', ['id' => $payment->id]);
+        $this->assertDatabaseHas('users', ['id' => $customer->id]);
+        $this->assertDatabaseHas('apartments', ['id' => $owned->id]);
+        $this->assertDatabaseHas('user_subscriptions', ['id' => $order->id]);
+        $this->assertDatabaseHas('subscription_payments', ['id' => $payment->id]);
         $this->assertDatabaseHas('apartments', ['id' => $shared->id]);
-        $this->assertDatabaseHas('subscriptions', [
-            'id' => $record->id,
-            'apartment_name' => 'Sahip Apartman',
-            'retained_user_id' => null,
-            'status' => Subscription::STATUS_ENDED,
+        $this->assertDatabaseHas('subscriptions', ['id' => $record->id]);
+        $this->get(route('admin.customers.show', $customer))->assertOk()
+            ->assertSee('Bu kullanıcı silinemez')
+            ->assertSee('bir apartmanın kurucusu')
+            ->assertDontSee('id="purge-customer-title"', false);
+    }
+
+    public function test_transferring_management_does_not_allow_deleting_the_building_founder(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $founder = User::factory()->create();
+        $manager = User::factory()->create();
+        $apartment = Apartment::factory()->forUser($founder)->create();
+        $apartment->members()->attach($founder->id, ['role' => 'member', 'is_active' => true]);
+        $apartment->members()->attach($manager->id, ['role' => 'owner', 'is_active' => true]);
+        $this->actingAs($admin)->from(route('admin.customers.show', $founder))
+            ->delete(route('admin.customers.destroy', $founder), ['current_password' => 'password'])
+            ->assertRedirect(route('admin.customers.show', $founder))
+            ->assertSessionHasErrors('customer_deletion');
+        $this->assertDatabaseHas('users', ['id' => $founder->id]);
+        $this->assertDatabaseHas('apartments', ['id' => $apartment->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('apartment_user', ['apartment_id' => $apartment->id, 'user_id' => $manager->id, 'role' => 'owner']);
+    }
+
+    public function test_customer_without_connections_or_history_can_be_deleted(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create();
+        $this->actingAs($admin)->delete(route('admin.customers.destroy', $customer), ['current_password' => 'password'])
+            ->assertRedirect(route('admin.customers.index'));
+        $this->assertDatabaseMissing('users', ['id' => $customer->id]);
+    }
+
+    public function test_admin_can_delete_a_member_after_acknowledging_all_access_will_be_removed(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $member = User::factory()->create(['role' => 'user']);
+        $manager = User::factory()->create();
+        $apartment = Apartment::factory()->forUser($manager)->create();
+        $apartment->members()->attach($member->id, ['role' => 'member', 'is_active' => true]);
+        $account = Account::create([
+            'apartment_id' => $apartment->id, 'user_id' => $member->id, 'type' => 'tenant',
+            'name' => 'Korunan Hesap', 'is_active' => true,
+            'portal_suspended_until' => now()->addDay(), 'portal_suspension_reason' => 'Kontrol',
         ]);
+        $transaction = AccountTransaction::create([
+            'apartment_id' => $apartment->id, 'account_id' => $account->id,
+            'transaction_date' => today(), 'type' => 'debit', 'amount' => 100,
+        ]);
+        $this->actingAs($admin)->get(route('admin.customers.show', $member))->assertOk()
+            ->assertSee('name="confirm_member_deletion"', false)->assertSee('mali hareketler korunur');
+        $this->delete(route('admin.customers.destroy', $member), ['current_password' => 'password'])
+            ->assertSessionHasErrors('confirm_member_deletion');
+        $this->assertSame($member->id, $account->fresh()->user_id);
+        $this->delete(route('admin.customers.destroy', $member), [
+            'current_password' => 'password', 'confirm_member_deletion' => '1',
+        ])->assertRedirect(route('admin.customers.index'));
+        $this->assertDatabaseMissing('users', ['id' => $member->id]);
+        $this->assertDatabaseHas('apartments', ['id' => $apartment->id]);
+        $this->assertNull($account->fresh()->user_id);
+        $this->assertNull($account->fresh()->portal_suspended_until);
+        $this->assertDatabaseHas('account_transactions', ['id' => $transaction->id]);
+        $this->assertFalse($apartment->members()->whereKey($member->id)->exists());
+    }
+
+    public function test_a_founder_remains_a_commercial_counterpart_after_leaving_management(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $founder = User::factory()->create(['role' => 'user', 'name' => 'Eski Kurucu']);
+        $apartment = Apartment::factory()->forUser($founder)->create();
+        $apartment->members()->attach($founder->id, ['role' => 'member', 'is_active' => true]);
+        $this->actingAs($admin)->get(route('admin.customers.index'))->assertOk()->assertSee('Eski Kurucu');
+        $this->get(route('admin.customers.index', ['filtre' => 'uyeler']))->assertOk()->assertDontSee('Eski Kurucu');
     }
 
     public function test_admin_permanently_deletes_a_passive_apartment_and_keeps_orders(): void

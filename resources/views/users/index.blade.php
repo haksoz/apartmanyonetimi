@@ -7,6 +7,11 @@
         <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Yeni AidatCep kullanıcısı, ilgili hesabın detayından eklenir. Bu ekranda rol ve bina erişimi yönetilir.</div>
     </div>
 
+    <nav class="mb-4 flex gap-2" aria-label="Apartman kullanıcı durumu">
+        <a href="{{ route('users.index') }}" class="rounded-xl px-4 py-2 text-sm font-semibold {{ $filter === 'aktif' ? 'bg-slate-950 text-white' : 'bg-white text-slate-700' }}">Aktif kullanıcılar</a>
+        <a href="{{ route('users.index', ['durum' => 'eski']) }}" class="rounded-xl px-4 py-2 text-sm font-semibold {{ $filter === 'eski' ? 'bg-slate-950 text-white' : 'bg-white text-slate-700' }}">Eski kullanıcılar</a>
+    </nav>
+
     {{-- Desktop Table --}}
     <div class="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -46,6 +51,9 @@
                         </td>
                         <td class="px-5 py-4">
                             <div class="font-semibold text-slate-900">{{ $user->name }}</div>
+                            @if ($userAccounts->contains(fn ($account) => $account->portalIsSuspended()))
+                                <div class="mt-1 text-xs text-amber-700">Portal erişimi geçici durduruldu</div>
+                            @endif
                             @if (! $user->isActivated())
                                 <div class="mt-0.5 text-xs font-semibold text-amber-700">Davetli</div>
                             @endif
@@ -59,7 +67,7 @@
                                 <div class="space-y-1">
                                     @foreach ($userAccounts->take(3) as $acc)
                                         <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>{{ $acc->type_label }}
+                                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>{{ $acc->residence_status_label }}
                                         </span>
                                     @endforeach
                                 </div>
@@ -108,14 +116,7 @@
                                     </form>
                                 @endif
                                 @if (! $isCurrentUser)
-                                    <form method="POST" action="{{ route('users.toggle-active', $user) }}">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button type="submit"
-                                            class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors {{ $isActive ? 'border-amber-200 text-amber-700 hover:bg-amber-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' }}">
-                                            {{ $isActive ? 'Erişimi Kapat' : 'Erişimi Aç' }}
-                                        </button>
-                                    </form>
+                                    <a href="{{ route('users.show', $user) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Erişimi yönet</a>
                                 @endif
                                 <a href="{{ route('users.show', $user) }}"
                                     class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
@@ -133,7 +134,7 @@
                     @endif
                 @empty
                     <tr>
-                        <td colspan="5" class="px-5 py-12 text-center text-slate-400">Henüz apartmana kullanıcı eklenmemiş.</td>
+                        <td colspan="5" class="px-5 py-12 text-center text-slate-400">Bu grupta kullanıcı bulunmuyor.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -153,6 +154,9 @@
                 <div class="flex items-start justify-between mb-3">
                     <div>
                         <div class="font-bold text-slate-900">{{ $user->name }}</div>
+                        @if ($userAccounts->contains(fn ($account) => $account->portalIsSuspended()))
+                            <div class="mt-1 text-xs text-amber-700">Portal erişimi geçici durduruldu</div>
+                        @endif
                         @if (! $user->isActivated())
                             <div class="text-xs font-semibold text-amber-700">Davetli</div>
                         @endif
@@ -200,7 +204,7 @@
                         <div class="text-xs text-slate-500 mb-1">Hesap</div>
                         @if ($userAccounts->isNotEmpty())
                             @foreach ($userAccounts->take(3) as $acc)
-                                <div class="font-medium text-slate-900">{{ $acc->type_label }}</div>
+                                <div class="font-medium text-slate-900">{{ $acc->residence_status_label }}</div>
                             @endforeach
                         @else
                             <div class="font-medium text-slate-900">Hesapsız</div>
@@ -218,14 +222,7 @@
                         </form>
                     @endif
                     @if (! $isCurrentUser)
-                        <form method="POST" action="{{ route('users.toggle-active', $user) }}" class="flex-1">
-                            @csrf
-                            @method('PATCH')
-                            <button type="submit"
-                                class="w-full rounded-lg border px-3 py-2.5 text-sm font-semibold text-center {{ $isActive ? 'border-amber-200 text-amber-700 hover:bg-amber-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' }}">
-                                {{ $isActive ? 'Erişimi Kapat' : 'Erişimi Aç' }}
-                            </button>
-                        </form>
+                        <a href="{{ route('users.show', $user) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Erişimi yönet</a>
                     @endif
                     <a href="{{ route('users.show', $user) }}"
                         class="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">
@@ -240,7 +237,7 @@
             </div>
         @empty
             <div class="rounded-xl bg-white p-8 text-center text-slate-500 shadow-sm">
-                Henüz apartmana kullanıcı eklenmemiş.
+                Bu grupta kullanıcı bulunmuyor.
             </div>
         @endforelse
     </div>

@@ -11,6 +11,9 @@
         </div>
     </div>
 
+    @foreach (['reason', 'suspended_until', 'action', 'portal_access'] as $errorKey)
+        @error($errorKey)<p class="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ $message }}</p>@enderror
+    @endforeach
     <div class="space-y-4">
         <div class="rounded-2xl bg-white p-6 shadow-sm">
             <h5 class="text-sm font-semibold text-slate-900 mb-5">AidatCep kimliği</h5>
@@ -28,6 +31,9 @@
                     <div class="font-semibold text-slate-900">{{ $user->phone ?: '—' }}</div>
                 </div>
             </div>
+            @if ($user->isActivated())
+                <p class="mt-4 text-sm text-slate-500">Parolasını Hesabım sayfasından değiştirir.</p>
+            @endif
         </div>
 
         @if (! $user->isActivated() && $linkedAccounts->isEmpty())
@@ -79,7 +85,7 @@
                                 <a href="{{ route('accounts.show', $account) }}" class="font-medium text-sm text-slate-900 hover:text-slate-600">{{ $account->name }}</a>
                                 <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                                     <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>{{ $account->type_label }}
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>{{ $account->residence_status_label }}
                                     </span>
                                     @if ($account->unit)
                                         <span>{{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }} No</span>
@@ -87,6 +93,9 @@
                                     <span>Telefon: {{ $account->phone ?: '—' }}</span>
                                 </div>
                             </div>
+                            @if ($user->isActivated())
+                                @include('accounts._portal_access_controls', ['account' => $account])
+                            @endif
                             @if ($identityDiffers)
                                 <form method="POST" action="{{ route('accounts.user.identity', $account) }}">
                                     @csrf

@@ -13,7 +13,6 @@
     @php
         $filters = [
             'muhataplar' => 'Muhataplar',
-            'davetliler' => 'Davetliler',
             'uyeler' => 'Üyeler',
             'tumu' => 'Tümü',
         ];

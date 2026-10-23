@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Subscriber;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\AccountPortalAccessEvent;
 use App\Support\BuildingPlaces;
 use App\Support\CurrentApartment;
 use App\Support\PriceQuote;
@@ -29,7 +30,7 @@ class SubscriberDashboardController extends Controller
         $overview->decorate($managedApartments, $user, $prices);
 
         $residenceAccounts = Account::query()
-            ->with(['apartment', 'unit'])
+            ->with(['apartment', 'unit', 'tenantAssignments'])
             ->where('user_id', $user->id)
             ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
             ->whereHas('apartment', function ($query) use ($user) {
@@ -52,6 +53,8 @@ class SubscriberDashboardController extends Controller
         return view('subscriber.dashboard', [
             'apartments' => $managedApartments,
             'residenceAccounts' => $residenceAccounts,
+            'removedPortalLinks' => AccountPortalAccessEvent::with('account.apartment')
+                ->where('user_id', $user->id)->where('action', 'unlink')->latest('id')->get(),
             'currentApartmentModel' => $currentApartmentModel,
             'apartmentLimit' => $apartmentLimit,
             'apartmentCount' => $apartmentCount,

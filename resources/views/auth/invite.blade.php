@@ -8,9 +8,14 @@
         @if (! $invitation)
             <p class="mt-3 text-sm text-slate-600">Davet bağlantısı geçersiz veya süresi dolmuş. Yeni bağlantı için apartman yöneticinize başvurun.</p>
         @else
-            <p class="mt-1 text-sm text-slate-500">{{ $invitation->user->name }}, parolanızı belirleyerek AidatCep hesabınızı açın.</p>
+            <p class="mt-1 text-sm text-slate-500">{{ $invitation->account?->name ?? $invitation->user?->name }}, {{ $requiresLogin ? 'daveti kabul ederek bu hesaba erişebilirsiniz.' : 'parolanızı belirleyerek AidatCep hesabınızı açın.' }}</p>
+            @if (! $canAccept)
+                <p class="mt-3 text-sm text-slate-600">Bu e-posta adresinin AidatCep hesabı zaten var. {{ $invitation->email }} ile oturum açtıktan sonra bu davet bağlantısını tekrar açın.</p>
+                <a href="{{ route('login') }}" class="mt-3 inline-block text-sm font-semibold underline">Oturum aç</a>
+            @else
             <form method="POST" action="{{ route('invite.accept', $token) }}" class="mt-4 space-y-3">
                 @csrf
+                @if (! $requiresLogin)
                 <div>
                     <label for="password" class="text-sm font-medium text-slate-700">Parola</label>
                     <input id="password" name="password" type="password" required class="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
@@ -20,13 +25,14 @@
                     <label for="password_confirmation" class="text-sm font-medium text-slate-700">Parola tekrar</label>
                     <input id="password_confirmation" name="password_confirmation" type="password" required class="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 </div>
+                @endif
                 <label class="flex cursor-pointer items-start gap-2 text-xs leading-snug text-slate-600" data-consent-open="privacy-dialog">
                     <input type="checkbox" name="accept_privacy" value="1" class="pointer-events-none mt-0.5" tabindex="-1" @checked(old('accept_privacy')) required>
                     <span>Gizlilik ve KVKK aydınlatmasını okudum, kabul ediyorum.</span>
                 </label>
                 @error('accept_privacy')<div class="text-sm text-red-600">{{ $message }}</div>@enderror
                 @error('token')<div class="text-sm text-red-600">{{ $message }}</div>@enderror
-                <button type="submit" class="w-full rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Hesabı aç</button>
+                <button type="submit" class="w-full rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">{{ $requiresLogin ? 'Daveti kabul et' : 'Hesabı aç' }}</button>
             </form>
             <div id="privacy-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="privacy-dialog-title">
                 <div class="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl">
@@ -67,6 +73,7 @@
                     });
                 })();
             </script>
+            @endif
         @endif
     </div>
 @endsection

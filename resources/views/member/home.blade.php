@@ -15,15 +15,24 @@
 
     <div class="space-y-4">
         @foreach ($accounts as $account)
+            @if ($account->portalIsSuspended())
+                <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
+                    <h2 class="text-lg font-bold">{{ $apartment->name }} · Daire {{ $account->unit?->unit_no }}</h2>
+                    <p class="mt-1 text-sm">{{ $account->residence_status_label }}</p>
+                    <p class="mt-3 font-semibold">Bu hesaba erişiminiz geçici olarak durduruldu.</p>
+                    <p class="mt-2 text-sm">Gerekçe: {{ $account->portal_suspension_reason }}</p>
+                    <p class="mt-2 text-sm">Erişimin yeniden açılacağı tarih: {{ $account->portal_suspended_until->timezone('Europe/Istanbul')->format('d.m.Y H:i') }}</p>
+                    <p class="mt-2 text-xs">AidatCep hesabınız ve diğer dairelere erişiminiz etkilenmez.</p>
+                </section>
+                @continue
+            @endif
             @php
                 $balance = (float) $account->status_balance;
                 $openDues = $account->dues->where('is_imported', false);
                 $importedDues = $account->dues->where('is_imported', true);
                 $openPayments = $account->payments->where('is_imported', false);
                 $importedPayments = $account->payments->where('is_imported', true);
-                $moveIn = $account->type === \App\Models\Account::TYPE_TENANT && $account->activeTenantAssignment
-                    ? $account->activeTenantAssignment->move_in_date
-                    : $account->account_opening_date;
+                $moveIn = $account->residence_started_at;
             @endphp
             <section class="overflow-hidden rounded-2xl bg-white shadow-sm">
                 <div class="border-b border-slate-100 p-4 md:p-6">
@@ -35,25 +44,31 @@
                                 {{ $account->name }}
                             @endif
                         </h2>
-                        @unless ($account->is_active)
-                            <span class="inline-flex rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
-                        @endunless
+                        @if ($account->residenceHasEnded())
+                            <span class="inline-flex rounded-lg bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">{{ $account->residence_status_label }}</span>
+                        @endif
                     </div>
                     <p class="mt-1 text-sm text-slate-500">{{ $account->type_label }}</p>
+                    @if ($account->residenceHasEnded())
+                        <p class="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+                            {{ $moveIn?->format('d.m.Y') ?? '—' }} – {{ $account->account_end_date?->format('d.m.Y') ?? '—' }}
+                            dönemindeki kendi hesabınızı görüntülüyorsunuz. Bu hesaba yapılan sonraki ödemeler de gösterilir.
+                        </p>
+                    @endif
 
                     <details class="group mt-4">
                         <summary class="cursor-pointer list-none text-sm font-semibold text-slate-600">Detaylar</summary>
                         <div class="mt-4 grid gap-3 text-sm md:grid-cols-2">
-                            @if ($account->unit?->floor)
+                            @if (! $account->residenceHasEnded() && $account->unit?->floor)
                                 <div class="flex items-center justify-between gap-2"><span class="text-slate-500">Kat</span><span class="font-semibold">{{ $account->unit->floor }}</span></div>
                             @endif
-                            @if ($account->unit?->block)
+                            @if (! $account->residenceHasEnded() && $account->unit?->block)
                                 <div class="flex items-center justify-between gap-2"><span class="text-slate-500">Blok</span><span class="font-semibold">{{ $account->unit->block }}</span></div>
                             @endif
-                            @if ($account->unit?->square_meters)
+                            @if (! $account->residenceHasEnded() && $account->unit?->square_meters)
                                 <div class="flex items-center justify-between gap-2"><span class="text-slate-500">Alan</span><span class="font-semibold">{{ number_format($account->unit->square_meters, 0, ',', '.') }} m²</span></div>
                             @endif
-                            @if ($account->unit?->share_coefficient)
+                            @if (! $account->residenceHasEnded() && $account->unit?->share_coefficient)
                                 <div class="flex items-center justify-between gap-2"><span class="text-slate-500">Hisse Katsayısı</span><span class="font-semibold">{{ $account->unit->share_coefficient }}</span></div>
                             @endif
                             @if ($account->phone)
@@ -98,7 +113,7 @@
 
                 <div class="flex flex-wrap gap-2 border-t border-slate-100 px-4 py-4 md:px-6">
                     <button type="button" disabled class="cursor-not-allowed rounded-xl bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-500">Kartla öde</button>
-                    <a href="{{ route('reports.account-statement', ['account_id' => $account->id, 'date_from' => now()->startOfYear()->toDateString(), 'date_to' => now()->toDateString()]) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cari ekstre</a>
+                    <a href="{{ route('reports.account-statement', ['account_id' => $account->id, 'date_from' => $account->residenceHasEnded() ? ($account->residence_started_at?->toDateString() ?? now()->startOfYear()->toDateString()) : now()->startOfYear()->toDateString(), 'date_to' => now()->toDateString()]) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cari ekstre</a>
                 </div>
                 <p class="px-4 pb-4 text-xs text-slate-400 md:px-6">Kartla ödeme henüz açılmadı.</p>
             </section>

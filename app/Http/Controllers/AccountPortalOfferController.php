@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccountPortalOffer;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AccountPortalOfferController extends Controller
@@ -14,8 +13,11 @@ class AccountPortalOfferController extends Controller
 
         $linked = DB::transaction(function () use ($offer) {
             $account = $offer->account()->lockForUpdate()->first();
+            $offer = AccountPortalOffer::query()->lockForUpdate()->findOrFail($offer->id);
+            abort_unless($offer->status === AccountPortalOffer::STATUS_PENDING, 403);
 
-            if (! $account || $account->apartment_id !== $offer->apartment_id) {
+            if (! $account || $account->apartment_id !== $offer->apartment_id
+                || strcasecmp((string) $account->email, $offer->user->email) !== 0) {
                 $offer->update([
                     'status' => AccountPortalOffer::STATUS_REJECTED,
                     'rejected_at' => now(),

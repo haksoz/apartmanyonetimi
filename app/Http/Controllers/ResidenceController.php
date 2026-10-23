@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Support\CurrentApartment;
+use App\Support\ResidentAccountVisibility;
+use Illuminate\Http\Request;
 
 class ResidenceController extends Controller
 {
-    public function __invoke(CurrentApartment $currentApartment)
+    public function __invoke(CurrentApartment $currentApartment, Request $request, ?Account $account = null)
     {
         $user = auth()->user();
         $apartment = $currentApartment->getFor($user);
@@ -28,28 +30,28 @@ class ResidenceController extends Controller
             ->where('apartment_id', $apartment->id)
             ->where('user_id', $user->id)
             ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
-            ->with([
-                'unit',
-                'activeTenantAssignment',
-                'dues' => function ($query) {
-                    $query->where('remaining_amount', '>', 0)
-                        ->with(['category', 'batch.plan'])
-                        ->orderByDesc('due_date');
-                },
-                'payments' => function ($query) {
-                    $query->where('unallocated_amount', '>', 0)
-                        ->orderByDesc('payment_date')
-                        ->orderByDesc('id');
-                },
-                'transactions' => function ($query) {
-                    $query->orderBy('transaction_date')
-                        ->orderBy('id');
-                },
-            ])
+            ->when($account, fn ($query) => $query->whereKey($account->id))
+            ->with(['unit', 'activeTenantAssignment', 'tenantAssignments'])
             ->orderBy('id')
             ->get();
 
+        abort_if($account && $accounts->isEmpty(), 403);
         $accounts->each(function (Account $account) {
+            if ($account->portalIsSuspended()) {
+                return;
+            }
+            $account->load([
+                'transactions' => fn ($query) => ResidentAccountVisibility::transactions($query, $account)->orderBy('transaction_date')->orderBy('id'),
+                'dues' => function ($query) use ($account) {
+                    $query->where('remaining_amount', '>', 0)->with(['category', 'batch.plan'])->orderByDesc('due_date');
+                    if ($account->residenceHasEnded()) {
+                        $query->whereHas('transactions', fn ($tx) => ResidentAccountVisibility::transactions($tx, $account));
+                    }
+                },
+                'payments' => fn ($query) => $query->where('unallocated_amount', '>', 0)
+                    ->when($account->residenceHasEnded() && $account->residence_started_at, fn ($q) => $q->whereDate('payment_date', '>=', $account->residence_started_at))
+                    ->orderByDesc('payment_date'),
+            ]);
             $running = 0.0;
             $debit = 0.0;
             $credit = 0.0;

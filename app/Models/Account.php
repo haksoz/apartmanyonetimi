@@ -2,8 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\Category;
-use App\Models\Due;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,12 +32,15 @@ class Account extends Model
         'is_active',
         'is_hidden',
         'default_category_id',
+        'portal_suspended_until',
+        'portal_suspension_reason',
     ];
 
     protected $casts = [
         'account_opening_date' => 'date',
         'account_end_date' => 'date',
         'is_hidden' => 'boolean',
+        'portal_suspended_until' => 'datetime',
     ];
 
     public function apartment(): BelongsTo
@@ -54,6 +56,53 @@ class Account extends Model
     public function portalOffers(): HasMany
     {
         return $this->hasMany(AccountPortalOffer::class);
+    }
+
+    public function portalInvitations(): HasMany
+    {
+        return $this->hasMany(UserInvitation::class);
+    }
+
+    public function portalAccessEvents(): HasMany
+    {
+        return $this->hasMany(AccountPortalAccessEvent::class);
+    }
+
+    public function portalIsSuspended(): bool
+    {
+        return $this->portal_suspended_until?->isFuture() ?? false;
+    }
+
+    public function residenceHasEnded(): bool
+    {
+        return ! $this->is_active || ($this->account_end_date && $this->account_end_date->lte(today()));
+    }
+
+    public function getResidenceStatusLabelAttribute(): string
+    {
+        if ($this->residenceHasEnded()) {
+            return $this->type === self::TYPE_TENANT ? 'Kiracılığı sonlanmış' : 'Kat malikliği sonlanmış';
+        }
+
+        return $this->type_label;
+    }
+
+    public function getResidenceStartedAtAttribute(): ?Carbon
+    {
+        return $this->type === self::TYPE_TENANT
+            ? ($this->tenantAssignments->sortByDesc('move_in_date')->first()?->move_in_date ?? $this->account_opening_date)
+            : $this->account_opening_date;
+    }
+
+    protected static function booted(): void
+    {
+        static::updated(function (Account $account) {
+            if ($account->wasChanged(['email', 'type'])) {
+                $account->portalInvitations()->whereNull('accepted_at')->delete();
+                $account->portalOffers()->where('status', AccountPortalOffer::STATUS_PENDING)
+                    ->update(['status' => AccountPortalOffer::STATUS_REJECTED, 'rejected_at' => now()]);
+            }
+        });
     }
 
     public function defaultCategory(): BelongsTo

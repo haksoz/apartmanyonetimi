@@ -19,6 +19,8 @@
     }
 
     $tabs[] = ['key' => 'edit', 'label' => 'Düzenle', 'url' => route('accounts.edit', $account), 'color' => 'bg-amber-500 hover:bg-amber-600'];
+
+    $tabs = array_filter($tabs, fn ($tab) => ! in_array($tab['key'], ['edit', 'payment', 'due', 'statement'], true) || $tab['key'] !== $active);
 @endphp
 
 {{-- Masaüstü butonlar --}}

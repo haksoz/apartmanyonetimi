@@ -130,7 +130,7 @@ class AccountPageTest extends TestCase
             ->assertSee('1. Daire (Resident)', false)
             ->assertSee('text-base font-semibold text-slate-800', false)
             ->assertSee('Resident')
-            ->assertSee('Detaylar')
+            ->assertDontSee('Detaylar')
             ->assertDontSee('Hesap Türü')
             ->assertSee(route('accounts.index'), false);
     }

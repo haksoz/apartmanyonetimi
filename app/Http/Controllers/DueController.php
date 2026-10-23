@@ -36,6 +36,10 @@ class DueController extends Controller
             return redirect()->route('current-apartment.select');
         }
 
+        if (! $this->isOwnerOf($apartment)) {
+            return redirect()->route('residence.home');
+        }
+
         $sortBy = $request->query('sort_by', 'created_at');
         $sortDirection = $request->query('sort_direction', 'desc');
         $validSortColumns = ['created_at', 'unit_id', 'due_date', 'amount', 'status'];
@@ -868,6 +872,11 @@ class DueController extends Controller
 
         if ($due->apartment_id !== $apartment->id) {
             abort(404);
+        }
+        if (! $this->isOwnerOf($apartment)) {
+            abort_unless($due->account?->user_id === auth()->id() && ! $due->account->portalIsSuspended(), 403);
+
+            return redirect()->route('residence.account', $due->account);
         }
     }
 

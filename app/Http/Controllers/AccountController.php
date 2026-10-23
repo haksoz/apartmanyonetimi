@@ -1063,17 +1063,13 @@ class AccountController extends Controller
                 $unit->update(['occupant_account_id' => $unit->owner_account_id]);
             }
 
-            // Hesabı pasifleştir ve user bağını kopar
+            // Hesabı sonlandır, geçmiş erişimini koru
             $account->update([
                 'is_active' => false,
-                'user_id' => null,
                 'account_end_date' => $validated['termination_date'],
             ]);
 
-            // User'ı apartmandan çıkar
-            if ($account->user) {
-                $apartment->members()->detach($account->user_id);
-            }
+            // Keep the accepted identity linked to its historical account.
         });
 
         return redirect()->route('accounts.show', $account)->with('status', 'Kiralama sonlandırıldı.');
@@ -1098,14 +1094,10 @@ class AccountController extends Controller
             // Eski maliki pasifleştir
             $account->update([
                 'is_active' => false,
-                'user_id' => null,
                 'account_end_date' => $validated['termination_date'],
             ]);
 
-            // User bağını kopar
-            if ($account->user) {
-                $apartment->members()->detach($account->user_id);
-            }
+            // Keep the accepted identity linked to its historical account.
 
             // Yeni boş malik hesabı aç
             $newOwner = Account::create([
@@ -1146,6 +1138,10 @@ class AccountController extends Controller
         $account = Account::query()
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->findOrFail($id);
+
+        if ($account->user?->isActivated()) {
+            return back()->withErrors(['account' => 'Kabul edilmiş portal bağlantısı olan hesap silinemez. İlişkiyi sonlandırarak geçmiş erişimini koruyun; yanlış bağlantı varsa portal erişimi yönetiminden kaldırın.']);
+        }
 
         // Hesapta hareket var mı kontrol et
         $duesCount = $account->dues()->count();

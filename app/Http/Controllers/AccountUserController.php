@@ -4,21 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\AccountPortalOffer;
+use App\Models\Apartment;
 use App\Models\ManagementOffer;
 use App\Models\User;
 use App\Models\UserInvitation;
 use App\Support\CurrentApartment;
 use App\Support\ManagementOfferService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AccountUserController extends Controller
 {
     /**
      * Kullanıcı yönetimi listesi.
      */
-    public function index(CurrentApartment $currentApartment)
+    public function index(CurrentApartment $currentApartment, Request $request)
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
@@ -47,6 +49,7 @@ class AccountUserController extends Controller
                 $user->pivot = $pivotUsers->has($user->id)
                     ? $pivotUsers[$user->id]->pivot
                     : (object) ['role' => 'member'];
+
                 return $user;
             })
             ->sortByDesc(fn ($u) => $u->pivot->role === 'owner');
@@ -65,7 +68,16 @@ class AccountUserController extends Controller
             ->openPending()
             ->pluck('user_id');
 
-        return view('users.index', compact('apartment', 'users', 'linkedAccounts', 'pendingManagerIds'));
+        $filter = $request->query('durum') === 'eski' ? 'eski' : 'aktif';
+        $users = $users->filter(function ($user) use ($linkedAccounts, $filter) {
+            $accounts = $linkedAccounts->get($user->id, collect());
+            $former = $user->pivot->role !== 'owner' && $accounts->isNotEmpty()
+                && $accounts->every(fn ($account) => $account->residenceHasEnded());
+
+            return $filter === 'eski' ? $former : ! $former;
+        });
+
+        return view('users.index', compact('apartment', 'users', 'linkedAccounts', 'pendingManagerIds', 'filter'));
     }
 
     /**
@@ -79,6 +91,8 @@ class AccountUserController extends Controller
             ->where('user_id', $user->id)
             ->with('unit')
             ->get();
+
+        abort_unless($linkedAccounts->isNotEmpty() || $apartment->members()->whereKey($user->id)->exists(), 404);
 
         return view('users.show', compact('apartment', 'user', 'linkedAccounts'));
     }
@@ -116,13 +130,13 @@ class AccountUserController extends Controller
         }
 
         $validated = $request->validate([
-            'name'  => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'phone' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user->update([
-            'name'  => $validated['name'],
+            'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
         ]);
@@ -131,7 +145,7 @@ class AccountUserController extends Controller
     }
 
     /**
-     * Hesabın e-postasıyla AidatCep kullanıcısı aç veya mevcut kullanıcıyı bağla.
+     * Hesabın e-postasına davet oluştur veya apartman üyesini bağla.
      */
     public function store(CurrentApartment $currentApartment, Account $account)
     {
@@ -140,74 +154,43 @@ class AccountUserController extends Controller
         abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
         abort_unless(in_array($account->type, [Account::TYPE_OWNER, Account::TYPE_TENANT], true), 404);
 
-        if ($account->user_id) {
-            return back()->withErrors(['email' => 'Bu hesabın AidatCep kullanıcısı zaten var.']);
-        }
-
-        if (! filled($account->email)) {
-            return back()->withErrors(['email' => 'Önce bu hesaba e-posta yazın.']);
-        }
-
-        $user = DB::transaction(function () use ($account, $apartment) {
-            $user = User::query()->where('email', $account->email)->first();
-
-            if (! $user) {
-                $user = User::create([
-                    'name' => $account->name,
-                    'email' => $account->email,
-                    'phone' => $account->phone,
-                    'password' => Str::random(32),
-                    'role' => 'user',
-                    'activated_at' => null,
-                ]);
+        return DB::transaction(function () use ($account, $apartment) {
+            $account = Account::query()->lockForUpdate()->findOrFail($account->id);
+            if ($account->user_id) {
+                return back()->withErrors(['email' => 'Bu hesabın AidatCep kullanıcısı zaten var.']);
             }
 
-            $alreadyMember = $apartment->members()->whereKey($user->id)->exists();
+            if (! filled($account->email)) {
+                return back()->withErrors(['email' => 'Önce bu hesaba e-posta yazın.']);
+            }
 
-            if ($user->isActivated() && ! $alreadyMember) {
-                AccountPortalOffer::query()
-                    ->where('account_id', $account->id)
-                    ->where('status', AccountPortalOffer::STATUS_PENDING)
-                    ->update([
-                        'status' => AccountPortalOffer::STATUS_REJECTED,
-                        'rejected_at' => now(),
-                    ]);
+            $existing = User::query()->where('email', $account->email)->first();
+            if (! $existing || ! $existing->isActivated()) {
+                return redirect()->route('accounts.show', $account)
+                    ->with('invite_account_id', $account->id)
+                    ->with('invite_url', route('invite.show', UserInvitation::issueForAccount($account)));
+            }
 
+            $account->portalInvitations()->whereNull('accepted_at')->delete();
+            $account->portalOffers()->where('status', AccountPortalOffer::STATUS_PENDING)
+                ->update(['status' => AccountPortalOffer::STATUS_REJECTED, 'rejected_at' => now()]);
+
+            if (! $apartment->members()->whereKey($existing->id)->exists()) {
                 AccountPortalOffer::query()->create([
                     'apartment_id' => $apartment->id,
                     'account_id' => $account->id,
-                    'user_id' => $user->id,
+                    'user_id' => $existing->id,
                     'offered_by' => auth()->id(),
                     'status' => AccountPortalOffer::STATUS_PENDING,
                 ]);
 
-                return $user;
+                return redirect()->route('accounts.show', $account);
             }
 
-            $account->update([
-                'user_id' => $user->id,
-            ]);
+            $account->update(['user_id' => $existing->id]);
 
-            if (! $alreadyMember) {
-                $apartment->members()->attach($user->id, ['role' => 'member', 'is_active' => true]);
-            }
-
-            return $user;
+            return redirect()->route('accounts.show', $account);
         });
-
-        $redirect = redirect()
-            ->route('accounts.show', $account)
-            ->with('status', $account->fresh()->user_id
-                ? ($user->isActivated()
-                    ? 'AidatCep kullanıcısı bu hesaba bağlandı.'
-                    : 'AidatCep kullanıcısı eklendi. Davet bağlantısını iletin.')
-                : 'Davet iletildi. Kişi oturum açınca kabul veya ret edecek.');
-
-        if ($user->isActivated()) {
-            return $redirect;
-        }
-
-        return $redirect->with('invite_url', route('invite.show', UserInvitation::issue($user)));
     }
 
     public function refreshAccountInvite(CurrentApartment $currentApartment, Account $account)
@@ -215,7 +198,11 @@ class AccountUserController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
-        abort_unless($account->user_id, 404);
+        if (! $account->user_id) {
+            abort_unless($account->portalInvitations()->whereNull('accepted_at')->exists(), 404);
+
+            return $this->store($currentApartment, $account);
+        }
 
         $user = User::query()->findOrFail($account->user_id);
 
@@ -250,7 +237,7 @@ class AccountUserController extends Controller
     /**
      * Apartmanda belirtilen kullanıcı dışında başka aktif yönetici var mı?
      */
-    private function hasOtherActiveOwner(\App\Models\Apartment $apartment, int $excludeUserId): bool
+    private function hasOtherActiveOwner(Apartment $apartment, int $excludeUserId): bool
     {
         return $apartment->members()
             ->where('users.id', '!=', $excludeUserId)
@@ -293,7 +280,7 @@ class AccountUserController extends Controller
         return $this->applyRole($apartment, $user, $validated['role']);
     }
 
-    private function applyRole(\App\Models\Apartment $apartment, User $user, string $role)
+    private function applyRole(Apartment $apartment, User $user, string $role)
     {
         if ($role === 'owner') {
             return app(ManagementOfferService::class)->offer($apartment, $user, auth()->user());
@@ -364,44 +351,85 @@ class AccountUserController extends Controller
         abort_unless($apartment->members()->whereKey($user->id)->exists(), 403);
         abort_if($user->id === auth()->id(), 403, 'Kendi üyeliğinizi pasife alamazsınız.');
 
-        $member = $apartment->members()->withPivot('role', 'is_active')->whereKey($user->id)->first();
-        $pivot = $member->pivot;
-        $newState = ! (bool) $pivot->is_active;
+        return redirect()->route('users.show', $user)
+            ->withErrors(['portal_access' => 'Erişimi bağlı hesap üzerinden gerekçe ve süre belirterek yönetin.']);
+    }
 
-        if (! $newState && $pivot->role === 'owner' && ! $this->hasOtherActiveOwner($apartment, $user->id)) {
-            return back()->withErrors(['active' => 'Apartmanda en az bir aktif yönetici olmalıdır.']);
+    public function manageAccess(Request $request, CurrentApartment $currentApartment, Account $account)
+    {
+        $apartment = $currentApartment->getFor($request->user());
+        abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
+        abort_unless($account->user?->isActivated(), 422);
+        $validated = $request->validate([
+            'action' => ['required', 'in:suspend,resume'],
+            'reason' => ['required', 'string', 'max:1000'],
+            'suspended_until' => ['required_if:action,suspend', 'nullable', 'date'],
+        ]);
+        if ($validated['action'] === 'suspend') {
+            $validated['suspended_until'] = Carbon::parse($validated['suspended_until'], 'Europe/Istanbul')->utc();
+            if (! $validated['suspended_until']->isFuture()) {
+                throw ValidationException::withMessages(['suspended_until' => 'Bitiş tarihi ve saati gelecekte olmalıdır.']);
+            }
         }
+        DB::transaction(function () use ($account, $validated, $request) {
+            $account = Account::query()->lockForUpdate()->findOrFail($account->id);
+            abort_unless($account->user?->isActivated(), 422);
+            $until = $validated['action'] === 'suspend' ? $validated['suspended_until'] : null;
+            $account->update([
+                'portal_suspended_until' => $until,
+                'portal_suspension_reason' => $until ? $validated['reason'] : null,
+            ]);
+            $account->portalAccessEvents()->create([
+                'user_id' => $account->user_id,
+                'performed_by' => $request->user()->id,
+                'action' => $validated['action'],
+                'reason' => $validated['reason'],
+                'suspended_until' => $until,
+            ]);
+        });
 
-        $apartment->members()->updateExistingPivot($user->id, ['is_active' => $newState]);
-
-        $message = $newState ? 'Bu binadaki erişim açıldı.' : 'Bu binadaki erişim kapatıldı.';
-
-        return back()->with('status', $message);
+        return back();
     }
 
     /**
      * Hesaptan kullanıcı bağını kaldır.
      */
-    public function destroy(CurrentApartment $currentApartment, Account $account)
+    public function destroy(Request $request, CurrentApartment $currentApartment, Account $account)
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
         abort_unless($apartment && $account->apartment_id === $apartment->id, 403);
 
-        $userId = $account->user_id;
-        $account->update(['user_id' => null]);
+        $userId = DB::transaction(function () use ($account, $apartment, $request) {
+            $account = Account::query()->lockForUpdate()->findOrFail($account->id);
+            $userId = $account->user_id;
+            if ($account->user?->isActivated()) {
+                $validated = $request->validate([
+                    'action' => ['required', 'in:unlink'],
+                    'reason' => ['required', 'string', 'max:1000'],
+                ]);
+                $account->portalAccessEvents()->create([
+                    'user_id' => $userId, 'performed_by' => $request->user()->id,
+                    'action' => 'unlink', 'reason' => $validated['reason'],
+                ]);
+            }
+            $account->portalInvitations()->whereNull('accepted_at')->delete();
+            $account->update(['user_id' => null, 'portal_suspended_until' => null, 'portal_suspension_reason' => null]);
 
-        AccountPortalOffer::query()
-            ->where('account_id', $account->id)
-            ->where('status', AccountPortalOffer::STATUS_PENDING)
-            ->update([
-                'status' => AccountPortalOffer::STATUS_REJECTED,
-                'rejected_at' => now(),
-            ]);
+            AccountPortalOffer::query()
+                ->where('account_id', $account->id)
+                ->where('status', AccountPortalOffer::STATUS_PENDING)
+                ->update([
+                    'status' => AccountPortalOffer::STATUS_REJECTED,
+                    'rejected_at' => now(),
+                ]);
 
-        if ($userId && ! $apartment->members()->whereKey($userId)->exists()) {
-            $apartment->members()->attach($userId, ['role' => 'member']);
-        }
+            if ($userId && ! Account::where('apartment_id', $apartment->id)->where('user_id', $userId)->exists()) {
+                $apartment->members()->wherePivot('role', '!=', 'owner')->detach($userId);
+            }
+
+            return $userId;
+        });
 
         return back()->with('status', $userId
             ? 'AidatCep bağlantısı kaldırıldı.'

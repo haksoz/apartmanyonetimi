@@ -45,10 +45,8 @@ class UserInvitationTest extends TestCase
             ->post(route('accounts.user.store', $account))
             ->assertRedirect(route('accounts.show', $account));
 
-        $invited = User::query()->where('email', 'davet@example.com')->firstOrFail();
-        $this->assertNull($invited->activated_at);
-        $this->assertSame('user', $invited->role);
-        $this->assertSame('member', $apartment->members()->whereKey($invited->id)->first()->pivot->role);
+        $this->assertDatabaseMissing('users', ['email' => 'davet@example.com']);
+        $this->assertNull($account->fresh()->user_id);
 
         $url = session('invite_url');
         $this->assertNotEmpty($url);
@@ -57,13 +55,9 @@ class UserInvitationTest extends TestCase
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->get(route('accounts.show', $account))
             ->assertOk()
-            ->assertSee('Kullanıcılar', false)
-            ->assertSee('ekranından takip edin ve yönetin')
             ->assertSee('AidatCep Portal Erişimi')
-            ->assertSee('Açık')
+            ->assertSee('Kabul bekliyor')
             ->assertDontSee('Şifre Belirle');
-
-        $invited->update(['password' => 'bilinen-parola']);
 
         $this->post(route('logout'));
 
@@ -72,11 +66,6 @@ class UserInvitationTest extends TestCase
             'password' => 'bilinen-parola',
         ])->assertSessionHasErrors('email');
         $this->assertGuest();
-
-        $this->actingAs($manager)
-            ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->patch(route('users.password', $invited), ['password' => 'yonetici-yazar'])
-            ->assertSessionHasErrors('password');
 
         $token = $this->tokenFrom($url);
         $this->get(route('invite.show', $token))
@@ -88,7 +77,7 @@ class UserInvitationTest extends TestCase
             'password' => 'yeni-parola',
             'password_confirmation' => 'yeni-parola',
         ])->assertSessionHasErrors('accept_privacy');
-        $this->assertNull($invited->fresh()->activated_at);
+        $this->assertDatabaseMissing('users', ['email' => 'davet@example.com']);
 
         $this->post(route('invite.accept', $token), [
             'password' => 'yeni-parola',
@@ -96,6 +85,9 @@ class UserInvitationTest extends TestCase
             'accept_privacy' => '1',
         ])->assertRedirect(route('subscriber.dashboard'));
 
+        $invited = User::query()->where('email', 'davet@example.com')->firstOrFail();
+        $this->assertSame($invited->id, $account->fresh()->user_id);
+        $this->assertSame('member', $apartment->members()->whereKey($invited->id)->first()->pivot->role);
         $this->assertAuthenticatedAs($invited);
         $this->assertNotNull($invited->fresh()->activated_at);
         $this->assertTrue(Hash::check('yeni-parola', $invited->fresh()->password));
@@ -365,10 +357,10 @@ class UserInvitationTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.customers.index', ['filtre' => 'davetliler']))
             ->assertOk()
-            ->assertSee('Davet Bekleyen')
-            ->assertSee('Davetli')
+            ->assertDontSee('Davet Bekleyen')
+            ->assertDontSee('Davetliler')
             ->assertDontSee('Sadece Uye')
-            ->assertDontSee('Kayitli Musteri');
+            ->assertSee('Kayitli Musteri');
 
         $this->actingAs($admin)
             ->get(route('admin.customers.index', ['filtre' => 'tumu']))

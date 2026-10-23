@@ -504,13 +504,34 @@
     </div>
     <div id="purge-customer-modal" @class([
         'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',
-        'hidden' => ! $errors->has('current_password') || old('purge_apartment_id'),
+        'hidden' => ! $errors->has('customer_deletion') && ! $errors->has('confirm_member_deletion') && (! $errors->has('current_password') || old('purge_apartment_id')),
     ])>
+        @if ($deletionBlockReason || $errors->has('customer_deletion'))
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="customer-deletion-blocked-title">
+                <h2 id="customer-deletion-blocked-title" class="text-lg font-bold text-slate-900">Bu kullanıcı silinemez</h2>
+                <p class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{{ $deletionBlockReason ?: $errors->first('customer_deletion') }}</p>
+                <div class="mt-5 flex justify-end">
+                    <button type="button" onclick="document.getElementById('purge-customer-modal').classList.add('hidden')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Tamam</button>
+                </div>
+            </div>
+        @else
         <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}" class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="purge-customer-title">
             @csrf
             @method('DELETE')
             <h2 id="purge-customer-title" class="text-lg font-bold text-slate-900">Müşteriyi kalıcı sil</h2>
-            <p class="mt-2 text-sm text-slate-600">{{ $customer->name }} hesabı, sahip olduğu apartmanlar, siparişler ve ödemeler silinir.</p>
+            <p class="mt-2 text-sm text-slate-600">{{ $customer->name }} kullanıcısı kalıcı olarak silinir. Bu işlem geri alınamaz.</p>
+            @if ($memberDeletionNeedsConfirmation)
+                <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p class="font-semibold">Bu kişinin yalnızca bu apartmandaki üyeliği değil, AidatCep kullanıcı hesabı silinecek.</p>
+                    <p class="mt-2">Tüm apartman üyelikleri, yöneticilik yetkileri ve daire hesap bağlantıları kaldırılır. Kişi artık giriş yapamaz. Apartmanlar, daire hesapları ve mali hareketler korunur.</p>
+                    <p class="mt-2">Kullanıcıya bağlı davetler, kişisel fatura profilleri ve onay kayıtları silinir. Yalnızca erişimi durdurmak istiyorsanız Pasife al işlemini kullanın.</p>
+                </div>
+                <label class="mt-3 flex items-start gap-2 text-sm text-slate-700">
+                    <input type="checkbox" name="confirm_member_deletion" value="1" required class="mt-1" @checked(old('confirm_member_deletion'))>
+                    <span>Bu kullanıcının tüm apartman erişimlerinin ve hesap bağlantılarının kaldırılacağını anladım, kalıcı silmeyi onaylıyorum.</span>
+                </label>
+                @error('confirm_member_deletion')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            @endif
             <label class="mt-4 block text-sm font-medium text-slate-700">
                 Kendi parolanız
                 <input type="password" name="current_password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
@@ -521,6 +542,7 @@
                 <button type="submit" class="rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">Kalıcı sil</button>
             </div>
         </form>
+        @endif
     </div>
     <div id="purge-apartment-modal" @class([
         'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',

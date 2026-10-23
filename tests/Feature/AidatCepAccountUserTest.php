@@ -7,8 +7,10 @@ use App\Models\AccountPortalOffer;
 use App\Models\Apartment;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\UserInvitation;
 use App\Support\CurrentApartment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class AidatCepAccountUserTest extends TestCase
@@ -121,8 +123,8 @@ class AidatCepAccountUserTest extends TestCase
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->post(route('accounts.user.store', $account));
 
+        $this->acceptPendingInvite();
         $user = User::query()->where('email', 'davet@example.com')->firstOrFail();
-        $user->update(['activated_at' => now()]);
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -144,7 +146,7 @@ class AidatCepAccountUserTest extends TestCase
         $this->assertSame('davet@example.com', $user->fresh()->email);
     }
 
-    public function test_a_pending_users_email_follows_the_account_email(): void
+    public function test_changing_the_email_invalidates_the_pending_invitation_without_creating_a_user(): void
     {
         [$manager, $apartment, $account] = $this->ownerAccount([
             'email' => 'eski@example.com',
@@ -170,7 +172,10 @@ class AidatCepAccountUserTest extends TestCase
             ->assertRedirect(route('accounts.show', $account));
 
         $this->assertSame('yeni@example.com', $account->fresh()->email);
-        $this->assertSame('yeni@example.com', User::query()->find($account->fresh()->user_id)->email);
+        $this->assertNull($account->fresh()->user_id);
+        $this->assertDatabaseMissing('user_invitations', ['account_id' => $account->id]);
+        $this->assertDatabaseMissing('users', ['email' => 'eski@example.com']);
+        $this->assertDatabaseMissing('users', ['email' => 'yeni@example.com']);
     }
 
     public function test_profile_changes_show_on_the_user_list_until_a_manager_copies_them(): void
@@ -191,8 +196,8 @@ class AidatCepAccountUserTest extends TestCase
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->post(route('accounts.user.store', $first));
 
+        $this->acceptPendingInvite();
         $member = User::query()->where('email', 'sakin@example.com')->firstOrFail();
-        $member->update(['activated_at' => now()]);
         $second->update(['user_id' => $member->id]);
 
         $this->actingAs($member)
@@ -225,6 +230,138 @@ class AidatCepAccountUserTest extends TestCase
         $this->assertSame('sakin@example.com', $first->fresh()->email);
         $this->assertSame('Ikinci Unvan', $second->fresh()->name);
         $this->assertSame('5552', $second->fresh()->phone);
+    }
+
+    private function acceptPendingInvite(): void
+    {
+        $token = basename(parse_url(session('invite_url'), PHP_URL_PATH));
+        $this->post(route('logout'));
+        $this->post(route('invite.accept', $token), [
+            'password' => 'yeni-parola',
+            'password_confirmation' => 'yeni-parola',
+            'accept_privacy' => '1',
+        ])->assertRedirect();
+    }
+
+    public function test_cancelling_a_pending_invite_creates_no_user_and_invalidates_the_link(): void
+    {
+        [$manager, $apartment, $account] = $this->ownerAccount();
+        $this->actingAs($manager)->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->post(route('accounts.user.store', $account))->assertSessionHas('invite_url');
+        $token = basename(parse_url(session('invite_url'), PHP_URL_PATH));
+        $this->assertDatabaseMissing('users', ['email' => $account->email]);
+        $this->get(route('users.index'))->assertOk()->assertDontSee($account->email);
+        $this->delete(route('accounts.user.destroy', $account))->assertRedirect();
+        $this->get(route('accounts.show', $account))->assertOk()->assertSee('Kapalı')->assertDontSee('Kabul bekliyor');
+        $this->post(route('logout'));
+        $this->post(route('invite.accept', $token), [
+            'password' => 'yeni-parola', 'password_confirmation' => 'yeni-parola', 'accept_privacy' => '1',
+        ])->assertSessionHasErrors('token');
+        $this->assertDatabaseMissing('users', ['email' => $account->email]);
+        $this->assertNull($account->fresh()->user_id);
+    }
+
+    public function test_pending_invite_can_be_copied_and_regenerated_from_the_account_page(): void
+    {
+        [$manager, $apartment, $account] = $this->ownerAccount();
+        $this->actingAs($manager)->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->post(route('accounts.user.store', $account))->assertRedirect(route('accounts.show', $account));
+        $firstUrl = session('invite_url');
+        $firstToken = basename(parse_url($firstUrl, PHP_URL_PATH));
+
+        $this->get(route('accounts.show', $account))->assertOk()
+            ->assertSee('Kabul bekliyor')->assertSee('Kopyala')
+            ->assertSee('value="'.$firstUrl.'"', false)
+            ->assertSee('Yeni davet bağlantısı oluştur');
+
+        $this->get(route('accounts.show', $account))->assertOk()
+            ->assertDontSee($firstUrl, false)
+            ->assertSee('Yeni davet bağlantısı oluştur');
+        $this->assertNotNull(UserInvitation::findValid($firstToken));
+
+        $this->post(route('accounts.user.invite', $account))->assertRedirect(route('accounts.show', $account));
+        $secondUrl = session('invite_url');
+        $this->assertNotSame($firstUrl, $secondUrl);
+        $this->get(route('accounts.show', $account))->assertOk()
+            ->assertSee('value="'.$secondUrl.'"', false)->assertSee('Kopyala');
+        $this->assertNull(UserInvitation::findValid($firstToken));
+        $this->assertDatabaseMissing('users', ['email' => $account->email]);
+    }
+
+    public function test_refresh_expiry_and_replay_of_account_invitations(): void
+    {
+        [$manager, $apartment, $account] = $this->ownerAccount();
+        $this->actingAs($manager)->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->post(route('accounts.user.store', $account));
+        $first = basename(parse_url(session('invite_url'), PHP_URL_PATH));
+        $this->post(route('accounts.user.invite', $account))->assertSessionHas('invite_url');
+        $second = basename(parse_url(session('invite_url'), PHP_URL_PATH));
+        $this->assertNotSame($first, $second);
+        $this->assertNull(UserInvitation::findValid($first));
+        $invite = $account->portalInvitations()->firstOrFail();
+        $invite->update(['expires_at' => now()->subMinute()]);
+        $this->assertNull(UserInvitation::findValid($second));
+        $this->post(route('accounts.user.invite', $account));
+        $token = basename(parse_url(session('invite_url'), PHP_URL_PATH));
+        $this->acceptPendingInvite();
+        $user = $account->fresh()->user;
+        $this->assertNotNull($user->activated_at);
+        $this->post(route('invite.accept', $token), [
+            'password' => 'baska-parola', 'password_confirmation' => 'baska-parola', 'accept_privacy' => '1',
+        ])->assertSessionHasErrors('token');
+        $this->assertTrue(Hash::check('yeni-parola', $user->fresh()->password));
+    }
+
+    public function test_a_user_registered_after_the_invite_must_log_in_without_resetting_their_password(): void
+    {
+        [$manager, $apartment, $account] = $this->ownerAccount();
+        $this->actingAs($manager)->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->post(route('accounts.user.store', $account));
+        $token = basename(parse_url(session('invite_url'), PHP_URL_PATH));
+        $existing = User::factory()->create([
+            'email' => $account->email, 'password' => 'mevcut-parola', 'activated_at' => now(), 'role' => 'user',
+        ]);
+        $this->post(route('logout'));
+        $this->get(route('invite.show', $token))->assertOk()->assertSee('Oturum aç')->assertDontSee('id="password"', false);
+        $this->post(route('invite.accept', $token), [
+            'password' => 'yeni-parola', 'password_confirmation' => 'yeni-parola', 'accept_privacy' => '1',
+        ])->assertSessionHasErrors('token');
+        $this->assertNull($account->fresh()->user_id);
+        $this->actingAs($existing)->post(route('invite.accept', $token), ['accept_privacy' => '1'])->assertRedirect();
+        $this->assertSame($existing->id, $account->fresh()->user_id);
+        $this->assertTrue(Hash::check('mevcut-parola', $existing->fresh()->password));
+    }
+
+    public function test_legacy_pending_resident_is_converted_preserving_the_invitation(): void
+    {
+        [$manager, $apartment, $account] = $this->ownerAccount();
+        $legacy = User::factory()->create(['email' => $account->email, 'role' => 'user', 'activated_at' => null]);
+        $account->update(['user_id' => $legacy->id]);
+        $apartment->members()->attach($legacy->id, ['role' => 'member', 'is_active' => true]);
+        $token = UserInvitation::issue($legacy);
+        $migration = require database_path('migrations/2026_10_23_120100_convert_pending_account_users_to_invitations.php');
+        $migration->up();
+        $this->assertDatabaseMissing('users', ['id' => $legacy->id]);
+        $this->assertNull($account->fresh()->user_id);
+        $this->assertFalse($apartment->members()->whereKey($legacy->id)->exists());
+        $this->assertSame($account->id, UserInvitation::findValid($token)->account_id);
+        $this->post(route('invite.accept', $token), [
+            'password' => 'yeni-parola', 'password_confirmation' => 'yeni-parola', 'accept_privacy' => '1',
+        ])->assertRedirect();
+        $this->assertNotNull($account->fresh()->user_id);
+    }
+
+    public function test_legacy_users_with_other_history_are_preserved(): void
+    {
+        [$manager, $apartment, $account] = $this->ownerAccount();
+        $legacy = User::factory()->create(['email' => $account->email, 'role' => 'user', 'activated_at' => null]);
+        $account->update(['user_id' => $legacy->id]);
+        $other = Apartment::factory()->forUser($legacy)->create();
+        $migration = require database_path('migrations/2026_10_23_120100_convert_pending_account_users_to_invitations.php');
+        $migration->up();
+        $this->assertDatabaseHas('users', ['id' => $legacy->id]);
+        $this->assertSame($legacy->id, $account->fresh()->user_id);
+        $this->assertDatabaseHas('apartments', ['id' => $other->id]);
     }
 
     /**

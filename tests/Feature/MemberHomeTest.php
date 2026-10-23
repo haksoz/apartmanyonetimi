@@ -87,31 +87,14 @@ class MemberHomeTest extends TestCase
         $this->assertSame('sakin@example.com', $member->email);
     }
 
-    public function test_closing_building_access_leaves_the_login_account_open(): void
+    public function test_the_old_building_toggle_does_not_remove_portal_access(): void
     {
         [$manager, $apartment, $member] = $this->building();
-
-        $this->actingAs($manager)
-            ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+        $this->actingAs($manager)->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->patch(route('users.toggle-active', $member))
-            ->assertRedirect()
-            ->assertSessionHas('status', 'Bu binadaki erişim kapatıldı.');
-
+            ->assertRedirect(route('users.show', $member))->assertSessionHasErrors('portal_access');
+        $this->assertTrue((bool) $apartment->members()->whereKey($member->id)->first()->pivot->is_active);
         $this->assertNull($member->fresh()->deactivated_at);
-        $this->assertFalse((bool) $apartment->members()->whereKey($member->id)->first()->pivot->is_active);
-
-        $this->actingAs($member)
-            ->get(route('dashboard'))
-            ->assertRedirect(route('onboarding.show'));
-
-        $this->post(route('logout'));
-
-        $this->post('/login', [
-            'email' => $member->email,
-            'password' => 'password',
-        ])->assertRedirect(route('subscriber.dashboard'));
-
-        $this->assertAuthenticatedAs($member);
     }
 
     public function test_a_manager_cannot_write_an_activated_password(): void

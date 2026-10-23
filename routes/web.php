@@ -139,6 +139,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     // Üye + Yönetici erişimi
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/dairem', ResidenceController::class)->name('residence.home');
+    Route::get('/dairem/{account}', ResidenceController::class)->name('residence.account');
     Route::get('reports/account-statement', [ReportController::class, 'accountStatement'])->name('reports.account-statement');
     Route::get('reports/account-statement/export/{type}', [ReportController::class, 'accountStatementExport'])->middleware('feature.export')->name('reports.account-statement.export');
 
@@ -177,10 +178,10 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
     // Aidatlar - Üye ve Yönetici erişimi
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
-        Route::get('dues/export', [DueController::class, 'export'])->middleware('feature.export')->name('dues.export');
-    Route::get('dues/create', [DueController::class, 'create'])->name('dues.create');
+        Route::get('dues/export', [DueController::class, 'export'])->middleware(['building.panel', 'feature.export'])->name('dues.export');
+    Route::get('dues/create', [DueController::class, 'create'])->middleware('building.panel')->name('dues.create');
     Route::post('dues', [DueController::class, 'store'])->name('dues.store');
-    Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->name('dues.expenses.by-period');
+    Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->middleware('building.panel')->name('dues.expenses.by-period');
     Route::get('dues/{due}', [DueController::class, 'show'])->name('dues.show');
 
     // Yönetici zorunlu
@@ -216,6 +217,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('users/{user}/invite', [AccountUserController::class, 'refreshInvite'])->name('users.invite');
         Route::post('accounts/{account}/user', [AccountUserController::class, 'store'])->name('accounts.user.store');
         Route::post('accounts/{account}/user/invite', [AccountUserController::class, 'refreshAccountInvite'])->name('accounts.user.invite');
+        Route::patch('accounts/{account}/user/access', [AccountUserController::class, 'manageAccess'])->name('accounts.user.access');
         Route::post('accounts/{account}/user/identity', [AccountUserController::class, 'applyIdentity'])->name('accounts.user.identity');
         Route::patch('accounts/{account}/user/role', [AccountUserController::class, 'updateRole'])->name('accounts.user.role');
         Route::patch('users/{user}/role', [AccountUserController::class, 'updateUserRole'])->name('users.role');

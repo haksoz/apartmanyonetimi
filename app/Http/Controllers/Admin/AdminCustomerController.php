@@ -24,7 +24,7 @@ class AdminCustomerController extends Controller
     {
         $search = trim((string) $request->query('search', ''));
         $filter = $request->query('filtre', 'muhataplar');
-        if (! in_array($filter, ['muhataplar', 'davetliler', 'uyeler', 'tumu'], true)) {
+        if (! in_array($filter, ['muhataplar', 'uyeler', 'tumu'], true)) {
             $filter = 'muhataplar';
         }
 
@@ -160,21 +160,27 @@ class AdminCustomerController extends Controller
 
         $name = $customer->name;
 
-        DB::transaction(function () use ($customer) {
-            Apartment::query()
-                ->where('user_id', $customer->id)
-                ->get()
-                ->each(function (Apartment $apartment) {
-                    $this->endSubscriptions($apartment, null);
-                    $apartment->forceDelete();
-                });
+        DB::transaction(function () use ($customer, $request) {
+            $customer = User::query()->lockForUpdate()->findOrFail($customer->id);
+            if ($reason = $this->customerDeletionBlockReason($customer)) {
+                throw ValidationException::withMessages(['customer_deletion' => $reason]);
+            }
 
+            if ($this->memberDeletionNeedsConfirmation($customer)) {
+                $request->validate(['confirm_member_deletion' => ['accepted']], [
+                    'confirm_member_deletion.accepted' => 'Kullanıcının tüm apartman erişimlerinin ve hesap bağlantılarının kaldırılacağını onaylayın.',
+                ]);
+            }
+            $customer->accounts()->withTrashed()->update([
+                'user_id' => null, 'portal_suspended_until' => null, 'portal_suspension_reason' => null,
+            ]);
+            DB::table('sessions')->where('user_id', $customer->id)->delete();
             $customer->delete();
         });
 
         return redirect()
             ->route('admin.customers.index')
-            ->with('status', $name.' ve bağlı kayıtları silindi.');
+            ->with('status', $name.' kullanıcısı silindi.');
     }
 
     public function destroyApartment(Request $request, User $customer, Apartment $apartment)
@@ -221,6 +227,8 @@ class AdminCustomerController extends Controller
 
         $activeApartmentCount = app(UserApartmentQuota::class)->currentCount($customer);
         $apartmentLimit = app(UserApartmentQuota::class)->definedLimit($customer);
+        $deletionBlockReason = $this->customerDeletionBlockReason($customer);
+        $memberDeletionNeedsConfirmation = $this->memberDeletionNeedsConfirmation($customer);
 
         $subscriptions = $this->subscriptionsFor($customer)
             ->with([
@@ -292,7 +300,33 @@ class AdminCustomerController extends Controller
             'summary',
             'activeApartmentCount',
             'apartmentLimit',
+            'deletionBlockReason',
+            'memberDeletionNeedsConfirmation',
         ));
+    }
+
+    private function customerDeletionBlockReason(User $customer): ?string
+    {
+        if (Apartment::withTrashed()->where('user_id', $customer->id)->exists()) {
+            return 'Bu kullanıcı bir apartmanın kurucusu olduğu için kalıcı olarak silinemez. Yöneticiliğin devredilmesi kurucu kaydını kaldırmaz. Hesabına girişini engellemek için Pasife al işlemini kullanabilirsiniz. Apartman ve geçmiş kayıtlar korunur.';
+        }
+
+        if ($customer->subscriptions()->withTrashed()->commercial()->exists()) {
+            return 'Bu kullanıcının kendi adına ticari sipariş veya ödeme geçmişi bulunduğu için kalıcı olarak silinemez. Ticari kayıtları korumak için Pasife al işlemini kullanabilirsiniz.';
+        }
+
+        return null;
+    }
+
+    private function memberDeletionNeedsConfirmation(User $customer): bool
+    {
+        return $customer->accounts()->withTrashed()->exists()
+            || DB::table('apartment_user')->where('user_id', $customer->id)->exists()
+            || $customer->billingProfiles()->exists()
+            || DB::table('legal_acceptances')->where('user_id', $customer->id)->exists()
+            || DB::table('management_offers')->where('user_id', $customer->id)->exists()
+            || DB::table('account_portal_offers')->where('user_id', $customer->id)->exists()
+            || DB::table('account_portal_access_events')->where('user_id', $customer->id)->orWhere('performed_by', $customer->id)->exists();
     }
 
     private function endSubscriptions(Apartment $apartment, ?int $retainedUserId): void
@@ -325,16 +359,12 @@ class AdminCustomerController extends Controller
                 ->where('apartment_user.is_active', true);
         };
 
-        if ($filter === 'davetliler') {
-            $query->whereNull('activated_at');
-
-            return;
-        }
-
         if ($filter === 'uyeler') {
             $query->whereNotNull('activated_at')
                 ->where('role', '!=', User::ROLE_MANAGER)
-                ->whereDoesntHave('apartments', $ownerMembership);
+                ->whereDoesntHave('apartments', $ownerMembership)
+                ->whereDoesntHave('ownedApartments', fn ($q) => $q->withTrashed())
+                ->whereDoesntHave('subscriptions', fn ($q) => $q->withTrashed()->commercial());
 
             return;
         }
@@ -346,7 +376,9 @@ class AdminCustomerController extends Controller
         $query->whereNotNull('activated_at')
             ->where(function ($query) use ($ownerMembership) {
                 $query->where('role', User::ROLE_MANAGER)
-                    ->orWhereHas('apartments', $ownerMembership);
+                    ->orWhereHas('apartments', $ownerMembership)
+                    ->orWhereHas('ownedApartments', fn ($q) => $q->withTrashed())
+                    ->orWhereHas('subscriptions', fn ($q) => $q->withTrashed()->commercial());
             });
     }
 
@@ -372,8 +404,6 @@ class AdminCustomerController extends Controller
     /**
      * Kalıcı abonelik, müşterinin aktif apartment_user kaydından
      * veya müşterinin siparişindeki gerçek abonelik bağından gelir.
-     *
-     * @param  int|string  $user
      */
     private function constrainToCustomer($query, int|string $user): void
     {

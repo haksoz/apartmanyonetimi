@@ -24,7 +24,7 @@ class SubscriberPanelTest extends TestCase
         $this->actingAs($member)
             ->get(route('subscriber.dashboard'))
             ->assertOk()
-            ->assertSee('Dairem')
+            ->assertSee('Dairelerim')
             ->assertSee('Eyup Apartmani')
             ->assertSee('Camlik Apartmani')
             ->assertSee('Daire 01')

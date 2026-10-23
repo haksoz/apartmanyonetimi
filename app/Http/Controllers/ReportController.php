@@ -499,12 +499,14 @@ class ReportController extends Controller
     {
         $user = auth()->user();
         $query = Account::with('unit')
-            ->where('accounts.apartment_id', $apartment->id)
-            ->where('accounts.is_active', true);
+            ->where('accounts.apartment_id', $apartment->id);
 
         if (! $user->isAdmin() && ! $this->isOwnerOf($apartment)) {
             $query->where('accounts.user_id', $user->id)
-                ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT]);
+                ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+                ->where(fn ($q) => $q->whereNull('accounts.portal_suspended_until')->orWhere('accounts.portal_suspended_until', '<=', now()));
+        } else {
+            $query->where('accounts.is_active', true);
         }
 
         return $query
@@ -514,6 +516,16 @@ class ReportController extends Controller
             ->orderBy('accounts.name')
             ->select('accounts.*')
             ->get();
+    }
+
+    private function statementTransactions(Account $account)
+    {
+        $query = AccountTransaction::where('account_id', $account->id);
+        if (! $this->isOwnerOf($account->apartment)) {
+            \App\Support\ResidentAccountVisibility::transactions($query, $account);
+        }
+
+        return $query;
     }
 
     public function accountStatement(CurrentApartment $currentApartment, Request $request)
@@ -538,7 +550,7 @@ class ReportController extends Controller
             $account = $accounts->firstWhere('id', (int) $accountId);
             abort_unless($account, 403);
 
-            $openingTxs = AccountTransaction::where('account_id', $accountId)
+            $openingTxs = $this->statementTransactions($account)
                 ->where('transaction_date', '<', $dateFrom)
                 ->orderBy('transaction_date')->orderBy('id')
                 ->get();
@@ -547,8 +559,7 @@ class ReportController extends Controller
             }
 
             $runningBalance = $openingBalance;
-            $transactions = AccountTransaction::with('transactionable')
-                ->where('account_id', $accountId)
+            $transactions = $this->statementTransactions($account)->with('transactionable')
                 ->whereBetween('transaction_date', [$dateFrom, $dateTo])
                 ->orderBy('transaction_date')
                 ->orderBy('id')
@@ -583,7 +594,7 @@ class ReportController extends Controller
         abort_unless($account, 403);
 
         $openingBalance = 0;
-        $openingTxs = AccountTransaction::where('account_id', $accountId)
+        $openingTxs = $this->statementTransactions($account)
             ->where('transaction_date', '<', $dateFrom)
             ->orderBy('transaction_date')->orderBy('id')
             ->get();
@@ -592,8 +603,7 @@ class ReportController extends Controller
         }
 
         $runningBalance = $openingBalance;
-        $transactions = AccountTransaction::with('transactionable')
-            ->where('account_id', $accountId)
+        $transactions = $this->statementTransactions($account)->with('transactionable')
             ->whereBetween('transaction_date', [$dateFrom, $dateTo])
             ->orderBy('transaction_date')->orderBy('id')
             ->get()

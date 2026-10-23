@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 
@@ -12,6 +13,7 @@ class ApartmentSwitchController extends Controller
         $validated = $request->validate([
             'apartment_id' => ['required', 'integer'],
             'destination' => ['nullable', 'in:dairem,ozet'],
+            'account_id' => ['nullable', 'integer'],
         ]);
 
         $apartment = $currentApartment->setFor($request->user(), (int) $validated['apartment_id']);
@@ -23,6 +25,13 @@ class ApartmentSwitchController extends Controller
             ->exists();
 
         if (($validated['destination'] ?? null) === 'dairem' || ! $isOwner) {
+            if (! empty($validated['account_id'])) {
+                $account = Account::where('apartment_id', $apartment->id)
+                    ->where('user_id', $user->id)->findOrFail($validated['account_id']);
+
+                return redirect()->route('residence.account', $account);
+            }
+
             return redirect()->route('residence.home')->with('status', $apartment->name.' seçildi.');
         }
 
