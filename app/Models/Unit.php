@@ -41,6 +41,31 @@ class Unit extends Model
         return $this->belongsTo(Account::class, 'occupant_account_id');
     }
 
+    public function getCurrentTenantAccountAttribute(): ?Account
+    {
+        $assignment = $this->tenantAssignments->first(function (TenantAssignment $assignment) {
+            $account = $assignment->account;
+
+            return $assignment->move_in_date?->lte(today())
+                && (! $assignment->move_out_date || $assignment->move_out_date->gt(today()))
+                && $account?->type === Account::TYPE_TENANT
+                && ! $account->residenceHasEnded();
+        });
+
+        if ($assignment) {
+            return $assignment->account;
+        }
+
+        // Support legacy occupants without a tenancy history.
+        $occupant = $this->occupantAccount;
+
+        return $this->tenantAssignments->isEmpty()
+            && $occupant?->type === Account::TYPE_TENANT
+            && ! $occupant->residenceHasEnded()
+                ? $occupant
+                : null;
+    }
+
     public function accounts(): HasMany
     {
         return $this->hasMany(Account::class);

@@ -861,8 +861,9 @@ class AccountController extends Controller
             ->first();
 
         $firstActivityDate = $account->firstActivityDate();
+        $previousTenantMoveOutDate = $account->previousTenantMoveOutDate();
 
-        return view('accounts.edit', compact('account', 'apartment', 'units', 'categories', 'openingTransaction', 'firstActivityDate'));
+        return view('accounts.edit', compact('account', 'apartment', 'units', 'categories', 'openingTransaction', 'firstActivityDate', 'previousTenantMoveOutDate'));
     }
 
     /**
@@ -907,13 +908,15 @@ class AccountController extends Controller
             'account_opening_date' => [
                 'nullable',
                 'date',
-                ...(($firstActivityDate = $account->firstActivityDate()) ? ['after_or_equal:'.$firstActivityDate] : []),
+                ...(($firstActivityDate = $account->firstActivityDate()) ? ['before_or_equal:'.$firstActivityDate] : []),
+                ...(($previousTenantMoveOutDate = $account->previousTenantMoveOutDate()) ? ['after_or_equal:'.$previousTenantMoveOutDate] : []),
             ],
             'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
-            'account_opening_date.after_or_equal' => 'Hesap açılış tarihi ilk hareket tarihinden daha erken olamaz.',
+            'account_opening_date.before_or_equal' => 'Hesap açılış tarihi ilk hareket tarihinden daha geç olamaz.',
+            'account_opening_date.after_or_equal' => 'Kiracı giriş tarihi önceki kiracının çıkış tarihinden daha erken olamaz.',
         ]);
 
         $account->loadMissing('user');
@@ -1683,6 +1686,21 @@ class AccountController extends Controller
 
                         TenantAssignment::create($assignmentData);
                     }
+                }
+
+                // Keep the unit occupant in sync for imported current tenants too.
+                if ($type === 'tenant' && $effectiveUnitId
+                    && $account->type === Account::TYPE_TENANT
+                    && ! $account->residenceHasEnded()
+                    && TenantAssignment::where('account_id', $account->id)
+                        ->where('unit_id', $effectiveUnitId)
+                        ->whereDate('move_in_date', '<=', today())
+                        ->where(fn ($query) => $query->whereNull('move_out_date')
+                            ->orWhereDate('move_out_date', '>', today()))
+                        ->exists()) {
+                    Unit::where('apartment_id', $apartment->id)
+                        ->whereKey($effectiveUnitId)
+                        ->update(['occupant_account_id' => $account->id]);
                 }
 
                 $createdAccounts[$accountKey] = $account->id;

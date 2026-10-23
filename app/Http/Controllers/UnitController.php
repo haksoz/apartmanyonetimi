@@ -20,7 +20,7 @@ class UnitController extends Controller
         }
 
         $units = Unit::query()
-            ->with(['ownerAccount', 'occupantAccount'])
+            ->with(['ownerAccount', 'occupantAccount', 'tenantAssignments.account'])
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->orderByRaw('CAST(unit_no AS UNSIGNED)')
             ->get();
@@ -105,7 +105,7 @@ class UnitController extends Controller
         }
 
         $unit = Unit::query()
-            ->with(['ownerAccount', 'occupantAccount'])
+            ->with(['ownerAccount', 'occupantAccount', 'tenantAssignments.account'])
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->findOrFail($id);
 

@@ -120,6 +120,30 @@ class Account extends Model
         return $this->hasMany(AccountTransaction::class);
     }
 
+    public function previousTenantMoveOutDate(): ?string
+    {
+        if ($this->type !== self::TYPE_TENANT || ! $this->unit_id) {
+            return null;
+        }
+
+        // Anchor the predecessor to the saved tenancy, not the proposed date.
+        $start = $this->tenantAssignments()->where('unit_id', $this->unit_id)
+            ->orderByDesc('move_in_date')->value('move_in_date') ?? $this->account_opening_date;
+
+        if (! $start) {
+            return null;
+        }
+
+        $date = TenantAssignment::where('apartment_id', $this->apartment_id)
+            ->where('unit_id', $this->unit_id)
+            ->where('account_id', '!=', $this->id)
+            ->whereDate('move_in_date', '<', Carbon::parse($start)->toDateString())
+            ->whereNotNull('move_out_date')
+            ->max('move_out_date');
+
+        return $date ? Carbon::parse($date)->toDateString() : null;
+    }
+
     public function firstActivityDate(): ?string
     {
         // Opening balance entries move with the opening date and are not a fixed boundary.

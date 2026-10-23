@@ -316,7 +316,48 @@ class AccountPageTest extends TestCase
         ]);
     }
 
-    public function test_opening_date_cannot_precede_first_activity(): void
+    public function test_tenant_opening_date_must_stay_between_previous_exit_and_first_activity(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Dates', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $previous = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT, 'name' => 'Previous', 'is_active' => false]);
+        $previous->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'move_in_date' => '2025-01-01', 'move_out_date' => '2026-02-28']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT, 'name' => 'Current', 'is_active' => true,
+            'account_opening_date' => '2026-03-01']);
+        $assignment = $account->tenantAssignments()->create(['apartment_id' => $apartment->id,
+            'unit_id' => $unit->id, 'move_in_date' => '2026-03-01']);
+        $account->transactions()->create(['apartment_id' => $apartment->id, 'type' => 'debit',
+            'amount' => 50, 'description' => 'First due', 'transaction_date' => '2026-03-10']);
+
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $this->get(route('accounts.edit', $account))->assertOk()
+            ->assertSee('min="2026-02-28"', false)->assertSee('max="2026-03-10"', false);
+        foreach (['2026-02-27', '2024-01-01', '2026-03-11'] as $date) {
+            $this->put(route('accounts.update', $account), ['name' => 'Current', 'unit_id' => $unit->id,
+                'account_opening_date' => $date, 'is_active' => '1'])
+                ->assertSessionHasErrors('account_opening_date');
+            $this->assertSame('2026-03-01', $assignment->fresh()->move_in_date->toDateString());
+        }
+        foreach (['2026-02-28', '2026-03-05', '2026-03-10'] as $date) {
+            $this->put(route('accounts.update', $account), ['name' => 'Current', 'unit_id' => $unit->id,
+                'account_opening_date' => $date, 'is_active' => '1'])->assertSessionHasNoErrors();
+            $this->assertSame($date, $assignment->fresh()->move_in_date->toDateString());
+        }
+
+        // A later tenancy must not become the predecessor when editing an earlier account.
+        $later = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT, 'name' => 'Later', 'is_active' => false]);
+        $later->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'move_in_date' => '2026-04-01', 'move_out_date' => '2026-05-01']);
+        $this->assertSame('2026-02-28', $account->fresh()->previousTenantMoveOutDate());
+    }
+
+    public function test_opening_date_cannot_follow_first_activity(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create([
@@ -352,11 +393,11 @@ class AccountPageTest extends TestCase
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         $this->get(route('accounts.edit', $account))
             ->assertOk()
-            ->assertSee('min="2026-03-10"', false);
+            ->assertSee('max="2026-03-10"', false);
 
         $this->put(route('accounts.update', $account), [
             'name' => 'Değişmemeli',
-            'account_opening_date' => '2026-03-09',
+            'account_opening_date' => '2026-03-11',
             'is_active' => '1',
         ])->assertSessionHasErrors('account_opening_date');
 
@@ -364,7 +405,7 @@ class AccountPageTest extends TestCase
         $this->assertSame('2026-01-01', $account->fresh()->account_opening_date->toDateString());
         $this->assertSame('2026-01-01', $opening->fresh()->transaction_date->toDateString());
 
-        foreach (['2026-03-10', '2026-03-11'] as $date) {
+        foreach (['2026-03-10', '2026-03-09', '2025-01-01'] as $date) {
             $this->put(route('accounts.update', $account), [
                 'name' => 'Enerji',
                 'account_opening_date' => $date,
@@ -406,7 +447,7 @@ class AccountPageTest extends TestCase
             ->assertDontSee('Silinecek Tedarikçi');
     }
 
-    public function test_user_can_create_tenant_account_with_move_in_date(): void
+    public function test_user_can_create_tenant_account_with_opening_date(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create([
@@ -420,13 +461,18 @@ class AccountPageTest extends TestCase
             'unit_no' => '1',
         ]);
 
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
+            ->get(route('accounts.create'))->assertOk()
+            ->assertSee('name="account_opening_date"', false)
+            ->assertDontSee('name="move_in_date"', false);
+
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
             ->post(route('accounts.store'), [
                 'type' => Account::TYPE_TENANT,
                 'unit_id' => $unit->id,
                 'name' => 'Kiracı Ali',
-                'move_in_date' => '2026-05-01',
+                'account_opening_date' => '2026-05-01',
                 'balance' => 0,
                 'is_active' => '1',
             ])
@@ -434,6 +480,7 @@ class AccountPageTest extends TestCase
 
         $tenant = Account::where('name', 'Kiracı Ali')->firstOrFail();
 
+        $this->assertSame('2026-05-01', $tenant->account_opening_date->toDateString());
         $assignment = TenantAssignment::where('account_id', $tenant->id)->firstOrFail();
         $this->assertSame($apartment->id, $assignment->apartment_id);
         $this->assertSame($unit->id, $assignment->unit_id);
@@ -474,14 +521,14 @@ class AccountPageTest extends TestCase
                 'type' => Account::TYPE_TENANT,
                 'unit_id' => $unit->id,
                 'name' => 'Yeni Kiracı',
-                'move_in_date' => '2026-06-01',
+                'account_opening_date' => '2026-06-01',
                 'balance' => 0,
                 'is_active' => '1',
             ])
             ->assertSessionHasErrors('unit_id');
     }
 
-    public function test_user_can_set_tenant_move_out_date(): void
+    public function test_user_can_terminate_tenancy_using_termination_form(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create([
@@ -514,21 +561,23 @@ class AccountPageTest extends TestCase
         ]);
         $unit->update(['occupant_account_id' => $tenant->id]);
 
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
+            ->get(route('accounts.edit', $tenant))->assertOk()
+            ->assertSee('name="termination_date"', false)
+            ->assertSee('/terminate-tenancy', false)
+            ->assertDontSee('name="move_out_date"', false);
+
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
-            ->put(route('accounts.update', $tenant), [
-                'type' => Account::TYPE_TENANT,
-                'unit_id' => $unit->id,
-                'name' => 'Kiracı Ali',
-                'move_in_date' => '2026-05-01',
-                'move_out_date' => '2026-06-01',
-                'balance' => 0,
-                'is_active' => '1',
+            ->patch(route('accounts.terminate-tenancy', $tenant), [
+                'termination_date' => '2026-06-01',
             ])
             ->assertRedirect(route('accounts.show', $tenant));
 
         $this->assertSame('2026-06-01', TenantAssignment::where('account_id', $tenant->id)->firstOrFail()->move_out_date->format('Y-m-d'));
         $this->assertSame($owner->id, $unit->fresh()->occupant_account_id);
+        $this->assertFalse((bool) $tenant->fresh()->is_active);
+        $this->assertSame('2026-06-01', $tenant->fresh()->account_end_date->toDateString());
     }
 
     public function test_user_cannot_create_second_owner_for_same_unit(): void
@@ -589,6 +638,7 @@ class AccountPageTest extends TestCase
                 'type' => Account::TYPE_OWNER,
                 'unit_id' => $unit->id,
                 'name' => 'Yeni Malik',
+                'account_opening_date' => null,
                 'balance' => 0,
                 'is_active' => '1',
             ])

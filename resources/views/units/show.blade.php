@@ -49,19 +49,19 @@
         {{-- Current Tenant --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
             <h2 class="mb-4 text-lg font-semibold text-slate-800">Mevcut Kiracı</h2>
-            @if($unit->occupantAccount)
+            @if($unit->currentTenantAccount)
                 <div class="space-y-3">
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-slate-500">Ad Soyad</span>
-                        <a href="{{ route('accounts.show', $unit->occupantAccount) }}" class="font-medium text-emerald-600 hover:underline">{{ $unit->occupantAccount->name }}</a>
+                        <a href="{{ route('accounts.show', $unit->currentTenantAccount) }}" class="font-medium text-emerald-600 hover:underline">{{ $unit->currentTenantAccount->name }}</a>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-slate-500">Telefon</span>
-                        <span class="font-medium text-slate-700">{{ $unit->occupantAccount->phone ?: '-' }}</span>
+                        <span class="font-medium text-slate-700">{{ $unit->currentTenantAccount->phone ?: '-' }}</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-slate-500">E-posta</span>
-                        <span class="font-medium text-slate-700">{{ $unit->occupantAccount->email ?: '-' }}</span>
+                        <span class="font-medium text-slate-700">{{ $unit->currentTenantAccount->email ?: '-' }}</span>
                     </div>
                 </div>
             @else

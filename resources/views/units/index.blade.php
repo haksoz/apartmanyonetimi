@@ -51,8 +51,8 @@
                             @endif
                         </td>
                         <td class="px-5 py-4 text-slate-700">
-                            @if($unit->occupantAccount)
-                                <a href="{{ route('accounts.show', $unit->occupantAccount) }}" class="text-emerald-600 hover:underline">{{ $unit->occupantAccount->name }}</a>
+                            @if($unit->currentTenantAccount)
+                                <a href="{{ route('accounts.show', $unit->currentTenantAccount) }}" class="text-emerald-600 hover:underline">{{ $unit->currentTenantAccount->name }}</a>
                             @else
                                 <span class="text-slate-400">-</span>
                             @endif
@@ -112,8 +112,8 @@
                     </div>
                     <div class="text-slate-700">
                         <span class="text-slate-500 text-xs">Kiracı:</span>
-                        @if($unit->occupantAccount)
-                            <a href="{{ route('accounts.show', $unit->occupantAccount) }}" class="text-emerald-600 hover:underline">{{ $unit->occupantAccount->name }}</a>
+                        @if($unit->currentTenantAccount)
+                            <a href="{{ route('accounts.show', $unit->currentTenantAccount) }}" class="text-emerald-600 hover:underline">{{ $unit->currentTenantAccount->name }}</a>
                         @else
                             <span class="text-slate-400">-</span>
                         @endif
