@@ -120,6 +120,19 @@ class Account extends Model
         return $this->hasMany(AccountTransaction::class);
     }
 
+    public function firstActivityDate(): ?string
+    {
+        // Opening balance entries move with the opening date and are not a fixed boundary.
+        $date = $this->transactions()
+            ->where(fn ($query) => $query
+                ->whereNotNull('transactionable_type')
+                ->orWhereNull('description')
+                ->orWhere('description', '!=', 'Açılış bakiyesi'))
+            ->min('transaction_date');
+
+        return $date ? Carbon::parse($date)->toDateString() : null;
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);

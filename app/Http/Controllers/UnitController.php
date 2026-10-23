@@ -16,7 +16,7 @@ class UnitController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $units = Unit::query()
@@ -36,7 +36,7 @@ class UnitController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         return view('units.create', compact('apartment'));
@@ -50,7 +50,7 @@ class UnitController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $validated = $request->validate([
@@ -77,7 +77,7 @@ class UnitController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $unit = Unit::query()
@@ -101,7 +101,7 @@ class UnitController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $unit = Unit::query()
@@ -120,7 +120,7 @@ class UnitController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $unit = Unit::query()
@@ -148,7 +148,7 @@ class UnitController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $unit = Unit::query()

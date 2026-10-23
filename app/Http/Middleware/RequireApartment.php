@@ -34,6 +34,10 @@ class RequireApartment
 
         $apartment = $currentApartment->getFor($user);
 
+        if (! $apartment && ! $request->routeIs('current-apartment.*')) {
+            return redirect()->route('subscriber.dashboard');
+        }
+
         if ($user->isAdmin()) {
             $isOwnerOfCurrent = true;
         } elseif ($apartment) {

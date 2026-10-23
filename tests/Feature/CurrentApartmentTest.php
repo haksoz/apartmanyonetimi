@@ -77,7 +77,7 @@ class CurrentApartmentTest extends TestCase
             ->assertRedirect(route('apartments.wizard.cash-box', $secondApartment));
     }
 
-    public function test_dashboard_redirects_to_apartment_selection_when_user_has_apartments_but_no_selection(): void
+    public function test_apartment_pages_redirect_to_subscriber_dashboard_without_selection(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create([
@@ -87,12 +87,15 @@ class CurrentApartmentTest extends TestCase
         ]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
 
-        $this->actingAs($user)
-            ->get(route('dashboard'))
-            ->assertRedirect(route('current-apartment.select'));
+        $this->actingAs($user);
+        foreach (['dashboard', 'dues.index', 'cash.index', 'residence.home'] as $route) {
+            $this->get(route($route))->assertRedirect(route('subscriber.dashboard'));
+        }
+
+        $this->get(route('subscriber.dashboard'))->assertOk();
     }
 
-    public function test_login_redirects_manager_with_apartments_to_selection_screen(): void
+    public function test_login_redirects_manager_with_apartments_to_subscriber_dashboard(): void
     {
         $user = User::factory()->create([
             'password' => 'password',
@@ -108,5 +111,29 @@ class CurrentApartmentTest extends TestCase
             'email' => $user->email,
             'password' => 'password',
         ])->assertRedirect(route('subscriber.dashboard'));
+    }
+
+    public function test_old_selection_url_redirects_to_subscriber_dashboard(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->get(route('current-apartment.select'))
+            ->assertRedirect(route('subscriber.dashboard'));
+    }
+
+    public function test_logout_and_login_returns_to_subscriber_dashboard(): void
+    {
+        $user = User::factory()->create(['password' => 'password']);
+        $apartment = Apartment::factory()->create(['user_id' => $user->id, 'setup_completed_at' => now()]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->post(route('logout'))->assertRedirect(route('login'));
+        $this->assertGuest();
+        $this->assertNull(session(CurrentApartment::SESSION_KEY));
+
+        $this->post(route('login'), ['email' => $user->email, 'password' => 'password'])
+            ->assertRedirect(route('subscriber.dashboard'));
+        $this->get(route('subscriber.dashboard'))->assertOk()->assertSee($apartment->name);
+        $this->get(route('dashboard'))->assertRedirect(route('subscriber.dashboard'));
     }
 }

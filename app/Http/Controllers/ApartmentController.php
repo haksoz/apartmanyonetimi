@@ -32,7 +32,7 @@ class ApartmentController extends Controller
             : null;
 
         if (! $currentApartment) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $isOwner = $this->isOwnerOf($currentApartment);

@@ -25,7 +25,7 @@ class AccountUserController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         // Pivot'tan gelen üyeler (dışarıdan yönetenler dahil) — aktif ve pasif

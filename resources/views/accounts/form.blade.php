@@ -99,7 +99,10 @@
                     $openingValue = old('account_opening_date', $existingOpening ?: ($account ? null : now()->toDateString()));
                 @endphp
                 <label for="account_opening_date" class="mb-2 block text-sm font-medium text-slate-600">{{ $openingLabel }}</label>
-                <input id="account_opening_date" name="account_opening_date" type="date" value="{{ $openingValue }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <input id="account_opening_date" name="account_opening_date" type="date" value="{{ $openingValue }}" @if ($firstActivityDate ?? null) min="{{ $firstActivityDate }}" @endif class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                @if ($firstActivityDate ?? null)
+                    <p class="mt-2 text-xs text-slate-500">İlk hareket tarihi: {{ \Carbon\Carbon::parse($firstActivityDate)->format('d.m.Y') }}. Daha erken bir tarih seçilemez.</p>
+                @endif
                 @error('account_opening_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 

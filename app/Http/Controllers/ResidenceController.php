@@ -15,7 +15,7 @@ class ResidenceController extends Controller
         $apartment = $currentApartment->getFor($user);
 
         if (! $apartment && $currentApartment->hasAvailableFor($user)) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {

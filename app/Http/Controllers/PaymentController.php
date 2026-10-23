@@ -20,7 +20,7 @@ class PaymentController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {
@@ -58,7 +58,7 @@ class PaymentController extends Controller
         $apartment = $currentApartment->getFor($request->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor($request->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {
@@ -280,7 +280,7 @@ class PaymentController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {
@@ -310,7 +310,7 @@ class PaymentController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {
@@ -331,7 +331,7 @@ class PaymentController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {
@@ -486,7 +486,7 @@ class PaymentController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {
@@ -576,7 +576,7 @@ class PaymentController extends Controller
         $apartment = $currentApartment->getFor($request->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor($request->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {

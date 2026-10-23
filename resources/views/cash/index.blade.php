@@ -7,7 +7,7 @@
             <h1 class="text-2xl font-bold text-slate-950">Kasa</h1>
             <p class="mt-1 text-sm text-slate-500">Tahsilat ve giderlerden oluşan kasa hareketleri.</p>
         </div>
-        <div class="flex gap-2">
+        <div class="hidden gap-2 md:flex">
             <a href="{{ route('cash-boxes.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white text-center hover:bg-slate-800">Kasa Ekle</a>
         </div>
     </div>
@@ -66,6 +66,9 @@
             @empty
                 <div class="text-sm text-slate-500">Henüz kasa tanımı yok.</div>
             @endforelse
+        </div>
+        <div class="mt-5 border-t border-slate-200 pt-4 md:hidden">
+            <a href="{{ route('cash-boxes.create') }}" class="block rounded-xl border border-slate-300 px-4 py-2.5 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Kasa Ekle</a>
         </div>
     </div>
 

@@ -59,7 +59,7 @@ class AccountController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $filterSearch = $request->query('search');
@@ -134,7 +134,7 @@ class AccountController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {
@@ -164,7 +164,7 @@ class AccountController extends Controller
         $apartment = $currentApartment->getFor($request->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor($request->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {
@@ -319,7 +319,7 @@ class AccountController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $account = Account::query()
@@ -834,7 +834,7 @@ class AccountController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $account = Account::query()
@@ -860,7 +860,9 @@ class AccountController extends Controller
             ->orderBy('id')
             ->first();
 
-        return view('accounts.edit', compact('account', 'apartment', 'units', 'categories', 'openingTransaction'));
+        $firstActivityDate = $account->firstActivityDate();
+
+        return view('accounts.edit', compact('account', 'apartment', 'units', 'categories', 'openingTransaction', 'firstActivityDate'));
     }
 
     /**
@@ -871,7 +873,7 @@ class AccountController extends Controller
         $apartment = $currentApartment->getFor($request->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor($request->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $account = Account::query()
@@ -902,11 +904,16 @@ class AccountController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'is_active' => ['nullable', 'boolean'],
             'move_in_date' => ['nullable', 'date'],
-            'account_opening_date' => ['nullable', 'date'],
+            'account_opening_date' => [
+                'nullable',
+                'date',
+                ...(($firstActivityDate = $account->firstActivityDate()) ? ['after_or_equal:'.$firstActivityDate] : []),
+            ],
             'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
+            'account_opening_date.after_or_equal' => 'Hesap açılış tarihi ilk hareket tarihinden daha erken olamaz.',
         ]);
 
         $account->loadMissing('user');
@@ -1132,7 +1139,7 @@ class AccountController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         $account = Account::query()

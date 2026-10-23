@@ -157,7 +157,7 @@ class FinancialPlanController extends Controller
         $apartment = $currentApartment->getFor(auth()->user());
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         if (! $apartment) {

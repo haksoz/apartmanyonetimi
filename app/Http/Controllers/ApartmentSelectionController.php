@@ -2,26 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\BuildingPlaces;
+use Illuminate\Http\RedirectResponse;
 
 class ApartmentSelectionController extends Controller
 {
-    public function __invoke(BuildingPlaces $places)
+    public function __invoke(): RedirectResponse
     {
-        $user = auth()->user();
-        $grouped = $places->grouped($user);
-
-        if ($grouped['residences']->isEmpty() && $grouped['managed']->isEmpty()) {
-            if ($user->isSubscriber() || $user->isAdmin()) {
-                return redirect()->route('apartments.create');
-            }
-
-            return redirect()->route('onboarding.show');
-        }
-
-        return view('apartments.select', [
-            'residences' => $grouped['residences'],
-            'managed' => $grouped['managed'],
-        ]);
+        return redirect()->route('subscriber.dashboard');
     }
 }

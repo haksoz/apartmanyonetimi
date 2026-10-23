@@ -12,12 +12,14 @@
                 <a href="{{ route('dues.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 text-center">Borçlandır</a>
                 <a href="{{ route('dues.batch.create') }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 text-center">Toplu Borçlandır</a>
             @endif
+            @if (request()->query('from') !== 'menu')
             <button type="button" onclick="history.back()" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
                 </svg>
                 Geri
             </button>
+            @endif
         </div>
     </div>
 
@@ -25,6 +27,7 @@
     <div class="mb-4 flex flex-row items-center justify-between gap-3">
         {{-- Arama --}}
         <form method="GET" action="{{ route('dues.index') }}" class="flex gap-2 flex-1 min-w-0">
+            @if (request()->query('from') === 'menu')<input type="hidden" name="from" value="menu">@endif
             @if ($filters['filterDueType'])<input type="hidden" name="due_type" value="{{ $filters['filterDueType'] }}">@endif
             @if ($filters['filterPlan'])<input type="hidden" name="plan" value="{{ $filters['filterPlan'] }}">@endif
             @if ($filters['filterBatchId'])
@@ -175,7 +178,7 @@
                     <span class="text-blue-500">&times;</span>
                 </a>
             @endif
-            <a href="{{ route('dues.index', request()->only(['search', 'sort_by', 'sort_direction'])) }}"
+            <a href="{{ route('dues.index', request()->only(['search', 'sort_by', 'sort_direction', 'from'])) }}"
                class="ml-1 text-xs font-medium text-slate-400 hover:text-slate-600 underline">
                 Tümünü temizle
             </a>
@@ -196,6 +199,7 @@
             </div>
 
             <form id="filter-form" method="GET" action="{{ route('dues.index') }}" class="flex flex-col flex-1">
+                @if (request()->query('from') === 'menu')<input type="hidden" name="from" value="menu">@endif
                 @if ($filters['filterSearch'] ?? '')
                     <input type="hidden" name="search" value="{{ $filters['filterSearch'] }}">
                 @endif

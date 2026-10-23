@@ -50,7 +50,7 @@
         @endif
 
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <a href="{{ route('current-apartment.select') }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Apartman Yönetimine Git →</a>
+            <a href="{{ route('subscriber.dashboard') }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Apartman Yönetimine Git →</a>
             <a href="{{ route('admin.archived-apartments.index') }}" class="text-sm font-semibold text-slate-500 hover:text-slate-700">Silinmiş apartmanlar</a>
         </div>
     </div>

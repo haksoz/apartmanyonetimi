@@ -54,7 +54,7 @@ class ExpenseController extends Controller
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
 
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
 
         }
 
@@ -196,7 +196,7 @@ class ExpenseController extends Controller
 
         if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
 
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
 
         }
 
@@ -278,7 +278,7 @@ class ExpenseController extends Controller
 
         if (! $apartment && $currentApartment->hasAvailableFor($request->user())) {
 
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
 
         }
 

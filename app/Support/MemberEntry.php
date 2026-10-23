@@ -20,7 +20,7 @@ class MemberEntry
         }
 
         if ($apartments->isNotEmpty()) {
-            return redirect()->route('current-apartment.select');
+            return redirect()->route('subscriber.dashboard');
         }
 
         return redirect()->route('onboarding.show');

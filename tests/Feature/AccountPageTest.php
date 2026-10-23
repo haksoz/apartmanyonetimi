@@ -316,6 +316,65 @@ class AccountPageTest extends TestCase
         ]);
     }
 
+    public function test_opening_date_cannot_precede_first_activity(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Tarih Kontrolü',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'Enerji',
+            'account_opening_date' => '2026-01-01',
+        ]);
+        $opening = $account->transactions()->create([
+            'apartment_id' => $apartment->id,
+            'type' => 'debit',
+            'description' => 'Açılış bakiyesi',
+            'amount' => 100,
+            'transaction_date' => '2026-01-01',
+        ]);
+        // Insert out of date order to ensure the earliest date, not ID, is used.
+        foreach (['2026-03-20', '2026-03-10'] as $date) {
+            $account->transactions()->create([
+                'apartment_id' => $apartment->id,
+                'type' => 'debit',
+                'description' => 'Hesap hareketi',
+                'amount' => 50,
+                'transaction_date' => $date,
+            ]);
+        }
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->get(route('accounts.edit', $account))
+            ->assertOk()
+            ->assertSee('min="2026-03-10"', false);
+
+        $this->put(route('accounts.update', $account), [
+            'name' => 'Değişmemeli',
+            'account_opening_date' => '2026-03-09',
+            'is_active' => '1',
+        ])->assertSessionHasErrors('account_opening_date');
+
+        $this->assertSame('Enerji', $account->fresh()->name);
+        $this->assertSame('2026-01-01', $account->fresh()->account_opening_date->toDateString());
+        $this->assertSame('2026-01-01', $opening->fresh()->transaction_date->toDateString());
+
+        foreach (['2026-03-10', '2026-03-11'] as $date) {
+            $this->put(route('accounts.update', $account), [
+                'name' => 'Enerji',
+                'account_opening_date' => $date,
+                'is_active' => '1',
+            ])->assertSessionHasNoErrors()->assertRedirect(route('accounts.show', $account));
+            $this->assertSame($date, $account->fresh()->account_opening_date->toDateString());
+            $this->assertSame($date, $opening->fresh()->transaction_date->toDateString());
+        }
+    }
+
     public function test_user_can_soft_delete_account(): void
     {
         $user = User::factory()->create();
