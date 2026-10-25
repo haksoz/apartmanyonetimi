@@ -82,7 +82,7 @@ class DuePageTest extends TestCase
             ->assertDontSee('Toplu Borçlandır')
             ->assertSee('name="account_id"', false)
             ->assertDontSee('Aidatlara Dön')
-            ->assertDontSee('cursor-not-allowed', false)
+            ->assertDontSee('bg-slate-100 cursor-not-allowed', false)
             ->assertDontSee('text-base font-semibold text-slate-800', false);
     }
 
@@ -1489,6 +1489,112 @@ class DuePageTest extends TestCase
             'id' => $due1->id,
             'account_id' => $account1->id,
         ]);
+    }
+
+    public function test_individual_due_hides_inactive_accounts_and_rejects_direct_submission(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Active Accounts', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $active = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER, 'name' => 'Visible Owner', 'is_active' => true]);
+        $inactive = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT, 'name' => 'Hidden Former Tenant', 'is_active' => false]);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        foreach ([[], ['account_id' => $inactive->id]] as $parameters) {
+            $this->get(route('dues.create', $parameters))->assertOk()
+                ->assertViewHas('accounts', fn ($accounts) => $accounts->contains('id', $active->id)
+                    && ! $accounts->contains('id', $inactive->id))
+                ->assertDontSee('Hidden Former Tenant');
+        }
+        $this->post(route('dues.store'), [
+            'source_type' => DueBatch::SOURCE_INDIVIDUAL,
+            'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
+            'target_audience' => 'tenant_priority', 'due_type' => 'aidat',
+            'account_id' => $inactive->id, 'individual_amount' => 100, 'due_date' => '2026-07-31',
+        ])->assertSessionHasErrors('account_id');
+        $this->assertDatabaseCount('dues', 0);
+        $this->assertDatabaseCount('due_batches', 0);
+    }
+
+    public function test_individual_malik_payi_rejects_tenant_and_accepts_owner(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Owners', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $owner = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER, 'name' => 'Owner', 'is_active' => true]);
+        $tenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT, 'name' => 'Tenant', 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Repair',
+            'type' => Category::TYPE_INCOME, 'is_active' => true]);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $data = ['source_type' => DueBatch::SOURCE_INDIVIDUAL,
+            'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL, 'target_audience' => 'tenant_priority',
+            'due_type' => 'malik_payi', 'category_id' => $category->id, 'individual_amount' => 100,
+            'period' => '2026-07', 'due_date' => '2026-07-31'];
+        $this->post(route('dues.store'), $data + ['account_id' => $tenant->id])
+            ->assertSessionHasErrors('account_id');
+        $this->assertDatabaseCount('due_batches', 0);
+        $this->assertDatabaseCount('dues', 0);
+        $this->post(route('dues.store'), $data + ['account_id' => $owner->id])
+            ->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
+        $this->assertDatabaseHas('dues', ['account_id' => $owner->id, 'due_type' => 'malik_payi']);
+        $data['due_type'] = 'aidat';
+        $this->post(route('dues.store'), $data + ['account_id' => $tenant->id])
+            ->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
+        $this->assertDatabaseHas('dues', ['account_id' => $tenant->id, 'due_type' => 'aidat']);
+    }
+
+    public function test_batch_malik_payi_always_targets_owners_even_when_tenant_priority_is_submitted(): void
+    {
+        // The batch form uses MySQL DATE_FORMAT for its expense preview.
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') {
+            \Illuminate\Support\Facades\DB::connection()->getPdo()->sqliteCreateFunction(
+                'DATE_FORMAT', fn ($date, $format) => $date ? substr($date, 0, 7) : null, 2,
+            );
+        }
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Owners', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $owner = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER, 'name' => 'Owner', 'is_active' => true]);
+        $tenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT, 'name' => 'Tenant', 'is_active' => true]);
+        $unit->update(['owner_account_id' => $owner->id, 'occupant_account_id' => $tenant->id]);
+        $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'move_in_date' => '2026-01-01']);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Repair',
+            'type' => Category::TYPE_INCOME, 'is_active' => true]);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $this->get(route('dues.batch.create'))->assertOk()->assertSee('Sadece Kat Malikleri')
+            ->assertDontSee('Sadece Sahipler');
+
+        foreach ([DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_FIXED] as $source) {
+            $this->post(route('dues.store'), [
+                'source_type' => $source, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
+                'target_audience' => 'tenant_priority', 'due_type' => 'malik_payi',
+                'category_id' => $category->id, 'period' => '2026-07', 'due_date' => '2026-07-31',
+                'source_amount' => 100, 'fixed_amount' => 100,
+            ])->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
+            $batch = DueBatch::latest('id')->firstOrFail();
+            $this->assertSame('owner_only', $batch->target_audience);
+            $this->assertDatabaseHas('dues', ['due_batch_id' => $batch->id,
+                'account_id' => $owner->id, 'due_type' => 'malik_payi']);
+            $this->assertDatabaseMissing('dues', ['due_batch_id' => $batch->id, 'account_id' => $tenant->id]);
+        }
+
+        $this->post(route('dues.store'), [
+            'source_type' => DueBatch::SOURCE_MANUAL, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
+            'target_audience' => 'tenant_priority', 'due_type' => 'aidat',
+            'period' => '2026-08', 'due_date' => '2026-08-31', 'source_amount' => 100,
+        ])->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
+        $batch = DueBatch::latest('id')->firstOrFail();
+        $this->assertSame('tenant_priority', $batch->target_audience);
+        $this->assertDatabaseHas('dues', ['due_batch_id' => $batch->id, 'account_id' => $tenant->id]);
     }
 
     public function test_locked_due_types_assign_system_category_and_hide_selector(): void

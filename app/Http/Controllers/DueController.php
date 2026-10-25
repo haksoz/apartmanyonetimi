@@ -184,6 +184,7 @@ class DueController extends Controller
         $categories = $this->selectableDueCategories($apartment->id);
         $accounts = Account::query()
             ->where('accounts.apartment_id', $apartment->id)
+            ->where('accounts.is_active', true)
             ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
             ->with('unit')
             ->leftJoin('units', 'accounts.unit_id', '=', 'units.id')
@@ -316,11 +317,23 @@ class DueController extends Controller
                 'required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL,
                 'nullable',
                 'integer',
-                Rule::exists('accounts', 'id')->where('apartment_id', $apartment->id),
+                Rule::exists('accounts', 'id')->where(fn ($query) => $query
+                    ->where('apartment_id', $apartment->id)
+                    ->whereNull('deleted_at')
+                    ->where('is_active', true)
+                    ->when($request->input('due_type') === DueType::MalikPayi->value,
+                        fn ($query) => $query->where('type', Account::TYPE_OWNER))),
             ],
             'individual_amount' => ['required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL, 'nullable', 'numeric', 'min:0.01'],
             'round_to_integer' => ['nullable', 'boolean'],
+        ], [
+            'account_id.exists' => 'Aktif bir hesap seçin. Malik Payı için yalnızca aktif kat maliki hesabı seçilebilir.',
         ]);
+
+        if ($validated['due_type'] === DueType::MalikPayi->value
+            && $validated['source_type'] !== DueBatch::SOURCE_INDIVIDUAL) {
+            $validated['target_audience'] = 'owner_only';
+        }
 
         // Period formdan gönderilmemişse oluşturulma tarihinden otomatik belirle
         if ($validated['source_type'] === DueBatch::SOURCE_EXPENSES && ! \App\Support\FeatureGate::allows($apartment, 'expense_distribution')) {

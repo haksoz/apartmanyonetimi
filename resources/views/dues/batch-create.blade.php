@@ -27,7 +27,7 @@
         <div class="flex flex-col gap-3 md:flex-row">
             <label class="cursor-pointer flex-1">
                 <input type="radio" name="source_type" value="fixed" class="peer sr-only" @checked(old('source_type', 'fixed') === 'fixed')>
-                <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 hover:bg-slate-50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
                             <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,7 +43,7 @@
             </label>
             <label class="cursor-pointer flex-1">
                 <input type="radio" name="source_type" value="manual" class="peer sr-only" @checked(old('source_type') === 'manual')>
-                <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 hover:bg-slate-50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
                             <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +59,7 @@
             </label>
             <label class="cursor-pointer flex-1">
                 <input type="radio" name="source_type" value="expenses" class="peer sr-only" @checked(old('source_type') === 'expenses')>
-                <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 hover:bg-slate-50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center peer-checked:bg-emerald-100">
                             <svg class="w-5 h-5 text-slate-600 peer-checked:text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,7 +77,12 @@
         @error('source_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
 
         {{-- Dynamic Source Fields --}}
-        <div id="expenses-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'manual') === 'manual') hidden @endif">
+        <div id="expenses-details-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type', 'fixed') !== 'expenses') hidden @endif">
+            <div id="expenses-type-slot"></div>
+            <div id="expenses-dates-slot"></div>
+        </div>
+
+        <div id="expenses-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'fixed') !== 'expenses') hidden @endif">
             <h3 class="text-sm font-semibold text-slate-700 mb-4">Gider Dönemi Seçimi</h3>
 
             {{-- Period Selection --}}
@@ -119,23 +124,57 @@
             <input type="hidden" name="selected_expense_ids" id="selected_expense_ids" value="">
         </div>
 
-        <div id="fixed-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'fixed') !== 'fixed') hidden @endif">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Sabit Tutar Girişi</h3>
-            <div class="md:w-1/2">
-                <label for="fixed_amount" class="mb-2 block text-sm font-medium text-slate-600">Daire Başına Tutar</label>
-                <input id="fixed_amount" name="fixed_amount" type="number" min="0.01" step="0.01" value="{{ old('fixed_amount') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold" placeholder="0,00">
-                <p class="mt-1.5 text-xs text-slate-400">Her daire bu tutarla borçlandırılır. Toplam = tutar &times; daire sayısı.</p>
-                @error('fixed_amount')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+        <div id="fixed-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type', 'fixed') !== 'fixed') hidden @endif">
+            <div id="fixed-type-slot">
+                <div id="batch-type-fields" class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
+                        <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                            <option value="">Tür seçin</option>
+                            @foreach ($dueTypes as $t)
+                                <option value="{{ $t['value'] }}" @selected(old('due_type', 'aidat') === $t['value'])>{{ $t['label'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('due_type')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+
+                    @php $showCategory = in_array(old('due_type', 'aidat'), ['malik_payi', 'masraf_yansitma'], true); @endphp
+                    <div id="category-field" class="{{ $showCategory ? '' : 'hidden' }}">
+                        <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
+                        <select id="category_id" name="category_id" @disabled(! $showCategory) @required($showCategory) class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                            <option value="">Kategori seçin</option>
+                            @foreach ($categories as $cat)
+                                <option value="{{ $cat->id }}" @selected((string) old('category_id') === (string) $cat->id)>{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('category_id')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
+
+            <div id="fixed-dates-slot">
+                <div id="batch-date-fields" class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
+                        <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                        @error('created_at_manual')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+
+                    <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
+
+                    <div>
+                        <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
+                        <input id="due_date" name="due_date" type="date" value="{{ old('due_date') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                        @error('due_date')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div id="manual-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type') !== 'manual') hidden @endif">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Tutar Girişi</h3>
-            <div class="md:w-1/2">
-                <label for="source_amount" class="mb-2 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Tutar</label>
-                <input id="source_amount" name="source_amount" type="number" min="0.01" step="0.01" value="{{ old('source_amount') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold">
-                @error('source_amount')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-            </div>
+        <div id="manual-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type') !== 'manual') hidden @endif">
+            <div id="manual-type-slot"></div>
+
+            <div id="manual-dates-slot"></div>
         </div>
 
         {{-- Common Fields --}}
@@ -143,6 +182,19 @@
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold text-slate-700">Borç Bilgileri</h3>
                 <div id="calc-summary" class="text-sm font-medium text-red-600 hidden"></div>
+            </div>
+
+            <div id="fixed-amount-field" class="mb-4 md:w-1/2 @if(old('source_type', 'fixed') !== 'fixed') hidden @endif">
+                <label for="fixed_amount" class="mb-2 block text-sm font-medium text-slate-600">Daire Başına Tutar</label>
+                <input id="fixed_amount" name="fixed_amount" type="number" min="0.01" step="0.01" value="{{ old('fixed_amount') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold" placeholder="0,00">
+                <p class="mt-1.5 text-xs text-slate-400">Her daire bu tutarla borçlandırılır. Toplam = tutar &times; daire sayısı.</p>
+                @error('fixed_amount')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
+            <div id="manual-amount-field" class="mb-4 md:w-1/2 @if(old('source_type', 'fixed') !== 'manual') hidden @endif">
+                <label for="source_amount" class="mb-2 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Tutar</label>
+                <input id="source_amount" name="source_amount" type="number" min="0.01" step="0.01" value="{{ old('source_amount') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold" placeholder="0,00">
+                @error('source_amount')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
             {{-- Distribution Type Selection --}}
@@ -178,62 +230,26 @@
             <div class="mb-4">
                 <label class="mb-2 block text-sm font-medium text-slate-600">Borçlanacak Kişiler</label>
                 <div class="flex gap-3">
-                    <label class="cursor-pointer flex-1">
-                        <input type="radio" name="target_audience" value="tenant_priority" class="peer sr-only" @checked(old('target_audience', 'tenant_priority') === 'tenant_priority')>
-                        <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
+                    <label class="flex-1 cursor-pointer has-[:disabled]:cursor-not-allowed">
+                        <input type="radio" name="target_audience" value="tenant_priority" class="peer sr-only" @checked(old('due_type', 'aidat') !== 'malik_payi' && old('target_audience', 'tenant_priority') === 'tenant_priority') @disabled(old('due_type') === 'malik_payi')>
+                        <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 peer-enabled:hover:bg-slate-50">
                             <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Kiracı Öncelikli</div>
-                            <div class="text-xs text-slate-500 mt-1">Varsa Kiracıya, yoksa sahibine</div>
+                            <div class="text-xs text-slate-500 mt-1">Varsa kiracıya, yoksa kat malikine</div>
                         </div>
                     </label>
                     <label class="cursor-pointer flex-1">
-                        <input type="radio" name="target_audience" value="owner_only" class="peer sr-only" @checked(old('target_audience') === 'owner_only')>
-                        <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 hover:bg-slate-50">
-                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Sadece Sahipler</div>
+                        <input type="radio" name="target_audience" value="owner_only" class="peer sr-only" @checked(old('due_type') === 'malik_payi' || old('target_audience') === 'owner_only')>
+                        <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 hover:bg-slate-50">
+                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Sadece Kat Malikleri</div>
                             <div class="text-xs text-slate-500 mt-1">Tüm borçlar kat maliklerine</div>
                         </div>
                     </label>
                 </div>
+                <p id="owner-only-hint" class="mt-2 text-xs text-slate-500 {{ old('due_type') === 'malik_payi' ? '' : 'hidden' }}">Malik Payı borçları yalnızca kat maliklerine dağıtılır.</p>
                 @error('target_audience')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
-                <div>
-                    <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
-                    <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                        <option value="">Tür seçin</option>
-                        @foreach ($dueTypes as $t)
-                            <option value="{{ $t['value'] }}" @selected(old('due_type', 'aidat') === $t['value'])>{{ $t['label'] }}</option>
-                        @endforeach
-                    </select>
-                    @error('due_type')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                @php $showCategory = in_array(old('due_type', 'aidat'), ['malik_payi', 'masraf_yansitma'], true); @endphp
-                <div id="category-field" class="{{ $showCategory ? '' : 'hidden' }}">
-                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
-                    <select id="category_id" name="category_id" @disabled(! $showCategory) @required($showCategory) class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                        <option value="">Kategori seçin</option>
-                        @foreach ($categories as $cat)
-                            <option value="{{ $cat->id }}" @selected((string) old('category_id') === (string) $cat->id)>{{ $cat->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('category_id')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <div>
-                    <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
-                    <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                    @error('created_at_manual')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
-
-                <div>
-                    <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
-                    <input id="due_date" name="due_date" type="date" value="{{ old('due_date') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                    @error('due_date')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
                 <div class="md:col-span-2">
                     <label for="description" class="mb-2 block text-sm font-medium text-slate-600">Açıklama</label>
                     <input id="description" name="description" value="{{ old('description') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none" placeholder="Örn. Nisan aidatı, demirbaş giderleri vb.">
@@ -268,6 +284,17 @@
             const expensesFields = document.getElementById('expenses-fields');
             const manualFields = document.getElementById('manual-fields');
             const fixedFields = document.getElementById('fixed-fields');
+            const batchTypeFields = document.getElementById('batch-type-fields');
+            const batchDateFields = document.getElementById('batch-date-fields');
+            const fixedTypeSlot = document.getElementById('fixed-type-slot');
+            const fixedDatesSlot = document.getElementById('fixed-dates-slot');
+            const manualTypeSlot = document.getElementById('manual-type-slot');
+            const manualDatesSlot = document.getElementById('manual-dates-slot');
+            const expensesDetailsFields = document.getElementById('expenses-details-fields');
+            const expensesTypeSlot = document.getElementById('expenses-type-slot');
+            const expensesDatesSlot = document.getElementById('expenses-dates-slot');
+            const fixedAmountField = document.getElementById('fixed-amount-field');
+            const manualAmountField = document.getElementById('manual-amount-field');
             const fixedAmount = document.getElementById('fixed_amount');
             const sourcePeriod = document.getElementById('source_period');
             const sourceAmount = document.getElementById('source_amount');
@@ -573,8 +600,15 @@
             const toggleFields = () => {
                 const selected = document.querySelector('input[name="source_type"]:checked').value;
                 expensesFields.classList.toggle('hidden', selected !== 'expenses');
+                expensesDetailsFields.classList.toggle('hidden', selected !== 'expenses');
                 manualFields.classList.toggle('hidden', selected !== 'manual');
                 fixedFields.classList.toggle('hidden', selected !== 'fixed');
+                fixedAmountField.classList.toggle('hidden', selected !== 'fixed');
+                manualAmountField.classList.toggle('hidden', selected !== 'manual');
+                const typeSlot = { fixed: fixedTypeSlot, manual: manualTypeSlot, expenses: expensesTypeSlot }[selected];
+                const datesSlot = { fixed: fixedDatesSlot, manual: manualDatesSlot, expenses: expensesDatesSlot }[selected];
+                typeSlot.appendChild(batchTypeFields);
+                datesSlot.appendChild(batchDateFields);
                 if (distTypeWrapper) distTypeWrapper.classList.toggle('hidden', selected === 'fixed');
                 updateCalculation();
             };
@@ -610,6 +644,15 @@
 
             // Auto-populate description based on period and category
             const typeSelect = document.getElementById('due_type');
+            const tenantAudience = document.querySelector('input[name="target_audience"][value="tenant_priority"]');
+            const ownerAudience = document.querySelector('input[name="target_audience"][value="owner_only"]');
+            const ownerOnlyHint = document.getElementById('owner-only-hint');
+            const syncTargetAudience = () => {
+                const ownerOnly = typeSelect.value === 'malik_payi';
+                tenantAudience.disabled = ownerOnly;
+                if (ownerOnly) ownerAudience.checked = true;
+                ownerOnlyHint.classList.toggle('hidden', !ownerOnly);
+            };
             const topicSelect = document.getElementById('category_id');
             const categoryField = document.getElementById('category-field');
             const selectableDueTypes = ['malik_payi', 'masraf_yansitma'];
@@ -675,11 +718,13 @@
 
             typeSelect?.addEventListener('change', () => {
                 syncCategoryField();
+                syncTargetAudience();
                 updateDescription();
             });
             periodInput?.addEventListener('change', updateDescription);
 
             // Init
+            syncTargetAudience();
             syncCategoryField();
             syncPeriodFromDate();
             if (!dueDateInput.value) {

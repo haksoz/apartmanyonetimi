@@ -36,7 +36,7 @@
         <input type="hidden" name="target_audience" value="tenant_priority">
         <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
 
-        {{-- Başlık + Ana Alanlar --}}
+        {{-- Borçlandırma bilgileri --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
             @if ($selectedAccount)
                 <h1 class="text-2xl font-bold text-slate-950">Borçlandır</h1>
@@ -44,63 +44,67 @@
             @endif
 
             <div class="grid gap-5 md:grid-cols-2 {{ $selectedAccount ? 'mt-5 border-t border-slate-100 pt-5' : '' }}">
-                <div>
-                    <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Hesap / Kiracı-Katmaliki</label>
+                <div class="grid gap-5 md:col-span-2 md:grid-cols-2">
+                    <div>
+                        <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
+                        <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                            <option value="">Tür seçin</option>
+                            @foreach ($dueTypes as $t)
+                                <option value="{{ $t['value'] }}" @selected(old('due_type', 'aidat') === $t['value'])>{{ $t['label'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+
+                    @php $showCategory = in_array(old('due_type', 'aidat'), ['malik_payi', 'masraf_yansitma'], true); @endphp
+                    <div id="category-field" class="{{ $showCategory ? '' : 'hidden' }}">
+                        <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
+                        <select id="category_id" name="category_id" @disabled(! $showCategory) @required($showCategory) class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                            <option value="">Kategori seçin</option>
+                            @foreach ($categories as $cat)
+                                <option value="{{ $cat->id }}" @selected((string) old('category_id') === (string) $cat->id)>{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+
+                <div class="grid gap-5 md:col-span-2 md:grid-cols-2">
+                    <div>
+                        <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
+                        <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        @error('created_at_manual')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div>
+                        <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
+                        <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        @error('due_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Borçlandırılacak Hesap</label>
                     <select id="account_id" name="{{ $lockedAccount ? null : 'account_id' }}" required
                         {{ $lockedAccount ? 'disabled' : '' }}
                         class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none {{ $lockedAccount ? 'bg-slate-100 cursor-not-allowed' : '' }}">
                         <option value="">Hesap seçin</option>
                         @foreach ($accounts as $account)
-                            <option value="{{ $account->id }}" @selected((string) old('account_id', $selectedAccountId ?? '') === (string) $account->id)>
+                            <option value="{{ $account->id }}" data-account-type="{{ $account->type }}" @selected((string) old('account_id', $selectedAccountId ?? '') === (string) $account->id)>
                                 {{ $account->unit ? 'No:'.str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT).' ' : '' }}{{ $account->name }} ({{ $account->type_label }}){{ !$account->is_active ? ' - Pasif' : '' }}
                             </option>
                         @endforeach
                     </select>
                     @if ($lockedAccount)
-                        <input type="hidden" name="account_id" value="{{ $lockedAccount->id }}">
+                        <input id="locked-account-id" type="hidden" name="account_id" value="{{ $lockedAccount->id }}">
                     @endif
                     @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
-                <div>
+                <div class="md:col-span-2">
                     <label for="individual_amount" class="mb-2 block text-sm font-medium text-slate-600">Borç Tutarı</label>
                     <input id="individual_amount" name="individual_amount" type="number" min="0.01" step="0.01" value="{{ old('individual_amount') }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                     @error('individual_amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <div>
-                    <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
-                    <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        <option value="">Tür seçin</option>
-                        @foreach ($dueTypes as $t)
-                            <option value="{{ $t['value'] }}" @selected(old('due_type', 'aidat') === $t['value'])>{{ $t['label'] }}</option>
-                        @endforeach
-                    </select>
-                    @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                @php $showCategory = in_array(old('due_type', 'aidat'), ['malik_payi', 'masraf_yansitma'], true); @endphp
-                <div id="category-field" class="{{ $showCategory ? '' : 'hidden' }}">
-                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
-                    <select id="category_id" name="category_id" @disabled(! $showCategory) @required($showCategory) class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        <option value="">Kategori seçin</option>
-                        @foreach ($categories as $cat)
-                            <option value="{{ $cat->id }}" @selected((string) old('category_id') === (string) $cat->id)>{{ $cat->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <div>
-                    <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
-                    <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('created_at_manual')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                <div>
-                    <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
-                    <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('due_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="md:col-span-2">
@@ -119,6 +123,22 @@
     <script>
         (() => {
             const typeSelect = document.getElementById('due_type');
+            const accountSelect = document.getElementById('account_id');
+            const accountOptions = Array.from(accountSelect.options);
+            const lockedAccountInput = document.getElementById('locked-account-id');
+            const syncAccountOptions = () => {
+                const ownerOnly = typeSelect.value === 'malik_payi';
+                const options = accountOptions.filter(option => !option.value || !ownerOnly || option.dataset.accountType === 'owner');
+                const lockedAllowed = lockedAccountInput && options.some(option => option.value === lockedAccountInput.value);
+                const selectedValue = lockedAllowed ? lockedAccountInput.value : accountSelect.value;
+                accountSelect.replaceChildren(...options);
+                accountSelect.value = options.some(option => option.value === selectedValue) ? selectedValue : '';
+                accountSelect.disabled = Boolean(lockedAllowed);
+                accountSelect.name = lockedAllowed ? '' : 'account_id';
+                accountSelect.classList.toggle('bg-slate-100', Boolean(lockedAllowed));
+                accountSelect.classList.toggle('cursor-not-allowed', Boolean(lockedAllowed));
+                if (lockedAccountInput) lockedAccountInput.disabled = !lockedAllowed;
+            };
             const topicSelect = document.getElementById('category_id');
             const categoryField = document.getElementById('category-field');
             const selectableDueTypes = ['malik_payi', 'masraf_yansitma'];
@@ -183,6 +203,7 @@
 
             typeSelect.addEventListener('change', () => {
                 syncCategoryField();
+                syncAccountOptions();
                 descriptionInput.dataset.userEdited = '';
                 updateDescription();
             });
@@ -202,6 +223,7 @@
             });
 
             // Init
+            syncAccountOptions();
             syncCategoryField();
             syncPeriodFromCreatedAt();
             syncDueDate();
