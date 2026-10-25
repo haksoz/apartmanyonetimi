@@ -129,6 +129,11 @@
                         </div>
                     @endif
 
+                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                        <div class="text-xs text-slate-500">Borç Türü</div>
+                        <div class="font-semibold text-slate-900">{{ $due->due_type_label }}</div>
+                    </div>
+
                     @if ($due->category)
                         <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                             <div class="text-xs text-slate-500">Kategori</div>

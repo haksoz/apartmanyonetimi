@@ -543,6 +543,8 @@ class DuePageTest extends TestCase
             ->assertSee('text-xl font-bold text-slate-900', false)
             ->assertSee('text-sm text-slate-400', false)
             ->assertSee('Detaylar')
+            ->assertSee('Borç Türü')
+            ->assertSee('font-semibold text-slate-900">Aidat</div>', false)
             ->assertSee('<details class="group" open>', false)
             ->assertSee('Daire 01')
             ->assertSee('history.back()', false)

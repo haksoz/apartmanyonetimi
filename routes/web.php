@@ -98,6 +98,7 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::view('logout', 'auth.logout')->name('logout.confirm');
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('sozlesme/uyelik', [MembershipConsentController::class, 'show'])->name('legal.membership.accept');
     Route::post('sozlesme/uyelik', [MembershipConsentController::class, 'store'])->name('legal.membership.accept.store');
