@@ -8,6 +8,9 @@ use App\Models\Category;
 use App\Models\Due;
 use App\Models\DueBatch;
 use App\Models\DuePlan;
+use App\Models\ExpensePlan;
+use App\Models\AssessmentPlan;
+use App\Models\Apartment;
 use App\Models\Expense;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
@@ -57,8 +60,9 @@ class CategoryController extends Controller
         Category::create([
             'apartment_id' => $apartment->id,
             'name' => $validated['name'],
-            'type' => $validated['type'],
+            'type' => Category::TYPE_ALL,
             'is_active' => $request->boolean('is_active', true),
+            ...$this->permissions($request),
         ]);
 
         return redirect()->route('categories.index')->with('status', 'Kategori oluşturuldu.');
@@ -72,7 +76,9 @@ class CategoryController extends Controller
             return $category;
         }
 
-        return view('categories.edit', compact('category'));
+        $isDefaultAidatCategory = $category->isDefaultAidatCategory();
+
+        return view('categories.edit', compact('category', 'isDefaultAidatCategory'));
     }
 
     public function update(Request $request, string $id, CurrentApartment $currentApartment)
@@ -83,16 +89,16 @@ class CategoryController extends Controller
             return $category;
         }
 
-        if ($category->is_system) {
-            return redirect()->route('categories.index')->with('error', 'Sistem kategorileri düzenlenemez.');
+        if ($category->isDefaultAidatCategory()) {
+            return redirect()->route('categories.index')->with('error', 'Genel Aidat kategorisinin adı, aktifliği ve kullanım yetkileri değiştirilemez.');
         }
 
         $validated = $this->validateCategory($request, $category->apartment_id, $category->id);
 
         $category->update([
             'name' => $validated['name'],
-            'type' => $validated['type'],
             'is_active' => $request->boolean('is_active'),
+            ...$this->permissions($request),
         ]);
 
         return redirect()->route('categories.index')->with('status', 'Kategori güncellendi.');
@@ -106,8 +112,8 @@ class CategoryController extends Controller
             return $category;
         }
 
-        if ($category->is_system) {
-            return redirect()->route('categories.index')->with('error', 'Bu kategori sistem kategorisi olduğu için silinemez.');
+        if ($category->isDefaultAidatCategory()) {
+            return redirect()->route('categories.index')->with('error', 'Genel Aidat kategorisi silinemez.');
         }
 
         if ($reason = $this->relatedRecordReason($category)) {
@@ -155,6 +161,9 @@ class CategoryController extends Controller
             'borç' => Due::where('category_id', $category->id)->exists(),
             'borçlandırma' => DueBatch::where('category_id', $category->id)->exists(),
             'aidat planı' => DuePlan::where('category_id', $category->id)->exists(),
+            'gider planı' => ExpensePlan::where('category_id', $category->id)->exists(),
+            'ek borçlandırma planı' => AssessmentPlan::where('category_id', $category->id)->exists(),
+            'varsayılan aidat kategorisi' => Apartment::where('default_aidat_category_id', $category->id)->exists(),
             'hesap' => Account::where('default_category_id', $category->id)->exists(),
         ];
 
@@ -177,8 +186,15 @@ class CategoryController extends Controller
                     ->where('apartment_id', $apartmentId)
                     ->ignore($categoryId),
             ],
-            'type' => ['required', Rule::in([Category::TYPE_ALL, Category::TYPE_INCOME, Category::TYPE_EXPENSE])],
             'is_active' => ['nullable', 'boolean'],
+            ...collect(array_keys(Category::USAGE_PERMISSIONS))->mapWithKeys(fn ($key) => [$key => ['nullable', 'boolean']])->all(),
         ]);
+    }
+
+    private function permissions(Request $request): array
+    {
+        return collect(array_keys(Category::USAGE_PERMISSIONS))
+            ->mapWithKeys(fn ($key) => [$key => $request->boolean($key)])
+            ->all();
     }
 }

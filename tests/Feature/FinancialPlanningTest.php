@@ -27,6 +27,15 @@ class FinancialPlanningTest extends TestCase
     {
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Test Apt', 'unit_count' => 2]);
+        $generalAidat = Category::create([
+            'apartment_id' => $apartment->id,
+            'name' => 'Genel Aidat',
+            'type' => Category::TYPE_INCOME,
+            'is_active' => true,
+            'is_system' => true,
+            'allow_aidat' => true,
+        ]);
+        $apartment->update(['default_aidat_category_id' => $generalAidat->id]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
         $this->grantPaidFeatures($apartment);
 
@@ -128,6 +137,7 @@ class FinancialPlanningTest extends TestCase
             'name' => 'Temizlik',
             'type' => Category::TYPE_EXPENSE,
             'is_active' => true,
+            'allow_expense' => true,
         ]);
 
         $plan = ExpensePlan::create([
@@ -313,6 +323,7 @@ class FinancialPlanningTest extends TestCase
             'name' => 'Malik Payı',
             'type' => Category::TYPE_ALL,
             'is_active' => true,
+            'allow_malik_payi' => true,
         ]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -521,7 +532,7 @@ class FinancialPlanningTest extends TestCase
         $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
         [$user, $apartment] = $this->setupApartment();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Isınma', 'type' => Category::TYPE_ALL, 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Isınma', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true, 'allow_masraf_yansitma' => true]);
         foreach (AssessmentPlan::debtTypes() as $type) {
             $payload = $this->assessmentPayload([
                 'name' => $type->label().' Planı', 'due_type' => $type->value,
@@ -569,7 +580,7 @@ class FinancialPlanningTest extends TestCase
             $this->post(route('assessment-plans.store'), [...$payload, 'category_name' => $name])->assertSessionHasErrors('category_name');
             $this->assertSame($name === 'Gelir' ? Category::TYPE_INCOME : ($name === 'Gider' ? Category::TYPE_EXPENSE : Category::TYPE_ALL), $category->fresh()->type);
         }
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Onarım', 'type' => Category::TYPE_ALL, 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Onarım', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true, 'allow_masraf_yansitma' => true]);
         $preview = $this->post(route('assessment-plans.store'), [...$payload, 'category_mode' => 'existing', 'category_id' => $category->id])->assertOk();
         $category->update(['is_active' => false]);
         $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertSessionHasErrors('category_id');
@@ -606,7 +617,7 @@ class FinancialPlanningTest extends TestCase
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         $payload = $this->assessmentPayload();
         $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => $payload['name'], 'type' => Category::TYPE_ALL, 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => $payload['name'], 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true, 'allow_masraf_yansitma' => true]);
         $updated = $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
         $this->assertTrue($updated->viewData('changed'));
         $this->assertFalse($updated->viewData('summary')['category']['is_new']);
@@ -841,7 +852,7 @@ class FinancialPlanningTest extends TestCase
         $this->assertEquals(1000, $preview->viewData('summary')['amount']);
         $this->assertSame(0, DuePlan::count());
         $this->assertSame(0, Due::count());
-        $this->assertSame(0, Category::count());
+        $this->assertSame(1, Category::count());
         $token = $preview->viewData('token');
         $this->post(route('due-plans.store'), ['confirmation_token' => $token, 'monthly_amount' => 99999])
             ->assertRedirect(route('due-plans.index', ['year' => 2026]));
@@ -1113,6 +1124,7 @@ class FinancialPlanningTest extends TestCase
             'name' => 'Elektrik',
             'type' => Category::TYPE_EXPENSE,
             'is_active' => true,
+            'allow_expense' => true,
         ]);
 
         return [

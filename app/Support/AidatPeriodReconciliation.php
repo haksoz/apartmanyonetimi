@@ -17,23 +17,21 @@ class AidatPeriodReconciliation
 {
     public function categoryFor(Apartment $apartment): Category
     {
-        return Category::query()->firstOrCreate(
-            [
-                'apartment_id' => $apartment->id,
-                'name' => 'Aidat',
-            ],
-            [
-                'type' => Category::TYPE_INCOME,
-                'is_active' => true,
-                'is_system' => true,
-            ],
-        );
+        $category = $apartment->defaultAidatCategory;
+        if (! $apartment->default_aidat_category_id || ! $category) {
+            throw new \RuntimeException('Apartmanın Genel Aidat kategori referansı tanımlı değil. Kategori ayarlarını kontrol edin.');
+        }
+        if ($category->apartment_id !== $apartment->id) {
+            throw new \RuntimeException('Genel Aidat kategori referansı bu apartmana ait değil. Kategori ayarlarını kontrol edin.');
+        }
+
+        return $category;
     }
 
     public function reconcile(DuePlan $plan, string $period): array
     {
         $periodDate = Carbon::parse($period.'-01');
-        $category = Category::query()->where('apartment_id', $plan->apartment_id)->where('name', 'Aidat')->first();
+        $category = $plan->category ?: $this->categoryFor($plan->apartment);
         $targetAccounts = $this->targetAccounts($plan, $periodDate);
         $completedAccountIds = Due::query()
             ->where('apartment_id', $plan->apartment_id)

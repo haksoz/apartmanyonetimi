@@ -71,7 +71,7 @@ class Expense extends Model
 
     public function categoryRelation(): BelongsTo
     {
-        return $this->belongsTo(Category::class, 'category_id');
+        return $this->belongsTo(Category::class, 'category_id')->withTrashed();
     }
 
     public function transactions(): MorphMany

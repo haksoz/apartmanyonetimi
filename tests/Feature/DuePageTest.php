@@ -163,7 +163,7 @@ class DuePageTest extends TestCase
             'name' => 'Kat Maliki',
             'is_active' => true,
         ]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
 
         $paidDue = Due::create([
             'apartment_id' => $apartment->id,
@@ -323,7 +323,7 @@ class DuePageTest extends TestCase
         $accountTwo = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitTwo->id, 'type' => Account::TYPE_OWNER, 'name' => '2. Daire Maliki', 'is_active' => true]);
         $unitOne->update(['owner_account_id' => $accountOne->id, 'occupant_account_id' => $accountOne->id]);
         $unitTwo->update(['owner_account_id' => $accountTwo->id, 'occupant_account_id' => $accountTwo->id]);
-        $dueCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş', 'type' => Category::TYPE_INCOME]);
+        $dueCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş', 'type' => Category::TYPE_INCOME, 'allow_masraf_yansitma' => true]);
         $fixtureCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş Gideri', 'type' => Category::TYPE_EXPENSE]);
         $elevatorCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Asansör', 'type' => Category::TYPE_EXPENSE]);
         $cleaningCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Temizlik', 'type' => Category::TYPE_EXPENSE]);
@@ -339,7 +339,7 @@ class DuePageTest extends TestCase
                 'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
-                'due_type' => \App\Enums\DueType::Aidat->value,
+                'due_type' => \App\Enums\DueType::MasrafYansitma->value,
                 'category_id' => $dueCategory->id,
                 'source_period' => '2026-04',
                 'selected_expense_ids' => $fixtureExpense->id . ',' . $elevatorExpense->id,
@@ -350,14 +350,9 @@ class DuePageTest extends TestCase
         $response->assertSessionHasNoErrors();
         $this->assertSame(route('dues.index'), $response->headers->get('Location'));
 
-        $aidatCategoryId = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->where('name', 'Aidat')
-            ->value('id');
-
         $this->assertDatabaseHas('due_batches', [
             'apartment_id' => $apartment->id,
-            'category_id' => $aidatCategoryId,
+            'category_id' => $dueCategory->id,
             'source_type' => DueBatch::SOURCE_EXPENSES,
             'source_amount' => 1500,
         ]);
@@ -378,7 +373,7 @@ class DuePageTest extends TestCase
         $accountTwo = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitTwo->id, 'type' => Account::TYPE_OWNER, 'name' => '2. Daire Maliki', 'is_active' => true]);
         $unitOne->update(['owner_account_id' => $accountOne->id, 'occupant_account_id' => $accountOne->id]);
         $unitTwo->update(['owner_account_id' => $accountTwo->id, 'occupant_account_id' => $accountTwo->id]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
@@ -408,7 +403,7 @@ class DuePageTest extends TestCase
         $apartment->members()->attach($user->id, ['role' => 'owner']);
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş', 'type' => Category::TYPE_INCOME]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş', 'type' => Category::TYPE_INCOME, 'allow_masraf_yansitma' => true]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
@@ -418,7 +413,7 @@ class DuePageTest extends TestCase
                 'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
-                'due_type' => \App\Enums\DueType::Aidat->value,
+                'due_type' => \App\Enums\DueType::MasrafYansitma->value,
                 'category_id' => $category->id,
                 'account_id' => $account->id,
                 'individual_amount' => 450,
@@ -426,14 +421,9 @@ class DuePageTest extends TestCase
             ])
             ->assertRedirect(route('dues.index'));
 
-        $aidatCategoryId = Category::query()
-            ->where('apartment_id', $apartment->id)
-            ->where('name', 'Aidat')
-            ->value('id');
-
         $this->assertDatabaseHas('dues', [
             'account_id' => $account->id,
-            'category_id' => $aidatCategoryId,
+            'category_id' => $category->id,
             'amount' => 450,
             'description' => 'Kumanda bedeli',
         ]);
@@ -475,7 +465,7 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
         $cashBox = \App\Models\CashBox::create(['apartment_id' => $apartment->id, 'name' => 'Ana Kasa', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unit->id,
@@ -560,7 +550,7 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
         $ownerAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unit->id,
@@ -590,7 +580,7 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
         Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unit->id,
@@ -618,7 +608,7 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
         $ownerAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unit->id,
@@ -673,7 +663,7 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
         $ownerAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unit->id,
@@ -708,7 +698,7 @@ class DuePageTest extends TestCase
         $unitTwo = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '2']);
         $tenantAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitOne->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
         $otherUnitOwner = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitTwo->id, 'type' => Account::TYPE_OWNER, 'name' => '2. Daire Maliki', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unitOne->id,
@@ -742,7 +732,7 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $inactiveTenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Eski Kiracı', 'is_active' => false]);
         Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unit->id,
@@ -771,7 +761,7 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $inactiveTenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Eski Kiracı', 'is_active' => false]);
         $ownerAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unit->id,
@@ -804,7 +794,7 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $inactiveTenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => null, 'type' => Account::TYPE_TENANT, 'name' => 'Eski Kiracı', 'is_active' => false]);
         Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unit->id,
@@ -833,7 +823,7 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $inactiveTenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Eski Kiracı', 'is_active' => false]);
         $ownerAccount = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Kat Maliki', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $due = Due::create([
             'apartment_id' => $apartment->id,
             'unit_id' => $unit->id,
@@ -872,7 +862,7 @@ class DuePageTest extends TestCase
         $accountTwo = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitTwo->id, 'type' => Account::TYPE_OWNER, 'name' => '2. Daire Maliki', 'is_active' => true]);
         $unitOne->update(['owner_account_id' => $accountOne->id, 'occupant_account_id' => $accountOne->id]);
         $unitTwo->update(['owner_account_id' => $accountTwo->id, 'occupant_account_id' => $accountTwo->id]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         DuePlan::create([
             'apartment_id' => $apartment->id,
             'category_id' => null,
@@ -927,7 +917,7 @@ class DuePageTest extends TestCase
         $accountTwo = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitTwo->id, 'type' => Account::TYPE_OWNER, 'name' => '2. Daire Maliki', 'is_active' => true]);
         $unitOne->update(['owner_account_id' => $accountOne->id, 'occupant_account_id' => $accountOne->id]);
         $unitTwo->update(['owner_account_id' => $accountTwo->id, 'occupant_account_id' => $accountTwo->id]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $plan = DuePlan::create([
             'apartment_id' => $apartment->id,
             'category_id' => null,
@@ -976,7 +966,7 @@ class DuePageTest extends TestCase
             $accounts[$i] = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $units[$i]->id, 'type' => Account::TYPE_OWNER, 'name' => "{$i}. Daire Maliki", 'is_active' => true]);
             $units[$i]->update(['owner_account_id' => $accounts[$i]->id, 'occupant_account_id' => $accounts[$i]->id]);
         }
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $plan = DuePlan::create([
             'apartment_id' => $apartment->id,
             'category_id' => null,
@@ -1041,6 +1031,8 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Maliki', 'is_active' => true]);
         $unit->update(['owner_account_id' => $account->id, 'occupant_account_id' => $account->id]);
+        Category::createDefaultsFor($apartment->id);
+        $apartment->refresh();
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
@@ -1062,7 +1054,7 @@ class DuePageTest extends TestCase
 
         $category = Category::query()->find($plan->category_id);
         $this->assertNotNull($category);
-        $this->assertEquals('Aidat', $category->name);
+        $this->assertEquals('Genel Aidat', $category->name);
         $this->assertEquals(Category::TYPE_INCOME, $category->type);
         $this->assertTrue($category->is_system);
     }
@@ -1081,6 +1073,8 @@ class DuePageTest extends TestCase
         }
 
         // Service kullanarak sistem Aidat kategorisini al
+        Category::createDefaultsFor($apartment->id);
+        $apartment->refresh();
         $reconciliation = new \App\Support\AidatPeriodReconciliation();
         $category = $reconciliation->categoryFor($apartment);
 
@@ -1164,7 +1158,7 @@ class DuePageTest extends TestCase
             $units[$i]->update(['owner_account_id' => $accounts[$i]->id, 'occupant_account_id' => $accounts[$i]->id]);
         }
 
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'is_system' => true]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'is_system' => true, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $plan = DuePlan::create([
             'apartment_id' => $apartment->id,
             'category_id' => $category->id,
@@ -1220,7 +1214,7 @@ class DuePageTest extends TestCase
             $units[$i]->update(['owner_account_id' => $accounts[$i]->id, 'occupant_account_id' => $accounts[$i]->id]);
         }
 
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'is_system' => true]);
+        $category = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'is_system' => true, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $plan = DuePlan::create([
             'apartment_id' => $apartment->id,
             'category_id' => $category->id,
@@ -1291,6 +1285,8 @@ class DuePageTest extends TestCase
         $unit->update(['owner_account_id' => $account->id, 'occupant_account_id' => $account->id]);
 
         // Service kullanarak sistem Aidat kategorisini al
+        Category::createDefaultsFor($apartment->id);
+        $apartment->refresh();
         $reconciliation = new \App\Support\AidatPeriodReconciliation();
         $category = $reconciliation->categoryFor($apartment);
 
@@ -1340,6 +1336,8 @@ class DuePageTest extends TestCase
         $unit2->update(['owner_account_id' => $account2->id, 'occupant_account_id' => $account2->id]);
 
         // Service kullanarak sistem Aidat kategorisini al
+        Category::createDefaultsFor($apartment->id);
+        $apartment->refresh();
         $reconciliation = new \App\Support\AidatPeriodReconciliation();
         $category = $reconciliation->categoryFor($apartment);
 
@@ -1399,6 +1397,8 @@ class DuePageTest extends TestCase
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Maliki', 'is_active' => true]);
         $unit->update(['owner_account_id' => $account->id, 'occupant_account_id' => $account->id]);
 
+        Category::createDefaultsFor($apartment->id);
+        $apartment->refresh();
         $reconciliation = new \App\Support\AidatPeriodReconciliation();
         $category = $reconciliation->categoryFor($apartment);
 
@@ -1449,6 +1449,8 @@ class DuePageTest extends TestCase
         $unit->update(['owner_account_id' => $account2->id, 'occupant_account_id' => $account1->id]);
 
         // Service kullanarak sistem Aidat kategorisini al
+        Category::createDefaultsFor($apartment->id);
+        $apartment->refresh();
         $reconciliation = new \App\Support\AidatPeriodReconciliation();
         $category = $reconciliation->categoryFor($apartment);
 
@@ -1529,7 +1531,9 @@ class DuePageTest extends TestCase
         $tenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'type' => Account::TYPE_TENANT, 'name' => 'Tenant', 'is_active' => true]);
         $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Repair',
-            'type' => Category::TYPE_INCOME, 'is_active' => true]);
+            'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true]);
+        Category::createDefaultsFor($apartment->id);
+        $apartment->refresh();
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
         $data = ['source_type' => DueBatch::SOURCE_INDIVIDUAL,
             'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL, 'target_audience' => 'tenant_priority',
@@ -1543,6 +1547,7 @@ class DuePageTest extends TestCase
             ->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
         $this->assertDatabaseHas('dues', ['account_id' => $owner->id, 'due_type' => 'malik_payi']);
         $data['due_type'] = 'aidat';
+        $data['category_id'] = $apartment->default_aidat_category_id;
         $this->post(route('dues.store'), $data + ['account_id' => $tenant->id])
             ->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
         $this->assertDatabaseHas('dues', ['account_id' => $tenant->id, 'due_type' => 'aidat']);
@@ -1568,7 +1573,9 @@ class DuePageTest extends TestCase
         $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'move_in_date' => '2026-01-01']);
         $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Repair',
-            'type' => Category::TYPE_INCOME, 'is_active' => true]);
+            'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true]);
+        Category::createDefaultsFor($apartment->id);
+        $apartment->refresh();
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
         $this->get(route('dues.batch.create'))->assertOk()->assertSee('Sadece Kat Malikleri')
             ->assertDontSee('Sadece Sahipler');
@@ -1590,6 +1597,7 @@ class DuePageTest extends TestCase
         $this->post(route('dues.store'), [
             'source_type' => DueBatch::SOURCE_MANUAL, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
             'target_audience' => 'tenant_priority', 'due_type' => 'aidat',
+            'category_id' => $apartment->default_aidat_category_id,
             'period' => '2026-08', 'due_date' => '2026-08-31', 'source_amount' => 100,
         ])->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
         $batch = DueBatch::latest('id')->firstOrFail();
@@ -1597,7 +1605,7 @@ class DuePageTest extends TestCase
         $this->assertDatabaseHas('dues', ['due_batch_id' => $batch->id, 'account_id' => $tenant->id]);
     }
 
-    public function test_locked_due_types_assign_system_category_and_hide_selector(): void
+    public function test_each_individual_due_type_requires_an_explicitly_permitted_category(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
@@ -1605,20 +1613,23 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Maliki', 'is_active' => true]);
         $unit->update(['owner_account_id' => $account->id, 'occupant_account_id' => $account->id]);
-        $incomeCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Gelir Kalemi', 'type' => Category::TYPE_INCOME, 'is_active' => true]);
-        $aidatCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'is_system' => true, 'is_active' => true]);
+        $incomeCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Gelir Kalemi', 'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_masraf_yansitma' => true]);
+        $aidatCategory = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'is_system' => true, 'is_active' => true, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $expenseCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Asansör Bakımı', 'type' => Category::TYPE_EXPENSE, 'is_active' => true]);
-        $allCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Ortak Kalem', 'type' => Category::TYPE_ALL, 'is_active' => true]);
+        $allCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Ortak Kalem', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true]);
+        $cezaCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Ceza', 'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_ceza' => true]);
+        $faizCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Faiz', 'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_faiz' => true]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
             ->get(route('dues.create'))
             ->assertOk()
-            ->assertSee('id="category-field" class="hidden"', false)
+            ->assertSee('id="category-field"', false)
             ->assertSee('Gelir Kalemi')
             ->assertSee('Ortak Kalem')
-            ->assertDontSee('Asansör Bakımı')
-            ->assertDontSee('value="'.$aidatCategory->id.'"', false);
+            ->assertSee('Asansör Bakımı')
+            ->assertSee('data-usages="ceza"', false)
+            ->assertSee('data-usages="faiz"', false);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
@@ -1629,21 +1640,16 @@ class DuePageTest extends TestCase
                 'period' => '2026-07',
                 'due_date' => '2026-07-31',
                 'due_type' => \App\Enums\DueType::Ceza->value,
+                'category_id' => $cezaCategory->id,
                 'account_id' => $account->id,
                 'individual_amount' => 100,
             ])
             ->assertRedirect(route('dues.index'));
 
-        $cezaCategoryId = Category::query()->where('apartment_id', $apartment->id)->where('name', 'Ceza')->value('id');
-        $this->assertDatabaseHas('categories', [
-            'id' => $cezaCategoryId,
-            'type' => Category::TYPE_INCOME,
-            'is_system' => true,
-        ]);
         $this->assertDatabaseHas('dues', [
             'account_id' => $account->id,
             'due_type' => \App\Enums\DueType::Ceza->value,
-            'category_id' => $cezaCategoryId,
+            'category_id' => $cezaCategory->id,
             'amount' => 100,
         ]);
 
@@ -1656,21 +1662,16 @@ class DuePageTest extends TestCase
                 'period' => '2026-08',
                 'due_date' => '2026-08-31',
                 'due_type' => \App\Enums\DueType::Faiz->value,
+                'category_id' => $faizCategory->id,
                 'account_id' => $account->id,
                 'individual_amount' => 50,
             ])
             ->assertRedirect(route('dues.index'));
 
-        $faizCategoryId = Category::query()->where('apartment_id', $apartment->id)->where('name', 'Faiz')->value('id');
-        $this->assertDatabaseHas('categories', [
-            'id' => $faizCategoryId,
-            'type' => Category::TYPE_INCOME,
-            'is_system' => true,
-        ]);
         $this->assertDatabaseHas('dues', [
             'account_id' => $account->id,
             'due_type' => \App\Enums\DueType::Faiz->value,
-            'category_id' => $faizCategoryId,
+            'category_id' => $faizCategory->id,
         ]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])

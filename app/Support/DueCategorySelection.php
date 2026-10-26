@@ -8,46 +8,40 @@ use Illuminate\Validation\Rule;
 
 class DueCategorySelection
 {
-    public function options(int $apartmentId)
+    public function options(int $apartmentId, ?int $selectedId = null)
     {
-        return Category::query()->where('apartment_id', $apartmentId)
-            ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])
-            ->where('name', '!=', 'Aidat')->where('is_active', true)
+        return Category::query()->when($selectedId, fn ($query) => $query->withTrashed())->where('apartment_id', $apartmentId)
+            ->where(fn ($query) => $query->where('is_active', true)->when($selectedId, fn ($query) => $query->orWhere('id', $selectedId)))
             ->orderedForDisplay()->get();
     }
 
-    public function rules(mixed $dueType, int $apartmentId): array
+    public function rules(mixed $dueType, int $apartmentId, ?int $existingCategoryId = null, ?string $existingDueType = null): array
     {
-        $selectsCategory = is_string($dueType) && (DueType::tryFrom($dueType)?->selectsCategory() ?? false);
+        $type = is_string($dueType) ? DueType::tryFrom($dueType) : null;
+        $selectsCategory = (bool) $type;
 
         return [
             Rule::requiredIf($selectsCategory), 'nullable', 'integer',
-            Rule::exists('categories', 'id')->where(function ($query) use ($apartmentId, $selectsCategory) {
-                $query->where('apartment_id', $apartmentId)->where('is_active', true);
-                if ($selectsCategory) {
-                    $query->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->where('name', '!=', 'Aidat');
-                }
+            Rule::exists('categories', 'id')->where(function ($query) use ($apartmentId, $type, $existingCategoryId, $existingDueType, $dueType) {
+                $query->where('apartment_id', $apartmentId);
+                $preservesExisting = $existingCategoryId && $existingDueType === $dueType;
+                $query->where(function ($allowed) use ($type, $existingCategoryId, $preservesExisting) {
+                    $allowed->where(function ($fresh) use ($type) {
+                        $fresh->where('is_active', true);
+                        if ($type) {
+                            $fresh->where($type->categoryPermission(), true);
+                        }
+                    });
+                    if ($preservesExisting) {
+                        $allowed->orWhere('id', $existingCategoryId);
+                    }
+                });
             }),
         ];
     }
 
     public function resolve(int $apartmentId, string $dueType, ?int $categoryId): ?int
     {
-        $name = DueType::tryFrom($dueType)?->lockedCategoryName();
-        if (! $name) {
-            return $categoryId;
-        }
-        $category = Category::withTrashed()->firstOrCreate(
-            ['apartment_id' => $apartmentId, 'name' => $name],
-            ['type' => Category::TYPE_INCOME, 'is_active' => true, 'is_system' => true],
-        );
-        if ($category->trashed()) {
-            $category->restore();
-        }
-        if ($category->type !== Category::TYPE_INCOME || ! $category->is_system || ! $category->is_active) {
-            $category->update(['type' => Category::TYPE_INCOME, 'is_active' => true, 'is_system' => true]);
-        }
-
-        return $category->id;
+        return $categoryId;
     }
 }

@@ -1222,9 +1222,10 @@ class ReportController extends Controller
         $id   = $apartment->id;
         $availableYears = range(now()->year, max(now()->year - 5, 2020), -1);
 
-        $categories = Category::where('apartment_id', $id)
-            ->where('is_active', true)
-            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
+        $categories = Category::withTrashed()->where('apartment_id', $id)
+            ->where(fn ($query) => $query
+                ->where(fn ($usable) => $usable->whereNull('deleted_at')->where('is_active', true)->where('allow_expense', true))
+                ->orWhereHas('expenses'))
             ->get();
 
         $rows = $categories->map(function ($cat) use ($id, $year) {
@@ -1264,7 +1265,11 @@ class ReportController extends Controller
         $id   = $apartment->id;
         $availableYears = [];
 
-        $categories = Category::where('apartment_id', $id)->where('is_active', true)->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])->get();
+        $categories = Category::withTrashed()->where('apartment_id', $id)
+            ->where(fn ($query) => $query
+                ->where(fn ($usable) => $usable->whereNull('deleted_at')->where('is_active', true)->where('allow_expense', true))
+                ->orWhereHas('expenses'))
+            ->get();
         $rows = $categories->map(function ($cat) use ($id, $year) {
             $actual = (float) Expense::where('apartment_id', $id)->where('category_id', $cat->id)->whereYear('expense_date', $year)->sum('amount');
             return ['category' => $cat->name, 'budget' => 0, 'actual' => $actual, 'variance' => -$actual, 'pct' => 0];
@@ -1400,7 +1405,14 @@ class ReportController extends Controller
             ];
         }
 
-        $categoryList = Category::where('apartment_id', $id)->where('is_active', true)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->get();
+        $categoryList = Category::withTrashed()->where('apartment_id', $id)
+            ->where(fn ($query) => $query
+                ->where(fn ($usable) => $usable->whereNull('deleted_at')->where('is_active', true)
+                    ->where(fn ($permissions) => $permissions
+                        ->where('allow_aidat', true)->orWhere('allow_malik_payi', true)
+                        ->orWhere('allow_masraf_yansitma', true)->orWhere('allow_ceza', true)->orWhere('allow_faiz', true)))
+                ->orWhereHas('dues'))
+            ->get();
 
         // Tüm aylar için selector
         $monthOptions = collect();
@@ -1505,7 +1517,14 @@ class ReportController extends Controller
             ];
         }
 
-        $categoryList = Category::where('apartment_id', $id)->where('is_active', true)->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_ALL])->get();
+        $categoryList = Category::withTrashed()->where('apartment_id', $id)
+            ->where(fn ($query) => $query
+                ->where(fn ($usable) => $usable->whereNull('deleted_at')->where('is_active', true)
+                    ->where(fn ($permissions) => $permissions
+                        ->where('allow_aidat', true)->orWhere('allow_malik_payi', true)
+                        ->orWhere('allow_masraf_yansitma', true)->orWhere('allow_ceza', true)->orWhere('allow_faiz', true)))
+                ->orWhereHas('dues'))
+            ->get();
         $monthOptions = collect();
         $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
 

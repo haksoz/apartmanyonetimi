@@ -149,7 +149,7 @@ class AccountController extends Controller
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
             ->where('is_active', true)
-            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
+            ->where('allow_expense', true)
             ->orderBy('name')
             ->get();
 
@@ -202,7 +202,11 @@ class AccountController extends Controller
                 'date',
                 Rule::requiredIf(fn () => abs((float) $request->input('balance', 0)) >= 0.01),
             ],
-            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])],
+            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')
+                ->where('apartment_id', $apartment->id)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->where('allow_expense', true)],
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
@@ -848,9 +852,11 @@ class AccountController extends Controller
             ->get();
 
         $categories = Category::query()
+            ->withTrashed()
             ->where('apartment_id', $account->apartment_id)
-            ->where(fn ($q) => $q->where('is_active', true)->orWhere('id', $account->default_category_id))
-            ->where(fn ($q) => $q->where('type', Category::TYPE_ALL)->orWhere('type', Category::TYPE_EXPENSE))
+            ->where(fn ($q) => $q
+                ->where(fn ($usable) => $usable->whereNull('deleted_at')->where('is_active', true)->where('allow_expense', true))
+                ->orWhere('id', $account->default_category_id))
             ->orderBy('name')
             ->get();
 
@@ -911,7 +917,26 @@ class AccountController extends Controller
                 ...(($firstActivityDate = $account->firstActivityDate()) ? ['before_or_equal:'.$firstActivityDate] : []),
                 ...(($previousTenantMoveOutDate = $account->previousTenantMoveOutDate()) ? ['after_or_equal:'.$previousTenantMoveOutDate] : []),
             ],
-            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
+            'default_category_id' => [
+                'nullable',
+                'integer',
+                function (string $attribute, mixed $value, \Closure $fail) use ($account): void {
+                    if ((int) $value === (int) $account->default_category_id) {
+                        return;
+                    }
+
+                    $usable = Category::query()
+                        ->whereKey($value)
+                        ->where('apartment_id', $account->apartment_id)
+                        ->where('is_active', true)
+                        ->where('allow_expense', true)
+                        ->exists();
+
+                    if (! $usable) {
+                        $fail('Seçilen varsayılan gider kategorisi aktif ve Gider kullanımına açık olmalıdır.');
+                    }
+                },
+            ],
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
@@ -1600,8 +1625,10 @@ class AccountController extends Controller
             ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_EXPENSE, Category::TYPE_ALL])
             ->where('is_active', true)
             ->get();
-        $defaultCategory = $categories->firstWhere('name', 'Aidat') ?? $categories->first();
-        $defaultExpenseCategory = $categories->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])->first();
+        $defaultCategory = $apartment->defaultAidatCategory
+            ?? $categories->firstWhere('allow_aidat', true)
+            ?? $categories->first();
+        $defaultExpenseCategory = $categories->firstWhere('allow_expense', true);
 
         DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $cashBox, &$categories, $defaultCategory, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
             // 1. Hesapları oluştur veya eşleştir
@@ -1730,7 +1757,7 @@ class AccountController extends Controller
                             if (!$category) {
                                 $category = Category::firstOrCreate(
                                     ['apartment_id' => $apartment->id, 'name' => trim($catName)],
-                                    ['type' => Category::TYPE_EXPENSE, 'is_active' => true]
+                                    ['type' => Category::TYPE_EXPENSE, 'is_active' => true, 'allow_expense' => true]
                                 );
                                 if (!$categories->contains('id', $category->id)) {
                                     $categories->push($category);
@@ -1814,7 +1841,7 @@ class AccountController extends Controller
                             if (!$category) {
                                 $category = Category::firstOrCreate(
                                     ['apartment_id' => $apartment->id, 'name' => trim($catName)],
-                                    ['type' => Category::TYPE_INCOME, 'is_active' => true]
+                                    ['type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true, 'allow_masraf_yansitma' => true]
                                 );
                                 if (!$categories->contains('id', $category->id)) {
                                     $categories->push($category);

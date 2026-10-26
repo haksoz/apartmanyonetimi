@@ -26,6 +26,13 @@ enum DueType: string
         return array_map(fn ($c) => ['value' => $c->value, 'label' => $c->label()], self::cases());
     }
 
+    public static function batchOptions(): array
+    {
+        return array_map(fn ($case) => ['value' => $case->value, 'label' => $case->label()], [
+            self::Aidat, self::MalikPayi, self::MasrafYansitma,
+        ]);
+    }
+
     public static function values(): array
     {
         return array_column(self::cases(), 'value');
@@ -33,16 +40,12 @@ enum DueType: string
 
     public function selectsCategory(): bool
     {
-        return in_array($this, [self::MalikPayi, self::MasrafYansitma], true);
+        return true;
     }
 
-    public function lockedCategoryName(): ?string
+    public function categoryPermission(): string
     {
-        return match ($this) {
-            self::Aidat => 'Aidat',
-            self::Ceza => 'Ceza',
-            self::Faiz => 'Faiz',
-            default => null,
-        };
+        return 'allow_'.$this->value;
     }
+
 }

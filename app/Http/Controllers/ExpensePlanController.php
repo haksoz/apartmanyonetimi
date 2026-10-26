@@ -39,7 +39,7 @@ class ExpensePlanController extends Controller
 
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
-            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
+            ->where('allow_expense', true)
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -63,7 +63,7 @@ class ExpensePlanController extends Controller
             'category_id' => [
                 'required',
                 'integer',
-                Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])->where('is_active', true),
+                Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('allow_expense', true)->where('is_active', true),
             ],
             'account_id' => [
                 'required',
@@ -201,7 +201,9 @@ class ExpensePlanController extends Controller
             }
             // Validate referenced records again immediately before writing.
             abort_unless(Account::where('apartment_id', $apartment->id)->where('type', Account::TYPE_SUPPLIER)->whereKey($proposed->account_id)->exists(), 422);
-            abort_unless(Category::where('apartment_id', $apartment->id)->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])->whereKey($proposed->category_id)->exists(), 422);
+            if (! $locked->exists || $locked->category_id !== $proposed->category_id) {
+                abort_unless(Category::where('apartment_id', $apartment->id)->where('allow_expense', true)->where('is_active', true)->whereKey($proposed->category_id)->exists(), 422);
+            }
             $skipped = $locked->skipped_periods ?? [];
             if ($summary['current_eligible']) {
                 $skipped = array_values(array_diff($skipped, [now()->format('Y-m')]));

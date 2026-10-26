@@ -206,6 +206,9 @@ class ApartmentWizardController extends Controller
             'type' => $validated['type'],
             'is_active' => true,
             'is_system' => false,
+            'allow_malik_payi' => in_array($validated['type'], ['income', 'all'], true),
+            'allow_masraf_yansitma' => in_array($validated['type'], ['income', 'all'], true),
+            'allow_expense' => in_array($validated['type'], ['expense', 'all'], true),
         ]);
 
         return redirect()->route('apartments.wizard.categories', $apartment)->with('status', 'Kategori eklendi.');

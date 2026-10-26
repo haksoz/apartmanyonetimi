@@ -153,6 +153,8 @@ class ApartmentOperationalData
 
     private function replaceCategories(Apartment $apartment): void
     {
+        $apartment->update(['default_aidat_category_id' => null]);
+        $apartment->unsetRelation('defaultAidatCategory');
         Category::withTrashed()->where('apartment_id', $apartment->id)->forceDelete();
         Category::createDefaultsFor($apartment->id);
     }

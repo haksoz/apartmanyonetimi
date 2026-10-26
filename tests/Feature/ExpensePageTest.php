@@ -161,6 +161,7 @@ class ExpensePageTest extends TestCase
             'apartment_id' => $apartment->id,
             'name' => 'Elektrik',
             'type' => Category::TYPE_EXPENSE,
+            'allow_expense' => true,
         ]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -190,6 +191,7 @@ class ExpensePageTest extends TestCase
             'apartment_id' => $apartment->id,
             'name' => 'Elektrik',
             'type' => Category::TYPE_EXPENSE,
+            'allow_expense' => true,
         ]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -329,6 +331,7 @@ class ExpensePageTest extends TestCase
             'apartment_id' => $apartment->id,
             'name' => 'Asansör',
             'type' => Category::TYPE_EXPENSE,
+            'allow_expense' => true,
         ]);
         $expense = Expense::create([
             'apartment_id' => $apartment->id,

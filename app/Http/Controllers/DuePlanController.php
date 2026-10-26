@@ -247,7 +247,7 @@ class DuePlanController extends Controller
             'generation_mode' => $generationMode,
             'description' => $validated['description'] ?? null,
             'due_type' => 'aidat',
-            'category_id' => \App\Models\Category::where('apartment_id', $apartment->id)->where('name', 'Aidat')->value('id'),
+            'category_id' => $this->aidatReconciliation->categoryFor($apartment)->id,
             'auto_generate' => $generationMode === DuePlan::GENERATION_ON_SCHEDULE,
             'is_active' => $request->boolean('is_active', true),
         ];

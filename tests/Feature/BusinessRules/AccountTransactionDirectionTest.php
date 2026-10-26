@@ -92,12 +92,16 @@ class AccountTransactionDirectionTest extends TestCase
 
     private function createIncomeCategory(Apartment $apartment): Category
     {
-        return Category::create([
+        $category = Category::create([
             'apartment_id' => $apartment->id,
             'name' => 'Aidat',
             'type' => Category::TYPE_INCOME,
             'is_active' => true,
+            'allow_aidat' => true,
         ]);
+        $apartment->update(['default_aidat_category_id' => $category->id]);
+
+        return $category;
     }
 
     private function createExpenseCategory(Apartment $apartment): Category
@@ -107,6 +111,7 @@ class AccountTransactionDirectionTest extends TestCase
             'name' => 'Bakım',
             'type' => Category::TYPE_EXPENSE,
             'is_active' => true,
+            'allow_expense' => true,
         ]);
     }
 

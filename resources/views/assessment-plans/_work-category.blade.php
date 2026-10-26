@@ -28,7 +28,7 @@
             <select id="category_id" name="category_id" @required($categoryMode === 'existing') @disabled($categoryMode !== 'existing') class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
                 <option value="">Kategori seçin</option>
                 @foreach ($categories as $category)
-                    <option value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
+                    <option value="{{ $category->id }}" data-usages="{{ collect(['malik_payi', 'masraf_yansitma'])->filter(fn ($usage) => $category->{'allow_'.$usage})->implode(',') }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
                 @endforeach
             </select>
             <p class="mt-2 text-xs text-slate-500">Gelir ve giderde kullanılabilen aktif kategoriler listelenir. Mevcut kategorinin adı ve tipi değiştirilmez.</p>
@@ -41,13 +41,14 @@
             const planName = document.getElementById('name');
             const categoryName = document.getElementById('category_name');
             const existing = document.getElementById('category_id');
+            const dueType = document.getElementById('due_type');
             const help = document.getElementById('work-category-help');
             const categories = @json($categoryNames);
             const normalize = value => value.trim().toLocaleLowerCase('tr-TR');
             let followsPlanName = !categoryName.value || categoryName.value === planName.value;
             const updateHelp = () => {
                 const match = categories.find(category => normalize(category.name) === normalize(categoryName.value));
-                const blocked = match && (match.type !== 'all' || !match.is_active || match.deleted_at);
+                const blocked = match && (!match.is_active || match.deleted_at || !match['allow_' + dueType?.value]);
                 categoryName.setCustomValidity(blocked ? 'Bu adla farklı tipte, pasif veya silinmiş bir kategori var. Başka bir ad kullanın.' : '');
                 help.textContent = blocked
                     ? 'Bu ad kullanılamıyor. Mevcut kategoriyi değiştirmeden devam etmek için başka bir ad yazın.'
@@ -73,7 +74,19 @@
                 updateHelp();
             });
             document.querySelectorAll('input[name="category_mode"]').forEach(input => input.addEventListener('change', updateMode));
+            const filterExisting = () => {
+                Array.from(existing.options).forEach(option => {
+                    if (!option.value) return;
+                    const visible = (option.dataset.usages || '').split(',').includes(dueType?.value);
+                    option.hidden = !visible;
+                    option.disabled = !visible;
+                    if (!visible && option.selected) existing.value = '';
+                });
+                updateHelp();
+            };
+            dueType?.addEventListener('change', filterExisting);
             if (followsPlanName) categoryName.value = planName.value;
+            filterExisting();
             updateMode();
         })();
     </script>

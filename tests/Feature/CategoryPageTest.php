@@ -25,7 +25,7 @@ class CategoryPageTest extends TestCase
         Category::create([
             'apartment_id' => $apartment->id,
             'name' => 'Elektrik',
-            'type' => Category::TYPE_EXPENSE,
+            'type' => Category::TYPE_ALL,
         ]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -52,14 +52,18 @@ class CategoryPageTest extends TestCase
                 'name' => 'Yakıt',
                 'type' => Category::TYPE_EXPENSE,
                 'is_active' => '1',
+                'allow_aidat' => '1',
+                'allow_expense' => '1',
             ])
             ->assertRedirect(route('categories.index'));
 
         $this->assertDatabaseHas('categories', [
             'apartment_id' => $apartment->id,
             'name' => 'Yakıt',
-            'type' => Category::TYPE_EXPENSE,
+            'type' => Category::TYPE_ALL,
             'is_active' => true,
+            'allow_aidat' => true,
+            'allow_expense' => true,
         ]);
     }
 
@@ -106,9 +110,10 @@ class CategoryPageTest extends TestCase
 
         $this->assertDatabaseHas('categories', [
             'apartment_id' => $apartment->id,
-            'name' => 'Aidat',
+            'name' => 'Genel Aidat',
             'type' => Category::TYPE_INCOME,
             'is_system' => true,
+            'allow_aidat' => true,
         ]);
         $this->assertDatabaseHas('categories', [
             'apartment_id' => $apartment->id,
@@ -135,7 +140,7 @@ class CategoryPageTest extends TestCase
             'is_system' => true,
         ]);
     }
-    public function test_system_category_cannot_be_deleted(): void
+    public function test_unused_system_category_can_be_deleted(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create([
@@ -156,10 +161,10 @@ class CategoryPageTest extends TestCase
             ->delete(route('categories.destroy', $category))
             ->assertRedirect(route('categories.index'));
 
-        $this->assertModelExists($category);
+        $this->assertSoftDeleted($category);
     }
 
-    public function test_system_category_cannot_be_updated(): void
+    public function test_system_category_name_and_permissions_can_be_updated(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create([
@@ -182,14 +187,17 @@ class CategoryPageTest extends TestCase
                 'name' => 'Demirbaş Güncel',
                 'type' => Category::TYPE_EXPENSE,
                 'is_active' => false,
+                'allow_malik_payi' => true,
+                'allow_expense' => true,
             ])
-            ->assertRedirect(route('categories.index'))
-            ->assertSessionHas('error', 'Sistem kategorileri düzenlenemez.');
+            ->assertRedirect(route('categories.index'));
 
         $category->refresh();
-        $this->assertSame('Demirbaş', $category->name);
+        $this->assertSame('Demirbaş Güncel', $category->name);
         $this->assertSame(Category::TYPE_ALL, $category->type);
-        $this->assertTrue($category->is_active);
+        $this->assertFalse($category->is_active);
+        $this->assertTrue($category->allow_malik_payi);
+        $this->assertTrue($category->allow_expense);
     }
 
     public function test_non_system_category_can_be_deleted(): void

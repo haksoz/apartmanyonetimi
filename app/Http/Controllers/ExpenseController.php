@@ -153,7 +153,7 @@ class ExpenseController extends Controller
         $categories = \App\Models\Category::query()
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
             ->where('is_active', true)
-            ->whereIn('type', [\App\Models\Category::TYPE_EXPENSE, \App\Models\Category::TYPE_ALL])
+            ->where('allow_expense', true)
             ->orderBy('name')
             ->pluck('name', 'id');
 
@@ -322,7 +322,9 @@ class ExpenseController extends Controller
 
                     ->where('apartment_id', $apartment->id)
 
-                    ->where('is_active', true),
+                    ->where('is_active', true)
+
+                    ->where('allow_expense', true),
 
             ],
 
@@ -605,7 +607,7 @@ class ExpenseController extends Controller
 
         $expense = $this->findExpense($id);
 
-        $validated = $this->validateExpense($request, $expense->apartment_id);
+        $validated = $this->validateExpense($request, $expense->apartment_id, $expense->category_id);
 
         $newAccountId = $validated['account_id'] ?? null;
 
@@ -617,7 +619,7 @@ class ExpenseController extends Controller
 
                 'category_id' => $validated['category_id'],
 
-                'category' => Category::findOrFail($validated['category_id'])->name,
+                'category' => Category::withTrashed()->findOrFail($validated['category_id'])->name,
 
                 'description' => $validated['description'] ?? null,
 
@@ -981,7 +983,7 @@ class ExpenseController extends Controller
 
 
 
-    private function validateExpense(Request $request, int $apartmentId): array
+    private function validateExpense(Request $request, int $apartmentId, ?int $existingCategoryId = null): array
 
     {
 
@@ -1011,7 +1013,9 @@ class ExpenseController extends Controller
 
                     ->where('apartment_id', $apartmentId)
 
-                    ->where('is_active', true),
+                    ->where(fn ($query) => $query
+                        ->where(fn ($fresh) => $fresh->where('is_active', true)->where('allow_expense', true))
+                        ->when($existingCategoryId, fn ($query) => $query->orWhere('id', $existingCategoryId))),
 
             ],
 
@@ -1039,13 +1043,13 @@ class ExpenseController extends Controller
 
     {
 
-        return Category::query()
+        return Category::query()->when($selectedId, fn ($query) => $query->withTrashed())
 
             ->where('apartment_id', $apartmentId)
 
-            ->where(fn ($query) => $query->where('is_active', true)->orWhere('id', $selectedId))
-
-            ->where(fn ($query) => $query->where('type', Category::TYPE_ALL)->orWhere('type', $type))
+            ->where(fn ($query) => $query
+                ->where(fn ($fresh) => $fresh->where('is_active', true)->where('allow_expense', true))
+                ->when($selectedId, fn ($query) => $query->orWhere('id', $selectedId)))
 
             ->orderBy('name')
 
