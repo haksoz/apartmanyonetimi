@@ -38,7 +38,7 @@
                 @php $data = $accountData[$account->id]; @endphp
                 <tr>
                     <td>{{ $account->unit?->unit_no }}</td>
-                    <td>{{ $account->name }}{{ $showAccountType && $account->type === 'owner' ? ' (Kat Maliki)' : ($showAccountType && $account->type === 'tenant' ? ' (Kiracı)' : '') }}</td>
+                    <td>{{ $account->name }} ({{ $account->type_label }})</td>
                     <td class="text-right">{{ $data['pastRemaining'] > 0 ? number_format($data['pastRemaining'], 2, ',', '.') . ' ₺' : '—' }}</td>
                     <td class="text-right">{{ $data['selectedAmount'] > 0 ? number_format($data['selectedAmount'], 2, ',', '.') . ' ₺' : '—' }}</td>
                     <td class="text-right text-green">{{ $data['paid'] > 0 ? number_format($data['paid'], 2, ',', '.') . ' ₺' : '—' }}</td>

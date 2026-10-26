@@ -95,15 +95,38 @@
             <fieldset class="min-w-0 md:col-span-2">
                 <legend class="mb-2 text-sm font-medium text-slate-600">Borçlanacak Kişiler</legend>
                 <div class="flex gap-3">
-                    @foreach (['tenant_priority' => ['Kiracı Öncelikli', 'Varsa kiracıya, yoksa sahibine'], 'owner_only' => ['Sadece Sahipler', 'Tüm borçlar kat maliklerine']] as $value => $option)
-                        <label class="min-w-0 flex-1 cursor-pointer">
-                            <input type="radio" name="target_audience" value="{{ $value }}" @checked(old('target_audience', 'owner_only') === $value) class="peer sr-only" required>
-                            <span class="block h-full rounded-xl border-2 border-slate-200 p-3 transition-all hover:bg-slate-50 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-600"><span class="block text-sm font-semibold text-slate-800">{{ $option[0] }}</span><span class="mt-1 block text-xs text-slate-500">{{ $option[1] }}</span></span>
+                    @php $selectedDueType = old('due_type', 'masraf_yansitma'); @endphp
+                    @foreach (['tenant_priority' => ['Kiracı Öncelikli', 'Varsa kiracıya, yoksa kat malikine'], 'owner_only' => ['Sadece Kat Malikleri', 'Tüm borçlar kat maliklerine']] as $value => $option)
+                        <label class="min-w-0 flex-1 cursor-pointer has-[:disabled]:cursor-not-allowed">
+                            <input type="radio" name="target_audience" value="{{ $value }}"
+                                @checked($value === 'owner_only' ? $selectedDueType === 'malik_payi' || old('target_audience', 'owner_only') === 'owner_only' : $selectedDueType !== 'malik_payi' && old('target_audience') === 'tenant_priority')
+                                @disabled($value === 'tenant_priority' && $selectedDueType === 'malik_payi')
+                                class="peer sr-only" required>
+                            <span class="block h-full rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 peer-enabled:hover:bg-slate-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-600"><span class="block text-sm font-semibold text-slate-800">{{ $option[0] }}</span><span class="mt-1 block text-xs text-slate-500">{{ $option[1] }}</span></span>
                         </label>
                     @endforeach
                 </div>
+                <p id="assessment-owner-only-hint" class="mt-2 text-xs text-slate-500 {{ $selectedDueType === 'malik_payi' ? '' : 'hidden' }}">Malik Payı borçları yalnızca kat maliklerine dağıtılır.</p>
                 @error('target_audience')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
             </fieldset>
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const dueType = document.getElementById('due_type');
+                    const tenantAudience = document.querySelector('input[name="target_audience"][value="tenant_priority"]');
+                    const ownerAudience = document.querySelector('input[name="target_audience"][value="owner_only"]');
+                    const ownerOnlyHint = document.getElementById('assessment-owner-only-hint');
+
+                    const syncTargetAudience = () => {
+                        const ownerOnly = dueType?.value === 'malik_payi';
+                        tenantAudience.disabled = ownerOnly;
+                        if (ownerOnly) ownerAudience.checked = true;
+                        ownerOnlyHint.classList.toggle('hidden', !ownerOnly);
+                    };
+
+                    dueType?.addEventListener('change', syncTargetAudience);
+                    syncTargetAudience();
+                });
+            </script>
         @endisset
     </div>
 </section>

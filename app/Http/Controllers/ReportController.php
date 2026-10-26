@@ -1316,7 +1316,6 @@ class ReportController extends Controller
         $id    = $apartment->id;
         $typeFilter   = $request->input('type_filter', 'resident');
         $statusFilter = $request->input('status_filter', 'active');
-        $showAccountType = $request->boolean('show_account_type', false);
 
         $accountsQuery = Account::where('accounts.apartment_id', $id)
             ->with('unit')
@@ -1422,7 +1421,7 @@ class ReportController extends Controller
 
         return view('reports.monthly-board', compact(
             'apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
-            'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'showAccountType'
+            'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter'
         ));
     }
 
@@ -1435,7 +1434,6 @@ class ReportController extends Controller
         $id    = $apartment->id;
         $typeFilter   = $request->input('type_filter', 'resident');
         $statusFilter = $request->input('status_filter', 'active');
-        $showAccountType = $request->boolean('show_account_type', false);
         try { $parsedMonth = Carbon::createFromFormat('Y-m', $month); } catch (\Exception $e) { $parsedMonth = now(); }
         $selectedMonthStr = $parsedMonth->format('Y-m');
 
@@ -1535,7 +1533,7 @@ class ReportController extends Controller
         if ($type === 'pdf') {
             return $this->pdfResponse('reports.monthly-board-pdf', compact(
                 'apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
-                'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'title', 'trMonths', 'showAccountType'
+                'accountData', 'categoryList', 'monthOptions', 'typeFilter', 'statusFilter', 'title', 'trMonths'
             ), 'aylik-aidat-pano-tablosu');
         }
 
@@ -1553,7 +1551,7 @@ class ReportController extends Controller
             $data = $accountData[$account->id];
             $rowData = [
                 $account->unit?->unit_no,
-                $account->name . ($showAccountType && $account->type === 'owner' ? ' (Kat Maliki)' : ($showAccountType && $account->type === 'tenant' ? ' (Kiracı)' : '')),
+                $account->name.' ('.$account->type_label.')',
                 $data['pastRemaining'],
                 $data['selectedAmount'],
                 $data['paid'],

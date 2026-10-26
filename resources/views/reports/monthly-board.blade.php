@@ -15,12 +15,12 @@
             <p class="mt-1 text-sm text-slate-500">{{ isset($title) ? '' : $apartment->name . ' — ' . $trMonthsH[$parsedMonth->month] . ' ' . $parsedMonth->year }}</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('reports.monthly-board.export', ['type'=>'excel', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter, 'show_account_type'=>$showAccountType ? 1 : 0]) }}"
+            <a href="{{ route('reports.monthly-board.export', ['type'=>'excel', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.monthly-board.export', ['type'=>'pdf', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter, 'show_account_type'=>$showAccountType ? 1 : 0]) }}"
+            <a href="{{ route('reports.monthly-board.export', ['type'=>'pdf', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
@@ -60,10 +60,6 @@
                 <option value="inactive" @selected($statusFilter === 'inactive')>Pasif / Silinmiş</option>
                 <option value="all" @selected($statusFilter === 'all')>Her İkisi</option>
             </select>
-        </div>
-        <div class="flex items-center gap-2 pb-2">
-            <input type="checkbox" name="show_account_type" id="show_account_type" value="1" @checked($showAccountType) class="rounded border-slate-300 text-slate-950 focus:ring-slate-300">
-            <label for="show_account_type" class="text-sm text-slate-700">Hesap türünü göster</label>
         </div>
         <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Görüntüle</button>
     </form>
@@ -163,19 +159,12 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($accounts as $account)
-                        @php
-                            $data = $accountData[$account->id];
-                            $typeLabel = ['owner' => 'Kat Maliki', 'tenant' => 'Kiracı'][$account->type] ?? $account->type;
-                        @endphp
+                        @php $data = $accountData[$account->id]; @endphp
                         <tr class="hover:bg-slate-50">
                             <td class="px-4 py-3 font-bold text-slate-800">{{ $account->unit?->unit_no }}</td>
                             <td class="px-4 py-3 text-slate-700">
                                 {{ $account->name }}
-                                @if($showAccountType && $account->type === 'owner')
-                                    <span class="ml-1 text-[10px] text-slate-400">(Kat Maliki)</span>
-                                @elseif($showAccountType && $account->type === 'tenant')
-                                    <span class="ml-1 text-[10px] text-slate-400">(Kiracı)</span>
-                                @endif
+                                <span class="ml-1 text-[10px] text-slate-400">({{ $account->type_label }})</span>
                             </td>
                             <td class="px-4 py-3 text-right text-slate-700">{{ $data['pastRemaining'] > 0 ? number_format($data['pastRemaining'], 2, ',', '.') . ' ₺' : '—' }}</td>
                             <td class="px-4 py-3 text-right text-slate-700">{{ $data['selectedAmount'] > 0 ? number_format($data['selectedAmount'], 2, ',', '.') . ' ₺' : '—' }}</td>

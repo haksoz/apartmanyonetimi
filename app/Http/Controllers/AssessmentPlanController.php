@@ -100,6 +100,10 @@ class AssessmentPlanController extends Controller
             'is_active' => ['boolean'],
         ]);
 
+        if ($validated['due_type'] === DueType::MalikPayi->value) {
+            $validated['target_audience'] = 'owner_only';
+        }
+
         return $this->preview($request, $apartment, $validated);
     }
 

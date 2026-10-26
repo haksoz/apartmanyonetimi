@@ -27,8 +27,10 @@ class AssessmentWorkCategory
                 $category = Category::withTrashed()->where('apartment_id', $plan->apartment_id)->get()
                     ->first(fn ($candidate) => $normalize($candidate->name) === $normalize($name));
             }
-            if ($category && ($category->trashed() || ! $category->is_active || ! $category->{'allow_'.$dueType})) {
-                throw ValidationException::withMessages(['category_name' => 'Bu adla farklı tipte, pasif veya silinmiş bir kategori var. Başka bir ad kullanın; mevcut kategori değiştirilmeyecek.']);
+            if ($category) {
+                throw ValidationException::withMessages([
+                    'category_name' => 'Bu adla bir kategori zaten var. Yeni kategori için farklı bir ad yazın veya Mevcut kategoriyi kullan seçeneğini seçin.',
+                ]);
             }
         }
 
@@ -50,6 +52,7 @@ class AssessmentWorkCategory
         return Category::create([
             'apartment_id' => $apartmentId, 'name' => $proposal['name'],
             'type' => Category::TYPE_ALL, 'is_active' => true, 'is_system' => false,
+            ...array_fill_keys(array_keys(Category::USAGE_PERMISSIONS), false),
             'allow_'.$proposal['due_type'] => true,
             'allow_expense' => true,
         ])->id;

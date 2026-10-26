@@ -20,7 +20,13 @@
         <div id="new-work-category" @class(['hidden' => $categoryMode !== 'new'])>
             <label for="category_name" class="mb-2 block text-sm font-medium text-slate-600">Kategori Adı <span class="text-red-500">*</span></label>
             <input id="category_name" name="category_name" maxlength="255" value="{{ old('category_name', old('name', '')) }}" @required($categoryMode === 'new') @disabled($categoryMode !== 'new') aria-describedby="work-category-help" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
-            <p id="work-category-help" role="status" class="mt-2 text-xs text-slate-500">Plan adından önerilir; değiştirebilirsiniz. Yeni kategori son onayda Tümü tipinde oluşturulur.</p>
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <span class="text-slate-500">Sabit kullanım yetkileri:</span>
+                <span id="work-category-debt-permission" class="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">{{ App\Enums\DueType::tryFrom($selectedDueType ?? old('due_type', 'masraf_yansitma'))?->label() }}</span>
+                <span class="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">Gider</span>
+                <span class="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-500">Değiştirilemez</span>
+            </div>
+            <p id="work-category-help" role="status" class="mt-2 text-xs text-slate-500">Plan adından önerilir; değiştirebilirsiniz. Aynı adlı mevcut bir kategori varsa yeni kayıt açılamaz.</p>
             @error('category_name')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
         <div id="existing-work-category" @class(['hidden' => $categoryMode !== 'existing'])>
@@ -31,7 +37,7 @@
                     <option value="{{ $category->id }}" data-usages="{{ collect(['malik_payi', 'masraf_yansitma'])->filter(fn ($usage) => $category->{'allow_'.$usage})->implode(',') }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
                 @endforeach
             </select>
-            <p class="mt-2 text-xs text-slate-500">Gelir ve giderde kullanılabilen aktif kategoriler listelenir. Mevcut kategorinin adı ve tipi değiştirilmez.</p>
+            <p class="mt-2 text-xs text-slate-500">Yalnızca seçilen borç türünde kullanılabilen aktif kategoriler gösterilir. Mevcut kategorinin adı ve yetkileri değiştirilmez.</p>
             @error('category_id')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
         </div>
@@ -43,17 +49,18 @@
             const existing = document.getElementById('category_id');
             const dueType = document.getElementById('due_type');
             const help = document.getElementById('work-category-help');
+            const debtPermission = document.getElementById('work-category-debt-permission');
             const categories = @json($categoryNames);
+            const dueTypeLabels = @json(collect(\App\Models\AssessmentPlan::debtTypes())->mapWithKeys(fn ($type) => [$type->value => $type->label()]));
             const normalize = value => value.trim().toLocaleLowerCase('tr-TR');
             let followsPlanName = !categoryName.value || categoryName.value === planName.value;
             const updateHelp = () => {
                 const match = categories.find(category => normalize(category.name) === normalize(categoryName.value));
-                const blocked = match && (!match.is_active || match.deleted_at || !match['allow_' + dueType?.value]);
-                categoryName.setCustomValidity(blocked ? 'Bu adla farklı tipte, pasif veya silinmiş bir kategori var. Başka bir ad kullanın.' : '');
-                help.textContent = blocked
-                    ? 'Bu ad kullanılamıyor. Mevcut kategoriyi değiştirmeden devam etmek için başka bir ad yazın.'
-                    : match ? 'Bu kategori zaten var. Yeni kayıt açılmadan mevcut kategori kullanılacak.'
-                    : 'Plan adından önerilir; değiştirebilirsiniz. Yeni kategori son onayda Tümü tipinde oluşturulur.';
+                categoryName.setCustomValidity(match ? 'Bu adla bir kategori zaten var. Farklı bir ad yazın veya Mevcut kategoriyi kullan seçeneğini seçin.' : '');
+                help.textContent = match
+                    ? 'Bu ad kullanılamıyor. Farklı bir ad yazın veya Mevcut kategoriyi kullan seçeneğini seçin.'
+                    : 'Plan adından önerilir; değiştirebilirsiniz. Aynı adlı mevcut bir kategori varsa yeni kayıt açılamaz.';
+                debtPermission.textContent = dueTypeLabels[dueType?.value] || '';
             };
             const updateMode = () => {
                 const isNew = document.querySelector('input[name="category_mode"]:checked')?.value === 'new';
