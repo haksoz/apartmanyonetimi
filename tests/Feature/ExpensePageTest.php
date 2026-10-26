@@ -127,6 +127,7 @@ class ExpensePageTest extends TestCase
             ->assertSee('text-xl font-bold text-slate-900', false)
             ->assertSee('text-sm text-slate-400', false)
             ->assertSee('Detaylar')
+            ->assertSeeInOrder(['Hesap / Tedarikçi', '>Kategori<', 'Gider Tarihi'], false)
             ->assertSee('Kaynak')
             ->assertSee('Manuel')
             ->assertSee('history.back()', false)
@@ -170,7 +171,54 @@ class ExpensePageTest extends TestCase
             ->assertStatus(200)
             ->assertSee('Gider Ekle')
             ->assertSee($account->name)
-            ->assertDontSee($residentAccount->name);
+            ->assertDontSee($residentAccount->name)
+            ->assertSee('name="submission_token"', false)
+            ->assertSee('id="expense-submit-button"', false)
+            ->assertSee("form.dataset.submitting === 'true'", false)
+            ->assertSee("submitButton.textContent = 'Kaydediliyor...'", false);
+    }
+
+    public function test_same_expense_form_submission_is_stored_only_once(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create([
+            'user_id' => $user->id,
+            'name' => 'Akbey Apartmanı',
+            'unit_count' => 1,
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $account = Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'Elektrik Firması',
+        ]);
+        $category = Category::create([
+            'apartment_id' => $apartment->id,
+            'name' => 'Elektrik',
+            'type' => Category::TYPE_EXPENSE,
+            'allow_expense' => true,
+        ]);
+        $payload = [
+            'submission_token' => 'a946a4f2-1401-4e2d-95b9-638c59d17d0d',
+            'account_id' => $account->id,
+            'category_id' => $category->id,
+            'description' => 'Tek gönderim',
+            'amount' => 1250,
+            'expense_date' => '2026-10-27',
+            'period_month' => '2026-10',
+        ];
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->post(route('expenses.store'), $payload)
+            ->assertRedirect(route('expenses.index'));
+
+        $this->post(route('expenses.store'), $payload)
+            ->assertRedirect(route('expenses.index'))
+            ->assertSessionHas('error', 'Bu gider formu daha önce gönderildi. İkinci kayıt oluşturulmadı.');
+
+        $this->assertSame(1, Expense::where('description', 'Tek gönderim')->count());
+        $this->assertSame(1, AccountTransaction::where('description', 'Tek gönderim')->count());
     }
 
     public function test_user_can_create_expense_for_selected_apartment(): void

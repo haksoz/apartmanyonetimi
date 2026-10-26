@@ -197,18 +197,20 @@ class ApartmentWizardController extends Controller
                 'max:255',
                 Rule::unique('categories')->where(fn ($query) => $query->where('apartment_id', $apartment->id)),
             ],
-            'type' => ['required', 'in:all,income,expense'],
+            ...collect(array_keys(Category::USAGE_PERMISSIONS))
+                ->mapWithKeys(fn ($permission) => [$permission => ['nullable', 'boolean']])
+                ->all(),
         ]);
 
         Category::create([
             'apartment_id' => $apartment->id,
             'name' => $validated['name'],
-            'type' => $validated['type'],
+            'type' => Category::TYPE_ALL,
             'is_active' => true,
             'is_system' => false,
-            'allow_malik_payi' => in_array($validated['type'], ['income', 'all'], true),
-            'allow_masraf_yansitma' => in_array($validated['type'], ['income', 'all'], true),
-            'allow_expense' => in_array($validated['type'], ['expense', 'all'], true),
+            ...collect(array_keys(Category::USAGE_PERMISSIONS))
+                ->mapWithKeys(fn ($permission) => [$permission => $request->boolean($permission)])
+                ->all(),
         ]);
 
         return redirect()->route('apartments.wizard.categories', $apartment)->with('status', 'Kategori eklendi.');

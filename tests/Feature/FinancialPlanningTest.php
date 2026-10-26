@@ -315,6 +315,29 @@ class FinancialPlanningTest extends TestCase
             ->assertSee('id="due_days"', false);
     }
 
+    public function test_expense_plan_create_can_add_a_supplier_without_leaving_the_form(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'Pali Temizlik',
+            'is_active' => true,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('expense-plans.create'))
+            ->assertOk()
+            ->assertSee('+ Yeni Tedarikçi Ekle')
+            ->assertSee('id="expense-plan-supplier-modal"', false)
+            ->assertSee('id="expense-plan-supplier-form"', false)
+            ->assertSee(route('accounts.store', [], false), false)
+            ->assertSee('option.dataset.categoryId', false)
+            ->assertSee('Pali Temizlik (Tedarikçi)')
+            ->assertDontSee('Pali Temizlik (supplier)');
+    }
+
     public function test_assessment_plan_distribution_and_create_all(): void
     {
         [$user, $apartment] = $this->setupApartment();

@@ -20,5 +20,6 @@
         @include('expense-plans._form')
     </form>
 
+    @include('expense-plans._supplier-modal')
 
 @endsection

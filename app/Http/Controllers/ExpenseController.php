@@ -26,9 +26,13 @@ use App\Support\CurrentApartment;
 
 use Illuminate\Http\Request;
 
+use Illuminate\Support\Facades\Cache;
+
 use Illuminate\Support\Facades\DB;
 
 use Illuminate\Support\Facades\Storage;
+
+use Illuminate\Support\Str;
 
 use Illuminate\Validation\Rule;
 
@@ -254,9 +258,9 @@ class ExpenseController extends Controller
 
         ])->filter()->toJson();
 
+        $submissionToken = (string) Str::uuid();
 
-
-        return view('expenses.create', compact('apartment', 'accounts', 'categories', 'cashBoxes', 'selectedAccountId', 'accountCategoryMap'));
+        return view('expenses.create', compact('apartment', 'accounts', 'categories', 'cashBoxes', 'selectedAccountId', 'accountCategoryMap', 'submissionToken'));
 
     }
 
@@ -342,6 +346,8 @@ class ExpenseController extends Controller
 
             'document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
 
+            'submission_token' => ['nullable', 'uuid'],
+
         ];
 
 
@@ -371,6 +377,20 @@ class ExpenseController extends Controller
 
 
         $validated = $request->validate($rules);
+
+        if (! empty($validated['submission_token'])) {
+            $submissionKey = sprintf(
+                'expense-submission:%d:%d:%s',
+                $request->user()->id,
+                $apartment->id,
+                $validated['submission_token'],
+            );
+
+            if (! Cache::add($submissionKey, true, now()->addDay())) {
+                return redirect()->route('expenses.index')
+                    ->with('error', 'Bu gider formu daha önce gönderildi. İkinci kayıt oluşturulmadı.');
+            }
+        }
 
 
 

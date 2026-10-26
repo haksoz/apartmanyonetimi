@@ -25,8 +25,9 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('expenses.store') }}" enctype="multipart/form-data" class="space-y-4">
+    <form id="expense-create-form" method="POST" action="{{ route('expenses.store') }}" enctype="multipart/form-data" class="space-y-4">
         @csrf
+        <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
         <input id="period_month" name="period_month" type="hidden" value="{{ old('period_month', now()->format('Y-m')) }}">
 
         <div class="rounded-2xl bg-white p-6 shadow-sm">
@@ -42,7 +43,7 @@
                     <select id="account_id" name="account_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Hesap seçmeden kaydet</option>
                         @foreach ($accounts as $account)
-                            <option value="{{ $account->id }}" @selected((string) old('account_id', $selectedAccountId ?? '') === (string) $account->id)>{{ $account->name }} ({{ $account->type }})</option>
+                            <option value="{{ $account->id }}" @selected((string) old('account_id', $selectedAccountId ?? '') === (string) $account->id)>{{ $account->name }} ({{ $account->type_label }})</option>
                         @endforeach
                     </select>
                     @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -125,11 +126,28 @@
         </div>
 
         <div class="flex justify-end">
-            <button type="submit" class="w-full md:w-auto rounded-xl bg-slate-950 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800">Gideri Kaydet</button>
+            <button id="expense-submit-button" type="submit" class="w-full md:w-auto rounded-xl bg-slate-950 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60">Gideri Kaydet</button>
         </div>
     </form>
 
     <script>
+        (() => {
+            const form = document.getElementById('expense-create-form');
+            const submitButton = document.getElementById('expense-submit-button');
+
+            form?.addEventListener('submit', (event) => {
+                if (form.dataset.submitting === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+
+                form.dataset.submitting = 'true';
+                submitButton.disabled = true;
+                submitButton.setAttribute('aria-busy', 'true');
+                submitButton.textContent = 'Kaydediliyor...';
+            });
+        })();
+
         // Global scope for access from modal script
         const accountCategoryMap = {!! $accountCategoryMap !!};
 
