@@ -1,0 +1,30 @@
+{
+    "dues": {
+        "count": 1131,
+        "sha256": "5b4ca4689f47fe6fda057beedc424a45d96e64092aaec02b1b138ad57f630cec"
+    },
+    "due_batches": {
+        "count": 5,
+        "sha256": "e11a0f29338fccba942c4ff4645a0d5c4c422808b516771035ee0a5fb4722ea6"
+    },
+    "accounts": {
+        "count": 54,
+        "sha256": "33d2486ee82abf1f0c52c613735dae8ef4b89dc911bb9fa3621c0804927e828c"
+    },
+    "payments": {
+        "count": 871,
+        "sha256": "78c4a9b70bf0fca38f1dabaec93031950b0d83578e6382fe82cb9ee7e3ba5518"
+    },
+    "account_transactions": {
+        "count": 2298,
+        "sha256": "7b02912ddd5a02cadb6863ffd9b309816bf64c55b8af4f6f793c7f55471cb82d"
+    },
+    "cash_transactions": {
+        "count": 875,
+        "sha256": "68d768ddc314dd32847c1c1db6b097e924c54de068f491b48764fee06d8c7555"
+    },
+    "payment_allocations": {
+        "count": 1654,
+        "sha256": "e19abef99ef0572a2d79c07241efe7387206c24ce1d90051a45eeaae2ecc7eb4"
+    }
+}

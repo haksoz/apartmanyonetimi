@@ -1,0 +1,506 @@
+{
+    "connection": [
+        {
+            "db": "apartman_db",
+            "hostname": "DESKTOP-HJKM5UL",
+            "port": 3306
+        }
+    ],
+    "apartment": [
+        {
+            "id": 8,
+            "name": "Akbey Apartmanı",
+            "unit_count": 12
+        }
+    ],
+    "columns": [
+        {
+            "Field": "due_type",
+            "Type": "varchar(255)",
+            "Null": "NO",
+            "Key": "",
+            "Default": "aidat",
+            "Extra": ""
+        },
+        {
+            "Field": "target_audience",
+            "Type": "varchar(255)",
+            "Null": "YES",
+            "Key": "",
+            "Default": null,
+            "Extra": ""
+        }
+    ],
+    "distribution": [
+        {
+            "due_type": "malik_payi",
+            "target_audience": null,
+            "deleted": 0,
+            "n": 174,
+            "amount": "214463.90",
+            "remaining": "45380.82"
+        },
+        {
+            "due_type": "malik_payi",
+            "target_audience": null,
+            "deleted": 1,
+            "n": 5,
+            "amount": "1780.84",
+            "remaining": "1780.84"
+        },
+        {
+            "due_type": "aidat",
+            "target_audience": null,
+            "deleted": 0,
+            "n": 940,
+            "amount": "379774.34",
+            "remaining": "1553.00"
+        },
+        {
+            "due_type": "aidat",
+            "target_audience": null,
+            "deleted": 1,
+            "n": 12,
+            "amount": "5890.00",
+            "remaining": "5890.00"
+        }
+    ],
+    "deleted": [
+        {
+            "id": 3469,
+            "reference_number": "BRC-HBDE-26-01108",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 114,
+            "account_type": "owner",
+            "unit_id": 60,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "360.00",
+            "remaining_amount": "360.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3470,
+            "reference_number": "BRC-HBDE-26-01109",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 166,
+            "account_type": "tenant",
+            "unit_id": 61,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "360.00",
+            "remaining_amount": "360.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3471,
+            "reference_number": "BRC-HBDE-26-01110",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 116,
+            "account_type": "owner",
+            "unit_id": 62,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3472,
+            "reference_number": "BRC-HBDE-26-01111",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 117,
+            "account_type": "owner",
+            "unit_id": 63,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3473,
+            "reference_number": "BRC-HBDE-26-01112",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 118,
+            "account_type": "owner",
+            "unit_id": 64,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3474,
+            "reference_number": "BRC-HBDE-26-01113",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 159,
+            "account_type": "tenant",
+            "unit_id": 65,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3475,
+            "reference_number": "BRC-HBDE-26-01114",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 120,
+            "account_type": "owner",
+            "unit_id": 66,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3476,
+            "reference_number": "BRC-HBDE-26-01115",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 121,
+            "account_type": "owner",
+            "unit_id": 67,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3477,
+            "reference_number": "BRC-HBDE-26-01116",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 162,
+            "account_type": "tenant",
+            "unit_id": 68,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3478,
+            "reference_number": "BRC-HBDE-26-01117",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 123,
+            "account_type": "owner",
+            "unit_id": 69,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3479,
+            "reference_number": "BRC-HBDE-26-01118",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 124,
+            "account_type": "owner",
+            "unit_id": 70,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 3480,
+            "reference_number": "BRC-HBDE-26-01119",
+            "due_type": "aidat",
+            "target_audience": null,
+            "due_batch_id": 13,
+            "account_id": 125,
+            "account_type": "owner",
+            "unit_id": 71,
+            "period": "2026-09",
+            "due_date": "2026-09-30",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "description": "2026 Eylül - Aidat",
+            "created_at": "2026-09-25 17:06:33",
+            "updated_at": "2026-09-25 17:07:50",
+            "deleted_at": "2026-09-25 17:07:50",
+            "allocation_count": 0
+        },
+        {
+            "id": 2270,
+            "reference_number": "BRC-HBDE-26-00007",
+            "due_type": "malik_payi",
+            "target_audience": null,
+            "due_batch_id": null,
+            "account_id": 115,
+            "account_type": "owner",
+            "unit_id": 61,
+            "period": null,
+            "due_date": "2021-06-10",
+            "amount": "731.67",
+            "remaining_amount": "731.67",
+            "description": "2021 Ayedaş Avukatı  Logar  SuSayacı",
+            "created_at": "2026-07-21 18:27:48",
+            "updated_at": "2026-09-27 14:14:24",
+            "deleted_at": "2026-09-27 14:14:24",
+            "allocation_count": 0
+        },
+        {
+            "id": 2280,
+            "reference_number": "BRC-HBDE-26-00017",
+            "due_type": "malik_payi",
+            "target_audience": null,
+            "due_batch_id": null,
+            "account_id": 125,
+            "account_type": "owner",
+            "unit_id": 71,
+            "period": null,
+            "due_date": "2021-06-10",
+            "amount": "1011.67",
+            "remaining_amount": "1011.67",
+            "description": "2021 Ayedaş Avukatı  Logar  SuSayacı",
+            "created_at": "2026-07-21 18:27:48",
+            "updated_at": "2026-09-27 14:18:34",
+            "deleted_at": "2026-09-27 14:18:34",
+            "allocation_count": 0
+        },
+        {
+            "id": 2402,
+            "reference_number": "BRC-HBDE-26-00139",
+            "due_type": "malik_payi",
+            "target_audience": null,
+            "due_batch_id": null,
+            "account_id": 115,
+            "account_type": "owner",
+            "unit_id": 61,
+            "period": null,
+            "due_date": "2023-04-18",
+            "amount": "12.50",
+            "remaining_amount": "12.50",
+            "description": "2023 Nisan Ozalit İşi Mimari Proje",
+            "created_at": "2026-07-21 18:27:49",
+            "updated_at": "2026-09-27 14:15:24",
+            "deleted_at": "2026-09-27 14:15:24",
+            "allocation_count": 0
+        },
+        {
+            "id": 2409,
+            "reference_number": "BRC-HBDE-26-00146",
+            "due_type": "malik_payi",
+            "target_audience": null,
+            "due_batch_id": null,
+            "account_id": 122,
+            "account_type": "owner",
+            "unit_id": 68,
+            "period": null,
+            "due_date": "2023-04-18",
+            "amount": "12.50",
+            "remaining_amount": "12.50",
+            "description": "2023 Nisan Ozalit İşi Mimari Proje",
+            "created_at": "2026-07-21 18:27:49",
+            "updated_at": "2026-09-27 14:16:00",
+            "deleted_at": "2026-09-27 14:16:00",
+            "allocation_count": 0
+        },
+        {
+            "id": 2412,
+            "reference_number": "BRC-HBDE-26-00149",
+            "due_type": "malik_payi",
+            "target_audience": null,
+            "due_batch_id": null,
+            "account_id": 125,
+            "account_type": "owner",
+            "unit_id": 71,
+            "period": null,
+            "due_date": "2023-04-18",
+            "amount": "12.50",
+            "remaining_amount": "12.50",
+            "description": "2023 Nisan Ozalit İşi Mimari Proje",
+            "created_at": "2026-07-21 18:27:49",
+            "updated_at": "2026-09-27 14:16:19",
+            "deleted_at": "2026-09-27 14:16:19",
+            "allocation_count": 0
+        }
+    ],
+    "deleted_malik_comparisons": [],
+    "batches": [
+        {
+            "id": 8,
+            "target_audience": "tenant_priority",
+            "source_type": "expenses",
+            "due_type": "aidat",
+            "created_at": "2026-07-22 13:54:55",
+            "n": 12,
+            "deleted": "0"
+        },
+        {
+            "id": 9,
+            "target_audience": "tenant_priority",
+            "source_type": "expenses",
+            "due_type": "aidat",
+            "created_at": "2026-07-22 13:55:31",
+            "n": 12,
+            "deleted": "0"
+        },
+        {
+            "id": 12,
+            "target_audience": "tenant_priority",
+            "source_type": "expenses",
+            "due_type": "aidat",
+            "created_at": "2026-08-15 13:44:00",
+            "n": 12,
+            "deleted": "0"
+        },
+        {
+            "id": 13,
+            "target_audience": "tenant_priority",
+            "source_type": "expenses",
+            "due_type": "aidat",
+            "created_at": "2026-09-25 17:06:32",
+            "n": 12,
+            "deleted": "12"
+        },
+        {
+            "id": 14,
+            "target_audience": "tenant_priority",
+            "source_type": "fixed",
+            "due_type": "aidat",
+            "created_at": "2026-09-25 17:10:37",
+            "n": 12,
+            "deleted": "0"
+        }
+    ],
+    "conflicts": [],
+    "account_types": [
+        {
+            "type": "owner",
+            "due_type": "malik_payi",
+            "deleted_at_due": 0,
+            "n": 174
+        },
+        {
+            "type": "owner",
+            "due_type": "malik_payi",
+            "deleted_at_due": 1,
+            "n": 5
+        },
+        {
+            "type": "owner",
+            "due_type": "aidat",
+            "deleted_at_due": 0,
+            "n": 675
+        },
+        {
+            "type": "tenant",
+            "due_type": "aidat",
+            "deleted_at_due": 0,
+            "n": 265
+        },
+        {
+            "type": "owner",
+            "due_type": "aidat",
+            "deleted_at_due": 1,
+            "n": 9
+        },
+        {
+            "type": "tenant",
+            "due_type": "aidat",
+            "deleted_at_due": 1,
+            "n": 3
+        }
+    ],
+    "table_engines": [
+        {
+            "TABLE_NAME": "account_transactions",
+            "ENGINE": "InnoDB"
+        },
+        {
+            "TABLE_NAME": "accounts",
+            "ENGINE": "InnoDB"
+        },
+        {
+            "TABLE_NAME": "cash_transactions",
+            "ENGINE": "InnoDB"
+        },
+        {
+            "TABLE_NAME": "dues",
+            "ENGINE": "InnoDB"
+        },
+        {
+            "TABLE_NAME": "payment_allocations",
+            "ENGINE": "InnoDB"
+        },
+        {
+            "TABLE_NAME": "payments",
+            "ENGINE": "InnoDB"
+        }
+    ]
+}

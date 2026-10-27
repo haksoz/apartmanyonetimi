@@ -536,6 +536,7 @@ class DuePlanController extends Controller
                 $due = Due::create([
                     'apartment_id' => $duePlan->apartment_id,
                     'due_batch_id' => $batch->id,
+                    'target_audience' => 'tenant_priority',
                     'unit_id' => $item['unit']->id,
                     'account_id' => $item['account']->id,
                     'due_type' => $duePlan->due_type,

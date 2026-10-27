@@ -17,6 +17,7 @@ class Due extends Model
     protected $fillable = [
         'apartment_id',
         'due_batch_id',
+        'target_audience',
         'unit_id',
         'account_id',
         'due_type',
@@ -40,6 +41,30 @@ class Due extends Model
         'is_imported' => 'boolean',
         'due_type' => DueType::class,
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Due $due) {
+            if (! in_array($due->target_audience, [null, 'tenant_priority', 'owner_only'], true)) {
+                throw new \InvalidArgumentException('Invalid due target audience.');
+            }
+        });
+
+        static::updating(function (Due $due) {
+            if ($due->isDirty('target_audience')) {
+                throw new \LogicException('The due creation rule cannot be changed.');
+            }
+        });
+    }
+
+    public function getTargetAudienceLabelAttribute(): string
+    {
+        return match ($this->target_audience) {
+            'tenant_priority' => 'Kiracı Öncelikli',
+            'owner_only' => 'Sadece Kat Maliki',
+            default => 'Belirlenmemiş',
+        };
+    }
 
     public function apartment(): BelongsTo
     {

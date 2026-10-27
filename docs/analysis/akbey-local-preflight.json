@@ -1,0 +1,796 @@
+{
+    "server": [
+        {
+            "db": "apartman_db",
+            "hostname": "DESKTOP-HJKM5UL",
+            "port": 3306,
+            "version": "8.0.45"
+        }
+    ],
+    "apartments": [
+        {
+            "id": 8,
+            "name": "Akbey Apartmanı",
+            "unit_count": 12,
+            "is_active": 1,
+            "created_at": "2026-07-21 18:19:12"
+        }
+    ],
+    "columns": {
+        "dues": [
+            {
+                "COLUMN_NAME": "id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "reference_number",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "due_batch_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "updated_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "apartment_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "unit_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "account_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "due_type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "aidat",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "category_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "period",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "amount",
+                "DATA_TYPE": "decimal",
+                "COLUMN_DEFAULT": "0.00",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "remaining_amount",
+                "DATA_TYPE": "decimal",
+                "COLUMN_DEFAULT": "0.00",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "due_date",
+                "DATA_TYPE": "date",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "status",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "unpaid",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "is_imported",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "0",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "description",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "created_at_manual",
+                "DATA_TYPE": "date",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "deleted_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            }
+        ],
+        "due_batches": [
+            {
+                "COLUMN_NAME": "id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "apartment_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "due_plan_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "assessment_plan_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "assessment_installment_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "due_type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "aidat",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "category_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "source_type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "distribution_type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "equal",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "target_audience",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "tenant_priority",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "period",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "source_period",
+                "DATA_TYPE": "date",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "category_filter_ids",
+                "DATA_TYPE": "json",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "source_amount",
+                "DATA_TYPE": "decimal",
+                "COLUMN_DEFAULT": "0.00",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "distribution_snapshot",
+                "DATA_TYPE": "json",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "description",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "created_by",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "updated_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            }
+        ],
+        "due_plans": [
+            {
+                "COLUMN_NAME": "id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "apartment_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "due_type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "aidat",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "category_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "name",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "plan_year",
+                "DATA_TYPE": "smallint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "start_date",
+                "DATA_TYPE": "date",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "end_date",
+                "DATA_TYPE": "date",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "amount_type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "monthly",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "monthly_amount",
+                "DATA_TYPE": "decimal",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "yearly_amount",
+                "DATA_TYPE": "decimal",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "per_unit_amount",
+                "DATA_TYPE": "decimal",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "distribution_type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "equal",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "round_to_integer",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "0",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "target_audience",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "tenant_priority",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "due_day",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "1",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "auto_generate",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "0",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "generation_mode",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "on_schedule",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "generate_day",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "1",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "description",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "is_active",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "1",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "updated_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "skipped_periods",
+                "DATA_TYPE": "json",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "active_plan_year",
+                "DATA_TYPE": "smallint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            }
+        ],
+        "assessment_plans": [
+            {
+                "COLUMN_NAME": "id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "apartment_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "name",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "description",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "total_amount",
+                "DATA_TYPE": "decimal",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "distribution_type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "equal",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "target_audience",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "owner_only",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "due_type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "malik_payi",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "category_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "installment_count",
+                "DATA_TYPE": "smallint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "generation_mode",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "create_all_now",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "generate_day",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "1",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "is_active",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "1",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "updated_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "skipped_periods",
+                "DATA_TYPE": "json",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            }
+        ],
+        "assessment_installments": [
+            {
+                "COLUMN_NAME": "id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "assessment_plan_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "sequence",
+                "DATA_TYPE": "smallint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "due_date",
+                "DATA_TYPE": "date",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "period",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "status",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "pending",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "generated_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "cancelled_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "due_batch_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "updated_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            }
+        ],
+        "assessment_installment_lines": [
+            {
+                "COLUMN_NAME": "id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "assessment_plan_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "assessment_installment_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "unit_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "amount",
+                "DATA_TYPE": "decimal",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "due_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "updated_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            }
+        ],
+        "accounts": [
+            {
+                "COLUMN_NAME": "id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "updated_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "apartment_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "user_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "unit_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "type",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": "resident",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "name",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "phone",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "email",
+                "DATA_TYPE": "varchar",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "balance",
+                "DATA_TYPE": "decimal",
+                "COLUMN_DEFAULT": "0.00",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "account_opening_date",
+                "DATA_TYPE": "date",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "account_end_date",
+                "DATA_TYPE": "date",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "is_active",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "1",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "is_hidden",
+                "DATA_TYPE": "tinyint",
+                "COLUMN_DEFAULT": "0",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "deleted_at",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "default_category_id",
+                "DATA_TYPE": "bigint",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "portal_suspended_until",
+                "DATA_TYPE": "timestamp",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "portal_suspension_reason",
+                "DATA_TYPE": "text",
+                "COLUMN_DEFAULT": null,
+                "IS_NULLABLE": "YES"
+            }
+        ]
+    },
+    "migrations": [
+        {
+            "migration": "2026_05_16_000003_add_target_audience_to_due_batches",
+            "batch": 1
+        },
+        {
+            "migration": "2026_05_17_000001_create_due_plans_table",
+            "batch": 1
+        },
+        {
+            "migration": "2026_06_05_000001_add_per_unit_amount_to_due_plans",
+            "batch": 6
+        },
+        {
+            "migration": "2026_07_07_000001_add_auto_generate_to_due_plans",
+            "batch": 9
+        },
+        {
+            "migration": "2026_07_15_203000_update_due_plans_for_single_plan",
+            "batch": 9
+        },
+        {
+            "migration": "2026_10_20_120000_add_plan_year_and_generation_mode_to_due_plans",
+            "batch": 22
+        },
+        {
+            "migration": "2026_10_20_122000_create_assessment_plan_tables",
+            "batch": 22
+        },
+        {
+            "migration": "2026_10_20_150000_add_round_to_integer_to_due_plans",
+            "batch": 22
+        },
+        {
+            "migration": "2026_10_21_090000_add_skipped_periods_to_due_plans",
+            "batch": 22
+        },
+        {
+            "migration": "2026_10_21_100000_make_due_plans_scheduled",
+            "batch": 22
+        },
+        {
+            "migration": "2026_10_21_110000_allow_inactive_due_plans_for_same_year",
+            "batch": 22
+        },
+        {
+            "migration": "2026_10_22_100000_add_skipped_periods_to_assessment_plans",
+            "batch": 22
+        }
+    ],
+    "counts": [
+        {
+            "apartment_id": 8,
+            "n": 1131,
+            "amount": "601909.08",
+            "remaining": "54604.66",
+            "deleted": "17"
+        }
+    ]
+}

@@ -99,5 +99,6 @@ class ImportDueTypeTest extends TestCase
         $this->assertSame('aidat', $due->due_type->value);
         $this->assertSame(500, (int) $due->amount);
         $this->assertTrue($due->is_imported);
+        $this->assertNull($due->target_audience);
     }
 }

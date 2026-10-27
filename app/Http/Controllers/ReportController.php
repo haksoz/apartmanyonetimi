@@ -1306,6 +1306,31 @@ class ReportController extends Controller
     // 9. AYLIK AİDAT PANO TABLOSU
     // -------------------------------------------------------------------------
 
+    private function accountsInReportMonth(\Illuminate\Support\Collection $accounts, Carbon $parsedMonth): \Illuminate\Support\Collection
+    {
+        return $accounts->filter(function (Account $account) use ($parsedMonth) {
+            $monthStart = $parsedMonth->copy()->startOfMonth();
+            $monthEnd = $parsedMonth->copy()->endOfMonth();
+
+            if ($account->account_opening_date?->gt($monthEnd)
+                || $account->account_end_date?->lt($monthStart)) {
+                return false;
+            }
+
+            if ($account->type === Account::TYPE_TENANT) {
+                $assignments = $account->tenantAssignments->where('unit_id', $account->unit_id);
+                if ($assignments->isNotEmpty()) {
+                    return $assignments->contains(fn ($assignment) =>
+                        (! $assignment->move_in_date || $assignment->move_in_date->lte($monthEnd))
+                        && (! $assignment->move_out_date || $assignment->move_out_date->gte($monthStart))
+                    );
+                }
+            }
+
+            return true;
+        })->values();
+    }
+
     public function monthlyBoard(CurrentApartment $currentApartment, Request $request)
     {
         $apartment = $this->getApartment($currentApartment);
@@ -1316,8 +1341,17 @@ class ReportController extends Controller
         $typeFilter   = $request->input('type_filter', 'resident');
         $statusFilter = $request->input('status_filter', 'active');
 
+        // Parse month
+        try {
+            $parsedMonth = Carbon::createFromFormat('Y-m', $month);
+        } catch (\Exception $e) {
+            $parsedMonth = now();
+        }
+        $selectedMonthStr = $parsedMonth->format('Y-m');
+
+
         $accountsQuery = Account::where('accounts.apartment_id', $id)
-            ->with('unit')
+            ->with(['unit', 'tenantAssignments'])
             ->whereHas('unit')
             ->join('units', 'units.id', '=', 'accounts.unit_id')
             ->orderByRaw('LENGTH(units.unit_no), units.unit_no')
@@ -1335,14 +1369,14 @@ class ReportController extends Controller
         if ($statusFilter === 'active') {
             $accountsQuery->where('accounts.is_active', true)->whereNull('accounts.deleted_at');
         } elseif ($statusFilter === 'inactive') {
-            $accountsQuery->where(function ($q) {
+            $accountsQuery->withTrashed()->where(function ($q) {
                 $q->where('accounts.is_active', false)->orWhereNotNull('accounts.deleted_at');
             });
         } else {
             $accountsQuery->withTrashed();
         }
 
-        $accounts = $accountsQuery->get();
+        $accounts = $this->accountsInReportMonth($accountsQuery->get(), $parsedMonth);
 
         if ($typeFilter === 'resident') {
             $accounts = $accounts->groupBy('unit_id')->map(function ($group) {
@@ -1351,27 +1385,19 @@ class ReportController extends Controller
             })->values();
         }
 
-        // Parse month
-        try {
-            $parsedMonth = Carbon::createFromFormat('Y-m', $month);
-        } catch (\Exception $e) {
-            $parsedMonth = now();
-        }
-        $selectedMonthStr = $parsedMonth->format('Y-m');
-
         // Seçili ay due'ları + tüm açık geçmiş due'ları
         $allDues = Due::with(['account', 'unit', 'allocations'])
             ->where('apartment_id', $id)
-            ->where(function ($q) use ($selectedMonthStr, $parsedMonth) {
-                $q->where('period', 'like', $selectedMonthStr . '%')
-                  ->orWhere(function ($q2) use ($parsedMonth) {
-                      $q2->whereNull('period')
-                         ->whereYear('due_date', $parsedMonth->year)
-                         ->whereMonth('due_date', $parsedMonth->month);
-                  });
-            })
-            ->orWhere(function ($q) {
-                $q->where('remaining_amount', '>', 0);
+            ->whereIn('account_id', $accounts->pluck('id'))
+            ->where(function ($query) use ($selectedMonthStr, $parsedMonth) {
+                $query->where(function ($q) use ($selectedMonthStr, $parsedMonth) {
+                    $q->where('period', 'like', $selectedMonthStr . '%')
+                        ->orWhere(function ($q2) use ($parsedMonth) {
+                            $q2->whereNull('period')
+                                ->whereYear('due_date', $parsedMonth->year)
+                                ->whereMonth('due_date', $parsedMonth->month);
+                        });
+                })->orWhere('remaining_amount', '>', 0);
             })
             ->get();
 
@@ -1437,7 +1463,7 @@ class ReportController extends Controller
         $selectedMonthStr = $parsedMonth->format('Y-m');
 
         $accountsQuery = Account::where('accounts.apartment_id', $id)
-            ->with('unit')
+            ->with(['unit', 'tenantAssignments'])
             ->whereHas('unit')
             ->join('units', 'units.id', '=', 'accounts.unit_id')
             ->orderByRaw('LENGTH(units.unit_no), units.unit_no')
@@ -1455,14 +1481,14 @@ class ReportController extends Controller
         if ($statusFilter === 'active') {
             $accountsQuery->where('accounts.is_active', true)->whereNull('accounts.deleted_at');
         } elseif ($statusFilter === 'inactive') {
-            $accountsQuery->where(function ($q) {
+            $accountsQuery->withTrashed()->where(function ($q) {
                 $q->where('accounts.is_active', false)->orWhereNotNull('accounts.deleted_at');
             });
         } else {
             $accountsQuery->withTrashed();
         }
 
-        $accounts = $accountsQuery->get();
+        $accounts = $this->accountsInReportMonth($accountsQuery->get(), $parsedMonth);
 
         if ($typeFilter === 'resident') {
             $accounts = $accounts->groupBy('unit_id')->map(function ($group) {
@@ -1473,16 +1499,16 @@ class ReportController extends Controller
 
         $allDues = Due::with(['account', 'unit', 'allocations'])
             ->where('apartment_id', $id)
-            ->where(function ($q) use ($selectedMonthStr, $parsedMonth) {
-                $q->where('period', 'like', $selectedMonthStr . '%')
-                  ->orWhere(function ($q2) use ($parsedMonth) {
-                      $q2->whereNull('period')
-                         ->whereYear('due_date', $parsedMonth->year)
-                         ->whereMonth('due_date', $parsedMonth->month);
-                  });
-            })
-            ->orWhere(function ($q) {
-                $q->where('remaining_amount', '>', 0);
+            ->whereIn('account_id', $accounts->pluck('id'))
+            ->where(function ($query) use ($selectedMonthStr, $parsedMonth) {
+                $query->where(function ($q) use ($selectedMonthStr, $parsedMonth) {
+                    $q->where('period', 'like', $selectedMonthStr . '%')
+                        ->orWhere(function ($q2) use ($parsedMonth) {
+                            $q2->whereNull('period')
+                                ->whereYear('due_date', $parsedMonth->year)
+                                ->whereMonth('due_date', $parsedMonth->month);
+                        });
+                })->orWhere('remaining_amount', '>', 0);
             })
             ->get();
 

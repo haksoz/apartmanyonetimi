@@ -235,6 +235,7 @@ class AssessmentPlanGenerator
                 $due = Due::create([
                     'apartment_id' => $plan->apartment_id,
                     'due_batch_id' => $batch->id,
+                    'target_audience' => $batch->target_audience,
                     'unit_id' => $unit->id,
                     'account_id' => $account->id,
                     'due_type' => $plan->due_type,

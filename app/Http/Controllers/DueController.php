@@ -978,6 +978,7 @@ class DueController extends Controller
         $due = Due::create([
             'apartment_id' => $batch->apartment_id,
             'due_batch_id' => $batch->id,
+            'target_audience' => $batch->source_type === DueBatch::SOURCE_INDIVIDUAL ? null : $batch->target_audience,
             'unit_id' => $unit?->id ?? $account->unit_id,
             'account_id' => $account->id,
             'due_type' => $batch->due_type,

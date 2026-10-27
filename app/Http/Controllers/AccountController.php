@@ -1854,6 +1854,7 @@ class AccountController extends Controller
 
                         $due = Due::create([
                             'apartment_id' => $apartment->id,
+                            'target_audience' => null,
                             'account_id' => $accountId,
                             'unit_id' => $account->unit_id,
                             'due_type' => DueType::Aidat,

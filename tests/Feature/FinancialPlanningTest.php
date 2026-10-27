@@ -393,6 +393,7 @@ class FinancialPlanningTest extends TestCase
             'total_amount' => 9999,
         ])->assertSessionHasNoErrors()->assertRedirect(route('assessment-plans.show', $plan));
         $this->assertSame('Çatı Bakımı', $plan->fresh()->name);
+        $this->assertSame(['owner_only'], Due::where('apartment_id', $apartment->id)->distinct()->pluck('target_audience')->all());
         $this->assertFalse($plan->fresh()->is_active);
         $this->assertSame('1000.00', $plan->fresh()->total_amount);
         $this->assertEquals(1000.0, (float) $plan->installmentLines()->sum('amount'));
@@ -406,6 +407,29 @@ class FinancialPlanningTest extends TestCase
             ->saveAssessmentPlanUpdate($plan, [
                 'name' => 'Yetkisiz değişiklik', 'generate_day' => 1, 'is_active' => 1,
             ])->assertNotFound();
+    }
+
+    public function test_assessment_tenant_priority_is_captured_and_survives_later_plan_changes(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Repair',
+            'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_masraf_yansitma' => true]);
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
+            ->saveAssessmentPlan(route('assessment-plans.store'), [
+                'due_type' => 'masraf_yansitma', 'category_mode' => 'existing', 'name' => 'Repair plan',
+                'total_amount' => 1000, 'distribution_type' => 'equal', 'target_audience' => 'tenant_priority',
+                'category_id' => $category->id, 'installment_count' => 1,
+                'start_period' => now()->addMonth()->format('Y-m'), 'due_day' => 1, 'due_interval_months' => 1,
+                'generation_mode' => 'create_all_now', 'generate_day' => 1,
+                'include_past_installments' => 1, 'is_active' => 1,
+            ])->assertSessionHasNoErrors()->assertRedirect();
+        $dues = Due::where('apartment_id', $apartment->id)->get();
+        $this->assertNotEmpty($dues);
+        $this->assertSame(['tenant_priority'], $dues->pluck('target_audience')->unique()->values()->all());
+        AssessmentPlan::where('apartment_id', $apartment->id)->firstOrFail()
+            ->update(['target_audience' => 'owner_only', 'is_active' => false]);
+        $this->assertSame(['tenant_priority'], Due::whereIn('id', $dues->modelKeys())
+            ->distinct()->pluck('target_audience')->all());
     }
 
     public function test_assessment_malik_payi_disables_tenant_priority_and_forces_owner_only_on_the_server(): void
@@ -1118,6 +1142,7 @@ class FinancialPlanningTest extends TestCase
         $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
         $this->assertSame(1, Due::where('account_id', $tenant->id)->count());
         $this->assertDatabaseHas('dues', ['account_id' => $units[0]->owner_account_id, 'period' => '2026-11']);
+        $this->assertSame(['tenant_priority'], Due::where('apartment_id', $apartment->id)->distinct()->pluck('target_audience')->all());
         $this->travelBack();
     }
 
