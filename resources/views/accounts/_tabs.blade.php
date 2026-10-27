@@ -31,10 +31,14 @@
     @endif
 
     @foreach ($tabs as $tab)
+        @if ($tab['key'] === 'due')
+            @include('dues._create-menu', ['dueMenuAccount' => $account])
+        @else
         <a href="{{ $tab['url'] }}"
            class="min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-white {{ $tab['color'] }} {{ $active === $tab['key'] ? 'ring-2 ring-offset-2 ring-slate-950' : '' }}">
             {{ $tab['label'] }}
         </a>
+        @endif
     @endforeach
 </div>
 
@@ -54,10 +58,14 @@
         @endif
 
         @foreach ($tabs as $tab)
+            @if ($tab['key'] === 'due')
+                @include('dues._create-menu', ['dueMenuAccount' => $account, 'dueMenuMobile' => true])
+            @else
             <a href="{{ $tab['url'] }}"
                class="block w-full text-left min-h-[3.5rem] flex items-center rounded-2xl px-5 text-xs sm:text-sm font-semibold text-white {{ $tab['color'] }} {{ $active === $tab['key'] ? 'ring-2 ring-offset-2 ring-slate-950' : '' }}">
                 {{ $tab['label'] }}
             </a>
+            @endif
         @endforeach
     </div>
 </details>

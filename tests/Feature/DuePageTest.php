@@ -1504,12 +1504,12 @@ class DuePageTest extends TestCase
         $inactive = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'type' => Account::TYPE_TENANT, 'name' => 'Hidden Former Tenant', 'is_active' => false]);
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
-        foreach ([[], ['account_id' => $inactive->id]] as $parameters) {
-            $this->get(route('dues.create', $parameters))->assertOk()
-                ->assertViewHas('accounts', fn ($accounts) => $accounts->contains('id', $active->id)
-                    && ! $accounts->contains('id', $inactive->id))
-                ->assertDontSee('Hidden Former Tenant');
-        }
+        $this->get(route('dues.create'))->assertOk()
+            ->assertViewHas('accounts', fn ($accounts) => $accounts->contains('id', $active->id)
+                && ! $accounts->contains('id', $inactive->id))
+            ->assertDontSee('Hidden Former Tenant');
+        $this->getJson(route('dues.create', ['account_id' => $inactive->id]))
+            ->assertUnprocessable()->assertJsonValidationErrors('account_id');
         $this->post(route('dues.store'), [
             'source_type' => DueBatch::SOURCE_INDIVIDUAL,
             'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
@@ -1536,7 +1536,7 @@ class DuePageTest extends TestCase
         $apartment->refresh();
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
         $data = ['source_type' => DueBatch::SOURCE_INDIVIDUAL,
-            'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL, 'target_audience' => 'tenant_priority',
+            'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL, 'target_audience' => 'owner_only',
             'due_type' => 'malik_payi', 'category_id' => $category->id, 'individual_amount' => 100,
             'period' => '2026-07', 'due_date' => '2026-07-31'];
         $this->post(route('dues.store'), $data + ['account_id' => $tenant->id])
@@ -1547,6 +1547,7 @@ class DuePageTest extends TestCase
             ->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
         $this->assertDatabaseHas('dues', ['account_id' => $owner->id, 'due_type' => 'malik_payi']);
         $data['due_type'] = 'aidat';
+        $data['target_audience'] = 'tenant_priority';
         $data['category_id'] = $apartment->default_aidat_category_id;
         $this->post(route('dues.store'), $data + ['account_id' => $tenant->id])
             ->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));

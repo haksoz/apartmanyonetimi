@@ -22,6 +22,10 @@
     <h2>{{ $title ?? 'Aylık Aidat Tablosu' }}</h2>
     <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı</div>
 
+    @if ($unknownDuesCount > 0)
+        <p class="note">Oluşturma kuralı belirlenmemiş {{ $unknownDuesCount }} borç bu tabloya dahil edilmedi.</p>
+    @endif
+
     <table>
         <thead>
             <tr>

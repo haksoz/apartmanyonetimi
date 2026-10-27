@@ -180,6 +180,15 @@ class DueController extends Controller
             abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
         }
 
+        $request->validate([
+            'target_audience' => ['sometimes', Rule::in(['tenant_priority', 'owner_only'])],
+            'account_id' => ['sometimes', 'integer', Rule::exists('accounts', 'id')->where(fn ($query) => $query
+                ->where('apartment_id', $apartment->id)->whereNull('deleted_at')->where('is_active', true)
+                ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+                ->when($request->query('target_audience') === 'owner_only', fn ($query) => $query->where('type', Account::TYPE_OWNER)))],
+        ]);
+        $targetAudience = $request->query('target_audience');
+
         $dueTypes = DueType::options();
         $categories = $this->selectableDueCategories($apartment->id);
         $accounts = Account::query()
@@ -195,7 +204,7 @@ class DueController extends Controller
 
         $selectedAccountId = $request->query('account_id');
 
-        return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'accounts', 'selectedAccountId'));
+        return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'accounts', 'selectedAccountId', 'targetAudience'));
     }
 
     public function createBatch(CurrentApartment $currentApartment)
@@ -307,7 +316,9 @@ class DueController extends Controller
             'due_date' => ['required', 'date'],
             'due_type' => ['required', Rule::in($request->input('source_type') === DueBatch::SOURCE_INDIVIDUAL
                 ? DueType::values()
-                : array_column(DueType::batchOptions(), 'value'))],
+                : array_column(DueType::batchOptions(), 'value')),
+                Rule::notIn($request->input('source_type') === DueBatch::SOURCE_INDIVIDUAL
+                    && $request->input('target_audience') === 'tenant_priority' ? [DueType::MalikPayi->value] : [])],
             'category_id' => $this->categoryRules($request, $apartment->id),
             'description' => ['nullable', 'string', 'max:255'],
             'created_at_manual' => ['nullable', 'date'],
@@ -323,13 +334,16 @@ class DueController extends Controller
                     ->where('apartment_id', $apartment->id)
                     ->whereNull('deleted_at')
                     ->where('is_active', true)
-                    ->when($request->input('due_type') === DueType::MalikPayi->value,
+                    ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+                    ->when($request->input('due_type') === DueType::MalikPayi->value
+                        || ($request->input('source_type') === DueBatch::SOURCE_INDIVIDUAL && $request->input('target_audience') === 'owner_only'),
                         fn ($query) => $query->where('type', Account::TYPE_OWNER))),
             ],
             'individual_amount' => ['required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL, 'nullable', 'numeric', 'min:0.01'],
             'round_to_integer' => ['nullable', 'boolean'],
         ], [
-            'account_id.exists' => 'Aktif bir hesap seçin. Malik Payı için yalnızca aktif kat maliki hesabı seçilebilir.',
+            'due_type.not_in' => 'Daire Sakini borçlandırmasında Malik Payı seçilemez. Kat Maliki kapsamından ilerleyin.',
+            'account_id.exists' => 'Aktif bir hesap seçin. Kat Maliki kapsamı veya Malik Payı borcu için yalnızca kat maliki hesabı seçilebilir.',
         ]);
 
         if ($validated['due_type'] === DueType::MalikPayi->value
@@ -978,7 +992,7 @@ class DueController extends Controller
         $due = Due::create([
             'apartment_id' => $batch->apartment_id,
             'due_batch_id' => $batch->id,
-            'target_audience' => $batch->source_type === DueBatch::SOURCE_INDIVIDUAL ? null : $batch->target_audience,
+            'target_audience' => $batch->target_audience,
             'unit_id' => $unit?->id ?? $account->unit_id,
             'account_id' => $account->id,
             'due_type' => $batch->due_type,

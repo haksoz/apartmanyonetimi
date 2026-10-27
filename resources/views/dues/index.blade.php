@@ -9,7 +9,7 @@
         </div>
         <div class="flex gap-2 flex-wrap">
             @if($isOwner)
-                <a href="{{ route('dues.create') }}" class="flex-1 md:flex-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 text-center">Borçlandır</a>
+                @include('dues._create-menu')
                 <a href="{{ route('dues.batch.create') }}" class="flex-1 md:flex-none rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 text-center">Toplu Borçlandır</a>
             @endif
             @if (request()->query('from') !== 'menu')

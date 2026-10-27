@@ -3,6 +3,12 @@
 @section('content')
     @php
         $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
+        $selectedAudience = old('target_audience', $targetAudience);
+        $individualTitle = match ($selectedAudience) {
+            'tenant_priority' => 'Daire Sakini Borçlandırması',
+            'owner_only' => 'Kat Maliki Borçlandırması',
+            default => 'Borçlandır',
+        };
         $lockedAccount = $accounts->firstWhere('id', (int) ($selectedAccountId ?? 0));
     @endphp
 
@@ -14,7 +20,7 @@
                 <h1 class="text-2xl font-bold text-slate-950">
                     <a href="{{ route('dues.index') }}" class="hover:text-slate-600">Aidatlar</a>
                     <span class="font-normal text-slate-400"> / </span>
-                    <span class="text-lg font-semibold text-slate-800">Borçlandır</span>
+                    <span data-individual-heading class="text-lg font-semibold text-slate-800">{{ $individualTitle }}</span>
                 </h1>
                 <p class="mt-1 text-sm text-slate-500">Tek hesaba birebir borçlandırma oluşturun.</p>
             </div>
@@ -33,24 +39,49 @@
         @csrf
         <input type="hidden" name="source_type" value="individual">
         <input type="hidden" name="distribution_type" value="individual">
-        <input type="hidden" name="target_audience" value="tenant_priority">
         <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
 
         {{-- Borçlandırma bilgileri --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
             @if ($selectedAccount)
-                <h1 class="text-2xl font-bold text-slate-950">Borçlandır</h1>
+                <h1 data-individual-heading class="text-2xl font-bold text-slate-950">{{ $individualTitle }}</h1>
                 <p class="mt-1 text-sm text-slate-500">Tek hesaba birebir borçlandırma oluşturun.</p>
             @endif
 
             <div class="grid gap-5 md:grid-cols-2 {{ $selectedAccount ? 'mt-5 border-t border-slate-100 pt-5' : '' }}">
+                <div class="md:col-span-2">
+                    <fieldset>
+                        <legend class="mb-2 block text-sm font-medium text-slate-600">Borçlandırma Kapsamı <span class="text-red-500">*</span></legend>
+                        <div class="flex gap-3">
+                            <label class="flex-1 cursor-pointer">
+                                <input type="radio" name="target_audience" value="tenant_priority" required class="peer sr-only" @checked($selectedAudience === 'tenant_priority')>
+                                <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 hover:bg-slate-50">
+                                    <div class="text-sm font-semibold text-slate-800">Daire Sakini</div>
+                                    <div class="mt-1 text-xs text-slate-500">Aylık Aidat Tablosu kapsamında</div>
+                                </div>
+                            </label>
+                            <label class="flex-1 cursor-pointer has-[:disabled]:cursor-not-allowed">
+                                <input type="radio" name="target_audience" value="owner_only" required class="peer sr-only" @checked($selectedAudience === 'owner_only') @disabled($lockedAccount?->type === \App\Models\Account::TYPE_TENANT)>
+                                <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-enabled:hover:bg-slate-50">
+                                    <div class="text-sm font-semibold text-slate-800">Kat Maliki</div>
+                                    <div class="mt-1 text-xs text-slate-500">Aylık Malik Tablosu kapsamında</div>
+                                </div>
+                            </label>
+                        </div>
+                        @if (! $selectedAudience)
+                            <p class="mt-2 text-xs text-slate-500">Kapsam seçin.</p>
+                        @endif
+                    </fieldset>
+                    <p class="mt-2 text-xs text-slate-500">Borç seçtiğiniz hesaba yazılır. Daire Sakini borçları Aylık Aidat Tablosu'nda, Kat Maliki borçları Aylık Malik Tablosu'nda gösterilir.</p>
+                    @error('target_audience')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
                 <div class="grid gap-5 md:col-span-2 md:grid-cols-2">
                     <div>
                         <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
                         <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                             <option value="">Tür seçin</option>
                             @foreach ($dueTypes as $t)
-                                <option value="{{ $t['value'] }}" @selected(old('due_type', 'aidat') === $t['value'])>{{ $t['label'] }}</option>
+                                <option value="{{ $t['value'] }}" @selected(old('due_type', 'aidat') === $t['value']) @disabled($selectedAudience === 'tenant_priority' && $t['value'] === 'malik_payi') @if($selectedAudience === 'tenant_priority' && $t['value'] === 'malik_payi') hidden @endif>{{ $t['label'] }}</option>
                             @endforeach
                         </select>
                         @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -97,6 +128,7 @@
                     @if ($lockedAccount)
                         <input id="locked-account-id" type="hidden" name="account_id" value="{{ $lockedAccount->id }}">
                     @endif
+                    <p id="account-scope-note" hidden class="mt-2 text-sm text-red-600">Bu kapsam veya borç türü için kat maliki hesabından ilerleyin. Seçili hesap değiştirilmedi.</p>
                     @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
@@ -122,21 +154,35 @@
     <script>
         (() => {
             const typeSelect = document.getElementById('due_type');
+            const audienceInputs = document.querySelectorAll('input[name="target_audience"]');
+            const selectedAudience = () => document.querySelector('input[name="target_audience"]:checked')?.value || '';
             const accountSelect = document.getElementById('account_id');
             const accountOptions = Array.from(accountSelect.options);
             const lockedAccountInput = document.getElementById('locked-account-id');
+            const syncDueTypeOptions = () => {
+                const residentScope = selectedAudience() === 'tenant_priority';
+                Array.from(typeSelect.options).forEach(option => {
+                    const blocked = residentScope && option.value === 'malik_payi';
+                    option.disabled = blocked;
+                    option.hidden = blocked;
+                });
+                if (residentScope && typeSelect.value === 'malik_payi') typeSelect.value = '';
+            };
             const syncAccountOptions = () => {
-                const ownerOnly = typeSelect.value === 'malik_payi';
-                const options = accountOptions.filter(option => !option.value || !ownerOnly || option.dataset.accountType === 'owner');
-                const lockedAllowed = lockedAccountInput && options.some(option => option.value === lockedAccountInput.value);
-                const selectedValue = lockedAllowed ? lockedAccountInput.value : accountSelect.value;
+                const ownerOnly = typeSelect.value === 'malik_payi' || selectedAudience() === 'owner_only';
+                const lockedId = lockedAccountInput?.value;
+                const options = accountOptions.filter(option => !option.value || !ownerOnly || option.dataset.accountType === 'owner' || option.value === lockedId);
+                const selectedValue = lockedId || accountSelect.value;
                 accountSelect.replaceChildren(...options);
                 accountSelect.value = options.some(option => option.value === selectedValue) ? selectedValue : '';
-                accountSelect.disabled = Boolean(lockedAllowed);
-                accountSelect.name = lockedAllowed ? '' : 'account_id';
-                accountSelect.classList.toggle('bg-slate-100', Boolean(lockedAllowed));
-                accountSelect.classList.toggle('cursor-not-allowed', Boolean(lockedAllowed));
-                if (lockedAccountInput) lockedAccountInput.disabled = !lockedAllowed;
+                accountSelect.disabled = Boolean(lockedId);
+                accountSelect.name = lockedId ? '' : 'account_id';
+                accountSelect.classList.toggle('bg-slate-100', Boolean(lockedId));
+                accountSelect.classList.toggle('cursor-not-allowed', Boolean(lockedId));
+                if (lockedAccountInput) lockedAccountInput.disabled = false;
+                const incompatible = ownerOnly && accountSelect.selectedOptions[0]?.dataset.accountType === 'tenant';
+                accountSelect.setCustomValidity(incompatible ? 'Bu kapsam veya borç türü için kat maliki hesabı gerekir.' : '');
+                document.getElementById('account-scope-note').hidden = !incompatible;
             };
             const topicSelect = document.getElementById('category_id');
             const categoryField = document.getElementById('category-field');
@@ -203,6 +249,15 @@
                 if (!selectedVisible) topicSelect.value = '';
             };
 
+            audienceInputs.forEach(input => input.addEventListener('change', () => {
+                syncDueTypeOptions();
+                syncCategoryField();
+                document.querySelectorAll('[data-individual-heading]').forEach(heading => {
+                    heading.textContent = selectedAudience() === 'owner_only' ? 'Kat Maliki Borçlandırması' : selectedAudience() === 'tenant_priority' ? 'Daire Sakini Borçlandırması' : 'Borçlandır';
+                });
+                syncAccountOptions();
+            }));
+            accountSelect.addEventListener('change', syncAccountOptions);
             typeSelect.addEventListener('change', () => {
                 syncCategoryField();
                 syncAccountOptions();
@@ -225,6 +280,7 @@
             });
 
             // Init
+            syncDueTypeOptions();
             syncAccountOptions();
             syncCategoryField();
             syncPeriodFromCreatedAt();

@@ -9,18 +9,18 @@
             <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
                 <a href="{{ route('reports.index') }}" class="hover:text-slate-600">Raporlar</a>
                 <span>/</span>
-                <span class="text-slate-600">Aylık Aidat Pano Tablosu</span>
+                <span class="text-slate-600">{{ $reportLabel }}</span>
             </div>
-            <h1 class="text-2xl font-bold text-slate-950">{{ isset($title) ? $title : 'Aylık Aidat Pano Tablosu' }}</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ isset($title) ? '' : $apartment->name . ' — ' . $trMonthsH[$parsedMonth->month] . ' ' . $parsedMonth->year }}</p>
+            <h1 class="text-2xl font-bold text-slate-950">{{ $reportLabel }}</h1>
+            <p class="mt-1 text-sm text-slate-500">{{ $apartment->name . ' — ' . $trMonthsH[$parsedMonth->month] . ' ' . $parsedMonth->year }}</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('reports.monthly-board.export', ['type'=>'excel', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter]) }}"
+            <a href="{{ route('reports.monthly-board.export', ['type'=>'excel', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter, 'target_audience'=>$targetAudience]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.monthly-board.export', ['type'=>'pdf', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter]) }}"
+            <a href="{{ route('reports.monthly-board.export', ['type'=>'pdf', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter, 'target_audience'=>$targetAudience]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
@@ -31,13 +31,20 @@
     {{-- Ay Seçici --}}
     <form method="GET" action="{{ route('reports.monthly-board') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-4 items-end">
         <div>
+            <label for="board-audience" class="block text-xs text-slate-500 mb-1">Tablo</label>
+            <select name="target_audience" id="board-audience" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="tenant_priority" @selected($targetAudience === 'tenant_priority')>Aylık Aidat Tablosu</option>
+                <option value="owner_only" @selected($targetAudience === 'owner_only')>Aylık Malik Tablosu</option>
+            </select>
+        </div>
+        <div>
             <label class="block text-xs text-slate-500 mb-1">Ay</label>
             <select name="month" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
                 @php
                     $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
                 @endphp
                 @foreach($monthOptions as $mo)
-                    @php $d = \Carbon\Carbon::createFromFormat('Y-m', $mo); @endphp
+                    @php $d = \Carbon\Carbon::createFromFormat('!Y-m', $mo); @endphp
                     <option value="{{ $mo }}" @selected($mo === $month)>
                         {{ $trMonths[$d->month] }} {{ $d->year }}
                     </option>
@@ -99,6 +106,10 @@
         }
     @endphp
 
+    @if ($unknownDuesCount > 0)
+        <p class="mb-4 text-xs text-slate-500">Seçili ay ve geçmiş açık borçlar içinde oluşturma kuralı belirlenmemiş {{ $unknownDuesCount }} kayıt bu tablolara dahil edilmedi.</p>
+    @endif
+
     {{-- Özet Satırı --}}
     @php
         $paidCount = 0;
@@ -137,11 +148,7 @@
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-slate-700">
-                @if($typeFilter === 'resident')
-                    {{ $apartment->name }} Daire Sakinleri — {{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }}
-                @else
-                    {{ $apartment->name }} — {{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }} Aidat Durumu
-                @endif
+                {{ $apartment->name }} — {{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }} {{ $reportLabel }}
             </h2>
             <span class="text-xs text-slate-400">{{ now()->format('d.m.Y') }} tarihli çıktı</span>
         </div>
