@@ -19,6 +19,7 @@ use App\Models\PaymentAllocation;
 use App\Support\AidatPeriodReconciliation;
 use App\Support\BulkImportGuard;
 use App\Support\CurrentApartment;
+use App\Support\ExpensePaymentGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -2092,6 +2093,7 @@ class AccountController extends Controller
         $payment = null;
 
         DB::transaction(function () use ($account, $validated, $paymentDescription, &$payment) {
+            ExpensePaymentGuard::lockSupplier($account->id, $account->apartment_id);
             $payment = Payment::create([
                 'apartment_id'       => $account->apartment_id,
                 'account_id'         => $account->id,
@@ -2139,7 +2141,12 @@ class AccountController extends Controller
                 }
 
                 DB::transaction(function () use ($allocations, $payment, $account) {
-                    foreach ($allocations as $alloc) {
+                    ExpensePaymentGuard::lockSupplier($account->id, $account->apartment_id);
+                    $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                    if (round($allocations->sum('amount'), 2) > round((float) $payment->unallocated_amount, 2)) {
+                        abort(409, 'Ödemenin kullanılabilir bakiyesi değişti. Ekranı yenileyin.');
+                    }
+                    foreach ($allocations->sortBy('expense_id') as $alloc) {
                         $expense = Expense::query()
                             ->where('id', $alloc['expense_id'])
                             ->where('apartment_id', $account->apartment_id)
@@ -2204,6 +2211,10 @@ class AccountController extends Controller
 
     public function storeMultiPayExpenses(Request $request, Account $account)
     {
+        $apartment = app(CurrentApartment::class)->getFor(auth()->user());
+        abort_unless($apartment && $account->apartment_id === $apartment->id
+            && $account->type === Account::TYPE_SUPPLIER, 404);
+
         $validated = $request->validate([
             'expense_ids'   => ['required', 'string'],
             'cash_box_id'   => ['required', 'integer', Rule::exists('cash_boxes', 'id')->where('apartment_id', $account->apartment_id)->where('is_active', true)],
@@ -2211,23 +2222,29 @@ class AccountController extends Controller
             'description'   => ['nullable', 'string', 'max:255'],
         ]);
 
-        $expenseIds = array_filter(explode(',', $validated['expense_ids']));
-
-        $expenses = Expense::whereIn('id', $expenseIds)
-            ->where('account_id', $account->id)
-            ->where('is_paid', false)
-            ->get();
-
-        if ($expenses->isEmpty()) {
-            return redirect()->route('accounts.show', $account)->with('error', 'Geçerli gider bulunamadı.');
+        $rawIds = explode(',', $validated['expense_ids']);
+        foreach ($rawIds as $expenseId) {
+            if (! preg_match('/^[1-9][0-9]*$/', trim($expenseId))) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['expense_ids' => 'Geçersiz gider seçimi.']);
+            }
         }
+        $expenseIds = array_values(array_unique(array_map('intval', $rawIds)));
 
-        $totalAmount = $expenses->sum('amount');
-        $paymentDescription = $validated['description'] ?? ($expenses->count() . ' gider toplu ödemesi');
+        $paymentDescription = $validated['description'] ?? (count($expenseIds) . ' gider toplu ödemesi');
 
         $payment = null;
 
-        DB::transaction(function () use ($account, $expenses, $validated, $totalAmount, $paymentDescription, &$payment) {
+        DB::transaction(function () use ($account, $apartment, $expenseIds, $validated, $paymentDescription, &$payment) {
+            ExpensePaymentGuard::lockSupplier($account->id, $apartment->id);
+            $expenses = Expense::where('apartment_id', $apartment->id)
+                ->where('account_id', $account->id)->whereIn('id', $expenseIds)
+                ->orderBy('id')->lockForUpdate()->get();
+            if ($expenses->count() !== count($expenseIds)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'expense_ids' => 'Seçili giderlerden biri bulunamadı veya bu tedarikçiye ait değil. İşlem yapılmadı.',
+                ]);
+            }
+            $totalAmount = $expenses->sum(fn ($expense) => ExpensePaymentGuard::fullAmount($expense)) / 100;
             $payment = Payment::create([
                 'apartment_id'      => $account->apartment_id,
                 'account_id'        => $account->id,
@@ -2276,7 +2293,7 @@ class AccountController extends Controller
         });
 
         return redirect()->route('payments.show', $payment)
-            ->with('status', $expenses->count() . ' gider ödemesi başarıyla kaydedildi.');
+            ->with('status', count($expenseIds) . ' gider ödemesi başarıyla kaydedildi.');
     }
 
     /**

@@ -24,6 +24,8 @@ use App\Models\Payment;
 
 use App\Support\CurrentApartment;
 
+use App\Support\ExpensePaymentGuard;
+
 use Illuminate\Http\Request;
 
 use Illuminate\Support\Facades\Cache;
@@ -429,6 +431,10 @@ class ExpenseController extends Controller
 
                 'amount' => $validated['amount'],
 
+                'paid_amount' => 0,
+
+                'remaining_amount' => $validated['amount'],
+
                 'expense_date' => $validated['expense_date'],
 
                 'due_date' => $validated['due_date'] ?? null,
@@ -777,7 +783,7 @@ class ExpenseController extends Controller
 
             ],
 
-            'amount' => ['required', 'numeric', 'min:0.01', 'max:'.$expense->amount],
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'min:0.01'],
 
             'payment_date' => ['required', 'date'],
 
@@ -788,6 +794,16 @@ class ExpenseController extends Controller
 
 
         DB::transaction(function () use ($expense, $validated) {
+            ExpensePaymentGuard::lockSupplier($expense->account_id, $expense->apartment_id);
+            $expense = Expense::where('apartment_id', $expense->apartment_id)
+                ->whereKey($expense->id)->lockForUpdate()->firstOrFail();
+            $payable = ExpensePaymentGuard::fullAmount($expense);
+            if (ExpensePaymentGuard::cents($validated['amount']) !== $payable) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount' => 'Ödeme tutarı giderin güncel tam tutarıyla eşleşmiyor. Ekranı yenileyin.',
+                ]);
+            }
+
 
             $paymentDescription = $validated['description'] ?? ($expense->description ? $expense->description.' ödemesi' : 'Gider ödemesi');
 
@@ -871,7 +887,7 @@ class ExpenseController extends Controller
 
                 'paid_amount' => $validated['amount'],
 
-                'remaining_amount' => max(0, ($expense->remaining_amount ?? $expense->amount) - $validated['amount']),
+                'remaining_amount' => 0,
 
             ]);
 
@@ -902,6 +918,11 @@ class ExpenseController extends Controller
 
 
         DB::transaction(function () use ($expense) {
+            ExpensePaymentGuard::lockSupplier($expense->account_id, $expense->apartment_id);
+            $expense = Expense::where('apartment_id', $expense->apartment_id)
+                ->whereKey($expense->id)->lockForUpdate()->firstOrFail();
+            abort_unless($expense->is_paid, 409, 'Giderin ödeme durumu değişti. Ekranı yenileyin.');
+
 
             $paymentIds = $expense->paymentAllocations()->pluck('payment_id')->unique();
 

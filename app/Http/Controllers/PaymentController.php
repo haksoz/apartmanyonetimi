@@ -7,8 +7,10 @@ use App\Models\AccountTransaction;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
 use App\Models\Due;
+use App\Models\Expense;
 use App\Models\Payment;
 use App\Support\CurrentApartment;
+use App\Support\ExpensePaymentGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -386,7 +388,16 @@ class PaymentController extends Controller
             return back()->withErrors(['amount' => 'Ödeme tutarı tahsis edilen tutardan küçük olamaz. Tahsis edilen: '.number_format($allocatedAmount, 2, ',', '.').' TL'])->withInput();
         }
 
-        DB::transaction(function () use ($payment, $validated, $allocatedAmount) {
+        $isSupplier = $payment->account?->type === Account::TYPE_SUPPLIER;
+        DB::transaction(function () use ($payment, $validated, $allocatedAmount, $isSupplier) {
+            if ($isSupplier) {
+                ExpensePaymentGuard::lockSupplier($payment->account_id, $payment->apartment_id);
+                $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                $allocatedAmount = $payment->allocations()->sum('amount');
+                if ($validated['amount'] < $allocatedAmount) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Ödeme tutarı güncel tahsis toplamından küçük olamaz.']);
+                }
+            }
             $oldAmount = $payment->amount;
 
             // Payment'u güncelle
@@ -433,8 +444,23 @@ class PaymentController extends Controller
 
         $accountId = $payment->account_id;
 
-        DB::transaction(function () use ($payment) {
+        $isSupplier = $payment->account?->type === Account::TYPE_SUPPLIER;
+        DB::transaction(function () use ($payment, $isSupplier) {
+            if ($isSupplier) {
+                ExpensePaymentGuard::lockSupplier($payment->account_id, $payment->apartment_id);
+                $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            }
             $payment->load('allocations.due', 'allocations.expense');
+            if ($isSupplier) {
+                $lockedExpenses = Expense::where('apartment_id', $payment->apartment_id)
+                    ->whereIn('id', $payment->allocations->pluck('expense_id')->filter())
+                    ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                foreach ($payment->allocations as $allocation) {
+                    if ($allocation->expense_id) {
+                        $allocation->setRelation('expense', $lockedExpenses->get($allocation->expense_id));
+                    }
+                }
+            }
 
             foreach ($payment->allocations as $allocation) {
                 if ($allocation->due) {

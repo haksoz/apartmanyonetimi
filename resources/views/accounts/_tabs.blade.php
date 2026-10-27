@@ -15,7 +15,6 @@
         $tabs[] = ['key' => 'payment', 'label' => '+ Tahsilat Ekle', 'url' => route('payments.create', ['account_id' => $account->id]), 'color' => 'bg-emerald-600 hover:bg-emerald-700'];
     } elseif ($account->type === App\Models\Account::TYPE_SUPPLIER) {
         $tabs[] = ['key' => 'expense', 'label' => '+ Gider Ekle', 'url' => route('expenses.create', ['account_id' => $account->id]), 'color' => 'bg-slate-600 hover:bg-slate-700'];
-        $tabs[] = ['key' => 'payment', 'label' => '+ Ödeme Ekle', 'url' => route('accounts.supplier-payment.create', $account), 'color' => 'bg-emerald-600 hover:bg-emerald-700'];
     }
 
     $tabs[] = ['key' => 'edit', 'label' => 'Düzenle', 'url' => route('accounts.edit', $account), 'color' => 'bg-amber-500 hover:bg-amber-600'];

@@ -429,22 +429,34 @@ class ReportController extends Controller
 
         $filterAccountType = $request->input('account_type', Account::TYPE_SUPPLIER);
 
-        $accounts = Account::with(['unit'])
-            ->where('apartment_id', $apartment->id)
-            ->where('type', $filterAccountType)
-            ->get()
-            ->map(function ($account) {
-                $totalDues     = (float) $account->dues()->sum('amount');
-                $paidDues      = (float) $account->dues()->where('remaining_amount', 0)->sum('amount');
-                $totalPayments = (float) $account->payments()->sum('amount');
-                $account->total_receivable = $totalPayments - $totalDues + ($totalDues - $paidDues);
-                $account->total_dues       = $totalDues;
-                $account->total_payments   = $totalPayments;
-                return $account;
-            })
-            ->filter(fn($a) => $a->total_receivable > 0);
+        $accounts = $this->receivableAccounts($apartment, $filterAccountType);
 
         return view('reports.receivable-list', compact('apartment', 'accounts', 'filterAccountType'));
+    }
+
+    private function receivableAccounts($apartment, string $accountType)
+    {
+        return Account::with('unit')
+            ->where('apartment_id', $apartment->id)
+            ->where('type', $accountType)
+            ->withSum(['transactions as report_debit' => fn ($query) => $query->where('type', 'debit')], 'amount')
+            ->withSum(['transactions as report_credit' => fn ($query) => $query->where('type', 'credit')], 'amount')
+            ->withSum('payments as total_payments', 'amount')
+            ->get()
+            ->map(function ($account) {
+                // Account::ledger_balance is credit - debit. Residents owe the apartment
+                // in the opposite direction; suppliers are owed their credit balance.
+                $debitCents = (int) round((float) $account->report_debit * 100);
+                $creditCents = (int) round((float) $account->report_credit * 100);
+                $receivableCents = $account->type === Account::TYPE_SUPPLIER
+                    ? $creditCents - $debitCents
+                    : $debitCents - $creditCents;
+                $account->total_receivable = $receivableCents / 100;
+                $account->total_payments = (float) ($account->total_payments ?? 0);
+
+                return $account;
+            })
+            ->filter(fn ($account) => $account->total_receivable > 0);
     }
 
     public function receivableListExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -453,20 +465,7 @@ class ReportController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
         $filterAccountType = $request->input('account_type', Account::TYPE_SUPPLIER);
-        $accounts = Account::with(['unit'])
-            ->where('apartment_id', $apartment->id)
-            ->where('type', $filterAccountType)
-            ->get()
-            ->map(function ($account) {
-                $totalDues     = (float) $account->dues()->sum('amount');
-                $paidDues      = (float) $account->dues()->where('remaining_amount', 0)->sum('amount');
-                $totalPayments = (float) $account->payments()->sum('amount');
-                $account->total_receivable = $totalPayments - $totalDues + ($totalDues - $paidDues);
-                $account->total_dues       = $totalDues;
-                $account->total_payments   = $totalPayments;
-                return $account;
-            })
-            ->filter(fn($a) => $a->total_receivable > 0);
+        $accounts = $this->receivableAccounts($apartment, $filterAccountType);
 
         if ($type === 'pdf') {
             return $this->pdfResponse('reports.receivable-list-pdf', ['apartment' => $apartment, 'accounts' => $accounts], 'alacak-listesi');

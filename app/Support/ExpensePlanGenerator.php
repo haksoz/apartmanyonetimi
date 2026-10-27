@@ -88,6 +88,8 @@ class ExpensePlanGenerator
                     'category' => $category?->name,
                     'description' => $description,
                     'amount' => $locked->amount,
+                    'paid_amount' => 0,
+                    'remaining_amount' => $locked->amount,
                     'expense_date' => $expenseDate->toDateString(),
                     'due_date' => $locked->due_days !== null
                         ? $expenseDate->copy()->addDays($locked->due_days)->toDateString()

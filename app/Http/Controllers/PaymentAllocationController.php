@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Support\CurrentApartment;
+use App\Support\ExpensePaymentGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -145,8 +146,6 @@ class PaymentAllocationController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
         if ($payment->apartment_id !== $apartment->id) abort(404);
 
-        $payment->unallocated_amount = $payment->unallocated_amount ?? max(0, $payment->amount - $payment->allocated_amount);
-        if ($payment->isDirty()) $payment->save();
 
         $validated = $request->validate([
             'allocations'              => ['required', 'array'],
@@ -165,13 +164,17 @@ class PaymentAllocationController extends Controller
 
         $totalAmount = $allocations->sum('amount');
 
-        if ($totalAmount > $payment->unallocated_amount + 0.001) {
-            return back()->withErrors(['allocations' => 'Girilen toplam tutar, ödemede kalan bakiyeden büyük olamaz.']);
-        }
-
         DB::transaction(function () use ($allocations, $payment, $totalAmount) {
-            foreach ($allocations as $allocation) {
-                $expense = Expense::findOrFail($allocation['expense_id']);
+            ExpensePaymentGuard::lockSupplier($payment->account_id, $payment->apartment_id);
+            $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            $payment->unallocated_amount ??= max(0, $payment->amount - $payment->allocated_amount);
+            if ($payment->isDirty()) $payment->save();
+            if ($totalAmount > $payment->unallocated_amount + 0.001) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['allocations' => 'Ödemenin kullanılabilir bakiyesi yetersiz.']);
+            }
+            foreach ($allocations->sortBy('expense_id') as $allocation) {
+                $expense = Expense::where('apartment_id', $payment->apartment_id)
+                    ->whereKey($allocation['expense_id'])->lockForUpdate()->firstOrFail();
 
                 if ($expense->account_id !== $payment->account_id) abort(404);
                 $expenseRemaining = $expense->remaining_amount ?? $expense->amount;
@@ -250,13 +253,6 @@ class PaymentAllocationController extends Controller
 
         $paymentIds = array_filter(explode(',', $validated['payment_ids']));
 
-        $payments = Payment::where('apartment_id', $apartment->id)
-            ->where('account_id', $account->id)
-            ->whereIn('id', $paymentIds)
-            ->where('unallocated_amount', '>', 0)
-            ->orderBy('payment_date')
-            ->get();
-
         $allocations = collect($validated['allocations'])
             ->filter(fn ($a) => isset($a['amount']) && $a['amount'] > 0)
             ->map(fn ($a) => ['expense_id' => (int) $a['expense_id'], 'amount' => (float) $a['amount']])
@@ -267,18 +263,23 @@ class PaymentAllocationController extends Controller
         }
 
         $totalAmount = $allocations->sum('amount');
-        $totalBudget = $payments->sum('unallocated_amount');
-
-        if ($totalAmount > $totalBudget + 0.001) {
-            return back()->withErrors(['allocations' => 'Girilen toplam tutar, ödemelerin toplam bakiyesinden büyük olamaz.']);
-        }
-
-        DB::transaction(function () use ($allocations, $payments) {
+        DB::transaction(function () use ($allocations, $paymentIds, $account, $apartment, $totalAmount) {
+            ExpensePaymentGuard::lockSupplier($account->id, $apartment->id);
+            $payments = Payment::where('apartment_id', $apartment->id)->where('account_id', $account->id)
+                ->whereIn('id', $paymentIds)->orderBy('id')->lockForUpdate()->get();
+            if ($totalAmount > $payments->sum('unallocated_amount') + 0.001) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['allocations' => 'Ödemelerin kullanılabilir bakiyesi yetersiz.']);
+            }
+            $payments = $payments->sortBy('payment_date')->values();
             $paymentQueue = $payments->map(fn ($p) => ['model' => $p, 'remaining' => (float) $p->unallocated_amount])->toArray();
             $pIdx = 0;
 
-            foreach ($allocations as $allocation) {
-                $expense    = Expense::findOrFail($allocation['expense_id']);
+            foreach ($allocations->sortBy('expense_id') as $allocation) {
+                $expense = Expense::where('apartment_id', $apartment->id)->where('account_id', $account->id)
+                    ->whereKey($allocation['expense_id'])->lockForUpdate()->firstOrFail();
+                if ($allocation['amount'] > ($expense->remaining_amount ?? $expense->amount) + 0.001) {
+                    abort(400, 'Tahsis edilen tutar giderin kalan tutarından büyük olamaz.');
+                }
                 $toAllocate = $allocation['amount'];
 
                 while ($toAllocate > 0.001 && $pIdx < count($paymentQueue)) {
@@ -430,7 +431,16 @@ class PaymentAllocationController extends Controller
         if ($payment->apartment_id !== $apartment->id) abort(404);
         if ($allocation->payment_id !== $payment->id) abort(404);
 
-        DB::transaction(function () use ($allocation, $payment) {
+        $supplier = $payment->account?->type === Account::TYPE_SUPPLIER;
+        DB::transaction(function () use ($allocation, $payment, $supplier) {
+            if ($supplier) {
+                ExpensePaymentGuard::lockSupplier($payment->account_id, $payment->apartment_id);
+                $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                $allocation = PaymentAllocation::where('payment_id', $payment->id)->whereKey($allocation->id)->firstOrFail();
+                if ($allocation->expense_id) {
+                    $allocation->setRelation('expense', Expense::whereKey($allocation->expense_id)->lockForUpdate()->first());
+                }
+            }
             $allocationAmount = (float) $allocation->amount;
 
             if ($allocation->due_id && $allocation->due) {
@@ -480,8 +490,23 @@ class PaymentAllocationController extends Controller
             'allocation_ids.*' => ['integer', Rule::exists('payment_allocations', 'id')->where('payment_id', $payment->id)],
         ]);
 
-        DB::transaction(function () use ($validated, $payment) {
-            $allocations = PaymentAllocation::whereIn('id', $validated['allocation_ids'])->get();
+        $supplier = $payment->account?->type === Account::TYPE_SUPPLIER;
+        DB::transaction(function () use ($validated, $payment, $supplier) {
+            if ($supplier) {
+                ExpensePaymentGuard::lockSupplier($payment->account_id, $payment->apartment_id);
+                $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            }
+            $allocations = PaymentAllocation::whereIn('id', $validated['allocation_ids'])->orderBy('expense_id')->get();
+            if ($supplier) {
+                $lockedExpenses = Expense::where('apartment_id', $payment->apartment_id)
+                    ->whereIn('id', $allocations->pluck('expense_id')->filter())
+                    ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                foreach ($allocations as $allocation) {
+                    if ($allocation->expense_id) {
+                        $allocation->setRelation('expense', $lockedExpenses->get($allocation->expense_id));
+                    }
+                }
+            }
             foreach ($allocations as $allocation) {
                 if ($allocation->payment_id !== $payment->id) {
                     continue;
