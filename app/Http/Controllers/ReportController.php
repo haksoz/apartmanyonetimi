@@ -1334,21 +1334,23 @@ class ReportController extends Controller
     private function monthlyBoardData($apartment, Request $request): array
     {
         $request->validate([
+            'due_type' => ['sometimes', \Illuminate\Validation\Rule::in(\App\Enums\DueType::values())],
             'target_audience' => ['sometimes', 'in:tenant_priority,owner_only'],
-            'type_filter' => ['sometimes', 'in:resident,all,owner,tenant'],
-            'status_filter' => ['sometimes', 'in:active,inactive,all'],
             'month' => ['sometimes', 'date_format:Y-m'],
         ]);
         $month = $request->input('month', now()->format('Y-m'));
         $parsedMonth = Carbon::createFromFormat('!Y-m', $month);
         $selectedMonthStr = $parsedMonth->format('Y-m');
-        $targetAudience = $request->input('target_audience', 'tenant_priority');
-        $reportLabel = $targetAudience === 'owner_only' ? 'Aylık Malik Tablosu' : 'Aylık Aidat Tablosu';
-        $typeFilter = $request->input('type_filter', 'resident');
-        $statusFilter = $request->input('status_filter', 'active');
+        $balanceDate = $parsedMonth->copy()->endOfMonth()->min(today())->toDateString();
+        $openingDate = $parsedMonth->copy()->startOfMonth()->min(today()->addDay())->toDateString();
+        // Eski bağlantılar kabul edilir; kayıtların sınıflandırması yalnız borç türündendir.
+        $reportDueType = $request->input('due_type', $request->input('target_audience') === 'owner_only' ? 'malik_payi' : 'aidat');
+        $targetAudience = \App\Enums\DueType::from($reportDueType)->targetAudience();
+        $reportLabel = $reportDueType === 'malik_payi' ? 'Malik Payı Tablosu' : 'Aidat Tablosu';
         $id = $apartment->id;
 
-        $accountsQuery = Account::where('accounts.apartment_id', $id)
+        $accountsQuery = Account::withTrashed()->where('accounts.apartment_id', $id)
+            ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
             ->with(['unit', 'tenantAssignments'])
             ->whereHas('unit')
             ->join('units', 'units.id', '=', 'accounts.unit_id')
@@ -1356,26 +1358,9 @@ class ReportController extends Controller
             ->orderByRaw("CASE WHEN accounts.type = 'owner' THEN 0 WHEN accounts.type = 'tenant' THEN 1 ELSE 2 END")
             ->select('accounts.*');
 
-        if ($typeFilter === 'owner') {
-            $accountsQuery->where('accounts.type', Account::TYPE_OWNER);
-        } elseif ($typeFilter === 'tenant') {
-            $accountsQuery->where('accounts.type', Account::TYPE_TENANT);
-        } else {
-            $accountsQuery->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT]);
-        }
+        $accounts = $accountsQuery->get();
 
-        if ($statusFilter === 'active') {
-            $accountsQuery->where('accounts.is_active', true)->whereNull('accounts.deleted_at');
-        } elseif ($statusFilter === 'inactive') {
-            $accountsQuery->withTrashed()->where(function ($q) {
-                $q->where('accounts.is_active', false)->orWhereNotNull('accounts.deleted_at');
-            });
-        } else {
-            $accountsQuery->withTrashed();
-        }
-        $accounts = $this->accountsInReportMonth($accountsQuery->get(), $parsedMonth);
-
-        // Current balances for selected-month dues and earlier open dues only.
+        // Reconstruct balances using payment dates, including debts settled after the cutoff.
         $duesQuery = Due::where('apartment_id', $id)
             ->whereIn('account_id', $accounts->pluck('id'))
             ->where(function ($query) use ($selectedMonthStr, $parsedMonth) {
@@ -1387,8 +1372,7 @@ class ReportController extends Controller
                                 ->whereMonth('due_date', $parsedMonth->month);
                         });
                 })->orWhere(function ($past) use ($selectedMonthStr, $parsedMonth) {
-                    $past->where('remaining_amount', '>', 0)
-                        ->where(function ($period) use ($selectedMonthStr, $parsedMonth) {
+                    $past->where(function ($period) use ($selectedMonthStr, $parsedMonth) {
                             $period->where('period', '<', $selectedMonthStr)
                                 ->orWhere(function ($withoutPeriod) use ($parsedMonth) {
                                     $withoutPeriod->whereNull('period')->where('due_date', '<', $parsedMonth);
@@ -1396,22 +1380,38 @@ class ReportController extends Controller
                         });
                 });
             });
-        $unknownDuesCount = (clone $duesQuery)->whereNull('target_audience')->count();
-        $allDues = $duesQuery->where('target_audience', $targetAudience)
-            ->withSum('allocations as board_allocated_amount', 'amount')->get();
+        $duesQuery->withSum(['allocations as board_allocated_amount' => fn ($query) =>
+            $query->whereHas('payment', fn ($payment) => $payment->where('apartment_id', $id)->whereDate('payment_date', '<=', $balanceDate))
+        ], 'amount')->withSum(['allocations as board_opening_paid' => fn ($query) =>
+            $query->whereHas('payment', fn ($payment) => $payment->where('apartment_id', $id)->whereDate('payment_date', '<', $openingDate))
+        ], 'amount');
+        $reportDues = $duesQuery->get()->each(function ($due) {
+            $due->board_remaining_amount = max(0, round((float) $due->amount - (float) $due->board_allocated_amount, 2));
+            $due->board_opening_amount = max(0, round((float) $due->amount - (float) $due->board_opening_paid, 2));
+            $due->board_month_paid = round((float) $due->board_allocated_amount - (float) $due->board_opening_paid, 2);
+        })->filter(fn ($due) => ($due->period
+            ? Carbon::parse($due->period)->format('Y-m')
+            : $due->due_date?->format('Y-m')) === $selectedMonthStr || $due->board_opening_amount > 0);
+        $unknownDuesCount = $reportDues->filter(fn ($due) => ! in_array($due->getRawOriginal('due_type'), \App\Enums\DueType::values(), true))->count();
+        $allDues = $reportDues->filter(fn ($due) => $due->getRawOriginal('due_type') === $reportDueType);
 
-        if ($typeFilter === 'resident') {
-            $relevantAccountIds = $allDues->pluck('account_id')->flip();
-            $accounts = $accounts->groupBy('unit_id')->flatMap(function ($group) use ($relevantAccountIds, $targetAudience) {
-                // Keep every relevant account; selecting a single resident can hide debts.
-                $relevant = $group->filter(fn ($account) => $relevantAccountIds->has($account->id));
-                if ($relevant->isNotEmpty()) {
-                    return $relevant;
-                }
-                $preferredType = $targetAudience === 'owner_only' ? Account::TYPE_OWNER : Account::TYPE_TENANT;
-                return collect([$group->firstWhere('type', $preferredType) ?? $group->first()]);
-            })->values();
-        }
+        $eligibleResidents = $this->accountsInReportMonth($accounts->filter(fn ($account) =>
+            $account->is_active && ! $account->trashed()
+        ), $parsedMonth)->pluck('id')->flip();
+        $relevantAccountIds = $allDues->pluck('account_id')->flip();
+        $accounts = $accounts->groupBy('unit_id')->flatMap(function ($group) use ($relevantAccountIds, $targetAudience, $eligibleResidents) {
+            // Keep every relevant account; selecting a single resident can hide debts.
+            $relevant = $group->filter(fn ($account) => $relevantAccountIds->has($account->id));
+            if ($relevant->isNotEmpty()) {
+                return $relevant;
+            }
+            $group = $group->filter(fn ($account) => $eligibleResidents->has($account->id));
+            if ($group->isEmpty()) {
+                return collect();
+            }
+            $preferredType = $targetAudience === 'owner_only' ? Account::TYPE_OWNER : Account::TYPE_TENANT;
+            return collect([$group->firstWhere('type', $preferredType) ?? $group->first()]);
+        })->values();
 
         $getDueMonth = fn ($due) => $due->period
             ? Carbon::parse($due->period)->format('Y-m')
@@ -1422,12 +1422,12 @@ class ReportController extends Controller
         foreach ($accounts as $account) {
             $selected = $selectedByAccount[$account->id] ?? collect();
             $past = $pastByAccount[$account->id] ?? collect();
-            $pastRemaining = (float) $past->sum('remaining_amount');
+            $pastRemaining = (float) $past->sum('board_opening_amount');
             $accountData[$account->id] = [
                 'pastRemaining' => $pastRemaining,
                 'selectedAmount' => (float) $selected->sum('amount'),
-                'paid' => (float) $selected->sum('board_allocated_amount'),
-                'remaining' => $pastRemaining + (float) $selected->sum('remaining_amount'),
+                'paid' => (float) $selected->sum('board_month_paid') + (float) $past->sum('board_month_paid'),
+                'remaining' => (float) $past->sum('board_remaining_amount') + (float) $selected->sum('board_remaining_amount'),
             ];
         }
 
@@ -1440,10 +1440,10 @@ class ReportController extends Controller
             $monthOptions = $monthOptions->sort()->values();
         }
         $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
-        $title = $reportLabel.' — '.$apartment->name.' — '.$trMonths[$parsedMonth->month].' '.$parsedMonth->year;
+        $title = $reportLabel.' — '.$apartment->name.' — '.$trMonths[$parsedMonth->month].' '.$parsedMonth->year.' — '.Carbon::parse($balanceDate)->format('d.m.Y').' itibarıyla';
 
         return compact('apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
-            'targetAudience', 'reportLabel', 'typeFilter', 'statusFilter', 'accountData',
+            'targetAudience', 'reportDueType', 'reportLabel', 'accountData', 'balanceDate',
             'unknownDuesCount', 'monthOptions', 'trMonths', 'title');
     }
 
@@ -1478,7 +1478,7 @@ class ReportController extends Controller
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         if ($data['unknownDuesCount'] > 0) {
             $sheet->mergeCells('A2:F2');
-            $sheet->setCellValue('A2', $data['unknownDuesCount'].' adet oluşturma kuralı belirlenmemiş borç bu tabloya dahil edilmedi.');
+            $sheet->setCellValue('A2', $data['unknownDuesCount'].' adet borç türü belirlenmemiş borç bu tabloya dahil edilmedi.');
         }
         $header = ['Daire No', 'Hesap Adı', 'Geçmiş Borç (₺)', $trMonths[$parsedMonth->month] . ' Borç (₺)', 'Ödenen (₺)', 'Kalan (₺)'];
         $sheet->fromArray($header, null, 'A3');

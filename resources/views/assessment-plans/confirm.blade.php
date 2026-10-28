@@ -17,7 +17,7 @@
         <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
             <h2 class="break-words font-semibold text-slate-900">{{ $proposed->name }}</h2>
             <p class="mt-2 text-sm text-slate-600">Toplam {{ number_format($proposed->total_amount, 2, ',', '.') }} ₺ · {{ $proposed->installment_count }} taksit · {{ match ($proposed->distribution_type) { 'square_meters' => 'Metrekareye göre', 'share_coefficient' => 'Arsa payına göre', default => 'Eşit dağıtım' } }}</p>
-            <p class="mt-2 text-sm text-slate-600">{{ $proposed->target_audience === 'owner_only' ? 'Yalnızca malikler borçlandırılır.' : 'İlgili dönemde kiracı varsa kiracıya, yoksa malike borçlandırılır.' }}</p>
+            <p class="mt-2 text-sm text-slate-600">{{ $proposed->due_type === \App\Enums\DueType::MalikPayi ? 'Yalnızca malikler borçlandırılır.' : 'İlgili dönemde kiracı varsa kiracıya, yoksa malike borçlandırılır.' }}</p>
             <p class="mt-2 inline-flex items-center gap-2 text-sm text-slate-600">@if ($proposed->createsOnSchedule()) @include('financial-plans._clock') @endif {{ $proposed->createsOnSchedule() ? 'Zamanı geldikçe oluşturulur.' : 'Tümünü şimdi oluştur.' }}</p>
             <p class="mt-2 text-sm text-slate-600">Borç türü: {{ $proposed->due_type->label() }} · İşin kategorisi: {{ $summary['category']['name'] }}</p>
             @if ($summary['category']['is_new'])

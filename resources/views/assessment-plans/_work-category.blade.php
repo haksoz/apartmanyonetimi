@@ -22,7 +22,7 @@
             <input id="category_name" name="category_name" maxlength="255" value="{{ old('category_name', old('name', '')) }}" @required($categoryMode === 'new') @disabled($categoryMode !== 'new') aria-describedby="work-category-help" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
             <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
                 <span class="text-slate-500">Sabit kullanım yetkileri:</span>
-                <span id="work-category-debt-permission" class="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">Malik Payı</span>
+                <span id="work-category-debt-permission" class="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">Kat Maliki Payı</span>
                 <span class="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">Gider</span>
                 <span class="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-500">Değiştirilemez</span>
             </div>

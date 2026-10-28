@@ -29,6 +29,7 @@ class ImportDueTypeTest extends TestCase
         $sheet->setCellValue('E1', 'Açıklama');
         $sheet->setCellValue('F1', 'Alacak');
         $sheet->setCellValue('G1', 'Borç');
+        $sheet->setCellValue('H1', 'Borç Türü');
 
         $rowIndex = 2;
         foreach ($rows as $row) {
@@ -39,6 +40,7 @@ class ImportDueTypeTest extends TestCase
             $sheet->setCellValue("E{$rowIndex}", $row['description'] ?? '');
             $sheet->setCellValue("F{$rowIndex}", $row['credit'] ?? 0);
             $sheet->setCellValue("G{$rowIndex}", $row['debit'] ?? 0);
+            $sheet->setCellValue("H{$rowIndex}", $row['due_type'] ?? '');
             $rowIndex++;
         }
 
@@ -66,9 +68,10 @@ class ImportDueTypeTest extends TestCase
         return [$user, $apartment, $unit];
     }
 
-    public function test_bulk_imported_dues_get_default_aidat_due_type(): void
+    public function test_bulk_imported_dues_require_an_explicit_aidat_selection(): void
     {
         [$user, $apartment] = $this->setupApartment();
+        \App\Models\Category::createDefaultsFor($apartment->id);
 
         $file = $this->createImportFile([
             [
@@ -91,6 +94,8 @@ class ImportDueTypeTest extends TestCase
             ->actingAs($user)
             ->post(route('accounts.bulk-import-confirm'), [
                 'account_types' => ['Ahmet Yılmaz|1' => 'owner'],
+                'due_types' => [2 => 'aidat'],
+                'due_categories' => [2 => (string) $apartment->fresh()->default_aidat_category_id],
             ])
             ->assertRedirect();
 
@@ -99,6 +104,25 @@ class ImportDueTypeTest extends TestCase
         $this->assertSame('aidat', $due->due_type->value);
         $this->assertSame(500, (int) $due->amount);
         $this->assertTrue($due->is_imported);
-        $this->assertNull($due->target_audience);
+        $this->assertSame('tenant_priority', $due->target_audience);
+    }
+
+    public function test_excel_explicit_malik_payi_column_is_preserved_and_used(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        \App\Models\Category::createDefaultsFor($apartment->id);
+        $category = \App\Models\Category::where('apartment_id', $apartment->id)->where('name', 'Ceza')->firstOrFail();
+        $file = $this->createImportFile([[
+            'date' => '01.01.2026', 'account_name' => 'Ahmet Yılmaz', 'unit_no' => '1',
+            'category' => 'Ceza', 'due_type' => 'malik_payi', 'debit' => 500,
+        ]]);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->post(route('accounts.bulk-import-preview'), ['file' => $file])->assertRedirect();
+        $this->assertSame('malik_payi', session('bulk_import_transactions')[0]['due_type']);
+        $this->post(route('accounts.bulk-import-confirm'), [
+            'account_types' => ['Ahmet Yılmaz|1' => 'owner'], 'due_categories' => [2 => (string) $category->id],
+        ])->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame('malik_payi', Due::sole()->due_type->value);
+        $this->assertSame('owner_only', Due::sole()->target_audience);
     }
 }

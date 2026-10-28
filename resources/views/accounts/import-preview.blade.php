@@ -153,6 +153,66 @@
             </div>
         </div>
 
+        <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm">
+            <h3 class="text-sm font-semibold text-slate-700">Borç Türü ve Kategori Eşleştirmeleri</h3>
+            <p class="mt-2 text-sm text-slate-500">Kat maliki/kiracı borçlarının her biri için türü ve kategoriyi onaylayın. Tür, hesap veya kategori adından tahmin edilmez. Tedarikçi ödemeleri için bu seçimler kullanılmaz. Yeni kategori seçilirse yalnız seçtiğiniz borç türünün yetkisi açılır.</p>
+            @if ($errors->any())
+                <ul class="mt-3 space-y-1 text-sm text-red-600">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+            @endif
+            <div class="mt-4 space-y-3">
+                @foreach ($transactions as $transactionIndex => $t)
+                    @if ($t['debit'] > 0)
+                        @php
+                            $row = $t['row_number'] ?? ($transactionIndex + 1);
+                            $matchedCategory = $dueCategories->firstWhere('name', $t['category_name'] ?? '');
+                            $canCreate = !empty($t['category_name']) && !$reservedCategoryNames->contains($t['category_name']);
+                        @endphp
+                        <div class="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-3" data-import-debt-row data-account-key="{{ $t['account_key'] }}">
+                            <div class="text-sm text-slate-700">Satır {{ $row }} · {{ $t['account_name'] }}<p class="mt-1 text-xs text-slate-500">{{ $t['display_date'] ?? $t['date'] }} · {{ number_format($t['debit'], 2, ',', '.') }} ₺ · {{ $t['description'] }}</p><p data-import-debt-note class="mt-1 text-xs text-slate-500"></p></div>
+                            <div>
+                                <label for="import-due-type-{{ $row }}" class="mb-1 block text-xs text-slate-600">Borç Türü</label>
+                                <select id="import-due-type-{{ $row }}" name="due_types[{{ $row }}]" data-import-due-type class="w-full rounded-lg border border-slate-300 p-2 text-sm">
+                                    <option value="">Tür seçin</option>
+                                    @foreach (\App\Enums\DueType::cases() as $type)<option value="{{ $type->value }}" @selected(old('due_types.'.$row, $t['due_type'] ?? '') === $type->value)>{{ $type->label() }}</option>@endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label for="import-due-category-{{ $row }}" class="mb-1 block text-xs text-slate-600">Kategori</label>
+                                <select id="import-due-category-{{ $row }}" name="due_categories[{{ $row }}]" data-import-due-category class="w-full rounded-lg border border-slate-300 p-2 text-sm">
+                                    <option value="">Kategori seçin</option>
+                                    @foreach ($dueCategories as $category)<option value="{{ $category->id }}" data-usages="{{ collect(\App\Models\Category::USAGE_PERMISSIONS)->keys()->filter(fn ($key) => $category->{$key})->map(fn ($key) => str_replace('allow_', '', $key))->implode(',') }}" @selected((string) old('due_categories.'.$row, $matchedCategory?->id) === (string) $category->id)>{{ $category->name }}</option>@endforeach
+                                    @if ($canCreate)<option value="new" data-new-category @selected(old('due_categories.'.$row, 'new') === 'new')>Yeni kategori: {{ $t['category_name'] }}</option>@endif
+                                </select>
+                            </div>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        </section>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('[data-import-debt-row]').forEach(row => {
+                    const accountType = Array.from(document.querySelectorAll('select[name^="account_types["]')).find(input => input.name === 'account_types[' + row.dataset.accountKey + ']');
+                    const type = row.querySelector('[data-import-due-type]');
+                    const category = row.querySelector('[data-import-due-category]');
+                    const sync = () => {
+                        const supplier = accountType?.value === 'supplier';
+                        [type, category].forEach(input => { input.disabled = supplier; input.required = !supplier; });
+                        row.querySelector('[data-import-debt-note]').textContent = supplier ? 'Tedarikçi ödemesi: borç türü uygulanmaz.' : 'Tür ve kategori seçimi zorunludur.';
+                        Array.from(category.options).forEach(option => {
+                            const allowed = !option.value || option.hasAttribute('data-new-category') || (option.dataset.usages || '').split(',').includes(type.value);
+                            option.disabled = !allowed;
+                            option.hidden = !allowed;
+                            if (!allowed && option.selected) category.value = '';
+                        });
+                    };
+                    accountType?.addEventListener('change', sync);
+                    type.addEventListener('change', sync);
+                    sync();
+                });
+            });
+        </script>
+
         {{-- Transactions Preview --}}
         <div class="rounded-2xl bg-white shadow-sm overflow-hidden mb-6">
             <div class="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">

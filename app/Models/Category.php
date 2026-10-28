@@ -17,7 +17,7 @@ class Category extends Model
     public const TYPE_EXPENSE = 'expense';
     public const USAGE_PERMISSIONS = [
         'allow_aidat' => 'Aidat',
-        'allow_malik_payi' => 'Malik Payı',
+        'allow_malik_payi' => 'Kat Maliki Payı',
         'allow_expense' => 'Gider',
     ];
 

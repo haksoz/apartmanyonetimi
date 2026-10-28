@@ -233,10 +233,8 @@
             {{-- Target Audience Selection --}}
             <div class="mb-4">
                 <label class="mb-2 block text-sm font-medium text-slate-600">Borçlanacak Kişiler</label>
-                <input type="hidden" id="target_audience" name="target_audience" value="{{ old('due_type', 'aidat') === 'malik_payi' ? 'owner_only' : 'tenant_priority' }}">
                 <p id="target-audience-summary" aria-live="polite" class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{{ old('due_type', 'aidat') === 'malik_payi' ? 'Sadece kat malikleri borçlandırılır.' : 'Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.' }}</p>
                 <p class="mt-2 text-xs text-slate-500">Borç türüne göre otomatik belirlenir.</p>
-                @error('target_audience')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
@@ -636,11 +634,9 @@
             const typeInputs = document.querySelectorAll('input[name="due_type"]');
             const selectedDueType = () => document.querySelector('input[name="due_type"]:checked')?.value || '';
             const dueTypeLabels = @json(collect($dueTypes)->pluck('label', 'value'));
-            const targetAudience = document.getElementById('target_audience');
             const targetAudienceSummary = document.getElementById('target-audience-summary');
             const syncTargetAudience = () => {
                 const ownerOnly = selectedDueType() === 'malik_payi';
-                targetAudience.value = ownerOnly ? 'owner_only' : 'tenant_priority';
                 targetAudienceSummary.textContent = ownerOnly
                     ? 'Sadece kat malikleri borçlandırılır.'
                     : 'Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.';

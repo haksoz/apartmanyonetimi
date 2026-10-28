@@ -69,19 +69,19 @@ class AssessmentPlanSummary
             foreach ($spec['lines'] as $line) {
                 $liveDue = $line['due_id'] !== null && ($line['due_exists'] ?? false);
                 $existing += (int) $liveDue;
-                $account = $liveDue ? $line['existing_account'] : ($line['unit'] ? $this->accounts->accountForPeriod($line['unit'], $date->copy()->startOfMonth(), $plan->target_audience) : null);
-                if (! $line['due_id'] && ! $account) {
+                $account = $liveDue ? $line['existing_account'] : ($line['unit'] ? $this->accounts->accountForPeriod($line['unit'], $date->copy()->startOfMonth(), $plan->due_type) : null);
+                if (! $liveDue && ! $account) {
                     $missingAccounts++;
                 }
                 $accounts[] = [
                     'unit_id' => $line['unit']?->id, 'unit' => $line['unit']?->unit_no ?? '—',
                     'account_id' => $account?->id, 'account' => $account?->name,
                     'account_type_label' => $account?->type_label,
-                    'amount' => $line['amount'], 'existing' => $liveDue, 'linked' => $line['due_id'] !== null,
+                    'amount' => $line['amount'], 'existing' => $liveDue, 'linked' => $liveDue,
                 ];
             }
             $candidates = array_filter($accounts, fn ($account) => ! $account['linked'] && $account['account_id'] !== null);
-            $eligible = $plan->is_active && $spec['status'] === AssessmentInstallment::STATUS_PENDING && ! $skipped && $candidates !== [];
+            $eligible = $plan->is_active && $spec['status'] !== AssessmentInstallment::STATUS_CANCELLED && ! $skipped && $candidates !== [];
             $currentDue = $current && today()->day >= $plan->generate_day && $plan->createsOnSchedule();
             $currentEligible = $currentEligible || ($eligible && $currentDue);
             $pastCount += (int) ($eligible && $past);
@@ -90,7 +90,7 @@ class AssessmentPlanSummary
             $cents = $selected ? array_sum(array_map(fn ($account) => (int) round($account['amount'] * 100), $candidates)) : 0;
             $status = match (true) {
                 $spec['status'] === AssessmentInstallment::STATUS_CANCELLED => 'İptal',
-                $spec['status'] === AssessmentInstallment::STATUS_GENERATED => 'Mevcut',
+                $spec['status'] === AssessmentInstallment::STATUS_GENERATED && $existing === count($spec['lines']) => 'Mevcut',
                 ! $plan->is_active => 'Pasif',
                 $skipped => 'Atlandı',
                 $selected => 'Oluşturulacak',

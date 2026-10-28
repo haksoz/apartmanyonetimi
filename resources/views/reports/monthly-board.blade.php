@@ -12,15 +12,17 @@
                 <span class="text-slate-600">{{ $reportLabel }}</span>
             </div>
             <h1 class="text-2xl font-bold text-slate-950">{{ $reportLabel }}</h1>
+            <p class="mt-1 text-xs text-slate-500">{{ \Carbon\Carbon::parse($balanceDate)->format('d.m.Y') }} itibarıyla ödeme durumu</p>
+            <p class="mt-1 text-xs text-slate-500">Geçmiş borç ay başından devreder. Ödenen tutar, bu ay geçmiş ve seçilen ay borçlarına yapılan ödemelerdir.</p>
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name . ' — ' . $trMonthsH[$parsedMonth->month] . ' ' . $parsedMonth->year }}</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('reports.monthly-board.export', ['type'=>'excel', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter, 'target_audience'=>$targetAudience]) }}"
+            <a href="{{ route('reports.monthly-board.export', ['type'=>'excel', 'month'=>$month, 'due_type'=>$reportDueType]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.monthly-board.export', ['type'=>'pdf', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter, 'target_audience'=>$targetAudience]) }}"
+            <a href="{{ route('reports.monthly-board.export', ['type'=>'pdf', 'month'=>$month, 'due_type'=>$reportDueType]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
@@ -32,9 +34,9 @@
     <form method="GET" action="{{ route('reports.monthly-board') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-4 items-end">
         <div>
             <label for="board-audience" class="block text-xs text-slate-500 mb-1">Tablo</label>
-            <select name="target_audience" id="board-audience" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="tenant_priority" @selected($targetAudience === 'tenant_priority')>Aylık Aidat Tablosu</option>
-                <option value="owner_only" @selected($targetAudience === 'owner_only')>Aylık Malik Tablosu</option>
+            <select name="due_type" id="board-audience" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="aidat" @selected($reportDueType === 'aidat')>Aidat Tablosu</option>
+                <option value="malik_payi" @selected($reportDueType === 'malik_payi')>Malik Payı Tablosu</option>
             </select>
         </div>
         <div>
@@ -51,44 +53,8 @@
                 @endforeach
             </select>
         </div>
-        <div>
-            <label class="block text-xs text-slate-500 mb-1">Hesap Türü</label>
-            <select name="type_filter" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="resident" @selected($typeFilter === 'resident')>Daire Sakinleri</option>
-                <option value="all" @selected($typeFilter === 'all')>Tümü</option>
-                <option value="owner" @selected($typeFilter === 'owner')>Sadece Kat Maliki</option>
-                <option value="tenant" @selected($typeFilter === 'tenant')>Sadece Kiracı</option>
-            </select>
-        </div>
-        <div id="status-filter-wrap">
-            <label class="block text-xs text-slate-500 mb-1">Durum</label>
-            <select name="status_filter" id="status_filter" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="active" @selected($statusFilter === 'active')>Aktif</option>
-                <option value="inactive" @selected($statusFilter === 'inactive')>Pasif / Silinmiş</option>
-                <option value="all" @selected($statusFilter === 'all')>Her İkisi</option>
-            </select>
-        </div>
         <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Görüntüle</button>
     </form>
-    <script>
-        (function () {
-            const typeSelect = document.querySelector('select[name="type_filter"]');
-            const statusWrap = document.getElementById('status-filter-wrap');
-            const statusSelect = document.getElementById('status_filter');
-            function toggleStatus() {
-                if (typeSelect.value === 'resident') {
-                    statusWrap.style.display = 'none';
-                    statusSelect.disabled = true;
-                    statusSelect.value = 'active';
-                } else {
-                    statusWrap.style.display = '';
-                    statusSelect.disabled = false;
-                }
-            }
-            typeSelect.addEventListener('change', toggleStatus);
-            toggleStatus();
-        })();
-    </script>
 
     @php
         $totalBorç = 0;
@@ -107,7 +73,7 @@
     @endphp
 
     @if ($unknownDuesCount > 0)
-        <p class="mb-4 text-xs text-slate-500">Seçili ay ve geçmiş açık borçlar içinde oluşturma kuralı belirlenmemiş {{ $unknownDuesCount }} kayıt bu tablolara dahil edilmedi.</p>
+        <p class="mb-4 text-xs text-slate-500">Seçili ay ve geçmiş açık borçlar içinde borç türü belirlenmemiş {{ $unknownDuesCount }} kayıt bu tablolara dahil edilmedi.</p>
     @endif
 
     {{-- Özet Satırı --}}
@@ -117,9 +83,9 @@
         $partialCount = 0;
         foreach($accounts as $account) {
             $data = $accountData[$account->id];
-            if($data['remaining'] == 0 && $data['selectedAmount'] > 0) $paidCount++;
+            if($data['remaining'] == 0 && $data['selectedAmount'] + $data['pastRemaining'] > 0) $paidCount++;
             elseif($data['paid'] > 0) $partialCount++;
-            elseif($data['selectedAmount'] > 0) $pendingCount++;
+            elseif($data['remaining'] > 0) $pendingCount++;
         }
     @endphp
 
@@ -139,7 +105,7 @@
         <div class="bg-white rounded-2xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500 mb-1">Tahsilat Oranı</p>
             <p class="text-2xl font-bold text-slate-800">
-                {{ $totalBorç > 0 ? number_format(($totalÖdenen / $totalBorç) * 100, 0) : 0 }}%
+                {{ $totalBorç + $pastRemainingAll > 0 ? number_format(($totalÖdenen / ($totalBorç + $pastRemainingAll)) * 100, 0) : 0 }}%
             </p>
         </div>
     </div>

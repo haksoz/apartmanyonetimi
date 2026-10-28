@@ -52,6 +52,15 @@ class DueBatch extends Model
         'due_type' => DueType::class,
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (DueBatch $batch) {
+            if ($batch->due_type) {
+                $batch->target_audience = $batch->due_type->targetAudience();
+            }
+        });
+    }
+
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
@@ -105,10 +114,10 @@ class DueBatch extends Model
 
     public function getTargetAudienceLabelAttribute(): string
     {
-        return match ($this->target_audience) {
-            'tenant_priority' => 'Kiracı Öncelikli',
-            'owner_only' => 'Sadece Sahipler',
-            default => ucfirst((string) $this->target_audience),
+        return match ($this->due_type) {
+            DueType::Aidat => 'Kiracı Öncelikli',
+            DueType::MalikPayi => 'Sadece Kat Maliki',
+            default => 'Belirlenmemiş',
         };
     }
 }

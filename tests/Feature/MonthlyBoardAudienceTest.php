@@ -56,15 +56,27 @@ class MonthlyBoardAudienceTest extends TestCase
 
     private function due(Account $account, ?string $rule, string $month, float $amount, float $paid = 0, bool $withoutPeriod = false): Due
     {
+        if ($rule === null) {
+            // Yeni kayıtlarda tür zorunlu; tanınmayan tarihsel veri yalnız ham fixture olarak eklenir.
+            $id = \Illuminate\Support\Facades\DB::table('dues')->insertGetId([
+                'apartment_id' => $account->apartment_id, 'account_id' => $account->id, 'unit_id' => $account->unit_id,
+                'due_type' => 'legacy_unknown', 'target_audience' => null, 'period' => $month,
+                'due_date' => $month.'-10', 'amount' => $amount, 'remaining_amount' => $amount, 'status' => 'unpaid',
+            ]);
+            return Due::findOrFail($id);
+        }
         $due = Due::create(['apartment_id' => $account->apartment_id, 'account_id' => $account->id,
             'unit_id' => $account->unit_id, 'target_audience' => $rule,
-            // Deliberately opposite: report scope must use the recorded rule, not debt type.
-            'due_type' => $rule === 'owner_only' ? 'aidat' : 'malik_payi',
+            // Tür raporun tek kaynağıdır; eski hedefleme alanı aşağıda kasıtlı ters bırakılır.
+            'due_type' => $rule === 'owner_only' ? 'malik_payi' : 'aidat',
             'period' => $withoutPeriod ? null : $month, 'due_date' => $month.'-10',
             'amount' => $amount, 'remaining_amount' => $amount, 'status' => 'unpaid']);
+        if ($rule !== null) {
+            \Illuminate\Support\Facades\DB::table('dues')->where('id', $due->id)->update(['target_audience' => $rule === 'owner_only' ? 'tenant_priority' : 'owner_only']);
+        }
         if ($paid > 0) {
             $payment = Payment::create(['apartment_id' => $account->apartment_id, 'account_id' => $account->id,
-                'amount' => $paid, 'unallocated_amount' => $paid, 'payment_date' => '2026-10-01']);
+                'amount' => $paid, 'unallocated_amount' => $paid, 'payment_date' => '2026-06-30']);
             $payment->allocateToDue($due, $paid);
         }
         return $due;
@@ -75,8 +87,54 @@ class MonthlyBoardAudienceTest extends TestCase
         return $this->get(route('reports.monthly-board', array_merge(['month' => '2026-06'], $filters)))->assertOk();
     }
 
-    #[TestWith(['tenant_priority', 40, 210, 60, 190, 3])]
-    #[TestWith(['owner_only', 200, 270, 50, 420, 2])]
+    #[TestWith(['tenant_priority'])]
+    #[TestWith(['owner_only'])]
+    public function test_month_end_reconstructs_debts_paid_in_later_months(string $rule): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-04-10'));
+        \App\Models\SubscriptionItem::query()->update(['started_at' => '2025-01-01']);
+        $past = $this->due($this->owner, $rule, '2025-12', 80, 0, true);
+        $january = $this->due($this->owner, $rule, '2026-01', 100);
+        $pay = function ($due, $date, $amount) {
+            $payment = Payment::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->owner->id,
+                'payment_date' => $date, 'amount' => $amount, 'unallocated_amount' => $amount]);
+            $payment->allocateToDue($due, $amount);
+        };
+        $pay($past, '2026-01-31', 30);
+        $pay($past, '2026-02-01', 50);
+        $pay($january, '2026-01-31', 25);
+        $pay($january, '2026-03-01', 75);
+        $this->owner->update(['is_active' => false, 'account_end_date' => '2025-12-31']);
+        $this->owner->delete();
+        $filters = ['target_audience' => $rule];
+        $jan = $this->screen([...$filters, 'month' => '2026-01']);
+        $this->assertSame('2026-01-31', $jan->viewData('balanceDate'));
+        $this->assertEquals(['pastRemaining' => 80, 'selectedAmount' => 100, 'paid' => 55, 'remaining' => 125], $jan->viewData('accountData')[$this->owner->id]);
+        $feb = $this->screen([...$filters, 'month' => '2026-02']);
+        $this->assertEquals(['pastRemaining' => 125, 'selectedAmount' => 0, 'paid' => 50, 'remaining' => 75], $feb->viewData('accountData')[$this->owner->id]);
+        $march = $this->screen([...$filters, 'month' => '2026-03']);
+        $this->assertEquals(['pastRemaining' => 75, 'selectedAmount' => 0, 'paid' => 75, 'remaining' => 0], $march->viewData('accountData')[$this->owner->id]);
+        $april = $this->screen([...$filters, 'month' => '2026-04']);
+        $this->assertEquals(0, $april->viewData('accountData')[$this->owner->id]['pastRemaining'] ?? 0);
+        $this->travelBack();
+    }
+
+    public function test_current_and_future_months_do_not_count_future_dated_payments(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-06-15'));
+        \App\Models\SubscriptionItem::query()->update(['started_at' => '2025-01-01']);
+        $response = $this->screen();
+        $this->assertSame('2026-06-15', $response->viewData('balanceDate'));
+        $this->assertEquals(0, collect($response->viewData('accountData'))->sum('paid'));
+        $this->assertEquals(260, collect($response->viewData('accountData'))->sum('remaining'));
+        $future = $this->screen(['month' => '2026-07']);
+        $this->assertSame('2026-06-15', $future->viewData('balanceDate'));
+        $this->assertEquals(260, collect($future->viewData('accountData'))->sum('pastRemaining'));
+        $this->travelBack();
+    }
+
+    #[TestWith(['tenant_priority', 50, 210, 70, 190, 3])]
+    #[TestWith(['owner_only', 300, 270, 150, 420, 2])]
     public function test_scope_preserves_all_relevant_accounts_and_current_balances(string $rule, float $past, float $amount, float $paid, float $remaining, int $accountCount): void
     {
         $response = $this->screen(['target_audience' => $rule]);
@@ -87,7 +145,7 @@ class MonthlyBoardAudienceTest extends TestCase
         $this->assertEquals($paid, $data->sum('paid'));
         $this->assertEquals($remaining, $data->sum('remaining'));
         $this->assertSame(2, $response->viewData('unknownDuesCount'));
-        $response->assertSee('oluşturma kuralı belirlenmemiş 2 kayıt');
+        $response->assertSee('borç türü belirlenmemiş 2 kayıt');
         $this->assertSame(6, substr_count($response->getContent(), '<th class="px-4 py-3'));
     }
 
@@ -95,16 +153,30 @@ class MonthlyBoardAudienceTest extends TestCase
     {
         $response = $this->screen();
         $this->assertSame('tenant_priority', $response->viewData('targetAudience'));
-        $this->assertSame('Aylık Aidat Tablosu', $response->viewData('reportLabel'));
+        $this->assertSame('Aidat Tablosu', $response->viewData('reportLabel'));
         $response = $this->screen(['target_audience' => 'owner_only', 'type_filter' => 'owner']);
-        $this->assertSame([$this->owner->id], $response->viewData('accounts')->pluck('id')->all());
+        $this->assertSame([$this->owner->id, $this->tenant->id], $response->viewData('accounts')->pluck('id')->all());
         $this->assertEquals(350, $response->viewData('accountData')[$this->owner->id]['remaining']);
-        $response->assertSee('target_audience=owner_only', false);
-        $this->assertSame('Aylık Malik Tablosu', $response->viewData('reportLabel'));
-        $this->screen(['type_filter' => 'tenant'])->assertDontSee('owner (Kat Maliki)');
-        $this->assertCount(2, $this->screen(['type_filter' => 'tenant'])->viewData('accounts'));
+        $response->assertSee('due_type=malik_payi', false);
+        $this->assertSame('Malik Payı Tablosu', $response->viewData('reportLabel'));
+        $response->assertDontSee('name="type_filter"', false)->assertDontSee('name="status_filter"', false);
+        $this->assertCount(3, $this->screen(['type_filter' => 'tenant'])->viewData('accounts'));
         $this->tenant->update(['is_active' => false]);
-        $this->assertSame([$this->tenant->id], $this->screen(['type_filter' => 'all', 'status_filter' => 'inactive'])->viewData('accounts')->pluck('id')->all());
+        $this->assertCount(3, $this->screen(['type_filter' => 'all', 'status_filter' => 'inactive'])->viewData('accounts'));
+    }
+
+    public function test_inactive_and_deleted_accounts_keep_relevant_debts_after_their_end_date(): void
+    {
+        $this->owner->update(['is_active' => false, 'account_end_date' => '2026-05-31']);
+        $this->tenant->delete();
+        $response = $this->screen();
+        $this->assertCount(3, $response->viewData('accounts'));
+        $this->assertEquals(210, collect($response->viewData('accountData'))->sum('selectedAmount'));
+        $this->assertEquals(50, $response->viewData('accountData')[$this->owner->id]['pastRemaining']);
+        $pastOnly = $this->screen(['month' => '2026-07']);
+        $this->assertArrayHasKey($this->owner->id, $pastOnly->viewData('accountData'));
+        $emptyMonth = $this->screen(['month' => '2026-02']);
+        $this->assertSame([$this->secondTenant->id], $emptyMonth->viewData('accounts')->pluck('id')->all());
     }
 
     public function test_another_apartment_cannot_contribute_even_with_an_inconsistent_account_reference(): void
@@ -138,6 +210,9 @@ class MonthlyBoardAudienceTest extends TestCase
     #[TestWith(['owner_only'])]
     public function test_pdf_and_excel_match_the_screen_with_six_unchanged_columns(string $rule): void
     {
+        Payment::query()->update(['payment_date' => '2026-10-01']);
+        $this->owner->update(['is_active' => false, 'account_end_date' => '2026-05-31']);
+        $this->tenant->delete();
         $filters = ['month' => '2026-06', 'target_audience' => $rule];
         $screen = $this->screen($filters);
         $expected = $screen->viewData('accountData');

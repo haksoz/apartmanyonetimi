@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DueType;
+use Illuminate\Validation\ValidationException;
 use App\Models\Traits\HasReferenceNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -48,9 +49,14 @@ class Due extends Model
             if (! in_array($due->target_audience, [null, 'tenant_priority', 'owner_only'], true)) {
                 throw new \InvalidArgumentException('Invalid due target audience.');
             }
+            $due->due_type ??= DueType::Aidat;
+            $due->target_audience = $due->due_type->targetAudience();
         });
 
         static::updating(function (Due $due) {
+            if ($due->isDirty('due_type')) {
+                throw ValidationException::withMessages(['due_type' => 'Kaydedilmiş borcun türü değiştirilemez. Yanlış tür için mevcut iptal/düzeltme sürecini kullanın.']);
+            }
             if ($due->isDirty('target_audience')) {
                 throw new \LogicException('The due creation rule cannot be changed.');
             }
@@ -59,9 +65,9 @@ class Due extends Model
 
     public function getTargetAudienceLabelAttribute(): string
     {
-        return match ($this->target_audience) {
-            'tenant_priority' => 'Kiracı Öncelikli',
-            'owner_only' => 'Sadece Kat Maliki',
+        return match ($this->due_type) {
+            DueType::Aidat => 'Kiracı Öncelikli',
+            DueType::MalikPayi => 'Sadece Kat Maliki',
             default => 'Belirlenmemiş',
         };
     }

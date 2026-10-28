@@ -119,7 +119,7 @@ class DueTargetAudienceTest extends TestCase
         $tenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'type' => 'tenant', 'name' => 'Tenant', 'is_active' => true]);
         $html = $this->withSession(['_old_input' => []])->get(route('dues.create', ['account_id' => $tenant->id]))
-            ->assertOk()->assertSee('Kiracı hesabına Malik Payı yazılamaz.')->getContent();
+            ->assertOk()->assertSee('Kiracı hesabına Kat Maliki Payı yazılamaz.')->getContent();
         $xpath = $this->xpath($html);
         $this->assertTrue($xpath->query('//input[@name="due_type" and @value="malik_payi"]')->item(0)->hasAttribute('disabled'));
         $this->assertTrue($xpath->query('//input[@name="due_type" and @value="aidat"]')->item(0)->hasAttribute('checked'));
@@ -170,6 +170,7 @@ class DueTargetAudienceTest extends TestCase
             'due_type' => 'malik_payi', 'category_id' => $malikCategory->id, 'period' => '2026-02', 'due_date' => '2026-02-10'];
         $this->postJson(route('dues.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('account_id');
         foreach (['dues', 'due_batches', 'account_transactions'] as $table) $this->assertDatabaseCount($table, 0);
+        $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'move_in_date' => '2026-01-01']);
         $payload['due_type'] = 'aidat';
         $payload['category_id'] = $category->id;
         $payload['target_audience'] = 'owner_only';
@@ -178,7 +179,7 @@ class DueTargetAudienceTest extends TestCase
         $this->assertSame('tenant_priority', Due::sole()->target_audience);
     }
 
-    public function test_individual_aidat_keeps_explicit_owner_even_if_the_unit_has_a_tenant(): void
+    public function test_individual_aidat_blocks_explicit_owner_when_the_unit_has_a_tenant(): void
     {
         [$apartment, $unit, $owner, $category] = $this->fixture();
         $tenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
@@ -189,9 +190,9 @@ class DueTargetAudienceTest extends TestCase
         $this->post(route('dues.store'), ['source_type' => 'individual', 'distribution_type' => 'individual',
             'account_id' => $owner->id, 'individual_amount' => 100, 'due_type' => 'aidat',
             'category_id' => $category->id, 'period' => '2026-02', 'due_date' => '2026-02-10'])
-            ->assertSessionHasNoErrors()->assertRedirect();
-        $this->assertSame($owner->id, Due::sole()->account_id);
-        $this->assertSame('tenant_priority', Due::sole()->target_audience);
+            ->assertSessionHasErrors('account_id');
+        $this->assertDatabaseCount('dues', 0);
+        $this->assertDatabaseCount('due_batches', 0);
     }
 
     private function xpath(string $html): \DOMXPath
@@ -222,6 +223,7 @@ class DueTargetAudienceTest extends TestCase
             'remaining_amount' => 100, 'status' => 'unpaid', 'target_audience' => 'tenant_priority']);
         $this->editDue($due, $owner, $category);
         $this->assertSame('tenant_priority', $due->fresh()->target_audience);
+        $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'move_in_date' => '2026-01-01']);
         $this->post(route('dues.transfer', $due), ['target_account_id' => $tenant->id,
             'target_audience' => 'owner_only'])->assertSessionHasNoErrors()->assertRedirect();
         $due->refresh();
@@ -268,7 +270,7 @@ class DueTargetAudienceTest extends TestCase
         $due = Due::create(['apartment_id' => $apartment->id, 'account_id' => $owner->id,
             'unit_id' => $unit->id, 'amount' => 100, 'remaining_amount' => 100,
             'due_date' => '2026-02-10', 'status' => 'unpaid']);
-        $this->assertNull($due->target_audience);
+        $this->assertSame('tenant_priority', $due->target_audience);
         $this->expectException(\LogicException::class);
         $due->update(['target_audience' => 'owner_only']);
     }

@@ -403,6 +403,7 @@ class DuePageTest extends TestCase
         $apartment->members()->attach($user->id, ['role' => 'owner']);
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
+        $account->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'move_in_date' => '2026-01-01']);
         Category::createDefaultsFor($apartment->id);
         $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Kumanda', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]);
 
@@ -1547,6 +1548,7 @@ class DuePageTest extends TestCase
         $this->post(route('dues.store'), $data + ['account_id' => $owner->id])
             ->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
         $this->assertDatabaseHas('dues', ['account_id' => $owner->id, 'due_type' => 'malik_payi']);
+        $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'move_in_date' => '2026-01-01']);
         $data['due_type'] = 'aidat';
         $data['target_audience'] = 'tenant_priority';
         $data['category_id'] = $apartment->default_aidat_category_id;

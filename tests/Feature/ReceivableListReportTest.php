@@ -22,7 +22,7 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
             $table->id();
             foreach (['apartment_id', 'account_id', 'unit_id', 'category_id'] as $column) $table->unsignedBigInteger($column)->nullable();
             foreach (['amount', 'remaining_amount'] as $column) $table->decimal($column, 15, 2);
-            foreach (['due_type', 'reference_number', 'period', 'status', 'description'] as $column) $table->string($column)->nullable();
+            foreach (['due_type', 'target_audience', 'reference_number', 'period', 'status', 'description'] as $column) $table->string($column)->nullable();
             $table->date('due_date')->nullable();
             $table->timestamps();
             $table->softDeletes();

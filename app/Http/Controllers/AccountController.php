@@ -1259,9 +1259,9 @@ class AccountController extends Controller
         $sheet->setCellValue('A3', 'Talimatlar:');
         $sheet->setCellValue('A4', '1. Tarih formatı: GG.AA.YYYY (örn: 05.01.2020)');
         $sheet->setCellValue('A5', '2. Hesap Adı: Zorunlu. Aynı isimdeki kayıtlar tek hesapta birleştirilir.');
-        $sheet->setCellValue('A6', '3. Daire No: Opsiyonel. Daire ilişkisi kurmak için kullanılır.');
-        $sheet->setCellValue('A7', '4. Kategori: Opsiyonel. Gider kategorisi (örn: Demirbaş, Elektrik).');
-        $sheet->setCellValue('A8', '5. Borç veya Alacak sütunlarından biri dolu olmalı. Her ikisi de pozitif olamaz.');
+        $sheet->setCellValue('A6', '3. Daire No: Aidat borçlarında gereklidir; tedarikçi hareketlerinde isteğe bağlıdır.');
+        $sheet->setCellValue('A7', '4. Kategori: Dosyada yoksa borçlar için önizlemede seçin.');
+        $sheet->setCellValue('A8', '5. Borç veya Alacak sütunlarından biri dolu olmalı; ikisi birlikte pozitif olamaz. Borç Türü: aidat veya malik_payi; boşsa önizlemede seçin.');
         $sheet->getStyle('A3:A8')->getFont()->setSize(10);
 
         // Sütun başlıkları
@@ -1273,8 +1273,9 @@ class AccountController extends Controller
         $sheet->setCellValue('E' . $row, 'Açıklama');
         $sheet->setCellValue('F' . $row, 'Alacak');
         $sheet->setCellValue('G' . $row, 'Borç');
-        $sheet->getStyle('A' . $row . ':G' . $row)->getFont()->setBold(true);
-        $sheet->getStyle('A' . $row . ':G' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
+        $sheet->setCellValue('H' . $row, 'Borç Türü');
+        $sheet->getStyle('A' . $row . ':H' . $row)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $row . ':H' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
 
         // Örnek veri - Kat maliki
         $row = 10;
@@ -1307,9 +1308,10 @@ class AccountController extends Controller
         $sheet->getColumnDimension('E')->setWidth(40);
         $sheet->getColumnDimension('F')->setWidth(15);
         $sheet->getColumnDimension('G')->setWidth(15);
+        $sheet->getColumnDimension('H')->setWidth(22);
 
         // Kenarlıklar
-        $sheet->getStyle('A9:G11')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        $sheet->getStyle('A9:H11')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
         // Dosya oluştur
         $filename = 'toplu_hesap_import_sablon.xlsx';
@@ -1417,6 +1419,10 @@ class AccountController extends Controller
                 'credit' => $credit,
                 'debit' => $debit,
                 'row_number' => $i + 1,
+                'due_type' => match (mb_strtolower(trim((string) ($row[7] ?? '')))) {
+                    'aidat' => 'aidat', 'malik_payi', 'malik payı', 'kat maliki payı' => 'malik_payi',
+                    default => trim((string) ($row[7] ?? '')),
+                },
             ];
 
             // Hesap istatistiklerini güncelle
@@ -1550,8 +1556,10 @@ class AccountController extends Controller
             ->pluck('unit_no', 'id')
             ->toArray();
 
+        $dueCategories = Category::where('apartment_id', $apartment->id)->where('is_active', true)->orderedForDisplay()->get();
+        $reservedCategoryNames = Category::withTrashed()->where('apartment_id', $apartment->id)->pluck('name');
         return view('accounts.import-preview', compact(
-            'transactions', 'accounts', 'apartment', 'allAccounts', 'allUnits'
+            'transactions', 'accounts', 'apartment', 'allAccounts', 'allUnits', 'dueCategories', 'reservedCategoryNames'
         ));
     }
 
@@ -1582,6 +1590,19 @@ class AccountController extends Controller
             return redirect()->route('accounts.bulk-import')
                 ->with('error', 'Import verisi bulunamadı. Lütfen dosyayı tekrar yükleyin.');
         }
+
+        $request->validate([
+            'account_types' => ['required', 'array'],
+            'account_types.*' => ['required', \Illuminate\Validation\Rule::in(['owner', 'tenant', 'former_owner', 'former_tenant', 'supplier'])],
+            'account_mapping' => ['sometimes', 'array'],
+            'account_mapping.*' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('accounts', 'id')->where('apartment_id', $apartment->id)->whereNull('deleted_at')],
+            'unit_mapping' => ['sometimes', 'array'],
+            'unit_mapping.*' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('units', 'id')->where('apartment_id', $apartment->id)],
+            'due_types' => ['sometimes', 'array'],
+            'due_types.*' => ['nullable', 'string'],
+            'due_categories' => ['sometimes', 'array'],
+            'due_categories.*' => ['nullable'],
+        ]);
 
         // Kullanıcıdan gelen seçimler
         $accountTypes = $request->input('account_types', []);
@@ -1615,10 +1636,9 @@ class AccountController extends Controller
             ];
         }
 
-        // Devir Öncesi Kasası — yoksa otomatik oluştur
-        $cashBox = CashBox::firstOrCreate(
-            ['apartment_id' => $apartment->id, 'name' => 'Devir Öncesi Kasası'],
-            ['is_active' => true, 'description' => 'Devir Öncesi Kasası — import işlemleri için otomatik oluşturuldu.']
+        $debtSelections = app(\App\Support\ImportedDueSelection::class)->validate(
+            $apartment->id, $transactions, $accounts, $accountTypes, $accountMapping,
+            $request->input('due_types', []), $request->input('due_categories', []),
         );
 
         // Kategorileri önceden yükle (performans)
@@ -1626,12 +1646,14 @@ class AccountController extends Controller
             ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_EXPENSE, Category::TYPE_ALL])
             ->where('is_active', true)
             ->get();
-        $defaultCategory = $apartment->defaultAidatCategory
-            ?? $categories->firstWhere('allow_aidat', true)
-            ?? $categories->first();
         $defaultExpenseCategory = $categories->firstWhere('allow_expense', true);
 
-        DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $cashBox, &$categories, $defaultCategory, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
+        DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $debtSelections, &$categories, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
+            $cashBox = CashBox::firstOrCreate(
+                ['apartment_id' => $apartment->id, 'name' => 'Devir Öncesi Kasası'],
+                ['is_active' => true, 'description' => 'Devir Öncesi Kasası — import işlemleri için otomatik oluşturuldu.'],
+            );
+            $newDebtCategories = [];
             // 1. Hesapları oluştur veya eşleştir
             foreach ($accounts as $accountKey => $accountData) {
                 $accountName = $accountData['name'];
@@ -1653,6 +1675,10 @@ class AccountController extends Controller
                         ->where('id', $mappedAccountId)
                         ->first();
 
+                    if (! $account || $account->type !== $dbType) {
+                        throw \Illuminate\Validation\ValidationException::withMessages(['account_mapping' => 'Eşlenen hesabın türü seçilen hesap türüyle uyumlu değil: '.$accountName]);
+                    }
+
                     // Hesap adı güncellenmek isteniyorsa güncelle
                     if ($account && !empty($renameAccounts[$accountKey])) {
                         $account->update(['name' => $accountName]);
@@ -1663,8 +1689,8 @@ class AccountController extends Controller
                         $lastDate = $accountDateRanges[$accountKey]['last'] ?? now();
                         TenantAssignment::where('account_id', $account->id)
                             ->where('unit_id', $account->unit_id)
-                            ->whereNull('end_date')
-                            ->update(['end_date' => $lastDate]);
+                            ->whereNull('move_out_date')
+                            ->update(['move_out_date' => $lastDate]);
                     }
 
                     // Daire değiştiriliyorsa hesabı güncelle
@@ -1735,7 +1761,7 @@ class AccountController extends Controller
             }
 
             // 2. Cari hareketleri oluştur
-            foreach ($transactions as $t) {
+            foreach ($transactions as $transactionIndex => $t) {
                 $accountId = $createdAccounts[$t['account_key']] ?? null;
                 if (!$accountId) continue;
 
@@ -1835,29 +1861,43 @@ class AccountController extends Controller
                     // Alacak (credit) = Tahsilat (Payment + CashTransaction)
 
                     if ($t['debit'] > 0) {
-                        // Kat maliki/Kiracı borç → Aidat (Due)
-                        if ($catName) {
-                            $normalCatName = mb_strtolower(trim($catName));
-                            $category = $categories->first(fn($c) => mb_strtolower(trim($c->name)) === $normalCatName);
-                            if (!$category) {
-                                $category = Category::firstOrCreate(
-                                    ['apartment_id' => $apartment->id, 'name' => trim($catName)],
-                                    ['type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true]
-                                );
-                                if (!$categories->contains('id', $category->id)) {
-                                    $categories->push($category);
-                                }
+                        $row = $t['row_number'] ?? ($transactionIndex + 1);
+                        $selection = $debtSelections[$row];
+                        try {
+                            app(\App\Support\DueTargeting::class)->assertAccount(
+                                $account, $selection['type'], \Carbon\Carbon::parse($t['date'])->startOfMonth(), true,
+                            );
+                        } catch (\Illuminate\Validation\ValidationException $exception) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'due_types.'.$row => 'Satır '.$row.': '.collect($exception->errors())->flatten()->first(),
+                            ]);
+                        }
+                        if ($selection['category'] === 'new') {
+                            $name = $selection['name'];
+                            if (! isset($newDebtCategories[$name]) && Category::withTrashed()->where('apartment_id', $apartment->id)->where('name', $name)->exists()) {
+                                throw \Illuminate\Validation\ValidationException::withMessages(['due_categories.'.$row => 'Satır '.$row.': kategori adı artık kullanılıyor. Önizlemeyi yenileyip mevcut kategoriyi seçin.']);
                             }
+                            $category = $newDebtCategories[$name] ??= Category::create([
+                                'apartment_id' => $apartment->id, 'name' => $name, 'type' => Category::TYPE_INCOME,
+                                'is_active' => true, ...array_fill_keys(array_keys(Category::USAGE_PERMISSIONS), false),
+                                $selection['type']->categoryPermission() => true,
+                            ]);
+                            // Yalnızca bu aktarımda açıkça yeni oluşturulması seçilen kategorinin yetkisi genişletilir.
+                            $category->update([$selection['type']->categoryPermission() => true]);
                         } else {
-                            $category = $defaultCategory;
+                            $category = Category::where('apartment_id', $apartment->id)->where('is_active', true)
+                                ->where($selection['type']->categoryPermission(), true)->find($selection['category']);
+                            if (! $category) {
+                                throw \Illuminate\Validation\ValidationException::withMessages(['due_categories.'.$row => 'Satır '.$row.': kategori artık bu tür için kullanılamıyor.']);
+                            }
                         }
 
                         $due = Due::create([
                             'apartment_id' => $apartment->id,
-                            'target_audience' => null,
+                            'target_audience' => $selection['type']->targetAudience(),
                             'account_id' => $accountId,
                             'unit_id' => $account->unit_id,
-                            'due_type' => DueType::Aidat,
+                            'due_type' => $selection['type'],
                             'category_id' => $category?->id,
                             'amount' => $t['debit'],
                             'remaining_amount' => $t['debit'],

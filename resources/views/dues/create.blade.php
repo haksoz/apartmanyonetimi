@@ -31,11 +31,10 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('dues.store') }}" class="space-y-4">
+    <form id="individual-due-form" method="POST" action="{{ route('dues.store') }}" class="space-y-4">
         @csrf
         <input type="hidden" name="source_type" value="individual">
         <input type="hidden" name="distribution_type" value="individual">
-        <input type="hidden" id="target_audience" name="target_audience" value="{{ $selectedDueType === 'malik_payi' ? 'owner_only' : 'tenant_priority' }}">
         <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
 
         {{-- Borçlandırma bilgileri --}}
@@ -55,8 +54,8 @@
                                 <input type="radio" name="due_type" value="{{ $t['value'] }}" required class="peer sr-only" @checked($selectedDueType === $t['value']) @disabled($blocked)>
                                 <span class="block h-full rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-sky-500 peer-checked:bg-sky-50 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-600 peer-focus-visible:ring-offset-2 peer-disabled:opacity-50 peer-enabled:hover:bg-sky-50">
                                     <span class="block text-sm font-semibold text-slate-800">{{ $t['label'] }}</span>
-                                    <span class="mt-1 block text-xs text-slate-600">{{ $t['value'] === 'aidat' ? 'Seçtiğiniz kiracı veya kat maliki hesabına Aidat türünde borç yazılır.' : 'Yalnızca seçtiğiniz kat maliki hesabına Malik Payı türünde borç yazılır.' }}</span>
-                                    @if ($blocked)<span class="mt-2 block text-xs font-medium text-amber-700">Kiracı hesabına Malik Payı yazılamaz. Kat malikinin hesap sayfasından ilerleyin.</span>@endif
+                                    <span class="mt-1 block text-xs text-slate-600">{{ $t['value'] === 'aidat' ? 'İlgili dönemde kiracı varsa yalnızca kiracıya; yoksa kat malikine borç yazılır.' : 'Yalnızca seçtiğiniz kat maliki hesabına Kat Maliki Payı türünde borç yazılır.' }}</span>
+                                    @if ($blocked)<span class="mt-2 block text-xs font-medium text-amber-700">Kiracı hesabına Kat Maliki Payı yazılamaz. Kat malikinin hesap sayfasından ilerleyin.</span>@endif
                                 </span>
                             </label>
                         @endforeach
@@ -79,7 +78,7 @@
                     @if ($lockedAccount)
                         <input id="locked-account-id" type="hidden" name="account_id" value="{{ $lockedAccount->id }}">
                     @endif
-                    <p id="account-scope-note" hidden class="mt-2 text-sm text-red-600">Malik Payı için kat maliki hesabından ilerleyin. Seçili hesap değiştirilmedi.</p>
+                    <p id="account-scope-note" hidden aria-live="polite" class="mt-2 text-sm text-red-600">Kat Maliki Payı için kat maliki hesabından ilerleyin. Seçili hesap değiştirilmedi.</p>
                     @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
@@ -132,28 +131,39 @@
             const typeInputs = document.querySelectorAll('input[name="due_type"]');
             const selectedDueType = () => document.querySelector('input[name="due_type"]:checked')?.value || '';
             const dueTypeLabels = @json(collect($dueTypes)->pluck('label', 'value'));
-            const targetAudience = document.getElementById('target_audience');
-            const syncTargetAudience = () => {
-                targetAudience.value = selectedDueType() === 'malik_payi' ? 'owner_only' : 'tenant_priority';
-            };
             const accountSelect = document.getElementById('account_id');
             const accountOptions = Array.from(accountSelect.options);
             const lockedAccountInput = document.getElementById('locked-account-id');
+            const form = document.getElementById('individual-due-form');
+            const submitButton = form.querySelector('button[type="submit"]');
+            const scopeNote = document.getElementById('account-scope-note');
+            let eligibility = {};
+            let eligibilityReady = false;
+            let eligibilityRequest = 0;
+            let eligibilityError = '';
             const syncAccountOptions = () => {
                 const ownerOnly = selectedDueType() === 'malik_payi';
                 const lockedId = lockedAccountInput?.value;
                 const options = accountOptions.filter(option => !option.value || !ownerOnly || option.dataset.accountType === 'owner' || option.value === lockedId);
                 const selectedValue = lockedId || accountSelect.value;
+                options.forEach(option => {
+                    const reason = eligibility[option.value]?.[selectedDueType()];
+                    option.disabled = Boolean(option.value && eligibilityReady && (reason || !eligibility[option.value]));
+                    option.title = reason || '';
+                });
                 accountSelect.replaceChildren(...options);
                 accountSelect.value = options.some(option => option.value === selectedValue) ? selectedValue : '';
                 accountSelect.disabled = Boolean(lockedId);
                 accountSelect.name = lockedId ? '' : 'account_id';
-                accountSelect.classList.toggle('bg-slate-100', Boolean(lockedId));
-                accountSelect.classList.toggle('cursor-not-allowed', Boolean(lockedId));
                 if (lockedAccountInput) lockedAccountInput.disabled = false;
-                const incompatible = ownerOnly && accountSelect.selectedOptions[0]?.dataset.accountType === 'tenant';
-                accountSelect.setCustomValidity(incompatible ? 'Malik Payı için kat maliki hesabı gerekir.' : '');
-                document.getElementById('account-scope-note').hidden = !incompatible;
+                const reason = selectedValue && eligibilityReady
+                    ? (eligibility[selectedValue]?.[selectedDueType()] ?? (!eligibility[selectedValue] ? 'Seçili hesap artık uygun değil.' : ''))
+                    : '';
+                const message = eligibilityError || reason;
+                accountSelect.setCustomValidity(message);
+                scopeNote.hidden = !message;
+                scopeNote.textContent = message;
+                submitButton.disabled = !eligibilityReady || Boolean(message);
             };
             const topicSelect = document.getElementById('category_id');
             const categoryField = document.getElementById('category-field');
@@ -162,6 +172,30 @@
             const dueDateInput = document.getElementById('due_date');
             const descriptionInput = document.getElementById('description');
             let isDueDateManuallySet = false;
+
+            const loadEligibility = async () => {
+                const requestId = ++eligibilityRequest;
+                eligibilityReady = false;
+                eligibilityError = '';
+                syncAccountOptions();
+                try {
+                    const url = new URL(@json(route('dues.account-eligibility')));
+                    url.searchParams.set('period', periodInput.value);
+                    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+                    if (!response.ok) throw new Error('eligibility');
+                    const data = await response.json();
+                    if (requestId !== eligibilityRequest) return;
+                    eligibility = data.accounts;
+                    eligibilityReady = true;
+                } catch (error) {
+                    if (requestId !== eligibilityRequest) return;
+                    eligibilityError = 'Hesap uygunluğu kontrol edilemedi. Sayfayı yenileyerek tekrar deneyin.';
+                }
+                syncAccountOptions();
+            };
+            form.addEventListener('submit', event => {
+                if (!eligibilityReady || submitButton.disabled) event.preventDefault();
+            });
 
             const months = {
                 '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
@@ -221,7 +255,6 @@
 
             accountSelect.addEventListener('change', syncAccountOptions);
             typeInputs.forEach(input => input.addEventListener('change', () => {
-                syncTargetAudience();
                 syncCategoryField();
                 syncAccountOptions();
                 descriptionInput.dataset.userEdited = '';
@@ -233,6 +266,7 @@
             });
             createdAtInput?.addEventListener('change', () => {
                 syncPeriodFromCreatedAt();
+                loadEligibility();
                 syncDueDate();
                 descriptionInput.dataset.userEdited = '';
                 updateDescription();
@@ -243,10 +277,10 @@
             });
 
             // Init
-            syncTargetAudience();
             syncAccountOptions();
             syncCategoryField();
             syncPeriodFromCreatedAt();
+            loadEligibility();
             syncDueDate();
             if (!descriptionInput.value) {
                 updateDescription();

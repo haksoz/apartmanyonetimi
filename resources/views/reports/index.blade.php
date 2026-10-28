@@ -8,7 +8,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-        {{-- Aylık Aidat Pano Tablosu --}}
+        {{-- Aylık Pano Tablosu --}}
         <a href="{{ route('reports.monthly-board') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-indigo-400 hover:shadow-md transition-all">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition">
@@ -17,7 +17,7 @@
                     </svg>
                 </div>
                 <div>
-                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-indigo-700">Aylık Aidat Pano Tablosu</h2>
+                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-indigo-700">Aylık Pano Tablosu</h2>
                     <p class="mt-1 text-xs text-slate-500">Belirli ay için pano çıktısı, PDF/Excel</p>
                 </div>
             </div>

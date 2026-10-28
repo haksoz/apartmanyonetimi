@@ -8,7 +8,6 @@ use App\Models\Apartment;
 use App\Models\Category;
 use App\Models\Due;
 use App\Models\DuePlan;
-use App\Models\TenantAssignment;
 use App\Models\Unit;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -64,7 +63,7 @@ class AidatPeriodReconciliation
             ->get();
 
         return $units->map(function (Unit $unit) use ($plan, $periodDate) {
-            $account = $this->accountForPeriod($unit, $periodDate, 'tenant_priority');
+            $account = $this->accountForPeriod($unit, $periodDate, DueType::Aidat);
             if (! $account) {
                 return null;
             }
@@ -83,20 +82,9 @@ class AidatPeriodReconciliation
         })->filter()->values();
     }
 
-    public function accountForPeriod(Unit $unit, Carbon $periodDate, string $targetAudience): ?Account
+    public function accountForPeriod(Unit $unit, Carbon $periodDate, DueType $type): ?Account
     {
-        if ($targetAudience === 'owner_only') {
-            return $unit->ownerAccount;
-        }
-
-        $tenantAssignment = TenantAssignment::query()
-            ->where('unit_id', $unit->id)
-            ->where('move_in_date', '<=', $periodDate->copy()->endOfMonth())
-            ->where(fn ($query) => $query->whereNull('move_out_date')->orWhere('move_out_date', '>=', $periodDate->copy()->startOfMonth()))
-            ->with('account')
-            ->first();
-
-        return $tenantAssignment?->account ?? $unit->ownerAccount;
+        return app(DueTargeting::class)->accountFor($unit, $periodDate, $type);
     }
 
     public function hasExistingAidatDue(Apartment $apartment, int $accountId, string $period, ?int $excludeDueId = null): bool

@@ -23,7 +23,7 @@ class ThreeCategoryPermissionsTest extends TestCase
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         foreach (['Masraf Yansıtma', 'Ceza', 'Faiz'] as $name) {
             $category = Category::where('apartment_id', $apartment->id)->where('name', $name)->firstOrFail();
-            $this->assertSame(['Aidat', 'Malik Payı'], $category->usage_labels);
+            $this->assertSame(['Aidat', 'Kat Maliki Payı'], $category->usage_labels);
             $this->get(route('categories.edit', $category))->assertOk()
                 ->assertDontSee('name="allow_ceza"', false)
                 ->assertDontSee('name="allow_faiz"', false)
@@ -71,7 +71,7 @@ class ThreeCategoryPermissionsTest extends TestCase
         $this->assertSame($before, $other->fresh()->getAttributes());
         foreach (['Masraf Yansıtma', 'Ceza', 'Faiz'] as $name) {
             $this->assertSame(1, Category::where('apartment_id', $apartment->id)->where('name', $name)->count());
-            $this->assertSame(['Aidat', 'Malik Payı'], Category::where('name', $name)->firstOrFail()->usage_labels);
+            $this->assertSame(['Aidat', 'Kat Maliki Payı'], Category::where('name', $name)->firstOrFail()->usage_labels);
         }
         $this->assertSame(['Aidat'], $apartment->fresh()->defaultAidatCategory->usage_labels);
         $this->assertDatabaseCount('dues', 0);
@@ -111,7 +111,7 @@ class ThreeCategoryPermissionsTest extends TestCase
         $this->assertDatabaseCount('categories', 3);
         $this->assertSoftDeleted('categories', ['id' => $deleted->id, 'is_active' => false]);
         foreach (['Masraf Yansıtma', 'Faiz'] as $name) {
-            $this->assertSame(['Aidat', 'Malik Payı'], Category::where('name', $name)->firstOrFail()->usage_labels);
+            $this->assertSame(['Aidat', 'Kat Maliki Payı'], Category::where('name', $name)->firstOrFail()->usage_labels);
         }
     }
 }

@@ -54,12 +54,9 @@
 
                 <div>
                     <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
-                    <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        <option value="">Tür seçin</option>
-                        @foreach ($dueTypes as $t)
-                            <option value="{{ $t['value'] }}" @selected(old('due_type', $due->due_type?->value) === $t['value'])>{{ $t['label'] }}</option>
-                        @endforeach
-                    </select>
+                    <input type="hidden" id="due_type" name="due_type" value="{{ $due->due_type->value }}">
+                    <p class="rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">{{ $due->due_type_label }}</p>
+                    <p class="mt-2 text-xs text-slate-500">Kaydedilmiş borcun türü değiştirilemez. Yanlış tür için iptal/düzeltme sürecini kullanın.</p>
                     @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 

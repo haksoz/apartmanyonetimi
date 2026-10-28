@@ -81,7 +81,6 @@ class AssessmentPlanController extends Controller
                 DuePlan::DISTRIBUTION_SQUARE_METERS,
                 DuePlan::DISTRIBUTION_SHARE_COEFFICIENT,
             ])],
-            'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'category_mode' => ['required', Rule::in(['new', 'existing'])],
             'category_name' => ['exclude_unless:category_mode,new', 'required', 'string', 'max:255'],
             'category_id' => ['exclude_unless:category_mode,existing', 'required', 'integer',
@@ -100,9 +99,7 @@ class AssessmentPlanController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        if ($validated['due_type'] === DueType::MalikPayi->value) {
-            $validated['target_audience'] = 'owner_only';
-        }
+        $validated['target_audience'] = DueType::from($validated['due_type'])->targetAudience();
 
         return $this->preview($request, $apartment, $validated);
     }
@@ -129,6 +126,22 @@ class AssessmentPlanController extends Controller
             'apartment' => $apartment,
             'plan' => $assessmentPlan,
         ]);
+    }
+
+    public function regenerateInstallment(CurrentApartment $currentApartment, AssessmentPlan $assessmentPlan, AssessmentInstallment $installment)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof RedirectResponse) {
+            return $apartment;
+        }
+        abort_unless($assessmentPlan->apartment_id === $apartment->id && $installment->assessment_plan_id === $assessmentPlan->id, 404);
+        $this->authorizeFeature($apartment);
+        abort_unless($installment->status === AssessmentInstallment::STATUS_GENERATED, 422);
+
+        $count = $this->generator->generateInstallment($assessmentPlan, $installment);
+
+        return redirect()->route('assessment-plans.show', $assessmentPlan)
+            ->with('status', $count > 0 ? "{$count} eksik borç oluşturuldu. Mevcut borçlar korundu." : 'Yeni borç oluşturulmadı. Plan durumunu ve daire hesaplarını kontrol edin.');
     }
 
     public function update(Request $request, CurrentApartment $currentApartment, AssessmentPlan $assessmentPlan)

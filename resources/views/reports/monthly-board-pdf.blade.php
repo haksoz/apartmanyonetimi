@@ -21,9 +21,10 @@
     @endphp
     <h2>{{ $title ?? 'Aylık Aidat Tablosu' }}</h2>
     <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı</div>
+    <p class="note">Geçmiş borç ay başından devreder. Ödenen tutar, bu ay geçmiş ve seçilen ay borçlarına yapılan ödemelerdir.</p>
 
     @if ($unknownDuesCount > 0)
-        <p class="note">Oluşturma kuralı belirlenmemiş {{ $unknownDuesCount }} borç bu tabloya dahil edilmedi.</p>
+        <p class="note">Borç türü belirlenmemiş {{ $unknownDuesCount }} borç bu tabloya dahil edilmedi.</p>
     @endif
 
     <table>

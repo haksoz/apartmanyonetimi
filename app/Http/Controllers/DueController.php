@@ -15,10 +15,10 @@ use App\Models\DuePlan;
 use App\Models\AssessmentPlan;
 use App\Models\Expense;
 use App\Models\Payment;
-use App\Models\TenantAssignment;
 use App\Models\Unit;
 use App\Support\AidatPeriodReconciliation;
 use App\Support\CurrentApartment;
+use App\Support\DueTargeting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -207,6 +207,30 @@ class DueController extends Controller
         return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'accounts', 'selectedAccountId', 'selectedDueType'));
     }
 
+    public function accountEligibility(CurrentApartment $currentApartment, Request $request)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        abort_unless($this->isOwnerOf($apartment), 403);
+        $input = $request->validate(['period' => ['required', 'date_format:Y-m']]);
+        $period = \Carbon\Carbon::createFromFormat('!Y-m', $input['period']);
+        $result = [];
+        foreach (Account::where('apartment_id', $apartment->id)->where('is_active', true)
+            ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])->get() as $account) {
+            foreach (DueType::cases() as $type) {
+                try {
+                    app(DueTargeting::class)->assertAccount($account, $type, $period);
+                    $result[$account->id][$type->value] = null;
+                } catch (\Illuminate\Validation\ValidationException $exception) {
+                    $result[$account->id][$type->value] = collect($exception->errors())->flatten()->first();
+                }
+            }
+        }
+        return response()->json(['accounts' => $result]);
+    }
+
     public function createBatch(CurrentApartment $currentApartment)
     {
         $apartment = $this->resolveApartment($currentApartment);
@@ -311,7 +335,7 @@ class DueController extends Controller
         // Yeni borçlandırmada hedef kitle borç türünden türetilir; istemciye bırakılmaz.
         if (in_array($request->input('source_type'), [DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_FIXED, DueBatch::SOURCE_INDIVIDUAL], true)
             && in_array($request->input('due_type'), DueType::values(), true)) {
-            $request->merge(['target_audience' => $request->input('due_type') === DueType::MalikPayi->value ? 'owner_only' : 'tenant_priority']);
+            $request->merge(['target_audience' => DueType::from($request->input('due_type'))->targetAudience()]);
         }
 
         $validated = $request->validate([
@@ -345,13 +369,8 @@ class DueController extends Controller
             'individual_amount' => ['required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL, 'nullable', 'numeric', 'min:0.01'],
             'round_to_integer' => ['nullable', 'boolean'],
         ], [
-            'account_id.exists' => 'Aktif bir kiracı veya kat maliki hesabı seçin. Malik Payı borcu yalnızca kat maliki hesabına yazılabilir.',
+            'account_id.exists' => 'Aktif bir kiracı veya kat maliki hesabı seçin. Kat Maliki Payı yalnızca kat maliki hesabına yazılabilir.',
         ]);
-
-        if ($validated['due_type'] === DueType::MalikPayi->value
-            && $validated['source_type'] !== DueBatch::SOURCE_INDIVIDUAL) {
-            $validated['target_audience'] = 'owner_only';
-        }
 
         // Period formdan gönderilmemişse oluşturulma tarihinden otomatik belirle
         if ($validated['source_type'] === DueBatch::SOURCE_EXPENSES && ! \App\Support\FeatureGate::allows($apartment, 'expense_distribution')) {
@@ -436,7 +455,7 @@ class DueController extends Controller
                     ->get();
 
                 foreach ($units as $unit) {
-                    $account = $this->getAccountForPeriod($unit, $periodStart, $periodEnd, $validated['target_audience']);
+                    $account = app(DueTargeting::class)->accountFor($unit, $periodStart, DueType::from($validated['due_type']));
                     if ($account) {
                         $this->createDue($batch, $unit, $account, $perUnitAmount, $validated);
                     }
@@ -456,7 +475,7 @@ class DueController extends Controller
 
             $unitAccounts = [];
             foreach ($units as $unit) {
-                $account = $this->getAccountForPeriod($unit, $periodStart, $periodEnd, $validated['target_audience']);
+                $account = app(DueTargeting::class)->accountFor($unit, $periodStart, DueType::from($validated['due_type']));
                 if ($account) {
                     $unitAccounts[] = ['unit' => $unit, 'account' => $account];
                 }
@@ -589,9 +608,10 @@ class DueController extends Controller
             return $response;
         }
 
+        $request->mergeIfMissing(['due_type' => $due->due_type->value]);
         $validated = $request->validate([
             'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('apartment_id', $due->apartment_id)],
-            'due_type' => ['nullable', Rule::in(DueType::values())],
+            'due_type' => ['sometimes', 'required', Rule::in([$due->due_type->value])],
             'category_id' => $this->categoryRules($request, $due->apartment_id, $due),
             'period' => ['required', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
@@ -606,6 +626,14 @@ class DueController extends Controller
             $validated['unit_id'] = $account->unit_id;
         } else {
             $validated['unit_id'] = $due->unit_id;
+        }
+        // Eski borcu yalnız tutar/açıklama düzenlenirken yeniden hedeflemeyiz.
+        // Hesap veya dönem değişikliği ise yeni bir hedefleme kararıdır.
+        if (($validated['account_id'] ?? $due->account_id) != $due->account_id || $validated['period'] !== $due->period) {
+            app(DueTargeting::class)->assertAccount(
+                Account::where('apartment_id', $due->apartment_id)->findOrFail($validated['account_id'] ?? $due->account_id),
+                $due->due_type, \Carbon\Carbon::parse($validated['period'].'-01'),
+            );
         }
 
         // Aidat + Aidat tekillik kontrolü: hesap veya dönem değişiyorsa
@@ -979,6 +1007,7 @@ class DueController extends Controller
 
     private function createDue(DueBatch $batch, ?Unit $unit, Account $account, float $amount, array $validated): void
     {
+        app(DueTargeting::class)->assertAccount($account, $batch->due_type, \Carbon\Carbon::parse($validated['period'].'-01'));
         $apartment = Apartment::query()->findOrFail($batch->apartment_id);
         $batchDueType = is_string($batch->due_type) ? $batch->due_type : $batch->due_type->value;
         $aidatCategory = $batchDueType === DueType::Aidat->value
@@ -994,7 +1023,7 @@ class DueController extends Controller
         $due = Due::create([
             'apartment_id' => $batch->apartment_id,
             'due_batch_id' => $batch->id,
-            'target_audience' => $batch->target_audience,
+            'target_audience' => $batch->due_type->targetAudience(),
             'unit_id' => $unit?->id ?? $account->unit_id,
             'account_id' => $account->id,
             'due_type' => $batch->due_type,
@@ -1018,29 +1047,6 @@ class DueController extends Controller
             'amount' => $amount,
             'transaction_date' => $validated['created_at_manual'] ?? $validated['due_date'],
         ]);
-    }
-
-    private function getAccountForPeriod(Unit $unit, \Carbon\Carbon $periodStart, \Carbon\Carbon $periodEnd, string $targetAudience = 'tenant_priority'): ?Account
-    {
-        // Sadece sahiplere dağıt seçeneğinde direkt sahibi döndür
-        if ($targetAudience === 'owner_only') {
-            return $unit->ownerAccount;
-        }
-
-        // Kiracı öncelikli: önce o dönemde aktif kiracıyı ara
-        $tenantAssignment = TenantAssignment::query()
-            ->where('unit_id', $unit->id)
-            ->where('move_in_date', '<=', $periodEnd)
-            ->where(fn ($q) => $q->whereNull('move_out_date')->orWhere('move_out_date', '>=', $periodStart))
-            ->with('account')
-            ->first();
-
-        if ($tenantAssignment && $tenantAssignment->account) {
-            return $tenantAssignment->account;
-        }
-
-        // Kiracı yoksa veya dönemde aktif değilse sahibi döndür
-        return $unit->ownerAccount;
     }
 
     public function transfer(CurrentApartment $currentApartment, Due $due, Request $request)
@@ -1074,6 +1080,9 @@ class DueController extends Controller
             ->where('id', $validated['target_account_id'])
             ->firstOrFail();
 
+        app(DueTargeting::class)->assertAccount($targetAccount, $due->due_type,
+            \Carbon\Carbon::parse($due->period ? $due->period.'-01' : $due->due_date->format('Y-m-01')));
+
         $apartment = Apartment::query()->findOrFail($due->apartment_id);
         // Aidat + Aidat tekillik kontrolü: devir hedef hesabında aynı dönemde Aidat borcu varsa engelle
         $dueDueType = is_string($due->due_type) ? $due->due_type : $due->due_type->value;
@@ -1090,6 +1099,12 @@ class DueController extends Controller
         $fromAccountName = $sourceAccount->name;
 
         DB::transaction(function () use ($due, $targetAccount, $fromAccountName) {
+            $locked = Due::whereKey($due->id)->lockForUpdate()->firstOrFail();
+            if (in_array($locked->status, ['paid', 'partial']) || $locked->allocations()->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['target_account_id' => 'Ödemesi veya ödeme tahsisi bulunan borç aktarılamaz.']);
+            }
+            app(DueTargeting::class)->assertAccount($targetAccount, $locked->due_type,
+                \Carbon\Carbon::parse($locked->period ? $locked->period.'-01' : $locked->due_date->format('Y-m-01')));
             $due->update([
                 'account_id'  => $targetAccount->id,
                 'unit_id'     => $targetAccount->unit_id,

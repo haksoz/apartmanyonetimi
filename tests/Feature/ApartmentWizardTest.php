@@ -189,7 +189,7 @@ class ApartmentWizardTest extends TestCase
             ->get(route('apartments.wizard.categories', $apartment))
             ->assertOk()
             ->assertSee('Aidat')
-            ->assertSee('Malik Payı')
+            ->assertSee('Kat Maliki Payı')
             ->assertDontSee('name="allow_masraf_yansitma"', false)
             ->assertDontSee('name="allow_ceza"', false)
             ->assertDontSee('name="allow_faiz"', false)

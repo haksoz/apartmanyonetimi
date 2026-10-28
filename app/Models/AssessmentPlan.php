@@ -43,6 +43,17 @@ class AssessmentPlan extends Model
         'due_type' => DueType::class,
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (AssessmentPlan $plan) {
+            if ($plan->due_type && $plan->due_type !== DueType::MalikPayi) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['due_type' => 'Taksitli Borç Planı yalnızca Kat Maliki Payı oluşturabilir.']);
+            }
+            $plan->due_type = DueType::MalikPayi;
+            $plan->target_audience = DueType::MalikPayi->targetAudience();
+        });
+    }
+
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);

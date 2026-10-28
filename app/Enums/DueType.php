@@ -11,7 +11,7 @@ enum DueType: string
     {
         return match ($this) {
             self::Aidat          => 'Aidat',
-            self::MalikPayi      => 'Malik Payı',
+            self::MalikPayi      => 'Kat Maliki Payı',
         };
     }
 
@@ -40,6 +40,14 @@ enum DueType: string
     public function categoryPermission(): string
     {
         return 'allow_'.$this->value;
+    }
+
+    public function targetAudience(): string
+    {
+        return match ($this) {
+            self::Aidat => 'tenant_priority',
+            self::MalikPayi => 'owner_only',
+        };
     }
 
 }

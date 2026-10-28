@@ -41,6 +41,7 @@ class ImportTenantOccupantTest extends TestCase
         $tenant = $mapped ? Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'type' => 'tenant', 'name' => 'Tenant', 'is_active' => true]) : null;
         $date = today()->subYear()->toDateString();
+        \App\Models\Category::createDefaultsFor($apartment->id);
 
         $this->actingAs($user)->withSession([
             CurrentApartment::SESSION_KEY => $apartment->id,
@@ -52,6 +53,8 @@ class ImportTenantOccupantTest extends TestCase
             ]],
         ])->post(route('accounts.bulk-import-confirm'), [
             'account_types' => ['tenant-key' => $type],
+            'due_types' => [1 => 'aidat'],
+            'due_categories' => [1 => (string) $apartment->fresh()->default_aidat_category_id],
             'account_mapping' => $tenant ? ['tenant-key' => $tenant->id] : [],
         ])->assertRedirect()->assertSessionHasNoErrors();
 

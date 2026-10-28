@@ -448,8 +448,8 @@ class FinancialPlanningTest extends TestCase
             ->get(route('assessment-plans.create'))
             ->assertOk()
             ->assertSee('Sadece Kat Malikleri')
-            ->assertSee('assessment-owner-only-hint', false)
-            ->assertSee("dueType?.value === 'malik_payi'", false);
+            ->assertSee('Kat Maliki Payı borçları yalnızca kat maliklerine dağıtılır.')
+            ->assertDontSee('name="target_audience"', false);
 
         $preview = $this->post(route('assessment-plans.store'), [
             ...$this->assessmentPayload([
@@ -470,6 +470,47 @@ class FinancialPlanningTest extends TestCase
             'target_audience' => 'owner_only', 'installment_count' => 3, 'start_period' => '2026-09', 'due_day' => 10,
             'due_interval_months' => 1, 'generation_mode' => 'create_all_now', 'generate_day' => 5, 'is_active' => 1,
         ], ...$overrides];
+    }
+
+    public function test_assessment_detects_deleted_dues_and_regenerates_only_missing_lines(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-08-01'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->saveAssessmentPlan(route('assessment-plans.store'), $this->assessmentPayload())->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $installment = $plan->installments()->firstOrFail();
+        $lines = $installment->lines()->with('due')->get();
+        $keptId = $lines[1]->due_id;
+        $deletedId = $lines[0]->due_id;
+        $lines[0]->due->transactions()->delete();
+        $lines[0]->due->delete();
+        $url = route('assessment-plans.regenerate-installment', [$plan, $installment]);
+        $this->get(route('assessment-plans.show', $plan))->assertOk()->assertSee('Eksik Borçları Oluştur')->assertSee('Eksik');
+        $this->post($url)->assertRedirect()->assertSessionHas('status', '1 eksik borç oluşturuldu. Mevcut borçlar korundu.');
+        $this->assertSame($keptId, $lines[1]->fresh()->due_id);
+        $this->assertNotEquals($deletedId, $lines[0]->fresh()->due_id);
+        $this->assertSame(2, $installment->lines()->whereHas('due')->count());
+        $count = Due::count();
+        $this->post($url)->assertRedirect();
+        $this->assertSame($count, Due::count());
+
+        foreach ($installment->lines()->with('due')->get() as $line) {
+            $line->due->transactions()->delete();
+            $line->due->delete();
+        }
+        $this->get(route('assessment-plans.show', $plan))->assertOk()->assertSee('Oluşturulmadı');
+        $plan->update(['is_active' => false]);
+        $this->post($url)->assertRedirect();
+        $this->assertSame(0, $installment->lines()->whereHas('due')->count());
+        $plan->update(['is_active' => true]);
+        $this->post($url)->assertRedirect();
+        $this->assertSame(2, $installment->lines()->whereHas('due')->count());
+        $installment->update(['status' => AssessmentInstallment::STATUS_CANCELLED]);
+        $this->post($url)->assertStatus(422);
+        $other = AssessmentPlan::create([...$plan->getAttributes(), 'id' => null, 'name' => 'Other plan']);
+        $this->post(route('assessment-plans.regenerate-installment', [$other, $installment]))->assertNotFound();
+        $this->travelBack();
     }
 
     public function test_assessment_plan_only_accepts_malik_payi(): void
@@ -617,6 +658,35 @@ class FinancialPlanningTest extends TestCase
         $this->assertSame(2, Due::count());
         $this->assertEquals(1000.01, (float) $plan->installmentLines()->sum('amount'));
         $this->get(route('assessment-plans.show', ['assessmentPlan' => $plan, 'edit' => 1]))->assertOk()->assertSee('Değiştirilemez')->assertSee('Kaydet');
+        $this->travelBack();
+    }
+
+    public function test_assessment_edit_summary_rechecks_deleted_dues_and_recreates_only_missing_ones(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-08-01'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->saveAssessmentPlan(route('assessment-plans.store'), $this->assessmentPayload())->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $lines = $plan->installments()->firstOrFail()->lines()->with('due')->get();
+        $preserved = $lines[1]->due->getAttributes();
+        $preview = $this->put(route('assessment-plans.update', $plan), [
+            'name' => $plan->name, 'generate_day' => 5, 'is_active' => 1,
+        ])->assertOk();
+        $this->assertSame(0, $preview->viewData('summary')['count']);
+        $lines[0]->due->transactions()->delete();
+        $lines[0]->due->delete();
+        $updated = $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
+        $summary = $updated->viewData('summary');
+        $this->assertTrue($updated->viewData('changed'));
+        $this->assertSame(1, $summary['count']);
+        $this->assertSame(5, $summary['existing']);
+        $this->assertSame('Oluşturulacak', $summary['rows'][0]['status']);
+        $this->assertEquals((float) $lines[0]->amount, $summary['amount']);
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
+        $this->assertSame(6, Due::count());
+        $this->assertSame($preserved, $lines[1]->fresh()->due->getAttributes());
+        $this->assertNotEquals($lines[0]->due_id, $lines[0]->fresh()->due_id);
         $this->travelBack();
     }
 
