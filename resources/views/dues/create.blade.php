@@ -3,13 +3,9 @@
 @section('content')
     @php
         $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
-        $selectedAudience = old('target_audience', $targetAudience);
-        $individualTitle = match ($selectedAudience) {
-            'tenant_priority' => 'Daire Sakini Borçlandırması',
-            'owner_only' => 'Kat Maliki Borçlandırması',
-            default => 'Borçlandır',
-        };
+        $individualTitle = 'Birebir Borçlandırma';
         $lockedAccount = $accounts->firstWhere('id', (int) ($selectedAccountId ?? 0));
+        $selectedDueType = $lockedAccount?->type === \App\Models\Account::TYPE_TENANT ? 'aidat' : old('due_type', $selectedDueType);
     @endphp
 
     @if ($selectedAccount)
@@ -39,6 +35,7 @@
         @csrf
         <input type="hidden" name="source_type" value="individual">
         <input type="hidden" name="distribution_type" value="individual">
+        <input type="hidden" id="target_audience" name="target_audience" value="{{ $selectedDueType === 'malik_payi' ? 'owner_only' : 'tenant_priority' }}">
         <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
 
         {{-- Borçlandırma bilgileri --}}
@@ -49,71 +46,25 @@
             @endif
 
             <div class="grid gap-5 md:grid-cols-2 {{ $selectedAccount ? 'mt-5 border-t border-slate-100 pt-5' : '' }}">
-                <div class="md:col-span-2">
-                    <fieldset>
-                        <legend class="mb-2 block text-sm font-medium text-slate-600">Borçlandırma Kapsamı <span class="text-red-500">*</span></legend>
-                        <div class="flex gap-3">
-                            <label class="flex-1 cursor-pointer">
-                                <input type="radio" name="target_audience" value="tenant_priority" required class="peer sr-only" @checked($selectedAudience === 'tenant_priority')>
-                                <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 hover:bg-slate-50">
-                                    <div class="text-sm font-semibold text-slate-800">Daire Sakini</div>
-                                    <div class="mt-1 text-xs text-slate-500">Aylık Aidat Tablosu kapsamında</div>
-                                </div>
+                <fieldset class="md:col-span-2">
+                    <legend class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></legend>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        @foreach ($dueTypes as $t)
+                            @php($blocked = $t['value'] === 'malik_payi' && $lockedAccount?->type === \App\Models\Account::TYPE_TENANT)
+                            <label class="cursor-pointer has-[:disabled]:cursor-not-allowed">
+                                <input type="radio" name="due_type" value="{{ $t['value'] }}" required class="peer sr-only" @checked($selectedDueType === $t['value']) @disabled($blocked)>
+                                <span class="block h-full rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-sky-500 peer-checked:bg-sky-50 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-600 peer-focus-visible:ring-offset-2 peer-disabled:opacity-50 peer-enabled:hover:bg-sky-50">
+                                    <span class="block text-sm font-semibold text-slate-800">{{ $t['label'] }}</span>
+                                    <span class="mt-1 block text-xs text-slate-600">{{ $t['value'] === 'aidat' ? 'Seçtiğiniz kiracı veya kat maliki hesabına Aidat türünde borç yazılır.' : 'Yalnızca seçtiğiniz kat maliki hesabına Malik Payı türünde borç yazılır.' }}</span>
+                                    @if ($blocked)<span class="mt-2 block text-xs font-medium text-amber-700">Kiracı hesabına Malik Payı yazılamaz. Kat malikinin hesap sayfasından ilerleyin.</span>@endif
+                                </span>
                             </label>
-                            <label class="flex-1 cursor-pointer has-[:disabled]:cursor-not-allowed">
-                                <input type="radio" name="target_audience" value="owner_only" required class="peer sr-only" @checked($selectedAudience === 'owner_only') @disabled($lockedAccount?->type === \App\Models\Account::TYPE_TENANT)>
-                                <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-enabled:hover:bg-slate-50">
-                                    <div class="text-sm font-semibold text-slate-800">Kat Maliki</div>
-                                    <div class="mt-1 text-xs text-slate-500">Aylık Malik Tablosu kapsamında</div>
-                                </div>
-                            </label>
-                        </div>
-                        @if (! $selectedAudience)
-                            <p class="mt-2 text-xs text-slate-500">Kapsam seçin.</p>
-                        @endif
-                    </fieldset>
-                    <p class="mt-2 text-xs text-slate-500">Borç seçtiğiniz hesaba yazılır. Daire Sakini borçları Aylık Aidat Tablosu'nda, Kat Maliki borçları Aylık Malik Tablosu'nda gösterilir.</p>
-                    @error('target_audience')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-                <div class="grid gap-5 md:col-span-2 md:grid-cols-2">
-                    <div>
-                        <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
-                        <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                            <option value="">Tür seçin</option>
-                            @foreach ($dueTypes as $t)
-                                <option value="{{ $t['value'] }}" @selected(old('due_type', 'aidat') === $t['value']) @disabled($selectedAudience === 'tenant_priority' && $t['value'] === 'malik_payi') @if($selectedAudience === 'tenant_priority' && $t['value'] === 'malik_payi') hidden @endif>{{ $t['label'] }}</option>
-                            @endforeach
-                        </select>
-                        @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                        @endforeach
                     </div>
-
-                    <div id="category-field">
-                        <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
-                        <select id="category_id" name="category_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                            <option value="">Kategori seçin</option>
-                            @foreach ($categories as $cat)
-                                <option value="{{ $cat->id }}" data-usages="{{ collect(\App\Models\Category::USAGE_PERMISSIONS)->keys()->filter(fn ($key) => $cat->{$key})->map(fn ($key) => str_replace('allow_', '', $key))->implode(',') }}" @selected((string) old('category_id') === (string) $cat->id)>{{ $cat->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                    </div>
-                </div>
-
-                <div class="grid gap-5 md:col-span-2 md:grid-cols-2">
-                    <div>
-                        <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
-                        <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        @error('created_at_manual')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                    </div>
-
-                    <div>
-                        <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
-                        <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                        @error('due_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                    </div>
-                </div>
-
-                <div class="md:col-span-2">
+                    <p class="mt-3 text-xs text-slate-500">Bu işlem yalnızca seçilen hesabı borçlandırır. Toplu dağıtım veya otomatik kiracı/kat maliki değişikliği yapılmaz.</p>
+                    @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </fieldset>
+                <div class="min-w-0">
                     <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Borçlandırılacak Hesap</label>
                     <select id="account_id" name="{{ $lockedAccount ? null : 'account_id' }}" required
                         {{ $lockedAccount ? 'disabled' : '' }}
@@ -128,8 +79,33 @@
                     @if ($lockedAccount)
                         <input id="locked-account-id" type="hidden" name="account_id" value="{{ $lockedAccount->id }}">
                     @endif
-                    <p id="account-scope-note" hidden class="mt-2 text-sm text-red-600">Bu kapsam veya borç türü için kat maliki hesabından ilerleyin. Seçili hesap değiştirilmedi.</p>
+                    <p id="account-scope-note" hidden class="mt-2 text-sm text-red-600">Malik Payı için kat maliki hesabından ilerleyin. Seçili hesap değiştirilmedi.</p>
                     @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div id="category-field" class="min-w-0">
+                        <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
+                        <select id="category_id" name="category_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                            <option value="">Kategori seçin</option>
+                            @foreach ($categories as $cat)
+                                <option value="{{ $cat->id }}" data-usages="{{ collect(\App\Models\Category::USAGE_PERMISSIONS)->keys()->filter(fn ($key) => $cat->{$key})->map(fn ($key) => str_replace('allow_', '', $key))->implode(',') }}" @selected((string) old('category_id') === (string) $cat->id)>{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="grid gap-5 md:col-span-2 md:grid-cols-2">
+                    <div>
+                        <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
+                        <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        @error('created_at_manual')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div>
+                        <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
+                        <input id="due_date" name="due_date" type="date" value="{{ old('due_date', now()->endOfMonth()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        @error('due_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
                 </div>
 
                 <div class="md:col-span-2">
@@ -153,23 +129,18 @@
 
     <script>
         (() => {
-            const typeSelect = document.getElementById('due_type');
-            const audienceInputs = document.querySelectorAll('input[name="target_audience"]');
-            const selectedAudience = () => document.querySelector('input[name="target_audience"]:checked')?.value || '';
+            const typeInputs = document.querySelectorAll('input[name="due_type"]');
+            const selectedDueType = () => document.querySelector('input[name="due_type"]:checked')?.value || '';
+            const dueTypeLabels = @json(collect($dueTypes)->pluck('label', 'value'));
+            const targetAudience = document.getElementById('target_audience');
+            const syncTargetAudience = () => {
+                targetAudience.value = selectedDueType() === 'malik_payi' ? 'owner_only' : 'tenant_priority';
+            };
             const accountSelect = document.getElementById('account_id');
             const accountOptions = Array.from(accountSelect.options);
             const lockedAccountInput = document.getElementById('locked-account-id');
-            const syncDueTypeOptions = () => {
-                const residentScope = selectedAudience() === 'tenant_priority';
-                Array.from(typeSelect.options).forEach(option => {
-                    const blocked = residentScope && option.value === 'malik_payi';
-                    option.disabled = blocked;
-                    option.hidden = blocked;
-                });
-                if (residentScope && typeSelect.value === 'malik_payi') typeSelect.value = '';
-            };
             const syncAccountOptions = () => {
-                const ownerOnly = typeSelect.value === 'malik_payi' || selectedAudience() === 'owner_only';
+                const ownerOnly = selectedDueType() === 'malik_payi';
                 const lockedId = lockedAccountInput?.value;
                 const options = accountOptions.filter(option => !option.value || !ownerOnly || option.dataset.accountType === 'owner' || option.value === lockedId);
                 const selectedValue = lockedId || accountSelect.value;
@@ -181,7 +152,7 @@
                 accountSelect.classList.toggle('cursor-not-allowed', Boolean(lockedId));
                 if (lockedAccountInput) lockedAccountInput.disabled = false;
                 const incompatible = ownerOnly && accountSelect.selectedOptions[0]?.dataset.accountType === 'tenant';
-                accountSelect.setCustomValidity(incompatible ? 'Bu kapsam veya borç türü için kat maliki hesabı gerekir.' : '');
+                accountSelect.setCustomValidity(incompatible ? 'Malik Payı için kat maliki hesabı gerekir.' : '');
                 document.getElementById('account-scope-note').hidden = !incompatible;
             };
             const topicSelect = document.getElementById('category_id');
@@ -220,8 +191,7 @@
             const updateDescription = () => {
                 if (descriptionInput.value && descriptionInput.dataset.userEdited) return;
                 const period = periodInput.value;
-                const typeOption = typeSelect.options[typeSelect.selectedIndex];
-                const typeName = typeOption?.value ? typeOption.text : '';
+                const typeName = dueTypeLabels[selectedDueType()] || '';
                 const topicOption = topicSelect?.options[topicSelect.selectedIndex];
                 const topicName = topicOption?.value ? topicOption.text : '';
 
@@ -241,7 +211,7 @@
                 let selectedVisible = false;
                 Array.from(topicSelect.options).forEach(option => {
                     if (!option.value) return;
-                    const visible = (option.dataset.usages || '').split(',').includes(typeSelect.value);
+                    const visible = (option.dataset.usages || '').split(',').includes(selectedDueType());
                     option.hidden = !visible;
                     option.disabled = !visible;
                     if (visible && option.selected) selectedVisible = true;
@@ -249,21 +219,14 @@
                 if (!selectedVisible) topicSelect.value = '';
             };
 
-            audienceInputs.forEach(input => input.addEventListener('change', () => {
-                syncDueTypeOptions();
-                syncCategoryField();
-                document.querySelectorAll('[data-individual-heading]').forEach(heading => {
-                    heading.textContent = selectedAudience() === 'owner_only' ? 'Kat Maliki Borçlandırması' : selectedAudience() === 'tenant_priority' ? 'Daire Sakini Borçlandırması' : 'Borçlandır';
-                });
-                syncAccountOptions();
-            }));
             accountSelect.addEventListener('change', syncAccountOptions);
-            typeSelect.addEventListener('change', () => {
+            typeInputs.forEach(input => input.addEventListener('change', () => {
+                syncTargetAudience();
                 syncCategoryField();
                 syncAccountOptions();
                 descriptionInput.dataset.userEdited = '';
                 updateDescription();
-            });
+            }));
             topicSelect?.addEventListener('change', () => {
                 descriptionInput.dataset.userEdited = '';
                 updateDescription();
@@ -280,7 +243,7 @@
             });
 
             // Init
-            syncDueTypeOptions();
+            syncTargetAudience();
             syncAccountOptions();
             syncCategoryField();
             syncPeriodFromCreatedAt();

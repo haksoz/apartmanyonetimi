@@ -6,18 +6,12 @@ enum DueType: string
 {
     case Aidat          = 'aidat';
     case MalikPayi      = 'malik_payi';
-    case MasrafYansitma = 'masraf_yansitma';
-    case Ceza           = 'ceza';
-    case Faiz           = 'faiz';
 
     public function label(): string
     {
         return match ($this) {
             self::Aidat          => 'Aidat',
             self::MalikPayi      => 'Malik Payı',
-            self::MasrafYansitma => 'Masraf Yansıtma',
-            self::Ceza           => 'Ceza',
-            self::Faiz           => 'Faiz',
         };
     }
 
@@ -29,7 +23,7 @@ enum DueType: string
     public static function batchOptions(): array
     {
         return array_map(fn ($case) => ['value' => $case->value, 'label' => $case->label()], [
-            self::Aidat, self::MalikPayi, self::MasrafYansitma,
+            self::Aidat, self::MalikPayi,
         ]);
     }
 

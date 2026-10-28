@@ -151,7 +151,7 @@ class AccountController extends Controller
             ->where('apartment_id', $apartment->id)
             ->where('is_active', true)
             ->where('allow_expense', true)
-            ->orderBy('name')
+            ->orderedForDisplay()
             ->get();
 
         return view('accounts.create', compact('apartment', 'units', 'categories'));
@@ -858,7 +858,7 @@ class AccountController extends Controller
             ->where(fn ($q) => $q
                 ->where(fn ($usable) => $usable->whereNull('deleted_at')->where('is_active', true)->where('allow_expense', true))
                 ->orWhere('id', $account->default_category_id))
-            ->orderBy('name')
+            ->orderedForDisplay()
             ->get();
 
         $openingTransaction = $account->transactions()
@@ -1842,7 +1842,7 @@ class AccountController extends Controller
                             if (!$category) {
                                 $category = Category::firstOrCreate(
                                     ['apartment_id' => $apartment->id, 'name' => trim($catName)],
-                                    ['type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true, 'allow_masraf_yansitma' => true]
+                                    ['type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true]
                                 );
                                 if (!$categories->contains('id', $category->id)) {
                                     $categories->push($category);

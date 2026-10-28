@@ -224,6 +224,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::patch('users/{user}/role', [AccountUserController::class, 'updateUserRole'])->name('users.role');
         Route::patch('users/{user}/toggle-active', [AccountUserController::class, 'toggleActive'])->name('users.toggle-active');
         Route::delete('accounts/{account}/user', [AccountUserController::class, 'destroy'])->name('accounts.user.destroy');
+        Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
         Route::resource('categories', CategoryController::class)->except(['show']);
         Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
         Route::get('payments/preview-allocations', [PaymentController::class, 'previewAllocations'])->name('payments.preview-allocations');

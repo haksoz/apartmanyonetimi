@@ -22,7 +22,7 @@
             <input id="category_name" name="category_name" maxlength="255" value="{{ old('category_name', old('name', '')) }}" @required($categoryMode === 'new') @disabled($categoryMode !== 'new') aria-describedby="work-category-help" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
             <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
                 <span class="text-slate-500">Sabit kullanım yetkileri:</span>
-                <span id="work-category-debt-permission" class="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">{{ App\Enums\DueType::tryFrom($selectedDueType ?? old('due_type', 'masraf_yansitma'))?->label() }}</span>
+                <span id="work-category-debt-permission" class="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">Malik Payı</span>
                 <span class="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">Gider</span>
                 <span class="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-500">Değiştirilemez</span>
             </div>
@@ -34,7 +34,7 @@
             <select id="category_id" name="category_id" @required($categoryMode === 'existing') @disabled($categoryMode !== 'existing') class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
                 <option value="">Kategori seçin</option>
                 @foreach ($categories as $category)
-                    <option value="{{ $category->id }}" data-usages="{{ collect(['malik_payi', 'masraf_yansitma'])->filter(fn ($usage) => $category->{'allow_'.$usage})->implode(',') }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
+                    <option value="{{ $category->id }}" data-usages="{{ $category->allow_malik_payi ? 'malik_payi' : '' }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
                 @endforeach
             </select>
             <p class="mt-2 text-xs text-slate-500">Yalnızca seçilen borç türünde kullanılabilen aktif kategoriler gösterilir. Mevcut kategorinin adı ve yetkileri değiştirilmez.</p>

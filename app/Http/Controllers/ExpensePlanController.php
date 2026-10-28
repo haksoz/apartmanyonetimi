@@ -41,7 +41,7 @@ class ExpensePlanController extends Controller
             ->where('apartment_id', $apartment->id)
             ->where('allow_expense', true)
             ->where('is_active', true)
-            ->orderBy('name')
+            ->orderedForDisplay()
             ->get();
 
         return view('expense-plans.create', compact('apartment', 'accounts', 'categories'));

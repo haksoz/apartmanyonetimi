@@ -64,7 +64,7 @@ class CategoryUsagePermissionTest extends TestCase
         $this->assertTrue(Validator::make(['category_id' => $category->id], ['category_id' => $rules])->passes());
         $this->assertFalse(Validator::make(
             ['category_id' => $category->id],
-            ['category_id' => app(DueCategorySelection::class)->rules(DueType::MasrafYansitma->value, $apartment->id, $category->id, DueType::MalikPayi->value)],
+            ['category_id' => app(DueCategorySelection::class)->rules(DueType::Aidat->value, $apartment->id, $category->id, DueType::MalikPayi->value)],
         )->passes());
     }
 
@@ -77,7 +77,7 @@ class CategoryUsagePermissionTest extends TestCase
         $this->assertNotNull($apartment->default_aidat_category_id);
         $this->assertSame('Genel Aidat', $apartment->defaultAidatCategory->name);
         $this->assertTrue($apartment->defaultAidatCategory->allow_aidat);
-        $this->assertSame(['aidat', 'malik_payi', 'masraf_yansitma'], array_column(DueType::batchOptions(), 'value'));
+        $this->assertSame(['aidat', 'malik_payi'], array_column(DueType::batchOptions(), 'value'));
     }
 
     public function test_batch_debt_rejects_penalty_and_interest_types_server_side(): void
@@ -99,7 +99,7 @@ class CategoryUsagePermissionTest extends TestCase
             'name' => 'Ceza',
             'type' => Category::TYPE_INCOME,
             'is_active' => true,
-            'allow_ceza' => true,
+            'allow_aidat' => true,
         ]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -110,7 +110,7 @@ class CategoryUsagePermissionTest extends TestCase
                 'target_audience' => 'owner_only',
                 'period' => '2026-10',
                 'due_date' => '2026-10-31',
-                'due_type' => DueType::Ceza->value,
+                'due_type' => 'ceza',
                 'category_id' => $category->id,
                 'fixed_amount' => 100,
             ])

@@ -165,7 +165,6 @@ class ApartmentWizardTest extends TestCase
             ->post(route('apartments.wizard.categories.store', $apartment), [
                 'name' => 'Bakım Onarım',
                 'allow_malik_payi' => '1',
-                'allow_masraf_yansitma' => '1',
                 'allow_expense' => '1',
             ]);
 
@@ -176,14 +175,11 @@ class ApartmentWizardTest extends TestCase
             'type' => 'all',
             'allow_aidat' => false,
             'allow_malik_payi' => true,
-            'allow_masraf_yansitma' => true,
-            'allow_ceza' => false,
-            'allow_faiz' => false,
             'allow_expense' => true,
         ]);
     }
 
-    public function test_categories_step_shows_all_six_usage_permissions_and_ignores_legacy_type(): void
+    public function test_categories_step_shows_all_three_usage_permissions_and_ignores_legacy_type(): void
     {
         [$user, $apartment] = $this->createOwnerWithApartment();
         \App\Models\CashBox::create(['apartment_id' => $apartment->id, 'name' => 'Ana Kasa', 'is_active' => true]);
@@ -194,9 +190,9 @@ class ApartmentWizardTest extends TestCase
             ->assertOk()
             ->assertSee('Aidat')
             ->assertSee('Malik Payı')
-            ->assertSee('Masraf Yansıtma')
-            ->assertSee('Ceza')
-            ->assertSee('Faiz')
+            ->assertDontSee('name="allow_masraf_yansitma"', false)
+            ->assertDontSee('name="allow_ceza"', false)
+            ->assertDontSee('name="allow_faiz"', false)
             ->assertSee('Gider')
             ->assertDontSee('name="type"', false);
 

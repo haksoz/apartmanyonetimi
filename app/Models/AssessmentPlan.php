@@ -15,7 +15,7 @@ class AssessmentPlan extends Model
 
     public static function debtTypes(): array
     {
-        return [DueType::MasrafYansitma, DueType::MalikPayi];
+        return [DueType::MalikPayi];
     }
 
     protected $fillable = [

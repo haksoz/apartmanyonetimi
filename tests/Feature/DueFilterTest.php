@@ -35,7 +35,7 @@ class DueFilterTest extends TestCase
         $planDue = Due::create([...$dueData, 'due_type' => 'aidat', 'due_batch_id' => $aidatBatch->id]);
         $assessmentDue = Due::create([...$dueData, 'due_type' => 'malik_payi', 'due_batch_id' => $assessmentBatch->id]);
         $batchDue = Due::create([...$dueData, 'due_type' => 'aidat', 'due_batch_id' => $batch->id]);
-        $manualDue = Due::create([...$dueData, 'due_type' => 'masraf_yansitma']);
+        $manualDue = Due::create([...$dueData, 'due_type' => 'malik_payi']);
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         foreach ([
             [['source' => 'plan'], [$planDue->id]],
@@ -43,7 +43,7 @@ class DueFilterTest extends TestCase
             [['source' => 'batch'], [$batchDue->id]],
             [['source' => 'manual'], [$manualDue->id]],
             [['due_type' => 'aidat'], [$planDue->id, $batchDue->id]],
-            [['due_type' => 'masraf_yansitma'], [$manualDue->id]],
+            [['due_type' => 'malik_payi'], [$manualDue->id, $assessmentDue->id]],
             [['source' => 'assessment', 'plan' => 'assessment:'.$assessment->id, 'due_type' => 'malik_payi', 'period' => '2026-06'], [$assessmentDue->id]],
             [['plan' => 'aidat:'.$aidat->id, 'source' => 'batch'], []],
         ] as [$query, $ids]) {

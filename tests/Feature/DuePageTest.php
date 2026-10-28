@@ -75,7 +75,7 @@ class DuePageTest extends TestCase
             ->assertOk()
             ->assertSee('Aidatlar')
             ->assertSee(route('dues.index'), false)
-            ->assertSee('text-lg font-semibold text-slate-800">Borçlandır', false)
+            ->assertSee('text-lg font-semibold text-slate-800">Birebir Borçlandırma', false)
             ->assertSee('Tek hesaba birebir borçlandırma oluşturun.')
             ->assertSee('Geri')
             ->assertSee('history.back()', false)
@@ -323,7 +323,7 @@ class DuePageTest extends TestCase
         $accountTwo = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unitTwo->id, 'type' => Account::TYPE_OWNER, 'name' => '2. Daire Maliki', 'is_active' => true]);
         $unitOne->update(['owner_account_id' => $accountOne->id, 'occupant_account_id' => $accountOne->id]);
         $unitTwo->update(['owner_account_id' => $accountTwo->id, 'occupant_account_id' => $accountTwo->id]);
-        $dueCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş', 'type' => Category::TYPE_INCOME, 'allow_masraf_yansitma' => true]);
+        $dueCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş', 'type' => Category::TYPE_INCOME, 'allow_malik_payi' => true]);
         $fixtureCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş Gideri', 'type' => Category::TYPE_EXPENSE]);
         $elevatorCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Asansör', 'type' => Category::TYPE_EXPENSE]);
         $cleaningCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Temizlik', 'type' => Category::TYPE_EXPENSE]);
@@ -339,7 +339,7 @@ class DuePageTest extends TestCase
                 'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
-                'due_type' => \App\Enums\DueType::MasrafYansitma->value,
+                'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $dueCategory->id,
                 'source_period' => '2026-04',
                 'selected_expense_ids' => $fixtureExpense->id . ',' . $elevatorExpense->id,
@@ -403,7 +403,8 @@ class DuePageTest extends TestCase
         $apartment->members()->attach($user->id, ['role' => 'owner']);
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_TENANT, 'name' => 'Kiracı', 'is_active' => true]);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Demirbaş', 'type' => Category::TYPE_INCOME, 'allow_masraf_yansitma' => true]);
+        Category::createDefaultsFor($apartment->id);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Kumanda', 'type' => Category::TYPE_INCOME, 'allow_aidat' => true]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
@@ -413,7 +414,7 @@ class DuePageTest extends TestCase
                 'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
-                'due_type' => \App\Enums\DueType::MasrafYansitma->value,
+                'due_type' => \App\Enums\DueType::Aidat->value,
                 'category_id' => $category->id,
                 'account_id' => $account->id,
                 'individual_amount' => 450,
@@ -1578,8 +1579,14 @@ class DuePageTest extends TestCase
         Category::createDefaultsFor($apartment->id);
         $apartment->refresh();
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
-        $this->get(route('dues.batch.create'))->assertOk()->assertSee('Sadece Kat Malikleri')
-            ->assertDontSee('Sadece Sahipler');
+        $this->get(route('dues.batch.create'))->assertOk()
+            ->assertSee('Sadece kat malikleri: borç doğrudan kat malikine yansıtılır.')
+            ->assertSee('Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.')
+            ->assertSee('type="radio" name="due_type" value="aidat"', false)
+            ->assertSee('type="radio" name="due_type" value="malik_payi"', false)
+            ->assertSee('peer-checked:border-sky-500', false)
+            ->assertDontSee('<select id="due_type"', false)
+            ->assertDontSee('type="radio" name="target_audience"', false);
 
         foreach ([DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_FIXED] as $source) {
             $this->post(route('dues.store'), [
@@ -1595,15 +1602,23 @@ class DuePageTest extends TestCase
             $this->assertDatabaseMissing('dues', ['due_batch_id' => $batch->id, 'account_id' => $tenant->id]);
         }
 
-        $this->post(route('dues.store'), [
-            'source_type' => DueBatch::SOURCE_MANUAL, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-            'target_audience' => 'tenant_priority', 'due_type' => 'aidat',
-            'category_id' => $apartment->default_aidat_category_id,
-            'period' => '2026-08', 'due_date' => '2026-08-31', 'source_amount' => 100,
-        ])->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
-        $batch = DueBatch::latest('id')->firstOrFail();
-        $this->assertSame('tenant_priority', $batch->target_audience);
-        $this->assertDatabaseHas('dues', ['due_batch_id' => $batch->id, 'account_id' => $tenant->id]);
+        $secondUnit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '2']);
+        $secondOwner = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $secondUnit->id,
+            'type' => Account::TYPE_OWNER, 'name' => 'Kiracısız Malik', 'is_active' => true]);
+        $secondUnit->update(['owner_account_id' => $secondOwner->id, 'occupant_account_id' => $secondOwner->id]);
+        foreach ([DueBatch::SOURCE_MANUAL => '2026-08', DueBatch::SOURCE_FIXED => '2026-09'] as $source => $period) {
+            $this->post(route('dues.store'), [
+                'source_type' => $source, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
+                ...($source === DueBatch::SOURCE_MANUAL ? ['target_audience' => 'owner_only'] : []),
+                'due_type' => 'aidat', 'category_id' => $apartment->default_aidat_category_id,
+                'period' => $period, 'due_date' => $period.'-28', 'source_amount' => 100, 'fixed_amount' => 100,
+            ])->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
+            $batch = DueBatch::latest('id')->firstOrFail();
+            $this->assertSame('tenant_priority', $batch->target_audience);
+            $this->assertDatabaseHas('dues', ['due_batch_id' => $batch->id, 'account_id' => $tenant->id]);
+            $this->assertDatabaseHas('dues', ['due_batch_id' => $batch->id, 'account_id' => $secondOwner->id]);
+            $this->assertDatabaseMissing('dues', ['due_batch_id' => $batch->id, 'account_id' => $owner->id]);
+        }
     }
 
     public function test_each_individual_due_type_requires_an_explicitly_permitted_category(): void
@@ -1614,12 +1629,12 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => Account::TYPE_OWNER, 'name' => 'Maliki', 'is_active' => true]);
         $unit->update(['owner_account_id' => $account->id, 'occupant_account_id' => $account->id]);
-        $incomeCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Gelir Kalemi', 'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_masraf_yansitma' => true]);
+        $incomeCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Gelir Kalemi', 'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true]);
         $aidatCategory = tap(Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat', 'type' => Category::TYPE_INCOME, 'is_system' => true, 'is_active' => true, 'allow_aidat' => true]), fn ($category) => $apartment->update(['default_aidat_category_id' => $category->id]));
         $expenseCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Asansör Bakımı', 'type' => Category::TYPE_EXPENSE, 'is_active' => true]);
         $allCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Ortak Kalem', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true]);
-        $cezaCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Ceza', 'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_ceza' => true]);
-        $faizCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Faiz', 'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_faiz' => true]);
+        $cezaCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Ceza', 'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_aidat' => true]);
+        $faizCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Faiz', 'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
@@ -1629,8 +1644,8 @@ class DuePageTest extends TestCase
             ->assertSee('Gelir Kalemi')
             ->assertSee('Ortak Kalem')
             ->assertSee('Asansör Bakımı')
-            ->assertSee('data-usages="ceza"', false)
-            ->assertSee('data-usages="faiz"', false);
+            ->assertSee('data-usages="aidat"', false)
+            ->assertSee('data-usages="malik_payi"', false);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
@@ -1640,7 +1655,7 @@ class DuePageTest extends TestCase
                 'target_audience' => 'owner_only',
                 'period' => '2026-07',
                 'due_date' => '2026-07-31',
-                'due_type' => \App\Enums\DueType::Ceza->value,
+                'due_type' => \App\Enums\DueType::Aidat->value,
                 'category_id' => $cezaCategory->id,
                 'account_id' => $account->id,
                 'individual_amount' => 100,
@@ -1649,7 +1664,7 @@ class DuePageTest extends TestCase
 
         $this->assertDatabaseHas('dues', [
             'account_id' => $account->id,
-            'due_type' => \App\Enums\DueType::Ceza->value,
+            'due_type' => \App\Enums\DueType::Aidat->value,
             'category_id' => $cezaCategory->id,
             'amount' => 100,
         ]);
@@ -1662,7 +1677,7 @@ class DuePageTest extends TestCase
                 'target_audience' => 'owner_only',
                 'period' => '2026-08',
                 'due_date' => '2026-08-31',
-                'due_type' => \App\Enums\DueType::Faiz->value,
+                'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $faizCategory->id,
                 'account_id' => $account->id,
                 'individual_amount' => 50,
@@ -1671,7 +1686,7 @@ class DuePageTest extends TestCase
 
         $this->assertDatabaseHas('dues', [
             'account_id' => $account->id,
-            'due_type' => \App\Enums\DueType::Faiz->value,
+            'due_type' => \App\Enums\DueType::MalikPayi->value,
             'category_id' => $faizCategory->id,
         ]);
 
@@ -1704,7 +1719,7 @@ class DuePageTest extends TestCase
                 'target_audience' => 'owner_only',
                 'period' => '2026-10',
                 'due_date' => '2026-10-31',
-                'due_type' => \App\Enums\DueType::MasrafYansitma->value,
+                'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $incomeCategory->id,
                 'account_id' => $account->id,
                 'individual_amount' => 80,
@@ -1713,7 +1728,7 @@ class DuePageTest extends TestCase
 
         $this->assertDatabaseHas('dues', [
             'account_id' => $account->id,
-            'due_type' => \App\Enums\DueType::MasrafYansitma->value,
+            'due_type' => \App\Enums\DueType::MalikPayi->value,
             'category_id' => $incomeCategory->id,
         ]);
 
@@ -1726,7 +1741,7 @@ class DuePageTest extends TestCase
                 'target_audience' => 'owner_only',
                 'period' => '2026-11',
                 'due_date' => '2026-11-30',
-                'due_type' => \App\Enums\DueType::MasrafYansitma->value,
+                'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $expenseCategory->id,
                 'account_id' => $account->id,
                 'individual_amount' => 90,

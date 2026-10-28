@@ -160,7 +160,7 @@ class ExpenseController extends Controller
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
             ->where('is_active', true)
             ->where('allow_expense', true)
-            ->orderBy('name')
+            ->orderedForDisplay()
             ->pluck('name', 'id');
 
 
@@ -1092,7 +1092,7 @@ class ExpenseController extends Controller
                 ->where(fn ($fresh) => $fresh->where('is_active', true)->where('allow_expense', true))
                 ->when($selectedId, fn ($query) => $query->orWhere('id', $selectedId)))
 
-            ->orderBy('name')
+            ->orderedForDisplay()
 
             ->get();
 

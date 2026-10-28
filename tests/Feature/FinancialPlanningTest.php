@@ -409,14 +409,14 @@ class FinancialPlanningTest extends TestCase
             ])->assertNotFound();
     }
 
-    public function test_assessment_tenant_priority_is_captured_and_survives_later_plan_changes(): void
+    public function test_assessment_owner_only_is_captured_and_survives_later_plan_changes(): void
     {
         [$user, $apartment] = $this->setupApartment();
         $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Repair',
-            'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_masraf_yansitma' => true]);
+            'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true]);
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
             ->saveAssessmentPlan(route('assessment-plans.store'), [
-                'due_type' => 'masraf_yansitma', 'category_mode' => 'existing', 'name' => 'Repair plan',
+                'due_type' => 'malik_payi', 'category_mode' => 'existing', 'name' => 'Repair plan',
                 'total_amount' => 1000, 'distribution_type' => 'equal', 'target_audience' => 'tenant_priority',
                 'category_id' => $category->id, 'installment_count' => 1,
                 'start_period' => now()->addMonth()->format('Y-m'), 'due_day' => 1, 'due_interval_months' => 1,
@@ -425,10 +425,10 @@ class FinancialPlanningTest extends TestCase
             ])->assertSessionHasNoErrors()->assertRedirect();
         $dues = Due::where('apartment_id', $apartment->id)->get();
         $this->assertNotEmpty($dues);
-        $this->assertSame(['tenant_priority'], $dues->pluck('target_audience')->unique()->values()->all());
+        $this->assertSame(['owner_only'], $dues->pluck('target_audience')->unique()->values()->all());
         AssessmentPlan::where('apartment_id', $apartment->id)->firstOrFail()
             ->update(['target_audience' => 'owner_only', 'is_active' => false]);
-        $this->assertSame(['tenant_priority'], Due::whereIn('id', $dues->modelKeys())
+        $this->assertSame(['owner_only'], Due::whereIn('id', $dues->modelKeys())
             ->distinct()->pluck('target_audience')->all());
     }
 
@@ -466,10 +466,25 @@ class FinancialPlanningTest extends TestCase
     private function assessmentPayload(array $overrides = []): array
     {
         return [...[
-            'due_type' => 'masraf_yansitma', 'name' => 'Çatı Yenileme', 'total_amount' => 1000.01, 'distribution_type' => 'equal',
+            'due_type' => 'malik_payi', 'name' => 'Çatı Yenileme', 'total_amount' => 1000.01, 'distribution_type' => 'equal',
             'target_audience' => 'owner_only', 'installment_count' => 3, 'start_period' => '2026-09', 'due_day' => 10,
             'due_interval_months' => 1, 'generation_mode' => 'create_all_now', 'generate_day' => 5, 'is_active' => 1,
         ], ...$overrides];
+    }
+
+    public function test_assessment_plan_only_accepts_malik_payi(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->get(route('assessment-plans.create'))->assertOk()
+            ->assertDontSee('<option value="aidat"', false)
+            ->assertDontSee('<option value="masraf_yansitma"', false)
+            ->assertSee('<option value="malik_payi"', false);
+        foreach (['aidat', 'masraf_yansitma', 'ceza', 'faiz'] as $type) {
+            $this->post(route('assessment-plans.store'), $this->assessmentPayload(['due_type' => $type]))
+                ->assertSessionHasErrors('due_type');
+        }
+        $this->assertDatabaseCount('assessment_plans', 0);
     }
 
     public function test_assessment_summary_defers_all_writes_and_preserves_distribution_totals(): void
@@ -610,7 +625,7 @@ class FinancialPlanningTest extends TestCase
         $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
         [$user, $apartment] = $this->setupApartment();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Isınma', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true, 'allow_masraf_yansitma' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Isınma', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true]);
         foreach (AssessmentPlan::debtTypes() as $type) {
             $payload = $this->assessmentPayload([
                 'name' => $type->label().' Planı', 'due_type' => $type->value,
@@ -658,7 +673,7 @@ class FinancialPlanningTest extends TestCase
             $this->post(route('assessment-plans.store'), [...$payload, 'category_name' => $name])->assertSessionHasErrors('category_name');
             $this->assertSame($name === 'Gelir' ? Category::TYPE_INCOME : ($name === 'Gider' ? Category::TYPE_EXPENSE : Category::TYPE_ALL), $category->fresh()->type);
         }
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Onarım', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true, 'allow_masraf_yansitma' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Onarım', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true]);
         $preview = $this->post(route('assessment-plans.store'), [...$payload, 'category_mode' => 'existing', 'category_id' => $category->id])->assertOk();
         $category->update(['is_active' => false]);
         $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertSessionHasErrors('category_id');
@@ -687,9 +702,6 @@ class FinancialPlanningTest extends TestCase
         $this->assertTrue($category->allow_malik_payi);
         $this->assertTrue($category->allow_expense);
         $this->assertFalse($category->allow_aidat);
-        $this->assertFalse($category->allow_masraf_yansitma);
-        $this->assertFalse($category->allow_ceza);
-        $this->assertFalse($category->allow_faiz);
         $this->assertSame(0, Due::where('category_id', '!=', $category->id)->count());
         $this->get(route('expense-plans.create'))->assertOk()->assertViewHas('categories', fn ($categories) => $categories->contains('id', $category->id));
         $this->saveAssessmentPlanUpdate($plan, ['name' => 'Yeni Plan Adı', 'generate_day' => 5, 'is_active' => 1])->assertRedirect();
@@ -703,7 +715,7 @@ class FinancialPlanningTest extends TestCase
         [$user, $apartment] = $this->setupApartment();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         $payload = $this->assessmentPayload();
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => $payload['name'], 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true, 'allow_masraf_yansitma' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => $payload['name'], 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true]);
 
         $this->post(route('assessment-plans.store'), $payload)
             ->assertSessionHasErrors('category_name');
@@ -728,13 +740,13 @@ class FinancialPlanningTest extends TestCase
         ]);
         $masraf = Category::create([
             'apartment_id' => $apartment->id, 'name' => 'Masraf Kategorisi',
-            'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_masraf_yansitma' => true, 'allow_expense' => true,
+            'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_aidat' => true, 'allow_expense' => true,
         ]);
 
         $this->get(route('assessment-plans.create'))
             ->assertOk()
             ->assertSee('data-usages="malik_payi"', false)
-            ->assertSee('data-usages="masraf_yansitma"', false)
+            ->assertDontSee('data-usages="masraf_yansitma"', false)
             ->assertSee('Yalnızca seçilen borç türünde kullanılabilen aktif kategoriler gösterilir.')
             ->assertSee("includes(dueType?.value)", false);
 

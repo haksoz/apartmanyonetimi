@@ -13,7 +13,7 @@
                 <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
                 <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
                     @foreach (\App\Models\AssessmentPlan::debtTypes() as $type)
-                        <option value="{{ $type->value }}" data-selects-category="{{ $type->selectsCategory() ? '1' : '0' }}" @selected(old('due_type', 'masraf_yansitma') === $type->value)>{{ $type->label() }}</option>
+                        <option value="{{ $type->value }}" data-selects-category="{{ $type->selectsCategory() ? '1' : '0' }}" selected>{{ $type->label() }}</option>
                     @endforeach
                 </select>
                 @error('due_type')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
@@ -95,7 +95,7 @@
             <fieldset class="min-w-0 md:col-span-2">
                 <legend class="mb-2 text-sm font-medium text-slate-600">Borçlanacak Kişiler</legend>
                 <div class="flex gap-3">
-                    @php $selectedDueType = old('due_type', 'masraf_yansitma'); @endphp
+                    @php $selectedDueType = 'malik_payi'; @endphp
                     @foreach (['tenant_priority' => ['Kiracı Öncelikli', 'Varsa kiracıya, yoksa kat malikine'], 'owner_only' => ['Sadece Kat Malikleri', 'Tüm borçlar kat maliklerine']] as $value => $option)
                         <label class="min-w-0 flex-1 cursor-pointer has-[:disabled]:cursor-not-allowed">
                             <input type="radio" name="target_audience" value="{{ $value }}"

@@ -15,6 +15,8 @@ use App\Models\Expense;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CategoryController extends Controller
 {
@@ -28,12 +30,38 @@ class CategoryController extends Controller
 
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
-            ->orderBy('is_system', 'desc')
-            ->orderBy('type')
-            ->orderBy('name')
+            ->orderedForDisplay()
             ->get();
 
         return view('categories.index', compact('apartment', 'categories'));
+    }
+
+    public function reorder(Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) {
+            return $apartment;
+        }
+        $validated = $request->validate([
+            'category_ids' => ['required', 'array', 'list', 'min:1'],
+            'category_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+        $ids = array_map('intval', $validated['category_ids']);
+        DB::transaction(function () use ($apartment, $ids) {
+            $existing = Category::where('apartment_id', $apartment->id)->orderBy('id')->lockForUpdate()->pluck('id')->all();
+            $submitted = $ids;
+            sort($submitted);
+            if ($existing !== $submitted) {
+                throw ValidationException::withMessages([
+                    'category_ids' => 'Kategori listesi değişmiş veya geçersiz kategori seçilmiş. Sayfayı yenileyip tekrar deneyin.',
+                ]);
+            }
+            foreach ($ids as $position => $id) {
+                Category::where('apartment_id', $apartment->id)->whereKey($id)->update(['sort_order' => $position + 1]);
+            }
+        });
+
+        return redirect()->route('categories.index')->with('status', 'Kategori sıralaması kaydedildi.');
     }
 
     public function create(CurrentApartment $currentApartment)

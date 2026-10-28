@@ -285,7 +285,7 @@ class CashController extends Controller
         return Category::query()
             ->where('apartment_id', $apartmentId)
             ->where(fn ($query) => $query->where('is_active', true)->orWhere('id', $selectedId))
-            ->orderBy('name')
+            ->orderedForDisplay()
             ->get();
     }
 }

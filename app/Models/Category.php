@@ -18,9 +18,6 @@ class Category extends Model
     public const USAGE_PERMISSIONS = [
         'allow_aidat' => 'Aidat',
         'allow_malik_payi' => 'Malik Payı',
-        'allow_masraf_yansitma' => 'Masraf Yansıtma',
-        'allow_ceza' => 'Ceza',
-        'allow_faiz' => 'Faiz',
         'allow_expense' => 'Gider',
     ];
 
@@ -30,18 +27,15 @@ class Category extends Model
         'type',
         'is_active',
         'is_system',
-        'allow_aidat', 'allow_malik_payi', 'allow_masraf_yansitma',
-        'allow_ceza', 'allow_faiz', 'allow_expense',
+        'allow_aidat', 'allow_malik_payi', 'allow_expense',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_system' => 'boolean',
+        'sort_order' => 'integer',
         'allow_aidat' => 'boolean',
         'allow_malik_payi' => 'boolean',
-        'allow_masraf_yansitma' => 'boolean',
-        'allow_ceza' => 'boolean',
-        'allow_faiz' => 'boolean',
         'allow_expense' => 'boolean',
     ];
 
@@ -122,7 +116,7 @@ class Category extends Model
         }
         $sql .= ' ELSE 100 END';
 
-        return $query->orderByRaw($sql)->orderBy('name');
+        return $query->orderByRaw('sort_order IS NULL')->orderBy('sort_order')->orderByRaw($sql)->orderBy('name')->orderBy('id');
     }
 
     public function scopeAllowedFor($query, string $permission)
@@ -152,6 +146,7 @@ class Category extends Model
             ['name' => 'Bakım', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
             ['name' => 'Ceza', 'type' => self::TYPE_INCOME, 'is_system' => true],
             ['name' => 'Faiz', 'type' => self::TYPE_INCOME, 'is_system' => true],
+            ['name' => 'Masraf Yansıtma', 'type' => self::TYPE_INCOME, 'is_system' => false],
             ['name' => 'Diğer', 'type' => self::TYPE_ALL, 'is_system' => true],
         ];
 
@@ -162,14 +157,11 @@ class Category extends Model
             }
             if ($default['type'] !== self::TYPE_EXPENSE) {
                 $permissions['allow_malik_payi'] = true;
-                $permissions['allow_masraf_yansitma'] = true;
             }
             if ($default['name'] === 'Genel Aidat') {
                 $permissions = [...array_fill_keys(array_keys(self::USAGE_PERMISSIONS), false), 'allow_aidat' => true];
-            } elseif ($default['name'] === 'Ceza') {
-                $permissions = [...array_fill_keys(array_keys(self::USAGE_PERMISSIONS), false), 'allow_ceza' => true];
-            } elseif ($default['name'] === 'Faiz') {
-                $permissions = [...array_fill_keys(array_keys(self::USAGE_PERMISSIONS), false), 'allow_faiz' => true];
+            } elseif (in_array($default['name'], ['Ceza', 'Faiz', 'Masraf Yansıtma'], true)) {
+                $permissions = [...array_fill_keys(array_keys(self::USAGE_PERMISSIONS), false), 'allow_aidat' => true, 'allow_malik_payi' => true];
             }
             if ($default['name'] === 'Genel Aidat' && self::withTrashed()->where('apartment_id', $apartmentId)->whereIn('name', ['Genel Aidat', 'Aidat'])->exists()) {
                 continue;

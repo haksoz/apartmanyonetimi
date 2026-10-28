@@ -181,13 +181,13 @@ class DueController extends Controller
         }
 
         $request->validate([
-            'target_audience' => ['sometimes', Rule::in(['tenant_priority', 'owner_only'])],
+            'due_type' => ['sometimes', Rule::in(DueType::values())],
             'account_id' => ['sometimes', 'integer', Rule::exists('accounts', 'id')->where(fn ($query) => $query
                 ->where('apartment_id', $apartment->id)->whereNull('deleted_at')->where('is_active', true)
                 ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
-                ->when($request->query('target_audience') === 'owner_only', fn ($query) => $query->where('type', Account::TYPE_OWNER)))],
+                ->when($request->query('due_type') === DueType::MalikPayi->value, fn ($query) => $query->where('type', Account::TYPE_OWNER)))],
         ]);
-        $targetAudience = $request->query('target_audience');
+        $selectedDueType = $request->query('due_type', DueType::Aidat->value);
 
         $dueTypes = DueType::options();
         $categories = $this->selectableDueCategories($apartment->id);
@@ -204,7 +204,7 @@ class DueController extends Controller
 
         $selectedAccountId = $request->query('account_id');
 
-        return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'accounts', 'selectedAccountId', 'targetAudience'));
+        return view('dues.create', compact('apartment', 'dueTypes', 'categories', 'accounts', 'selectedAccountId', 'selectedDueType'));
     }
 
     public function createBatch(CurrentApartment $currentApartment)
@@ -308,6 +308,12 @@ class DueController extends Controller
             abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
         }
 
+        // Yeni borçlandırmada hedef kitle borç türünden türetilir; istemciye bırakılmaz.
+        if (in_array($request->input('source_type'), [DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_FIXED, DueBatch::SOURCE_INDIVIDUAL], true)
+            && in_array($request->input('due_type'), DueType::values(), true)) {
+            $request->merge(['target_audience' => $request->input('due_type') === DueType::MalikPayi->value ? 'owner_only' : 'tenant_priority']);
+        }
+
         $validated = $request->validate([
             'source_type' => ['required', Rule::in([DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_INDIVIDUAL, DueBatch::SOURCE_FIXED])],
             'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL, DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT])],
@@ -316,9 +322,7 @@ class DueController extends Controller
             'due_date' => ['required', 'date'],
             'due_type' => ['required', Rule::in($request->input('source_type') === DueBatch::SOURCE_INDIVIDUAL
                 ? DueType::values()
-                : array_column(DueType::batchOptions(), 'value')),
-                Rule::notIn($request->input('source_type') === DueBatch::SOURCE_INDIVIDUAL
-                    && $request->input('target_audience') === 'tenant_priority' ? [DueType::MalikPayi->value] : [])],
+                : array_column(DueType::batchOptions(), 'value'))],
             'category_id' => $this->categoryRules($request, $apartment->id),
             'description' => ['nullable', 'string', 'max:255'],
             'created_at_manual' => ['nullable', 'date'],
@@ -335,15 +339,13 @@ class DueController extends Controller
                     ->whereNull('deleted_at')
                     ->where('is_active', true)
                     ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
-                    ->when($request->input('due_type') === DueType::MalikPayi->value
-                        || ($request->input('source_type') === DueBatch::SOURCE_INDIVIDUAL && $request->input('target_audience') === 'owner_only'),
+                    ->when($request->input('due_type') === DueType::MalikPayi->value,
                         fn ($query) => $query->where('type', Account::TYPE_OWNER))),
             ],
             'individual_amount' => ['required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL, 'nullable', 'numeric', 'min:0.01'],
             'round_to_integer' => ['nullable', 'boolean'],
         ], [
-            'due_type.not_in' => 'Daire Sakini borçlandırmasında Malik Payı seçilemez. Kat Maliki kapsamından ilerleyin.',
-            'account_id.exists' => 'Aktif bir hesap seçin. Kat Maliki kapsamı veya Malik Payı borcu için yalnızca kat maliki hesabı seçilebilir.',
+            'account_id.exists' => 'Aktif bir kiracı veya kat maliki hesabı seçin. Malik Payı borcu yalnızca kat maliki hesabına yazılabilir.',
         ]);
 
         if ($validated['due_type'] === DueType::MalikPayi->value

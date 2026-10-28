@@ -126,17 +126,22 @@
 
         <div id="fixed-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type', 'fixed') !== 'fixed') hidden @endif">
             <div id="fixed-type-slot">
-                <div id="batch-type-fields" class="grid gap-4 md:grid-cols-2">
-                    <div>
-                        <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
-                        <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
-                            <option value="">Tür seçin</option>
+                <div id="batch-type-fields" class="grid gap-4">
+                    <fieldset id="due_type">
+                        <legend class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></legend>
+                        <div class="grid gap-3 sm:grid-cols-2">
                             @foreach ($dueTypes as $t)
-                                <option value="{{ $t['value'] }}" @selected(old('due_type', 'aidat') === $t['value'])>{{ $t['label'] }}</option>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="due_type" value="{{ $t['value'] }}" required class="peer sr-only" @checked(old('due_type', 'aidat') === $t['value'])>
+                                    <span class="block h-full rounded-xl border-2 border-slate-200 p-4 transition-all hover:bg-sky-50 peer-checked:border-sky-500 peer-checked:bg-sky-50 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-600 peer-focus-visible:ring-offset-2">
+                                        <span class="block text-sm font-semibold text-slate-800">{{ $t['label'] }}</span>
+                                        <span class="mt-1 block text-xs text-slate-600">{{ $t['value'] === 'aidat' ? 'Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.' : 'Sadece kat malikleri: borç doğrudan kat malikine yansıtılır.' }}</span>
+                                    </span>
+                                </label>
                             @endforeach
-                        </select>
+                        </div>
                         @error('due_type')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-                    </div>
+                    </fieldset>
 
                     <div id="category-field">
                         <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
@@ -228,23 +233,9 @@
             {{-- Target Audience Selection --}}
             <div class="mb-4">
                 <label class="mb-2 block text-sm font-medium text-slate-600">Borçlanacak Kişiler</label>
-                <div class="flex gap-3">
-                    <label class="flex-1 cursor-pointer has-[:disabled]:cursor-not-allowed">
-                        <input type="radio" name="target_audience" value="tenant_priority" class="peer sr-only" @checked(old('due_type', 'aidat') !== 'malik_payi' && old('target_audience', 'tenant_priority') === 'tenant_priority') @disabled(old('due_type') === 'malik_payi')>
-                        <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 peer-enabled:hover:bg-slate-50">
-                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Kiracı Öncelikli</div>
-                            <div class="text-xs text-slate-500 mt-1">Varsa kiracıya, yoksa kat malikine</div>
-                        </div>
-                    </label>
-                    <label class="cursor-pointer flex-1">
-                        <input type="radio" name="target_audience" value="owner_only" class="peer sr-only" @checked(old('due_type') === 'malik_payi' || old('target_audience') === 'owner_only')>
-                        <div class="rounded-xl border-2 border-slate-200 p-3 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 hover:bg-slate-50">
-                            <div class="font-semibold text-slate-800 peer-checked:text-emerald-700 text-sm">Sadece Kat Malikleri</div>
-                            <div class="text-xs text-slate-500 mt-1">Tüm borçlar kat maliklerine</div>
-                        </div>
-                    </label>
-                </div>
-                <p id="owner-only-hint" class="mt-2 text-xs text-slate-500 {{ old('due_type') === 'malik_payi' ? '' : 'hidden' }}">Malik Payı borçları yalnızca kat maliklerine dağıtılır.</p>
+                <input type="hidden" id="target_audience" name="target_audience" value="{{ old('due_type', 'aidat') === 'malik_payi' ? 'owner_only' : 'tenant_priority' }}">
+                <p id="target-audience-summary" aria-live="polite" class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{{ old('due_type', 'aidat') === 'malik_payi' ? 'Sadece kat malikleri borçlandırılır.' : 'Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.' }}</p>
+                <p class="mt-2 text-xs text-slate-500">Borç türüne göre otomatik belirlenir.</p>
                 @error('target_audience')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
@@ -642,15 +633,17 @@
             toggleFields();
 
             // Auto-populate description based on period and category
-            const typeSelect = document.getElementById('due_type');
-            const tenantAudience = document.querySelector('input[name="target_audience"][value="tenant_priority"]');
-            const ownerAudience = document.querySelector('input[name="target_audience"][value="owner_only"]');
-            const ownerOnlyHint = document.getElementById('owner-only-hint');
+            const typeInputs = document.querySelectorAll('input[name="due_type"]');
+            const selectedDueType = () => document.querySelector('input[name="due_type"]:checked')?.value || '';
+            const dueTypeLabels = @json(collect($dueTypes)->pluck('label', 'value'));
+            const targetAudience = document.getElementById('target_audience');
+            const targetAudienceSummary = document.getElementById('target-audience-summary');
             const syncTargetAudience = () => {
-                const ownerOnly = typeSelect.value === 'malik_payi';
-                tenantAudience.disabled = ownerOnly;
-                if (ownerOnly) ownerAudience.checked = true;
-                ownerOnlyHint.classList.toggle('hidden', !ownerOnly);
+                const ownerOnly = selectedDueType() === 'malik_payi';
+                targetAudience.value = ownerOnly ? 'owner_only' : 'tenant_priority';
+                targetAudienceSummary.textContent = ownerOnly
+                    ? 'Sadece kat malikleri borçlandırılır.'
+                    : 'Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.';
             };
             const topicSelect = document.getElementById('category_id');
             const categoryField = document.getElementById('category-field');
@@ -686,10 +679,7 @@
 
             const updateDescription = () => {
                 const period = periodInput.value;
-                const typeOption = typeSelect.options[typeSelect.selectedIndex];
-                const typeName = typeOption?.value ? typeOption.text : '';
-                const topicOption = topicSelect?.options[topicSelect.selectedIndex];
-                const topicName = topicOption?.value ? topicOption.text : '';
+                const typeName = dueTypeLabels[selectedDueType()] || '';
 
                 if (period && typeName) {
                     const [year, month] = period.split('-');
@@ -710,7 +700,7 @@
                 let selectedVisible = false;
                 Array.from(topicSelect.options).forEach(option => {
                     if (!option.value) return;
-                    const visible = (option.dataset.usages || '').split(',').includes(typeSelect?.value);
+                    const visible = (option.dataset.usages || '').split(',').includes(selectedDueType());
                     option.hidden = !visible;
                     option.disabled = !visible;
                     if (visible && option.selected) selectedVisible = true;
@@ -718,11 +708,11 @@
                 if (!selectedVisible) topicSelect.value = '';
             };
 
-            typeSelect?.addEventListener('change', () => {
+            typeInputs.forEach(input => input.addEventListener('change', () => {
                 syncCategoryField();
                 syncTargetAudience();
                 updateDescription();
-            });
+            }));
             periodInput?.addEventListener('change', updateDescription);
 
             // Init
