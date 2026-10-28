@@ -9,12 +9,10 @@
             <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
                 <a href="{{ route('reports.index') }}" class="hover:text-slate-600">Raporlar</a>
                 <span>/</span>
-                <span class="text-slate-600">{{ $reportLabel }}</span>
+                <span class="text-slate-600">Aylık Borç Tablosu</span>
             </div>
-            <h1 class="text-2xl font-bold text-slate-950">{{ $reportLabel }}</h1>
-            <p class="mt-1 text-xs text-slate-500">{{ \Carbon\Carbon::parse($balanceDate)->format('d.m.Y') }} itibarıyla ödeme durumu</p>
-            <p class="mt-1 text-xs text-slate-500">Geçmiş borç ay başından devreder. Ödenen tutar, bu ay geçmiş ve seçilen ay borçlarına yapılan ödemelerdir.</p>
-            <p class="mt-1 text-sm text-slate-500">{{ $apartment->name . ' — ' . $trMonthsH[$parsedMonth->month] . ' ' . $parsedMonth->year }}</p>
+            <h1 class="text-2xl font-bold text-slate-950">Aylık Borç Tablosu</h1>
+            <p class="mt-1 text-sm text-slate-500">Aidat ve Kat Maliki borç tablolarını görüntüleyin</p>
         </div>
         <div class="flex gap-2 flex-wrap">
             <a href="{{ route('reports.monthly-board.export', ['type'=>'excel', 'month'=>$month, 'due_type'=>$reportDueType]) }}"
@@ -30,31 +28,27 @@
         </div>
     </div>
 
-    {{-- Ay Seçici --}}
-    <form method="GET" action="{{ route('reports.monthly-board') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-4 items-end">
-        <div>
-            <label for="board-audience" class="block text-xs text-slate-500 mb-1">Tablo</label>
-            <select name="due_type" id="board-audience" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="aidat" @selected($reportDueType === 'aidat')>Aidat Tablosu</option>
-                <option value="malik_payi" @selected($reportDueType === 'malik_payi')>Malik Payı Tablosu</option>
+    {{-- Tablo ve dönem seçimi --}}
+    <form method="GET" action="{{ route('reports.monthly-board') }}" class="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:flex sm:flex-wrap sm:p-4">
+        <div class="col-span-2 min-w-0 sm:col-span-1">
+            <label for="board-audience" class="mb-1 block text-xs text-slate-500">Tablo</label>
+            <select name="due_type" id="board-audience" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 sm:w-auto">
+                <option value="aidat" @selected($reportDueType === 'aidat')>Aidat Borç Tablosu</option>
+                <option value="malik_payi" @selected($reportDueType === 'malik_payi')>Kat Maliki Borç Tablosu</option>
             </select>
         </div>
-        <div>
-            <label class="block text-xs text-slate-500 mb-1">Ay</label>
-            <select name="month" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                @php
-                    $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
-                @endphp
-                @foreach($monthOptions as $mo)
-                    @php $d = \Carbon\Carbon::createFromFormat('!Y-m', $mo); @endphp
-                    <option value="{{ $mo }}" @selected($mo === $month)>
-                        {{ $trMonths[$d->month] }} {{ $d->year }}
-                    </option>
-                @endforeach
-            </select>
+        <div class="min-w-0">
+            <label id="board-period-label" class="mb-1 block text-xs text-slate-500">Dönem</label>
+            <input type="hidden" name="period_year" id="board-year" value="{{ $parsedMonth->year }}">
+            <input type="hidden" name="period_month" id="board-month" value="{{ $parsedMonth->month }}">
+            <button type="button" id="board-period-open" aria-haspopup="dialog" aria-labelledby="board-period-label board-period-text" class="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 hover:bg-slate-50 sm:min-w-40">
+                <span id="board-period-text">{{ $trMonths[$parsedMonth->month] }} {{ $parsedMonth->year }}</span>
+                <svg class="h-4 w-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 3v4m8-4v4M4 10h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/></svg>
+            </button>
         </div>
-        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Görüntüle</button>
+        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Görüntüle</button>
     </form>
+    @include('reports._board-period-picker')
 
     @php
         $totalBorç = 0;
@@ -112,11 +106,11 @@
 
     {{-- Pano Tablosu --}}
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-slate-700">
-                {{ $apartment->name }} — {{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }} {{ $reportLabel }}
-            </h2>
-            <span class="text-xs text-slate-400">{{ now()->format('d.m.Y') }} tarihli çıktı</span>
+        <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+                <h2 class="text-base font-semibold text-slate-900">{{ $title }}</h2>
+                <p class="mt-1 text-sm text-slate-600">{{ $subtitle }}</p>
+            </div>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">

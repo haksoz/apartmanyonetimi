@@ -22,7 +22,6 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Font;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
-use Spatie\LaravelPdf\Facades\Pdf;
 
 class ReportController extends Controller
 {
@@ -103,23 +102,7 @@ class ReportController extends Controller
 
     private function pdfResponse(string $viewName, array $data, string $filename, bool $landscape = false): Response
     {
-        $tempPath = sys_get_temp_dir() . '/' . uniqid('pdf_', true) . '.pdf';
-        $filename .= '-' . now()->format('Ymd-Hi');
-
-        $pdf = Pdf::view($viewName, array_merge($data, ['pdfMode' => true]))
-            ->format('a4')
-            ->margins(10, 10, 10, 10);
-
-        if ($landscape) {
-            $pdf->landscape();
-        }
-
-        $pdf->save($tempPath);
-
-        return response()->file($tempPath, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '.pdf"',
-        ])->deleteFileAfterSend();
+        return app(\App\Support\PdfDownload::class)->response($viewName, array_merge($data, ['pdfMode' => true]), $filename, $landscape);
     }
 
     // -------------------------------------------------------------------------
@@ -1337,16 +1320,30 @@ class ReportController extends Controller
             'due_type' => ['sometimes', \Illuminate\Validation\Rule::in(\App\Enums\DueType::values())],
             'target_audience' => ['sometimes', 'in:tenant_priority,owner_only'],
             'month' => ['sometimes', 'date_format:Y-m'],
+            'period_year' => ['required_with:period_month', 'integer', 'between:1,9999'],
+            'period_month' => ['required_with:period_year', 'integer', 'between:1,12'],
+            'period_step' => ['sometimes', 'in:previous,next,current'],
         ]);
         $month = $request->input('month', now()->format('Y-m'));
+        if ($request->filled('period_year') && $request->filled('period_month')) {
+            $month = sprintf('%04d-%02d', $request->integer('period_year'), $request->integer('period_month'));
+        }
         $parsedMonth = Carbon::createFromFormat('!Y-m', $month);
+        $parsedMonth = match ($request->input('period_step')) {
+            'previous' => $parsedMonth->copy()->subMonthNoOverflow(),
+            'next' => $parsedMonth->copy()->addMonthNoOverflow(),
+            'current' => today()->startOfMonth(),
+            default => $parsedMonth,
+        };
+        abort_unless($parsedMonth->year >= 1 && $parsedMonth->year <= 9999, 422);
+        $month = $parsedMonth->format('Y-m');
         $selectedMonthStr = $parsedMonth->format('Y-m');
         $balanceDate = $parsedMonth->copy()->endOfMonth()->min(today())->toDateString();
         $openingDate = $parsedMonth->copy()->startOfMonth()->min(today()->addDay())->toDateString();
         // Eski bağlantılar kabul edilir; kayıtların sınıflandırması yalnız borç türündendir.
         $reportDueType = $request->input('due_type', $request->input('target_audience') === 'owner_only' ? 'malik_payi' : 'aidat');
         $targetAudience = \App\Enums\DueType::from($reportDueType)->targetAudience();
-        $reportLabel = $reportDueType === 'malik_payi' ? 'Malik Payı Tablosu' : 'Aidat Tablosu';
+        $reportLabel = $reportDueType === 'malik_payi' ? 'Kat Maliki Borç Tablosu' : 'Aidat Borç Tablosu';
         $id = $apartment->id;
 
         $accountsQuery = Account::withTrashed()->where('accounts.apartment_id', $id)
@@ -1431,20 +1428,15 @@ class ReportController extends Controller
             ];
         }
 
-        $monthOptions = collect();
-        for ($i = 11; $i >= -2; $i--) {
-            $monthOptions->push(now()->startOfMonth()->subMonths($i)->format('Y-m'));
-        }
-        if (! $monthOptions->contains($month)) {
-            $monthOptions->push($month);
-            $monthOptions = $monthOptions->sort()->values();
-        }
         $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
-        $title = $reportLabel.' — '.$apartment->name.' — '.$trMonths[$parsedMonth->month].' '.$parsedMonth->year.' — '.Carbon::parse($balanceDate)->format('d.m.Y').' itibarıyla';
+        $tableLabel = $reportDueType === 'malik_payi' ? 'Kat Malikleri Demirbaş Borç Tablosu' : $reportLabel;
+        $title = mb_strtoupper(str_replace(['i', 'ı'], ['İ', 'I'], $tableLabel), 'UTF-8');
+        $periodLabel = mb_strtoupper(str_replace(['i', 'ı'], ['İ', 'I'], $trMonths[$parsedMonth->month]), 'UTF-8').' '.$parsedMonth->year;
+        $subtitle = $periodLabel.' - '.$apartment->name;
 
         return compact('apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
             'targetAudience', 'reportDueType', 'reportLabel', 'accountData', 'balanceDate',
-            'unknownDuesCount', 'monthOptions', 'trMonths', 'title');
+            'unknownDuesCount', 'trMonths', 'title', 'subtitle');
     }
 
     public function monthlyBoard(CurrentApartment $currentApartment, Request $request)
@@ -1461,8 +1453,9 @@ class ReportController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
         $data = $this->monthlyBoardData($apartment, $request);
+        $filename = 'aylik-borc-tablosu-'.$data['reportDueType'].'-'.$data['month'];
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.monthly-board-pdf', $data, 'aylik-aidat-pano-tablosu');
+            return $this->pdfResponse('reports.monthly-board-pdf', $data, $filename);
         }
         $accounts = $data['accounts'];
         $accountData = $data['accountData'];
@@ -1476,14 +1469,18 @@ class ReportController extends Controller
         $sheet->setCellValue('A1', $title);
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->mergeCells('A2:F2');
+        $sheet->setCellValue('A2', $data['subtitle']);
+        $sheet->getStyle('A2')->getFont()->setSize(11);
+        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         if ($data['unknownDuesCount'] > 0) {
-            $sheet->mergeCells('A2:F2');
-            $sheet->setCellValue('A2', $data['unknownDuesCount'].' adet borç türü belirlenmemiş borç bu tabloya dahil edilmedi.');
+            $sheet->mergeCells('A3:F3');
+            $sheet->setCellValue('A3', $data['unknownDuesCount'].' adet borç türü belirlenmemiş borç bu tabloya dahil edilmedi.');
         }
         $header = ['Daire No', 'Hesap Adı', 'Geçmiş Borç (₺)', $trMonths[$parsedMonth->month] . ' Borç (₺)', 'Ödenen (₺)', 'Kalan (₺)'];
-        $sheet->fromArray($header, null, 'A3');
-        $this->applyHeaderStyle($sheet, 'A3:F3');
-        $row = 4;
+        $sheet->fromArray($header, null, 'A4');
+        $this->applyHeaderStyle($sheet, 'A4:F4');
+        $row = 5;
         foreach ($accounts as $account) {
             $data = $accountData[$account->id];
             $rowData = [
@@ -1496,11 +1493,11 @@ class ReportController extends Controller
             ];
             $sheet->fromArray($rowData, null, 'A' . $row++);
         }
-        if ($row > 4) {
-            $sheet->getStyle('C4:F' . ($row - 1))
+        if ($row > 5) {
+            $sheet->getStyle('C5:F' . ($row - 1))
                 ->getNumberFormat()
                 ->setFormatCode('#,##0.00 "₺"');
-            $sheet->getStyle('A4:A' . ($row - 1))
+            $sheet->getStyle('A5:A' . ($row - 1))
                 ->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
@@ -1508,7 +1505,7 @@ class ReportController extends Controller
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
-        return $this->excelResponse($spreadsheet, 'aylik-aidat-pano-tablosu');
+        return $this->excelResponse($spreadsheet, $filename);
     }
 
     // -------------------------------------------------------------------------

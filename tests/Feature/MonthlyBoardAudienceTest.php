@@ -87,6 +87,53 @@ class MonthlyBoardAudienceTest extends TestCase
         return $this->get(route('reports.monthly-board', array_merge(['month' => '2026-06'], $filters)))->assertOk();
     }
 
+    #[TestWith(['connection'])]
+    #[TestWith(['server'])]
+    #[TestWith(['empty'])]
+    #[TestWith(['invalid'])]
+    public function test_pdf_failures_show_recovery_screen_and_clean_temporary_files(string $failure): void
+    {
+        $temporaryPath = null;
+        $builder = \Mockery::mock(\Spatie\LaravelPdf\PdfBuilder::class);
+        $builder->shouldReceive('format')->andReturnSelf();
+        $builder->shouldReceive('margins')->andReturnSelf();
+        $builder->shouldReceive('save')->once()->andReturnUsing(function ($path) use ($failure, &$temporaryPath, $builder) {
+            $temporaryPath = $path;
+            file_put_contents($path, $failure === 'empty' ? '' : 'partial');
+            if ($failure === 'connection') {
+                throw new \Illuminate\Http\Client\ConnectionException('private-host SSL certificate error');
+            }
+            if ($failure === 'server') {
+                throw new \RuntimeException('private-host HTTP 500');
+            }
+            return $builder;
+        });
+        Pdf::shouldReceive('view')->once()->andReturn($builder);
+        $this->get(route('reports.monthly-board.export', ['type' => 'pdf', 'month' => '2026-06', 'due_type' => 'malik_payi']))
+            ->assertStatus(503)->assertSee('PDF oluşturulamadı')->assertSee('Tekrar Dene')->assertSee('Önceki Sayfaya Dön')
+            ->assertSee('href="'.e(route('reports.monthly-board', ['month' => '2026-06', 'due_type' => 'malik_payi'])).'"', false)
+            ->assertDontSee('private-host')->assertHeaderMissing('Content-Disposition');
+        $this->assertNotNull($temporaryPath);
+        $this->assertFileDoesNotExist($temporaryPath);
+    }
+
+    public function test_pdf_failure_returns_a_safe_json_message(): void
+    {
+        Pdf::shouldReceive('view')->once()->andThrow(new \RuntimeException('private PDF service error'));
+        $this->getJson(route('reports.monthly-board.export', ['type' => 'pdf', 'month' => '2026-06']))
+            ->assertStatus(503)->assertJson(['message' => 'PDF şu anda oluşturulamadı. Lütfen biraz sonra tekrar deneyin.'])
+            ->assertDontSee('private PDF service error');
+    }
+
+    public function test_statement_pdf_failure_returns_to_the_same_account_and_date_filters(): void
+    {
+        Pdf::shouldReceive('view')->once()->andThrow(new \RuntimeException('PDF unavailable'));
+        $filters = ['date_from' => '2026-01-01', 'date_to' => '2026-04-30'];
+        $this->get(route('accounts.statement.export', ['id' => $this->owner->id, 'type' => 'pdf', ...$filters]))
+            ->assertStatus(503)
+            ->assertSee('href="'.e(route('accounts.statement', ['id' => $this->owner->id, ...$filters])).'"', false);
+    }
+
     #[TestWith(['tenant_priority'])]
     #[TestWith(['owner_only'])]
     public function test_month_end_reconstructs_debts_paid_in_later_months(string $rule): void
@@ -153,12 +200,14 @@ class MonthlyBoardAudienceTest extends TestCase
     {
         $response = $this->screen();
         $this->assertSame('tenant_priority', $response->viewData('targetAudience'));
-        $this->assertSame('Aidat Tablosu', $response->viewData('reportLabel'));
+        $this->assertSame('Aidat Borç Tablosu', $response->viewData('reportLabel'));
         $response = $this->screen(['target_audience' => 'owner_only', 'type_filter' => 'owner']);
         $this->assertSame([$this->owner->id, $this->tenant->id], $response->viewData('accounts')->pluck('id')->all());
         $this->assertEquals(350, $response->viewData('accountData')[$this->owner->id]['remaining']);
         $response->assertSee('due_type=malik_payi', false);
-        $this->assertSame('Malik Payı Tablosu', $response->viewData('reportLabel'));
+        $this->assertSame('Kat Maliki Borç Tablosu', $response->viewData('reportLabel'));
+        $this->assertSame('KAT MALİKLERİ DEMİRBAŞ BORÇ TABLOSU', $response->viewData('title'));
+        $this->assertSame('HAZİRAN 2026 - '.$this->apartment->name, $response->viewData('subtitle'));
         $response->assertDontSee('name="type_filter"', false)->assertDontSee('name="status_filter"', false);
         $this->assertCount(3, $this->screen(['type_filter' => 'tenant'])->viewData('accounts'));
         $this->tenant->update(['is_active' => false]);
@@ -194,8 +243,7 @@ class MonthlyBoardAudienceTest extends TestCase
         $aidat = $this->screen(['month' => '2026-02']);
         $this->assertSame('2026-02', $aidat->viewData('selectedMonthStr'));
         $this->assertSame([$this->tenant->id], $aidat->viewData('accounts')->pluck('id')->all());
-        $this->assertTrue($aidat->viewData('monthOptions')->contains('2026-02'));
-        $this->assertSame($aidat->viewData('monthOptions')->count(), $aidat->viewData('monthOptions')->unique()->count());
+        $aidat->assertSee('name="period_year"', false)->assertSee('name="period_month"', false);
         $malik = $this->screen(['month' => '2026-02', 'target_audience' => 'owner_only']);
         $this->assertSame([$this->owner->id], $malik->viewData('accounts')->pluck('id')->all());
         $this->travelBack();
@@ -204,6 +252,29 @@ class MonthlyBoardAudienceTest extends TestCase
     public function test_invalid_report_rule_is_rejected(): void
     {
         $this->getJson(route('reports.monthly-board', ['target_audience' => 'all']))->assertUnprocessable();
+    }
+
+    #[TestWith([2026, 1, 'previous', '2025-12'])]
+    #[TestWith([2026, 12, 'next', '2027-01'])]
+    #[TestWith([2026, 5, null, '2026-05'])]
+    public function test_period_controls_keep_report_type_and_export_period(int $year, int $month, ?string $step, string $expected): void
+    {
+        $filters = ['due_type' => 'malik_payi', 'period_year' => $year, 'period_month' => $month];
+        if ($step !== null) {
+            $filters['period_step'] = $step;
+        }
+        $response = $this->screen($filters);
+        $this->assertSame($expected, $response->viewData('month'));
+        $this->assertSame('malik_payi', $response->viewData('reportDueType'));
+        $response->assertSee('month='.$expected, false)->assertSee('due_type=malik_payi', false);
+    }
+
+    public function test_period_controls_return_to_current_month_and_validate_input(): void
+    {
+        $response = $this->screen(['period_year' => 2020, 'period_month' => 1, 'period_step' => 'current']);
+        $this->assertSame(now()->format('Y-m'), $response->viewData('month'));
+        $this->getJson(route('reports.monthly-board', ['period_year' => 2026, 'period_month' => 13]))->assertUnprocessable();
+        $this->getJson(route('reports.monthly-board', ['period_year' => 2026]))->assertUnprocessable();
     }
 
     #[TestWith(['tenant_priority'])]
@@ -230,9 +301,10 @@ class MonthlyBoardAudienceTest extends TestCase
             $sheet = $book->getActiveSheet();
             $this->assertSame('F', $sheet->getHighestColumn());
             $this->assertSame($screen->viewData('title'), $sheet->getCell('A1')->getValue());
-            $this->assertStringContainsString('2 adet', $sheet->getCell('A2')->getValue());
+            $this->assertSame($screen->viewData('subtitle'), $sheet->getCell('A2')->getValue());
+            $this->assertStringContainsString('2 adet', $sheet->getCell('A3')->getValue());
             foreach ($screen->viewData('accounts') as $index => $account) {
-                $row = $index + 4;
+                $row = $index + 5;
                 $this->assertSame($account->name.' ('.$account->type_label.')', $sheet->getCell('B'.$row)->getValue());
                 foreach (['C' => 'pastRemaining', 'D' => 'selectedAmount', 'E' => 'paid', 'F' => 'remaining'] as $column => $key) {
                     $this->assertEquals($expected[$account->id][$key], $sheet->getCell($column.$row)->getValue());
@@ -254,6 +326,7 @@ class MonthlyBoardAudienceTest extends TestCase
             $this->assertEquals($expected, $data['accountData']);
             $this->assertSame($screen->viewData('title'), $data['title']);
             $html = view($view, $data)->render();
+            $this->assertStringNotContainsString('Rapor Tarihi:', $html);
             $this->assertSame(6, substr_count($html, '<th>') + substr_count($html, '<th class='));
             $this->assertStringContainsString('belirlenmemiş 2 borç', $html);
             return true;

@@ -23,7 +23,6 @@ use App\Support\ExpensePaymentGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Spatie\LaravelPdf\Facades\Pdf;
 use Symfony\Component\HttpFoundation\Response;
 
 class AccountController extends Controller
@@ -720,18 +719,7 @@ class AccountController extends Controller
 
     private function statementPdfResponse(string $viewName, array $data, string $filename): Response
     {
-        $tempPath = sys_get_temp_dir().'/'.uniqid('pdf_', true).'.pdf';
-        $filename .= '-'.now()->format('Ymd-Hi');
-
-        Pdf::view($viewName, $data)
-            ->format('a4')
-            ->margins(10, 10, 10, 10)
-            ->save($tempPath);
-
-        return response()->file($tempPath, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'.pdf"',
-        ])->deleteFileAfterSend();
+        return app(\App\Support\PdfDownload::class)->response($viewName, $data, $filename);
     }
 
     public function destroyTransaction(string $id, AccountTransaction $transaction, CurrentApartment $currentApartment)

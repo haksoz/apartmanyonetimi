@@ -1,6 +1,6 @@
 @extends('layouts.report-pdf')
 
-@section('title', $title ?? 'Aylık Aidat Pano Tablosu')
+@section('title', $title ?? 'Aylık Borç Tablosu')
 
 @section('content')
     @php
@@ -19,8 +19,8 @@
             $remainingAll += $data['remaining'];
         }
     @endphp
-    <h2>{{ $title ?? 'Aylık Aidat Tablosu' }}</h2>
-    <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı</div>
+    <h2>{{ $title }}</h2>
+    <div class="meta">{{ $subtitle }}</div>
     <p class="note">Geçmiş borç ay başından devreder. Ödenen tutar, bu ay geçmiş ve seçilen ay borçlarına yapılan ödemelerdir.</p>
 
     @if ($unknownDuesCount > 0)
