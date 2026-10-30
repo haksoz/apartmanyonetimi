@@ -34,7 +34,8 @@
 <main class="pt-32 pb-20 px-4 sm:px-6">
     <div class="max-w-4xl mx-auto">
         <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-950 mb-3">Fiyatlandırma</h1>
-        <p class="text-slate-500 text-lg mb-10">Ücretli abonelik bedeli, apartmanınızdaki daire sayısına göre belirlenir.</p>
+        <p class="text-slate-500 text-lg mb-3">Ücretli abonelik bedeli, apartmanınızdaki daire sayısına göre belirlenir.</p>
+        <p class="mb-10 text-sm font-medium text-slate-600">Fiyatlara KDV dahil değildir.</p>
 
         <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8 mb-8">
             <h2 class="text-xl font-bold text-slate-950">Temel Kullanım — Ücretsiz</h2>

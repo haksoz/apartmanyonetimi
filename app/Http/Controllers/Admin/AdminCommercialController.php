@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Feature;
 use App\Models\PriceBand;
 use App\Models\PriceCampaign;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -16,8 +17,23 @@ class AdminCommercialController extends Controller
         $bands = PriceBand::query()->orderBy('sort_order')->get();
         $campaigns = PriceCampaign::query()->with('band')->latest()->get();
         $features = Feature::query()->orderBy('name')->get();
+        $settings = SystemSetting::query()->firstOrCreate([], [
+            'trial_duration_months' => 2,
+            'subscription_tax_rate' => 20,
+        ]);
 
-        return view('admin.commercial.index', compact('bands', 'campaigns', 'features'));
+        return view('admin.commercial.index', compact('bands', 'campaigns', 'features', 'settings'));
+    }
+
+    public function updateTax(Request $request)
+    {
+        $validated = $request->validate([
+            'subscription_tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        SystemSetting::query()->firstOrCreate([], ['trial_duration_months' => 2])->update($validated);
+
+        return back()->with('status', 'Abonelik KDV oranı güncellendi.');
     }
 
     public function updateBand(Request $request, PriceBand $band)

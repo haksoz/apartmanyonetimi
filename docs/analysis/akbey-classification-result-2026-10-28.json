@@ -1,0 +1,277 @@
+{
+    "committed": true,
+    "updated": 1131,
+    "skipped": [],
+    "rollback_file": "C:\\Users\\Hasancan\\Documents\\GitHub\\KapitalOnlineApartmanYonetim\\storage\\app\\private\\maintenance\\akbey-target-audience-20261028-001145-061055\\rollback.json",
+    "rollback_sql": "C:\\Users\\Hasancan\\Documents\\GitHub\\KapitalOnlineApartmanYonetim\\storage\\app\\private\\maintenance\\akbey-target-audience-20261028-001145-061055\\rollback.sql",
+    "before_distribution": [
+        {
+            "due_type": "aidat",
+            "target_audience": null,
+            "deleted": 0,
+            "n": 940,
+            "amount": "379774.34",
+            "remaining": "1553.00"
+        },
+        {
+            "due_type": "aidat",
+            "target_audience": null,
+            "deleted": 1,
+            "n": 12,
+            "amount": "5890.00",
+            "remaining": "5890.00"
+        },
+        {
+            "due_type": "malik_payi",
+            "target_audience": null,
+            "deleted": 0,
+            "n": 174,
+            "amount": "214463.90",
+            "remaining": "45380.82"
+        },
+        {
+            "due_type": "malik_payi",
+            "target_audience": null,
+            "deleted": 1,
+            "n": 5,
+            "amount": "1780.84",
+            "remaining": "1780.84"
+        }
+    ],
+    "after_distribution": [
+        {
+            "due_type": "aidat",
+            "target_audience": "tenant_priority",
+            "deleted": 0,
+            "n": 940,
+            "amount": "379774.34",
+            "remaining": "1553.00"
+        },
+        {
+            "due_type": "aidat",
+            "target_audience": "tenant_priority",
+            "deleted": 1,
+            "n": 12,
+            "amount": "5890.00",
+            "remaining": "5890.00"
+        },
+        {
+            "due_type": "malik_payi",
+            "target_audience": "owner_only",
+            "deleted": 0,
+            "n": 174,
+            "amount": "214463.90",
+            "remaining": "45380.82"
+        },
+        {
+            "due_type": "malik_payi",
+            "target_audience": "owner_only",
+            "deleted": 1,
+            "n": 5,
+            "amount": "1780.84",
+            "remaining": "1780.84"
+        }
+    ],
+    "protected_values_unchanged_in_transaction": true,
+    "protected_values_unchanged_after_commit": true,
+    "before": {
+        "unchanged_tables": {
+            "accounts": {
+                "count": 63,
+                "sha256": "bd74353146fe71d1df71aff32d24ddd8b6622dc67e49f8da91d4e45c698c3ca0"
+            },
+            "payments": {
+                "count": 879,
+                "sha256": "089d64fe1384bf880a88416f95ddcf724193d7622f9f3cca18b22e0504645d07"
+            },
+            "payment_allocations": {
+                "count": 1662,
+                "sha256": "96e9173270bffb848cf3e03241f98d113aabe4bb5887223a9e3859ee34d64463"
+            },
+            "account_transactions": {
+                "count": 2375,
+                "sha256": "a5bcd46aa7cceaa6d0f7915b0a22168d5dcd2c9f618b2453a162e0a7bef990a3"
+            },
+            "cash_transactions": {
+                "count": 883,
+                "sha256": "64bcbb4d7d309392791e3651cce8b909a474316a2e238f367cd012853604355f"
+            },
+            "due_batches": {
+                "count": 17,
+                "sha256": "01ea3c0ddbad2e14d2ea4b292546a0e9489cf2db831c54a6fb5425d5f90b41e3"
+            }
+        },
+        "dues_except_rule": {
+            "count": 1179,
+            "sha256": "568674f2a394d7943df8800b970b65f62f7e5e5ba17293ceffcd78d305c88a98"
+        },
+        "other_apartment_dues": {
+            "sha256": "96f35fadde054d14b8f6c04aadbc122ec86e7701d238836d5e17e1241633ac9b"
+        },
+        "totals": [
+            {
+                "deleted": 0,
+                "n": 1114,
+                "amount": "594238.24",
+                "paid_on_dues": "547304.42",
+                "remaining": "46933.82"
+            },
+            {
+                "deleted": 1,
+                "n": 17,
+                "amount": "7670.84",
+                "paid_on_dues": "0.00",
+                "remaining": "7670.84"
+            }
+        ],
+        "payments": [
+            {
+                "n": 871,
+                "amount": "1119111.55",
+                "unallocated": "4869.66"
+            }
+        ],
+        "allocations": [
+            {
+                "n": 1654,
+                "amount": "1114241.89"
+            }
+        ],
+        "due_allocations": [
+            {
+                "n": 1336,
+                "amount": "547304.42"
+            }
+        ],
+        "ledger": [
+            {
+                "type": "credit",
+                "n": 877,
+                "amount": "1131789.70"
+            },
+            {
+                "type": "debit",
+                "n": 1421,
+                "amount": "1161175.71"
+            }
+        ],
+        "cash": [
+            {
+                "type": "income",
+                "n": 565,
+                "amount": "558174.08"
+            },
+            {
+                "type": "expense",
+                "n": 310,
+                "amount": "573211.72"
+            }
+        ],
+        "account_balances": [
+            {
+                "n": 54,
+                "balance": "0.00"
+            }
+        ]
+    },
+    "after": {
+        "unchanged_tables": {
+            "accounts": {
+                "count": 63,
+                "sha256": "bd74353146fe71d1df71aff32d24ddd8b6622dc67e49f8da91d4e45c698c3ca0"
+            },
+            "payments": {
+                "count": 879,
+                "sha256": "089d64fe1384bf880a88416f95ddcf724193d7622f9f3cca18b22e0504645d07"
+            },
+            "payment_allocations": {
+                "count": 1662,
+                "sha256": "96e9173270bffb848cf3e03241f98d113aabe4bb5887223a9e3859ee34d64463"
+            },
+            "account_transactions": {
+                "count": 2375,
+                "sha256": "a5bcd46aa7cceaa6d0f7915b0a22168d5dcd2c9f618b2453a162e0a7bef990a3"
+            },
+            "cash_transactions": {
+                "count": 883,
+                "sha256": "64bcbb4d7d309392791e3651cce8b909a474316a2e238f367cd012853604355f"
+            },
+            "due_batches": {
+                "count": 17,
+                "sha256": "01ea3c0ddbad2e14d2ea4b292546a0e9489cf2db831c54a6fb5425d5f90b41e3"
+            }
+        },
+        "dues_except_rule": {
+            "count": 1179,
+            "sha256": "568674f2a394d7943df8800b970b65f62f7e5e5ba17293ceffcd78d305c88a98"
+        },
+        "other_apartment_dues": {
+            "sha256": "96f35fadde054d14b8f6c04aadbc122ec86e7701d238836d5e17e1241633ac9b"
+        },
+        "totals": [
+            {
+                "deleted": 0,
+                "n": 1114,
+                "amount": "594238.24",
+                "paid_on_dues": "547304.42",
+                "remaining": "46933.82"
+            },
+            {
+                "deleted": 1,
+                "n": 17,
+                "amount": "7670.84",
+                "paid_on_dues": "0.00",
+                "remaining": "7670.84"
+            }
+        ],
+        "payments": [
+            {
+                "n": 871,
+                "amount": "1119111.55",
+                "unallocated": "4869.66"
+            }
+        ],
+        "allocations": [
+            {
+                "n": 1654,
+                "amount": "1114241.89"
+            }
+        ],
+        "due_allocations": [
+            {
+                "n": 1336,
+                "amount": "547304.42"
+            }
+        ],
+        "ledger": [
+            {
+                "type": "credit",
+                "n": 877,
+                "amount": "1131789.70"
+            },
+            {
+                "type": "debit",
+                "n": 1421,
+                "amount": "1161175.71"
+            }
+        ],
+        "cash": [
+            {
+                "type": "income",
+                "n": 565,
+                "amount": "558174.08"
+            },
+            {
+                "type": "expense",
+                "n": 310,
+                "amount": "573211.72"
+            }
+        ],
+        "account_balances": [
+            {
+                "n": 54,
+                "balance": "0.00"
+            }
+        ]
+    }
+}

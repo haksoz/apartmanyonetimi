@@ -27,7 +27,7 @@ class EnsureSubscriptionFeature
 
         if (! \App\Support\FeatureGate::allows($apartment, $feature, $user)) {
             if (str_starts_with($feature, 'report_')) {
-                return response()->view('reports.unavailable');
+                return response()->view('reports.unavailable', [], 403);
             }
 
             abort(403, 'Bu özellik ücretli plandadır.');

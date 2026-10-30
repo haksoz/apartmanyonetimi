@@ -180,6 +180,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     // Aidatlar - Üye ve Yönetici erişimi
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
         Route::get('dues/export', [DueController::class, 'export'])->middleware(['building.panel', 'feature.export'])->name('dues.export');
+    Route::get('dues/account-eligibility', [DueController::class, 'accountEligibility'])->middleware('building.panel')->name('dues.account-eligibility');
     Route::get('dues/create', [DueController::class, 'create'])->middleware('building.panel')->name('dues.create');
     Route::post('dues', [DueController::class, 'store'])->name('dues.store');
     Route::get('dues/expenses-by-period', [DueController::class, 'getExpensesForPeriod'])->middleware('building.panel')->name('dues.expenses.by-period');
@@ -204,7 +205,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
         Route::resource('accounts', AccountController::class);
         Route::get('accounts/{id}/statement', [AccountController::class, 'statement'])->name('accounts.statement');
-        Route::get('accounts/{id}/statement/export/{type}', [AccountController::class, 'statementExport'])->name('accounts.statement.export');
+        Route::get('accounts/{id}/statement/export/{type}', [AccountController::class, 'statementExport'])->middleware('feature.export')->name('accounts.statement.export');
 
         Route::delete('accounts/{id}/transactions/{transaction}', [AccountController::class, 'destroyTransaction'])->name('accounts.transactions.destroy');
         Route::post('accounts/imported-transactions', [AccountController::class, 'destroyAllImported'])->name('accounts.imported.destroy-all');
@@ -224,6 +225,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::patch('users/{user}/role', [AccountUserController::class, 'updateUserRole'])->name('users.role');
         Route::patch('users/{user}/toggle-active', [AccountUserController::class, 'toggleActive'])->name('users.toggle-active');
         Route::delete('accounts/{account}/user', [AccountUserController::class, 'destroy'])->name('accounts.user.destroy');
+        Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
         Route::resource('categories', CategoryController::class)->except(['show']);
         Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
         Route::get('payments/preview-allocations', [PaymentController::class, 'previewAllocations'])->name('payments.preview-allocations');
@@ -281,6 +283,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
             Route::post('assessment-plans', [AssessmentPlanController::class, 'store'])->name('assessment-plans.store');
             Route::post('assessment-plans/confirm', [AssessmentPlanController::class, 'confirm'])->block(60, 10)->name('assessment-plans.confirm');
             Route::get('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'show'])->name('assessment-plans.show');
+            Route::post('assessment-plans/{assessmentPlan}/installments/{installment}/regenerate', [AssessmentPlanController::class, 'regenerateInstallment'])->name('assessment-plans.regenerate-installment');
             Route::put('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'update'])->name('assessment-plans.update');
             Route::patch('assessment-plans/{assessmentPlan}/deactivate', [AssessmentPlanController::class, 'deactivate'])->name('assessment-plans.deactivate');
             Route::get('assessment-plans/{assessmentPlan}/cancel-preview', [AssessmentPlanController::class, 'previewCancel'])->name('assessment-plans.cancel-preview');
@@ -334,6 +337,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('quote-requests/{quoteRequest}', [AdminQuoteRequestController::class, 'update'])->name('quote-requests.update');
 
     Route::get('commercial', [AdminCommercialController::class, 'index'])->name('commercial.index');
+    Route::patch('commercial/tax', [AdminCommercialController::class, 'updateTax'])->name('commercial.tax.update');
     Route::patch('commercial/bands/{band}', [AdminCommercialController::class, 'updateBand'])->name('commercial.bands.update');
     Route::post('commercial/campaigns', [AdminCommercialController::class, 'storeCampaign'])->name('commercial.campaigns.store');
     Route::patch('commercial/features/{feature}', [AdminCommercialController::class, 'updateFeature'])->name('commercial.features.update');

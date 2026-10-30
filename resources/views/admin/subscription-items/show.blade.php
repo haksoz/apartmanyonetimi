@@ -129,7 +129,11 @@
                 </div>
                 <div>
                     <dt class="text-slate-500">Tutar</dt>
-                    <dd class="font-medium text-slate-900">{{ number_format($item->amount, 0, ',', '.') }} ₺</dd>
+                    <dd class="font-medium text-slate-900">
+                        {{ number_format((float) ($item->net_amount ?? $item->amount), 2, ',', '.') }} ₺ net
+                        + {{ number_format((float) $item->tax_amount, 2, ',', '.') }} ₺ KDV
+                        = {{ number_format((float) $item->amount, 2, ',', '.') }} ₺
+                    </dd>
                 </div>
                 <div>
                     <dt class="text-slate-500">Başlangıç</dt>

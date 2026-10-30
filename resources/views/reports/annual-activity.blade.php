@@ -13,12 +13,12 @@
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }} — {{ $year }}</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('reports.annual-activity.export', ['type'=>'excel', 'year'=>$year]) }}"
+            <a href="{{ route('reports.annual-activity.export', ['type'=>'excel', 'year'=>$year, 'due_type'=>$filterDueType]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.annual-activity.export', ['type'=>'pdf', 'year'=>$year]) }}"
+            <a href="{{ route('reports.annual-activity.export', ['type'=>'pdf', 'year'=>$year, 'due_type'=>$filterDueType]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
@@ -28,6 +28,14 @@
 
     {{-- Yıl Seçici --}}
     <form method="GET" action="{{ route('reports.annual-activity') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-3 items-end">
+        <div>
+            <label class="block text-xs text-slate-500 mb-1">Borç Türü</label>
+            <select name="due_type" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="all" @selected($filterDueType === 'all')>Tüm Borçlar</option>
+                <option value="aidat" @selected($filterDueType === 'aidat')>Aidat Borçları</option>
+                <option value="malik_payi" @selected($filterDueType === 'malik_payi')>Kat Maliki Payı Borçları</option>
+            </select>
+        </div>
         <div>
             <label class="block text-xs text-slate-500 mb-1">Yıl</label>
             <select name="year" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
@@ -43,7 +51,7 @@
     {{-- Özet Kartlar --}}
     <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-2xl border border-slate-200 p-5">
-            <p class="text-xs text-slate-500 mb-1">Tahakkuk Eden Aidat</p>
+            <p class="text-xs text-slate-500 mb-1">Tahakkuk — {{ $dueTypeLabel }}</p>
             <p class="text-xl font-bold text-slate-800">{{ number_format($totalDues, 2, ',', '.') }} ₺</p>
             <div class="mt-2 flex items-center justify-between text-xs">
                 <span class="text-emerald-600">Tahsil: {{ number_format($collectedDues, 2, ',', '.') }} ₺</span>

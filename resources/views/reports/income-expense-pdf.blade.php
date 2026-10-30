@@ -6,13 +6,14 @@
     <h2>GELİR-GİDER RAPORU — {{ $apartment->name }}</h2>
     <div class="meta">{{ $rangeLabel }} — {{ now()->format('d.m.Y') }} tarihli çıktı</div>
     <p class="note">Tahsilat, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır. Tahsis durumuna bakılmaksızın hesaplanır.</p>
+    <p class="note">Devir {{ number_format($openingBalance, 2, ',', '.') }} ₺ · Dönem sonu {{ number_format($closingBalance, 2, ',', '.') }} ₺ · Aidat {{ number_format($aidatIncome, 2, ',', '.') }} ₺ · Kat Maliki Payı {{ number_format($ownerShareIncome, 2, ',', '.') }} ₺ · Diğer {{ number_format($otherIncome, 2, ',', '.') }} ₺</p>
 
     <table>
         <thead>
             <tr>
                 <th>Dönem</th>
-                <th class="text-right">Tahsilat</th>
                 <th class="text-right">Gider</th>
+                <th class="text-right">Tahsilat</th>
                 <th class="text-right">Net</th>
             </tr>
         </thead>
@@ -20,8 +21,8 @@
             @forelse($rows as $row)
                 <tr>
                     <td>{{ $row['month'] }}</td>
-                    <td class="text-right text-green">{{ number_format($row['income'], 2, ',', '.') }} ₺</td>
                     <td class="text-right text-red">{{ number_format($row['expense'], 2, ',', '.') }} ₺</td>
+                    <td class="text-right text-green">{{ number_format($row['income'], 2, ',', '.') }} ₺</td>
                     <td class="text-right {{ $row['net'] >= 0 ? 'text-green' : 'text-red' }}">{{ number_format($row['net'], 2, ',', '.') }} ₺</td>
                 </tr>
             @empty
@@ -31,8 +32,8 @@
         <tfoot>
             <tr>
                 <td>TOPLAM</td>
-                <td class="text-right text-green">{{ number_format($totalIncome, 2, ',', '.') }} ₺</td>
                 <td class="text-right text-red">{{ number_format($totalExpense, 2, ',', '.') }} ₺</td>
+                <td class="text-right text-green">{{ number_format($totalIncome, 2, ',', '.') }} ₺</td>
                 <td class="text-right {{ $totalNet >= 0 ? 'text-green' : 'text-red' }}">{{ number_format($totalNet, 2, ',', '.') }} ₺</td>
             </tr>
         </tfoot>

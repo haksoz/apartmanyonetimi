@@ -342,11 +342,13 @@
                             <div class="mt-2 grid grid-cols-2 gap-2">
                                 <div class="rounded-lg bg-white px-2 py-1 text-center">
                                     <p class="text-xs text-slate-500">Aylık</p>
-                                    <p class="text-sm font-semibold text-slate-950">{{ number_format($monthly['amount'], 0, ',', '.') }} ₺</p>
+                                    <p class="text-sm font-semibold text-slate-950">{{ number_format($monthly['amount'], 2, ',', '.') }} ₺</p>
+                                    <p class="text-xs text-slate-500">{{ number_format($monthly['net_amount'], 2, ',', '.') }} ₺ + {{ number_format($monthly['tax_amount'], 2, ',', '.') }} ₺ KDV</p>
                                 </div>
                                 <div class="rounded-lg bg-white px-2 py-1 text-center">
                                     <p class="text-xs text-slate-500">Yıllık</p>
-                                    <p class="text-sm font-semibold text-slate-950">{{ number_format($yearly['amount'], 0, ',', '.') }} ₺</p>
+                                    <p class="text-sm font-semibold text-slate-950">{{ number_format($yearly['amount'], 2, ',', '.') }} ₺</p>
+                                    <p class="text-xs text-slate-500">{{ number_format($yearly['net_amount'], 2, ',', '.') }} ₺ + {{ number_format($yearly['tax_amount'], 2, ',', '.') }} ₺ KDV</p>
                                 </div>
                             </div>
                         </div>
@@ -404,7 +406,7 @@
                                                         <span>
                                                             <span class="font-semibold">Aylık</span>
                                                             @if (isset($monthly['amount']))
-                                                                <span class="mt-0.5 block text-slate-500">{{ number_format($monthly['amount'], 0, ',', '.') }} ₺</span>
+                                                                <span class="mt-0.5 block text-slate-500">{{ number_format($monthly['amount'], 2, ',', '.') }} ₺ (KDV dahil)</span>
                                                             @endif
                                                         </span>
                                                     </label>
@@ -413,7 +415,7 @@
                                                         <span>
                                                             <span class="font-semibold">Yıllık</span>
                                                             @if (isset($yearly['amount']))
-                                                                <span class="mt-0.5 block text-slate-500">{{ number_format($yearly['amount'], 0, ',', '.') }} ₺</span>
+                                                                <span class="mt-0.5 block text-slate-500">{{ number_format($yearly['amount'], 2, ',', '.') }} ₺ (KDV dahil)</span>
                                                             @endif
                                                         </span>
                                                     </label>

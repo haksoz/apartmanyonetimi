@@ -164,14 +164,54 @@ class ApartmentWizardTest extends TestCase
         $response = $this->actingAs($user)
             ->post(route('apartments.wizard.categories.store', $apartment), [
                 'name' => 'Bakım Onarım',
-                'type' => 'expense',
+                'allow_malik_payi' => '1',
+                'allow_expense' => '1',
             ]);
 
         $response->assertRedirect(route('apartments.wizard.categories', $apartment));
         $this->assertDatabaseHas('categories', [
             'apartment_id' => $apartment->id,
             'name' => 'Bakım Onarım',
-            'type' => 'expense',
+            'type' => 'all',
+            'allow_aidat' => false,
+            'allow_malik_payi' => true,
+            'allow_expense' => true,
+        ]);
+    }
+
+    public function test_categories_step_shows_all_three_usage_permissions_and_ignores_legacy_type(): void
+    {
+        [$user, $apartment] = $this->createOwnerWithApartment();
+        \App\Models\CashBox::create(['apartment_id' => $apartment->id, 'name' => 'Ana Kasa', 'is_active' => true]);
+        $apartment->update(['setup_units_completed_at' => now()]);
+
+        $this->actingAs($user)
+            ->get(route('apartments.wizard.categories', $apartment))
+            ->assertOk()
+            ->assertSee('Aidat')
+            ->assertSee('Kat Maliki Payı')
+            ->assertDontSee('name="allow_masraf_yansitma"', false)
+            ->assertDontSee('name="allow_ceza"', false)
+            ->assertDontSee('name="allow_faiz"', false)
+            ->assertSee('Gider')
+            ->assertDontSee('name="type"', false);
+
+        $this->actingAs($user)
+            ->post(route('apartments.wizard.categories.store', $apartment), [
+                'name' => 'Ortak Enerji',
+                'type' => 'income',
+                'allow_aidat' => '1',
+                'allow_expense' => '1',
+            ])
+            ->assertRedirect(route('apartments.wizard.categories', $apartment));
+
+        $this->assertDatabaseHas('categories', [
+            'apartment_id' => $apartment->id,
+            'name' => 'Ortak Enerji',
+            'type' => \App\Models\Category::TYPE_ALL,
+            'allow_aidat' => true,
+            'allow_expense' => true,
+            'allow_malik_payi' => false,
         ]);
     }
 

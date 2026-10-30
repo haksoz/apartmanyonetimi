@@ -21,6 +21,7 @@ class Apartment extends Model
         'district',
         'unit_count',
         'manager_unit_id',
+        'default_aidat_category_id',
         'is_active',
         'billing_plan',
         'custom_monthly_price',
@@ -39,6 +40,7 @@ class Apartment extends Model
                 $apartment->code = static::generateCode();
             }
         });
+
     }
 
     public static function generateCode(): string
@@ -86,6 +88,11 @@ class Apartment extends Model
     public function categories(): HasMany
     {
         return $this->hasMany(Category::class);
+    }
+
+    public function defaultAidatCategory(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'default_aidat_category_id')->withTrashed();
     }
 
     /**

@@ -31,10 +31,11 @@ class AssessmentPlanController extends Controller
         }
         $this->authorizeFeature($apartment);
 
-        $categories = Category::where('apartment_id', $apartment->id)->where('type', Category::TYPE_ALL)
+        $categories = Category::where('apartment_id', $apartment->id)
+            ->where('allow_malik_payi', true)
             ->where('is_active', true)->orderedForDisplay()->get();
         $categoryNames = Category::withTrashed()->where('apartment_id', $apartment->id)
-            ->get(['id', 'name', 'type', 'is_active', 'deleted_at']);
+            ->get(['id', 'name', 'is_active', 'deleted_at', 'allow_malik_payi']);
 
         return view('assessment-plans.create', compact('apartment', 'categories', 'categoryNames'));
     }
@@ -80,11 +81,11 @@ class AssessmentPlanController extends Controller
                 DuePlan::DISTRIBUTION_SQUARE_METERS,
                 DuePlan::DISTRIBUTION_SHARE_COEFFICIENT,
             ])],
-            'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'category_mode' => ['required', Rule::in(['new', 'existing'])],
             'category_name' => ['exclude_unless:category_mode,new', 'required', 'string', 'max:255'],
             'category_id' => ['exclude_unless:category_mode,existing', 'required', 'integer',
-                Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->where('type', Category::TYPE_ALL)->where('is_active', true)->whereNull('deleted_at')],
+                Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)
+                    ->where('allow_malik_payi', true)->where('is_active', true)->whereNull('deleted_at')],
             'installment_count' => ['required', 'integer', 'min:1', 'max:60'],
             'start_period' => ['required', 'date_format:Y-m'],
             'due_day' => ['required', 'integer', 'min:1', 'max:28'],
@@ -97,6 +98,7 @@ class AssessmentPlanController extends Controller
             'include_past_installments' => ['nullable', 'boolean'],
             'is_active' => ['boolean'],
         ]);
+
 
         return $this->preview($request, $apartment, $validated);
     }
@@ -123,6 +125,22 @@ class AssessmentPlanController extends Controller
             'apartment' => $apartment,
             'plan' => $assessmentPlan,
         ]);
+    }
+
+    public function regenerateInstallment(CurrentApartment $currentApartment, AssessmentPlan $assessmentPlan, AssessmentInstallment $installment)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof RedirectResponse) {
+            return $apartment;
+        }
+        abort_unless($assessmentPlan->apartment_id === $apartment->id && $installment->assessment_plan_id === $assessmentPlan->id, 404);
+        $this->authorizeFeature($apartment);
+        abort_unless($installment->status === AssessmentInstallment::STATUS_GENERATED, 422);
+
+        $count = $this->generator->generateInstallment($assessmentPlan, $installment);
+
+        return redirect()->route('assessment-plans.show', $assessmentPlan)
+            ->with('status', $count > 0 ? "{$count} eksik borç oluşturuldu. Mevcut borçlar korundu." : 'Yeni borç oluşturulmadı. Plan durumunu ve daire hesaplarını kontrol edin.');
     }
 
     public function update(Request $request, CurrentApartment $currentApartment, AssessmentPlan $assessmentPlan)

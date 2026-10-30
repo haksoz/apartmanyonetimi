@@ -177,7 +177,7 @@ class AssessmentPlanGenerator
             return 0;
         }
 
-        if ($installment->isCancelled() || $installment->status === AssessmentInstallment::STATUS_GENERATED) {
+        if ($installment->isCancelled()) {
             return 0;
         }
 
@@ -194,12 +194,14 @@ class AssessmentPlanGenerator
             $lockedInst = AssessmentInstallment::query()->whereKey($installment->id)->lockForUpdate()->first();
 
             if (! $lockedPlan?->is_active || ! $lockedInst || $lockedInst->assessment_plan_id !== $lockedPlan->id
-                || in_array($lockedInst->period, $lockedPlan->skipped_periods ?? [], true) || $lockedInst->isCancelled()
-                || $lockedInst->status === AssessmentInstallment::STATUS_GENERATED) {
+                || in_array($lockedInst->period, $lockedPlan->skipped_periods ?? [], true) || $lockedInst->isCancelled()) {
                 return;
             }
 
-            $installment->load('lines.unit');
+            $installment->load(['lines.unit', 'lines.due']);
+            if (! $installment->has_missing_dues) {
+                return;
+            }
             $plan = $lockedPlan;
             $batch = DueBatch::create([
                 'apartment_id' => $plan->apartment_id,
@@ -209,7 +211,6 @@ class AssessmentPlanGenerator
                 'category_id' => $plan->category_id,
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => $plan->distribution_type,
-                'target_audience' => $plan->target_audience,
                 'period' => $installment->period,
                 'source_amount' => $installment->lines->sum('amount'),
                 'description' => $plan->installmentDescription($installment->sequence),
@@ -217,7 +218,7 @@ class AssessmentPlanGenerator
             ]);
 
             foreach ($installment->lines as $line) {
-                if ($line->due_id) {
+                if ($line->due !== null) {
                     continue;
                 }
 
@@ -225,7 +226,7 @@ class AssessmentPlanGenerator
                 $account = $this->aidatReconciliation->accountForPeriod(
                     $unit,
                     $periodDate,
-                    $plan->target_audience,
+                    $plan->due_type,
                 );
 
                 if (! $account) {

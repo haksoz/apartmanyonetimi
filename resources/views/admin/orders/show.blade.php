@@ -67,7 +67,8 @@
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sipariş no</p>
                 <p class="mt-1 font-mono text-2xl font-bold text-slate-900">{{ $order->order_number ?: '—' }}</p>
-                <p class="mt-2 text-sm text-slate-500">{{ $order->created_at?->format('d.m.Y') ?? '—' }} · {{ number_format((float) $order->price, 2, ',', '.') }} ₺</p>
+                <p class="mt-2 text-sm text-slate-500">{{ $order->created_at?->format('d.m.Y') ?? '—' }} · Toplam {{ number_format((float) $order->price, 2, ',', '.') }} ₺</p>
+                <p class="mt-1 text-xs text-slate-500">Net {{ number_format((float) ($order->net_amount ?? $order->price), 2, ',', '.') }} ₺ + KDV (%{{ number_format((float) $order->tax_rate, 2, ',', '.') }}) {{ number_format((float) $order->tax_amount, 2, ',', '.') }} ₺</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 @include('admin.orders.partials.badges', ['order' => $order])
@@ -146,7 +147,7 @@
                                         <div class="font-normal text-slate-500">{{ $band }}</div>
                                     @endif
                                     <div class="font-normal text-slate-600">
-                                        {{ number_format((float) $item->amount, 2, ',', '.') }} ₺
+                                        Net {{ number_format((float) ($item->net_amount ?? $item->amount), 2, ',', '.') }} ₺ + KDV {{ number_format((float) $item->tax_amount, 2, ',', '.') }} ₺ = {{ number_format((float) $item->amount, 2, ',', '.') }} ₺
                                         · {{ $itemStatusLabel($item->status) }}
                                         · {{ $periodText($item) }}
                                     </div>

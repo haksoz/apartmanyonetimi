@@ -19,10 +19,10 @@ use App\Models\PaymentAllocation;
 use App\Support\AidatPeriodReconciliation;
 use App\Support\BulkImportGuard;
 use App\Support\CurrentApartment;
+use App\Support\ExpensePaymentGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Spatie\LaravelPdf\Facades\Pdf;
 use Symfony\Component\HttpFoundation\Response;
 
 class AccountController extends Controller
@@ -149,8 +149,8 @@ class AccountController extends Controller
         $categories = Category::query()
             ->where('apartment_id', $apartment->id)
             ->where('is_active', true)
-            ->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])
-            ->orderBy('name')
+            ->where('allow_expense', true)
+            ->orderedForDisplay()
             ->get();
 
         return view('accounts.create', compact('apartment', 'units', 'categories'));
@@ -202,7 +202,11 @@ class AccountController extends Controller
                 'date',
                 Rule::requiredIf(fn () => abs((float) $request->input('balance', 0)) >= 0.01),
             ],
-            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])],
+            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')
+                ->where('apartment_id', $apartment->id)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->where('allow_expense', true)],
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
@@ -715,18 +719,7 @@ class AccountController extends Controller
 
     private function statementPdfResponse(string $viewName, array $data, string $filename): Response
     {
-        $tempPath = sys_get_temp_dir().'/'.uniqid('pdf_', true).'.pdf';
-        $filename .= '-'.now()->format('Ymd-Hi');
-
-        Pdf::view($viewName, $data)
-            ->format('a4')
-            ->margins(10, 10, 10, 10)
-            ->save($tempPath);
-
-        return response()->file($tempPath, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'.pdf"',
-        ])->deleteFileAfterSend();
+        return app(\App\Support\PdfDownload::class)->response($viewName, $data, $filename);
     }
 
     public function destroyTransaction(string $id, AccountTransaction $transaction, CurrentApartment $currentApartment)
@@ -848,10 +841,12 @@ class AccountController extends Controller
             ->get();
 
         $categories = Category::query()
+            ->withTrashed()
             ->where('apartment_id', $account->apartment_id)
-            ->where(fn ($q) => $q->where('is_active', true)->orWhere('id', $account->default_category_id))
-            ->where(fn ($q) => $q->where('type', Category::TYPE_ALL)->orWhere('type', Category::TYPE_EXPENSE))
-            ->orderBy('name')
+            ->where(fn ($q) => $q
+                ->where(fn ($usable) => $usable->whereNull('deleted_at')->where('is_active', true)->where('allow_expense', true))
+                ->orWhere('id', $account->default_category_id))
+            ->orderedForDisplay()
             ->get();
 
         $openingTransaction = $account->transactions()
@@ -911,7 +906,26 @@ class AccountController extends Controller
                 ...(($firstActivityDate = $account->firstActivityDate()) ? ['before_or_equal:'.$firstActivityDate] : []),
                 ...(($previousTenantMoveOutDate = $account->previousTenantMoveOutDate()) ? ['after_or_equal:'.$previousTenantMoveOutDate] : []),
             ],
-            'default_category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('apartment_id', $account->apartment_id)],
+            'default_category_id' => [
+                'nullable',
+                'integer',
+                function (string $attribute, mixed $value, \Closure $fail) use ($account): void {
+                    if ((int) $value === (int) $account->default_category_id) {
+                        return;
+                    }
+
+                    $usable = Category::query()
+                        ->whereKey($value)
+                        ->where('apartment_id', $account->apartment_id)
+                        ->where('is_active', true)
+                        ->where('allow_expense', true)
+                        ->exists();
+
+                    if (! $usable) {
+                        $fail('Seçilen varsayılan gider kategorisi aktif ve Gider kullanımına açık olmalıdır.');
+                    }
+                },
+            ],
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
@@ -1233,9 +1247,9 @@ class AccountController extends Controller
         $sheet->setCellValue('A3', 'Talimatlar:');
         $sheet->setCellValue('A4', '1. Tarih formatı: GG.AA.YYYY (örn: 05.01.2020)');
         $sheet->setCellValue('A5', '2. Hesap Adı: Zorunlu. Aynı isimdeki kayıtlar tek hesapta birleştirilir.');
-        $sheet->setCellValue('A6', '3. Daire No: Opsiyonel. Daire ilişkisi kurmak için kullanılır.');
-        $sheet->setCellValue('A7', '4. Kategori: Opsiyonel. Gider kategorisi (örn: Demirbaş, Elektrik).');
-        $sheet->setCellValue('A8', '5. Borç veya Alacak sütunlarından biri dolu olmalı. Her ikisi de pozitif olamaz.');
+        $sheet->setCellValue('A6', '3. Daire No: Aidat borçlarında gereklidir; tedarikçi hareketlerinde isteğe bağlıdır.');
+        $sheet->setCellValue('A7', '4. Kategori: Dosyada yoksa borçlar için önizlemede seçin.');
+        $sheet->setCellValue('A8', '5. Borç veya Alacak sütunlarından biri dolu olmalı; ikisi birlikte pozitif olamaz. Borç Türü: aidat veya malik_payi; boşsa önizlemede seçin.');
         $sheet->getStyle('A3:A8')->getFont()->setSize(10);
 
         // Sütun başlıkları
@@ -1247,8 +1261,9 @@ class AccountController extends Controller
         $sheet->setCellValue('E' . $row, 'Açıklama');
         $sheet->setCellValue('F' . $row, 'Alacak');
         $sheet->setCellValue('G' . $row, 'Borç');
-        $sheet->getStyle('A' . $row . ':G' . $row)->getFont()->setBold(true);
-        $sheet->getStyle('A' . $row . ':G' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
+        $sheet->setCellValue('H' . $row, 'Borç Türü');
+        $sheet->getStyle('A' . $row . ':H' . $row)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $row . ':H' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
 
         // Örnek veri - Kat maliki
         $row = 10;
@@ -1281,9 +1296,10 @@ class AccountController extends Controller
         $sheet->getColumnDimension('E')->setWidth(40);
         $sheet->getColumnDimension('F')->setWidth(15);
         $sheet->getColumnDimension('G')->setWidth(15);
+        $sheet->getColumnDimension('H')->setWidth(22);
 
         // Kenarlıklar
-        $sheet->getStyle('A9:G11')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        $sheet->getStyle('A9:H11')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
         // Dosya oluştur
         $filename = 'toplu_hesap_import_sablon.xlsx';
@@ -1391,6 +1407,10 @@ class AccountController extends Controller
                 'credit' => $credit,
                 'debit' => $debit,
                 'row_number' => $i + 1,
+                'due_type' => match (mb_strtolower(trim((string) ($row[7] ?? '')))) {
+                    'aidat' => 'aidat', 'malik_payi', 'malik payı', 'kat maliki payı' => 'malik_payi',
+                    default => trim((string) ($row[7] ?? '')),
+                },
             ];
 
             // Hesap istatistiklerini güncelle
@@ -1524,8 +1544,10 @@ class AccountController extends Controller
             ->pluck('unit_no', 'id')
             ->toArray();
 
+        $dueCategories = Category::where('apartment_id', $apartment->id)->where('is_active', true)->orderedForDisplay()->get();
+        $reservedCategoryNames = Category::withTrashed()->where('apartment_id', $apartment->id)->pluck('name');
         return view('accounts.import-preview', compact(
-            'transactions', 'accounts', 'apartment', 'allAccounts', 'allUnits'
+            'transactions', 'accounts', 'apartment', 'allAccounts', 'allUnits', 'dueCategories', 'reservedCategoryNames'
         ));
     }
 
@@ -1556,6 +1578,19 @@ class AccountController extends Controller
             return redirect()->route('accounts.bulk-import')
                 ->with('error', 'Import verisi bulunamadı. Lütfen dosyayı tekrar yükleyin.');
         }
+
+        $request->validate([
+            'account_types' => ['required', 'array'],
+            'account_types.*' => ['required', \Illuminate\Validation\Rule::in(['owner', 'tenant', 'former_owner', 'former_tenant', 'supplier'])],
+            'account_mapping' => ['sometimes', 'array'],
+            'account_mapping.*' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('accounts', 'id')->where('apartment_id', $apartment->id)->whereNull('deleted_at')],
+            'unit_mapping' => ['sometimes', 'array'],
+            'unit_mapping.*' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('units', 'id')->where('apartment_id', $apartment->id)],
+            'due_types' => ['sometimes', 'array'],
+            'due_types.*' => ['nullable', 'string'],
+            'due_categories' => ['sometimes', 'array'],
+            'due_categories.*' => ['nullable'],
+        ]);
 
         // Kullanıcıdan gelen seçimler
         $accountTypes = $request->input('account_types', []);
@@ -1589,10 +1624,9 @@ class AccountController extends Controller
             ];
         }
 
-        // Devir Öncesi Kasası — yoksa otomatik oluştur
-        $cashBox = CashBox::firstOrCreate(
-            ['apartment_id' => $apartment->id, 'name' => 'Devir Öncesi Kasası'],
-            ['is_active' => true, 'description' => 'Devir Öncesi Kasası — import işlemleri için otomatik oluşturuldu.']
+        $debtSelections = app(\App\Support\ImportedDueSelection::class)->validate(
+            $apartment->id, $transactions, $accounts, $accountTypes, $accountMapping,
+            $request->input('due_types', []), $request->input('due_categories', []),
         );
 
         // Kategorileri önceden yükle (performans)
@@ -1600,10 +1634,14 @@ class AccountController extends Controller
             ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_EXPENSE, Category::TYPE_ALL])
             ->where('is_active', true)
             ->get();
-        $defaultCategory = $categories->firstWhere('name', 'Aidat') ?? $categories->first();
-        $defaultExpenseCategory = $categories->whereIn('type', [Category::TYPE_EXPENSE, Category::TYPE_ALL])->first();
+        $defaultExpenseCategory = $categories->firstWhere('allow_expense', true);
 
-        DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $cashBox, &$categories, $defaultCategory, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
+        DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $debtSelections, &$categories, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
+            $cashBox = CashBox::firstOrCreate(
+                ['apartment_id' => $apartment->id, 'name' => 'Devir Öncesi Kasası'],
+                ['is_active' => true, 'description' => 'Devir Öncesi Kasası — import işlemleri için otomatik oluşturuldu.'],
+            );
+            $newDebtCategories = [];
             // 1. Hesapları oluştur veya eşleştir
             foreach ($accounts as $accountKey => $accountData) {
                 $accountName = $accountData['name'];
@@ -1625,6 +1663,10 @@ class AccountController extends Controller
                         ->where('id', $mappedAccountId)
                         ->first();
 
+                    if (! $account || $account->type !== $dbType) {
+                        throw \Illuminate\Validation\ValidationException::withMessages(['account_mapping' => 'Eşlenen hesabın türü seçilen hesap türüyle uyumlu değil: '.$accountName]);
+                    }
+
                     // Hesap adı güncellenmek isteniyorsa güncelle
                     if ($account && !empty($renameAccounts[$accountKey])) {
                         $account->update(['name' => $accountName]);
@@ -1635,8 +1677,8 @@ class AccountController extends Controller
                         $lastDate = $accountDateRanges[$accountKey]['last'] ?? now();
                         TenantAssignment::where('account_id', $account->id)
                             ->where('unit_id', $account->unit_id)
-                            ->whereNull('end_date')
-                            ->update(['end_date' => $lastDate]);
+                            ->whereNull('move_out_date')
+                            ->update(['move_out_date' => $lastDate]);
                     }
 
                     // Daire değiştiriliyorsa hesabı güncelle
@@ -1707,7 +1749,7 @@ class AccountController extends Controller
             }
 
             // 2. Cari hareketleri oluştur
-            foreach ($transactions as $t) {
+            foreach ($transactions as $transactionIndex => $t) {
                 $accountId = $createdAccounts[$t['account_key']] ?? null;
                 if (!$accountId) continue;
 
@@ -1730,7 +1772,7 @@ class AccountController extends Controller
                             if (!$category) {
                                 $category = Category::firstOrCreate(
                                     ['apartment_id' => $apartment->id, 'name' => trim($catName)],
-                                    ['type' => Category::TYPE_EXPENSE, 'is_active' => true]
+                                    ['type' => Category::TYPE_EXPENSE, 'is_active' => true, 'allow_expense' => true]
                                 );
                                 if (!$categories->contains('id', $category->id)) {
                                     $categories->push($category);
@@ -1807,28 +1849,42 @@ class AccountController extends Controller
                     // Alacak (credit) = Tahsilat (Payment + CashTransaction)
 
                     if ($t['debit'] > 0) {
-                        // Kat maliki/Kiracı borç → Aidat (Due)
-                        if ($catName) {
-                            $normalCatName = mb_strtolower(trim($catName));
-                            $category = $categories->first(fn($c) => mb_strtolower(trim($c->name)) === $normalCatName);
-                            if (!$category) {
-                                $category = Category::firstOrCreate(
-                                    ['apartment_id' => $apartment->id, 'name' => trim($catName)],
-                                    ['type' => Category::TYPE_INCOME, 'is_active' => true]
-                                );
-                                if (!$categories->contains('id', $category->id)) {
-                                    $categories->push($category);
-                                }
+                        $row = $t['row_number'] ?? ($transactionIndex + 1);
+                        $selection = $debtSelections[$row];
+                        try {
+                            app(\App\Support\DueTargeting::class)->assertAccount(
+                                $account, $selection['type'], \Carbon\Carbon::parse($t['date'])->startOfMonth(), true,
+                            );
+                        } catch (\Illuminate\Validation\ValidationException $exception) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'due_types.'.$row => 'Satır '.$row.': '.collect($exception->errors())->flatten()->first(),
+                            ]);
+                        }
+                        if ($selection['category'] === 'new') {
+                            $name = $selection['name'];
+                            if (! isset($newDebtCategories[$name]) && Category::withTrashed()->where('apartment_id', $apartment->id)->where('name', $name)->exists()) {
+                                throw \Illuminate\Validation\ValidationException::withMessages(['due_categories.'.$row => 'Satır '.$row.': kategori adı artık kullanılıyor. Önizlemeyi yenileyip mevcut kategoriyi seçin.']);
                             }
+                            $category = $newDebtCategories[$name] ??= Category::create([
+                                'apartment_id' => $apartment->id, 'name' => $name, 'type' => Category::TYPE_INCOME,
+                                'is_active' => true, ...array_fill_keys(array_keys(Category::USAGE_PERMISSIONS), false),
+                                $selection['type']->categoryPermission() => true,
+                            ]);
+                            // Yalnızca bu aktarımda açıkça yeni oluşturulması seçilen kategorinin yetkisi genişletilir.
+                            $category->update([$selection['type']->categoryPermission() => true]);
                         } else {
-                            $category = $defaultCategory;
+                            $category = Category::where('apartment_id', $apartment->id)->where('is_active', true)
+                                ->where($selection['type']->categoryPermission(), true)->find($selection['category']);
+                            if (! $category) {
+                                throw \Illuminate\Validation\ValidationException::withMessages(['due_categories.'.$row => 'Satır '.$row.': kategori artık bu tür için kullanılamıyor.']);
+                            }
                         }
 
                         $due = Due::create([
                             'apartment_id' => $apartment->id,
                             'account_id' => $accountId,
                             'unit_id' => $account->unit_id,
-                            'due_type' => DueType::Aidat,
+                            'due_type' => $selection['type'],
                             'category_id' => $category?->id,
                             'amount' => $t['debit'],
                             'remaining_amount' => $t['debit'],
@@ -2065,6 +2121,7 @@ class AccountController extends Controller
         $payment = null;
 
         DB::transaction(function () use ($account, $validated, $paymentDescription, &$payment) {
+            ExpensePaymentGuard::lockSupplier($account->id, $account->apartment_id);
             $payment = Payment::create([
                 'apartment_id'       => $account->apartment_id,
                 'account_id'         => $account->id,
@@ -2112,7 +2169,12 @@ class AccountController extends Controller
                 }
 
                 DB::transaction(function () use ($allocations, $payment, $account) {
-                    foreach ($allocations as $alloc) {
+                    ExpensePaymentGuard::lockSupplier($account->id, $account->apartment_id);
+                    $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                    if (round($allocations->sum('amount'), 2) > round((float) $payment->unallocated_amount, 2)) {
+                        abort(409, 'Ödemenin kullanılabilir bakiyesi değişti. Ekranı yenileyin.');
+                    }
+                    foreach ($allocations->sortBy('expense_id') as $alloc) {
                         $expense = Expense::query()
                             ->where('id', $alloc['expense_id'])
                             ->where('apartment_id', $account->apartment_id)
@@ -2177,6 +2239,10 @@ class AccountController extends Controller
 
     public function storeMultiPayExpenses(Request $request, Account $account)
     {
+        $apartment = app(CurrentApartment::class)->getFor(auth()->user());
+        abort_unless($apartment && $account->apartment_id === $apartment->id
+            && $account->type === Account::TYPE_SUPPLIER, 404);
+
         $validated = $request->validate([
             'expense_ids'   => ['required', 'string'],
             'cash_box_id'   => ['required', 'integer', Rule::exists('cash_boxes', 'id')->where('apartment_id', $account->apartment_id)->where('is_active', true)],
@@ -2184,23 +2250,29 @@ class AccountController extends Controller
             'description'   => ['nullable', 'string', 'max:255'],
         ]);
 
-        $expenseIds = array_filter(explode(',', $validated['expense_ids']));
-
-        $expenses = Expense::whereIn('id', $expenseIds)
-            ->where('account_id', $account->id)
-            ->where('is_paid', false)
-            ->get();
-
-        if ($expenses->isEmpty()) {
-            return redirect()->route('accounts.show', $account)->with('error', 'Geçerli gider bulunamadı.');
+        $rawIds = explode(',', $validated['expense_ids']);
+        foreach ($rawIds as $expenseId) {
+            if (! preg_match('/^[1-9][0-9]*$/', trim($expenseId))) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['expense_ids' => 'Geçersiz gider seçimi.']);
+            }
         }
+        $expenseIds = array_values(array_unique(array_map('intval', $rawIds)));
 
-        $totalAmount = $expenses->sum('amount');
-        $paymentDescription = $validated['description'] ?? ($expenses->count() . ' gider toplu ödemesi');
+        $paymentDescription = $validated['description'] ?? (count($expenseIds) . ' gider toplu ödemesi');
 
         $payment = null;
 
-        DB::transaction(function () use ($account, $expenses, $validated, $totalAmount, $paymentDescription, &$payment) {
+        DB::transaction(function () use ($account, $apartment, $expenseIds, $validated, $paymentDescription, &$payment) {
+            ExpensePaymentGuard::lockSupplier($account->id, $apartment->id);
+            $expenses = Expense::where('apartment_id', $apartment->id)
+                ->where('account_id', $account->id)->whereIn('id', $expenseIds)
+                ->orderBy('id')->lockForUpdate()->get();
+            if ($expenses->count() !== count($expenseIds)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'expense_ids' => 'Seçili giderlerden biri bulunamadı veya bu tedarikçiye ait değil. İşlem yapılmadı.',
+                ]);
+            }
+            $totalAmount = $expenses->sum(fn ($expense) => ExpensePaymentGuard::fullAmount($expense)) / 100;
             $payment = Payment::create([
                 'apartment_id'      => $account->apartment_id,
                 'account_id'        => $account->id,
@@ -2249,7 +2321,7 @@ class AccountController extends Controller
         });
 
         return redirect()->route('payments.show', $payment)
-            ->with('status', $expenses->count() . ' gider ödemesi başarıyla kaydedildi.');
+            ->with('status', count($expenseIds) . ' gider ödemesi başarıyla kaydedildi.');
     }
 
     /**

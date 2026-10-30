@@ -24,11 +24,17 @@ use App\Models\Payment;
 
 use App\Support\CurrentApartment;
 
+use App\Support\ExpensePaymentGuard;
+
 use Illuminate\Http\Request;
+
+use Illuminate\Support\Facades\Cache;
 
 use Illuminate\Support\Facades\DB;
 
 use Illuminate\Support\Facades\Storage;
+
+use Illuminate\Support\Str;
 
 use Illuminate\Validation\Rule;
 
@@ -153,8 +159,8 @@ class ExpenseController extends Controller
         $categories = \App\Models\Category::query()
             ->when($apartment, fn ($q) => $q->where('apartment_id', $apartment->id))
             ->where('is_active', true)
-            ->whereIn('type', [\App\Models\Category::TYPE_EXPENSE, \App\Models\Category::TYPE_ALL])
-            ->orderBy('name')
+            ->where('allow_expense', true)
+            ->orderedForDisplay()
             ->pluck('name', 'id');
 
 
@@ -254,9 +260,9 @@ class ExpenseController extends Controller
 
         ])->filter()->toJson();
 
+        $submissionToken = (string) Str::uuid();
 
-
-        return view('expenses.create', compact('apartment', 'accounts', 'categories', 'cashBoxes', 'selectedAccountId', 'accountCategoryMap'));
+        return view('expenses.create', compact('apartment', 'accounts', 'categories', 'cashBoxes', 'selectedAccountId', 'accountCategoryMap', 'submissionToken'));
 
     }
 
@@ -322,7 +328,9 @@ class ExpenseController extends Controller
 
                     ->where('apartment_id', $apartment->id)
 
-                    ->where('is_active', true),
+                    ->where('is_active', true)
+
+                    ->where('allow_expense', true),
 
             ],
 
@@ -339,6 +347,8 @@ class ExpenseController extends Controller
             'is_paid' => ['nullable', 'boolean'],
 
             'document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
+
+            'submission_token' => ['nullable', 'uuid'],
 
         ];
 
@@ -369,6 +379,20 @@ class ExpenseController extends Controller
 
 
         $validated = $request->validate($rules);
+
+        if (! empty($validated['submission_token'])) {
+            $submissionKey = sprintf(
+                'expense-submission:%d:%d:%s',
+                $request->user()->id,
+                $apartment->id,
+                $validated['submission_token'],
+            );
+
+            if (! Cache::add($submissionKey, true, now()->addDay())) {
+                return redirect()->route('expenses.index')
+                    ->with('error', 'Bu gider formu daha önce gönderildi. İkinci kayıt oluşturulmadı.');
+            }
+        }
 
 
 
@@ -406,6 +430,10 @@ class ExpenseController extends Controller
                 'description' => $validated['description'] ?? null,
 
                 'amount' => $validated['amount'],
+
+                'paid_amount' => 0,
+
+                'remaining_amount' => $validated['amount'],
 
                 'expense_date' => $validated['expense_date'],
 
@@ -605,7 +633,7 @@ class ExpenseController extends Controller
 
         $expense = $this->findExpense($id);
 
-        $validated = $this->validateExpense($request, $expense->apartment_id);
+        $validated = $this->validateExpense($request, $expense->apartment_id, $expense->category_id);
 
         $newAccountId = $validated['account_id'] ?? null;
 
@@ -617,7 +645,7 @@ class ExpenseController extends Controller
 
                 'category_id' => $validated['category_id'],
 
-                'category' => Category::findOrFail($validated['category_id'])->name,
+                'category' => Category::withTrashed()->findOrFail($validated['category_id'])->name,
 
                 'description' => $validated['description'] ?? null,
 
@@ -755,7 +783,7 @@ class ExpenseController extends Controller
 
             ],
 
-            'amount' => ['required', 'numeric', 'min:0.01', 'max:'.$expense->amount],
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'min:0.01'],
 
             'payment_date' => ['required', 'date'],
 
@@ -766,6 +794,16 @@ class ExpenseController extends Controller
 
 
         DB::transaction(function () use ($expense, $validated) {
+            ExpensePaymentGuard::lockSupplier($expense->account_id, $expense->apartment_id);
+            $expense = Expense::where('apartment_id', $expense->apartment_id)
+                ->whereKey($expense->id)->lockForUpdate()->firstOrFail();
+            $payable = ExpensePaymentGuard::fullAmount($expense);
+            if (ExpensePaymentGuard::cents($validated['amount']) !== $payable) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount' => 'Ödeme tutarı giderin güncel tam tutarıyla eşleşmiyor. Ekranı yenileyin.',
+                ]);
+            }
+
 
             $paymentDescription = $validated['description'] ?? ($expense->description ? $expense->description.' ödemesi' : 'Gider ödemesi');
 
@@ -849,7 +887,7 @@ class ExpenseController extends Controller
 
                 'paid_amount' => $validated['amount'],
 
-                'remaining_amount' => max(0, ($expense->remaining_amount ?? $expense->amount) - $validated['amount']),
+                'remaining_amount' => 0,
 
             ]);
 
@@ -880,6 +918,11 @@ class ExpenseController extends Controller
 
 
         DB::transaction(function () use ($expense) {
+            ExpensePaymentGuard::lockSupplier($expense->account_id, $expense->apartment_id);
+            $expense = Expense::where('apartment_id', $expense->apartment_id)
+                ->whereKey($expense->id)->lockForUpdate()->firstOrFail();
+            abort_unless($expense->is_paid, 409, 'Giderin ödeme durumu değişti. Ekranı yenileyin.');
+
 
             $paymentIds = $expense->paymentAllocations()->pluck('payment_id')->unique();
 
@@ -981,7 +1024,7 @@ class ExpenseController extends Controller
 
 
 
-    private function validateExpense(Request $request, int $apartmentId): array
+    private function validateExpense(Request $request, int $apartmentId, ?int $existingCategoryId = null): array
 
     {
 
@@ -1011,7 +1054,9 @@ class ExpenseController extends Controller
 
                     ->where('apartment_id', $apartmentId)
 
-                    ->where('is_active', true),
+                    ->where(fn ($query) => $query
+                        ->where(fn ($fresh) => $fresh->where('is_active', true)->where('allow_expense', true))
+                        ->when($existingCategoryId, fn ($query) => $query->orWhere('id', $existingCategoryId))),
 
             ],
 
@@ -1039,15 +1084,15 @@ class ExpenseController extends Controller
 
     {
 
-        return Category::query()
+        return Category::query()->when($selectedId, fn ($query) => $query->withTrashed())
 
             ->where('apartment_id', $apartmentId)
 
-            ->where(fn ($query) => $query->where('is_active', true)->orWhere('id', $selectedId))
+            ->where(fn ($query) => $query
+                ->where(fn ($fresh) => $fresh->where('is_active', true)->where('allow_expense', true))
+                ->when($selectedId, fn ($query) => $query->orWhere('id', $selectedId)))
 
-            ->where(fn ($query) => $query->where('type', Category::TYPE_ALL)->orWhere('type', $type))
-
-            ->orderBy('name')
+            ->orderedForDisplay()
 
             ->get();
 

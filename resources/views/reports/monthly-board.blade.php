@@ -9,18 +9,18 @@
             <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
                 <a href="{{ route('reports.index') }}" class="hover:text-slate-600">Raporlar</a>
                 <span>/</span>
-                <span class="text-slate-600">Aylık Aidat Pano Tablosu</span>
+                <span class="text-slate-600">Aylık Borç Tablosu</span>
             </div>
-            <h1 class="text-2xl font-bold text-slate-950">{{ isset($title) ? $title : 'Aylık Aidat Pano Tablosu' }}</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ isset($title) ? '' : $apartment->name . ' — ' . $trMonthsH[$parsedMonth->month] . ' ' . $parsedMonth->year }}</p>
+            <h1 class="text-2xl font-bold text-slate-950">Aylık Borç Tablosu</h1>
+            <p class="mt-1 text-sm text-slate-500">Aidat ve Kat Maliki borç tablolarını görüntüleyin</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('reports.monthly-board.export', ['type'=>'excel', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter, 'show_account_type'=>$showAccountType ? 1 : 0]) }}"
+            <a href="{{ route('reports.monthly-board.export', ['type'=>'excel', 'month'=>$month, 'due_type'=>$reportDueType, 'view_mode'=>$viewMode, 'hide_account_type'=>(int) $hideAccountType, 'hide_account_names'=>(int) $hideAccountNames]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.monthly-board.export', ['type'=>'pdf', 'month'=>$month, 'type_filter'=>$typeFilter, 'status_filter'=>$statusFilter, 'show_account_type'=>$showAccountType ? 1 : 0]) }}"
+            <a href="{{ route('reports.monthly-board.export', ['type'=>'pdf', 'month'=>$month, 'due_type'=>$reportDueType, 'view_mode'=>$viewMode, 'hide_account_type'=>(int) $hideAccountType, 'hide_account_names'=>(int) $hideAccountNames]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
@@ -28,64 +28,64 @@
         </div>
     </div>
 
-    {{-- Ay Seçici --}}
-    <form method="GET" action="{{ route('reports.monthly-board') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-4 items-end">
-        <div>
-            <label class="block text-xs text-slate-500 mb-1">Ay</label>
-            <select name="month" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                @php
-                    $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
-                @endphp
-                @foreach($monthOptions as $mo)
-                    @php $d = \Carbon\Carbon::createFromFormat('Y-m', $mo); @endphp
-                    <option value="{{ $mo }}" @selected($mo === $month)>
-                        {{ $trMonths[$d->month] }} {{ $d->year }}
-                    </option>
-                @endforeach
-            </select>
+    <form method="GET" action="{{ route('reports.monthly-board') }}" id="board-filter-form" class="mb-5">
+        <fieldset id="board-view-options" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-opacity sm:p-5">
+            <legend class="px-1 text-sm font-medium text-slate-600">Görünüm</legend>
+            <div class="grid gap-3 sm:grid-cols-2">
+                <label class="cursor-pointer">
+                    <input type="radio" name="view_mode" value="current" class="peer sr-only" @checked($viewMode === 'current')>
+                    <span class="block h-full rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-sky-500 peer-checked:bg-sky-50 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-600 peer-focus-visible:ring-offset-2 peer-enabled:hover:bg-sky-50">
+                        <span class="block text-sm font-semibold text-slate-800">Güncel Borç Tablosu</span>
+                        <span class="mt-1 block text-xs text-slate-600">Bu ayın borçlarını, geçmişten kalan borçları ve bugün itibarıyla ödeme durumunu gösterir.</span>
+                    </span>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="view_mode" value="movements" class="peer sr-only" @checked($viewMode === 'movements')>
+                    <span class="block h-full rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-sky-500 peer-checked:bg-sky-50 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-600 peer-focus-visible:ring-offset-2 peer-enabled:hover:bg-sky-50">
+                        <span class="block text-sm font-semibold text-slate-800">Dönemsel Borç Tablosu</span>
+                        <span class="mt-1 block text-xs text-slate-600">Seçilen ayın devreden borçlarını, yeni borçlarını, tahsilatlarını ve dönem sonu durumunu gösterir.</span>
+                    </span>
+                </label>
+            </div>
+            <p id="board-view-loading" class="mt-3 hidden text-xs font-medium text-sky-700" role="status">Rapor hazırlanıyor…</p>
+        </fieldset>
+
+        {{-- Tablo ve dönem seçimi --}}
+        <div class="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:flex sm:flex-wrap sm:p-4">
+            <div class="col-span-2 min-w-0 sm:col-span-1">
+                <label for="board-audience" class="mb-1 block text-xs text-slate-500">Tablo</label>
+                <select name="due_type" id="board-audience" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 sm:w-auto">
+                    <option value="aidat" @selected($reportDueType === 'aidat')>Aidat Borç Tablosu</option>
+                    <option value="malik_payi" @selected($reportDueType === 'malik_payi')>Kat Maliki Borç Tablosu</option>
+                </select>
+            </div>
+            <div id="board-period-control" class="min-w-0 transition-opacity {{ $viewMode === 'current' ? 'opacity-50' : '' }}">
+                <label id="board-period-label" class="mb-1 block text-xs text-slate-500">Dönem</label>
+                <input type="hidden" name="period_year" id="board-year" value="{{ $parsedMonth->year }}">
+                <input type="hidden" name="period_month" id="board-month" value="{{ $parsedMonth->month }}">
+                <button type="button" id="board-period-open" aria-haspopup="dialog" aria-labelledby="board-period-label board-period-text"
+                        @if($viewMode === 'current') disabled="disabled" @endif
+                        class="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 sm:min-w-40">
+                    <span id="board-period-text">{{ $trMonths[$parsedMonth->month] }} {{ $parsedMonth->year }}</span>
+                    <svg class="h-4 w-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 3v4m8-4v4M4 10h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/></svg>
+                </button>
+            </div>
+            <label class="col-span-2 flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 sm:col-span-1">
+                <input type="hidden" name="hide_account_type" value="0">
+                <input type="checkbox" name="hide_account_type" value="1" @checked($hideAccountType)
+                       class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400">
+                <span>Hesap türünü gizle</span>
+            </label>
+            <label class="col-span-2 flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 sm:col-span-1">
+                <input type="hidden" name="hide_account_names" value="0">
+                <input type="checkbox" name="hide_account_names" value="1" @checked($hideAccountNames)
+                       class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400">
+                <span>Hesap adlarını gizle</span>
+            </label>
+            <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Görüntüle</button>
         </div>
-        <div>
-            <label class="block text-xs text-slate-500 mb-1">Hesap Türü</label>
-            <select name="type_filter" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="resident" @selected($typeFilter === 'resident')>Daire Sakinleri</option>
-                <option value="all" @selected($typeFilter === 'all')>Tümü</option>
-                <option value="owner" @selected($typeFilter === 'owner')>Sadece Kat Maliki</option>
-                <option value="tenant" @selected($typeFilter === 'tenant')>Sadece Kiracı</option>
-            </select>
-        </div>
-        <div id="status-filter-wrap">
-            <label class="block text-xs text-slate-500 mb-1">Durum</label>
-            <select name="status_filter" id="status_filter" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <option value="active" @selected($statusFilter === 'active')>Aktif</option>
-                <option value="inactive" @selected($statusFilter === 'inactive')>Pasif / Silinmiş</option>
-                <option value="all" @selected($statusFilter === 'all')>Her İkisi</option>
-            </select>
-        </div>
-        <div class="flex items-center gap-2 pb-2">
-            <input type="checkbox" name="show_account_type" id="show_account_type" value="1" @checked($showAccountType) class="rounded border-slate-300 text-slate-950 focus:ring-slate-300">
-            <label for="show_account_type" class="text-sm text-slate-700">Hesap türünü göster</label>
-        </div>
-        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Görüntüle</button>
     </form>
-    <script>
-        (function () {
-            const typeSelect = document.querySelector('select[name="type_filter"]');
-            const statusWrap = document.getElementById('status-filter-wrap');
-            const statusSelect = document.getElementById('status_filter');
-            function toggleStatus() {
-                if (typeSelect.value === 'resident') {
-                    statusWrap.style.display = 'none';
-                    statusSelect.disabled = true;
-                    statusSelect.value = 'active';
-                } else {
-                    statusWrap.style.display = '';
-                    statusSelect.disabled = false;
-                }
-            }
-            typeSelect.addEventListener('change', toggleStatus);
-            toggleStatus();
-        })();
-    </script>
+    @include('reports._board-period-picker')
 
     @php
         $totalBorç = 0;
@@ -103,6 +103,10 @@
         }
     @endphp
 
+    @if ($unknownDuesCount > 0)
+        <p class="mb-4 text-xs text-slate-500">Seçili ay ve geçmiş açık borçlar içinde borç türü belirlenmemiş {{ $unknownDuesCount }} kayıt bu tablolara dahil edilmedi.</p>
+    @endif
+
     {{-- Özet Satırı --}}
     @php
         $paidCount = 0;
@@ -110,9 +114,9 @@
         $partialCount = 0;
         foreach($accounts as $account) {
             $data = $accountData[$account->id];
-            if($data['remaining'] == 0 && $data['selectedAmount'] > 0) $paidCount++;
+            if($data['remaining'] == 0 && $data['selectedAmount'] + $data['pastRemaining'] > 0) $paidCount++;
             elseif($data['paid'] > 0) $partialCount++;
-            elseif($data['selectedAmount'] > 0) $pendingCount++;
+            elseif($data['remaining'] > 0) $pendingCount++;
         }
     @endphp
 
@@ -132,51 +136,48 @@
         <div class="bg-white rounded-2xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500 mb-1">Tahsilat Oranı</p>
             <p class="text-2xl font-bold text-slate-800">
-                {{ $totalBorç > 0 ? number_format(($totalÖdenen / $totalBorç) * 100, 0) : 0 }}%
+                @php $collectionBase = $totalBorç + ($viewMode === 'movements' ? $pastRemainingAll : 0); @endphp
+                {{ $collectionBase > 0 ? number_format(($totalÖdenen / $collectionBase) * 100, 0) : 0 }}%
             </p>
         </div>
     </div>
 
     {{-- Pano Tablosu --}}
     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-slate-700">
-                @if($typeFilter === 'resident')
-                    {{ $apartment->name }} Daire Sakinleri — {{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }}
-                @else
-                    {{ $apartment->name }} — {{ $trMonthsH[$parsedMonth->month] }} {{ $parsedMonth->year }} Aidat Durumu
-                @endif
-            </h2>
-            <span class="text-xs text-slate-400">{{ now()->format('d.m.Y') }} tarihli çıktı</span>
+        <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+                <h2 class="text-lg font-bold text-slate-950">{{ $title }}</h2>
+            </div>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold">Daire No</th>
-                        <th class="px-4 py-3 text-left font-semibold">Hesap Adı</th>
+                        @unless($hideAccountNames)
+                            <th class="px-4 py-3 text-left font-semibold">Hesap Adı</th>
+                        @endunless
                         <th class="px-4 py-3 text-right font-semibold">Geçmiş Borç (₺)</th>
                         <th class="px-4 py-3 text-right font-semibold">{{ $trMonthsH[$parsedMonth->month] }} Borç (₺)</th>
-                        <th class="px-4 py-3 text-right font-semibold">Ödenen (₺)</th>
-                        <th class="px-4 py-3 text-right font-semibold">Kalan (₺)</th>
+                        <th class="px-4 py-3 text-right font-semibold">{{ \Illuminate\Support\Str::beforeLast($paidLabel, ' Ödenen') }}<br>Ödenen (₺)</th>
+                        <th class="px-4 py-3 text-right font-semibold">TOPLAM<br>BORÇ</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($accounts as $account)
-                        @php
-                            $data = $accountData[$account->id];
-                            $typeLabel = ['owner' => 'Kat Maliki', 'tenant' => 'Kiracı'][$account->type] ?? $account->type;
-                        @endphp
+                        @php $data = $accountData[$account->id]; @endphp
                         <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3 font-bold text-slate-800">{{ $account->unit?->unit_no }}</td>
-                            <td class="px-4 py-3 text-slate-700">
-                                {{ $account->name }}
-                                @if($showAccountType && $account->type === 'owner')
-                                    <span class="ml-1 text-[10px] text-slate-400">(Kat Maliki)</span>
-                                @elseif($showAccountType && $account->type === 'tenant')
-                                    <span class="ml-1 text-[10px] text-slate-400">(Kiracı)</span>
-                                @endif
+                            <td class="px-4 py-3 font-bold text-slate-800">
+                                {{ $account->unit?->unit_no }}
+                                @unless($hideAccountType)
+                                    <span class="ml-1 text-[10px] font-normal text-slate-500">({{ $account->type_label }})</span>
+                                @endunless
                             </td>
+                            @unless($hideAccountNames)
+                                <td class="px-4 py-3 text-slate-700">
+                                    {{ $account->name }}
+                                </td>
+                            @endunless
                             <td class="px-4 py-3 text-right text-slate-700">{{ $data['pastRemaining'] > 0 ? number_format($data['pastRemaining'], 2, ',', '.') . ' ₺' : '—' }}</td>
                             <td class="px-4 py-3 text-right text-slate-700">{{ $data['selectedAmount'] > 0 ? number_format($data['selectedAmount'], 2, ',', '.') . ' ₺' : '—' }}</td>
                             <td class="px-4 py-3 text-right text-emerald-600">{{ $data['paid'] > 0 ? number_format($data['paid'], 2, ',', '.') . ' ₺' : '—' }}</td>
@@ -185,12 +186,12 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Hesap kaydı bulunamadı.</td></tr>
+                        <tr><td colspan="{{ $hideAccountNames ? 5 : 6 }}" class="px-4 py-8 text-center text-slate-400">Hesap kaydı bulunamadı.</td></tr>
                     @endforelse
                 </tbody>
                 <tfoot class="bg-slate-50 border-t-2 border-slate-200">
                     <tr>
-                        <td colspan="2" class="px-4 py-3 font-bold text-slate-700">TOPLAM</td>
+                        <td colspan="{{ $hideAccountNames ? 1 : 2 }}" class="px-4 py-3 font-bold text-slate-700">TOPLAM</td>
                         <td class="px-4 py-3 text-right font-bold text-slate-700">{{ $pastRemainingAll > 0 ? number_format($pastRemainingAll, 2, ',', '.') . ' ₺' : '—' }}</td>
                         <td class="px-4 py-3 text-right font-bold text-slate-700">{{ $selectedAmountAll > 0 ? number_format($selectedAmountAll, 2, ',', '.') . ' ₺' : '—' }}</td>
                         <td class="px-4 py-3 text-right font-bold text-emerald-600">{{ $totalÖdenen > 0 ? number_format($totalÖdenen, 2, ',', '.') . ' ₺' : '—' }}</td>

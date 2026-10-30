@@ -32,8 +32,10 @@ class SubscriptionIdentityTest extends TestCase
         ]);
 
         $year = now()->format('y');
-        $this->assertSame("ABN-{$year}-000001", $first->subscription_no);
-        $this->assertSame("ABN-{$year}-000002", $second->subscription_no);
+        $this->assertMatchesRegularExpression("/^ABN-{$year}-\\d{6}$/", $first->subscription_no);
+        $this->assertMatchesRegularExpression("/^ABN-{$year}-\\d{6}$/", $second->subscription_no);
+        $this->assertNotSame($first->subscription_no, $second->subscription_no);
+        $this->assertNotSame(["ABN-{$year}-000001", "ABN-{$year}-000002"], [$first->subscription_no, $second->subscription_no]);
         $this->assertSame('ABN-26-999999', $custom->subscription_no);
         $this->assertNotSame($first->uuid, $second->uuid);
         $this->assertNotNull($first->uuid);

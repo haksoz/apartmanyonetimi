@@ -97,7 +97,8 @@ class ApartmentRenewSetupCleanupTest extends TestCase
         $this->assertSame(0, Account::query()->where('apartment_id', $apartment->id)->where('type', Account::TYPE_SUPPLIER)->count());
         $this->assertNotNull(Account::query()->where('apartment_id', $other->id)->where('type', Account::TYPE_SUPPLIER)->first());
         $this->assertNull(Category::query()->where('apartment_id', $apartment->id)->where('name', 'Ek Kategori')->first());
-        $this->assertNotNull(Category::query()->where('apartment_id', $apartment->id)->where('name', 'Aidat')->first());
+        $this->assertNotNull(Category::query()->where('apartment_id', $apartment->id)->where('name', 'Genel Aidat')->first());
+        $this->assertNotNull($apartment->fresh()->default_aidat_category_id);
         $this->assertNotNull(Category::query()->where('apartment_id', $other->id)->where('name', 'Diğer Kategori')->first());
         $this->assertNotNull(User::query()->find($resident->id));
         $this->assertFalse($apartment->members()->whereKey($resident->id)->exists());

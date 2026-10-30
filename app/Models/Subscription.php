@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -59,22 +58,14 @@ class Subscription extends Model
     public static function nextNumber(): string
     {
         $prefix = 'ABN-'.now()->format('y').'-';
-
-        $latest = DB::transaction(function () use ($prefix) {
-            return static::query()
-                ->where('subscription_no', 'like', $prefix.'%')
-                ->lockForUpdate()
-                ->orderByDesc('subscription_no')
-                ->value('subscription_no');
-        });
-
-        $sequence = 1;
-
-        if (is_string($latest) && preg_match('/(\d+)$/', $latest, $matches)) {
-            $sequence = (int) $matches[1] + 1;
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $number = $prefix.str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            if (! static::query()->where('subscription_no', $number)->exists()) {
+                return $number;
+            }
         }
 
-        return $prefix.str_pad((string) $sequence, 6, '0', STR_PAD_LEFT);
+        throw new \RuntimeException('Benzersiz abonelik numarası üretilemedi.');
     }
 
     public function apartment(): BelongsTo

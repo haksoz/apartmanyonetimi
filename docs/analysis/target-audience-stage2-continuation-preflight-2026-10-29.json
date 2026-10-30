@@ -1,0 +1,1062 @@
+{
+    "scope": "local MySQL; all apartments; no soft-delete filters; read-only snapshot",
+    "checked_at_utc": "2026-10-29T09:54:13+00:00",
+    "apartments": [
+        8,
+        10
+    ],
+    "tables": {
+        "dues": {
+            "columns_present": [
+                "due_type",
+                "target_audience",
+                "deleted_at"
+            ],
+            "groups": [
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 940
+                },
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 0,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 174
+                },
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 12
+                },
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 5
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 40
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 12
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "records": 40
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "records": 8
+                }
+            ],
+            "issues": [
+                {
+                    "id": 3493,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3494,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3495,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3496,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3497,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3498,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3499,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3500,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3501,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3502,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3503,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3504,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3505,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3506,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3507,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3508,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3509,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3510,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3511,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3512,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3513,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3514,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3515,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3516,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3517,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3518,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3519,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3520,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3521,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3522,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3523,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3524,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3525,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3526,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3527,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3528,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3529,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3530,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3531,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3532,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3533,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3534,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3535,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3536,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3537,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3538,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3539,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3540,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                }
+            ]
+        },
+        "due_batches": {
+            "columns_present": [
+                "due_type",
+                "target_audience"
+            ],
+            "groups": [
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 5
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 10
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 5
+                }
+            ],
+            "issues": []
+        },
+        "due_plans": {
+            "columns_present": [
+                "due_type",
+                "target_audience"
+            ],
+            "groups": [
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 1
+                }
+            ],
+            "issues": [],
+            "unsupported_plan_types": []
+        },
+        "assessment_plans": {
+            "columns_present": [
+                "due_type",
+                "target_audience"
+            ],
+            "groups": [
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 1
+                }
+            ],
+            "issues": [],
+            "unsupported_plan_types": []
+        }
+    },
+    "financial_snapshot": {
+        "dues": {
+            "records": 1231,
+            "sum_amount": "677109.08",
+            "sum_remaining_amount": "123204.66"
+        },
+        "payments": {
+            "records": 877,
+            "sum_amount": "1125711.55",
+            "sum_unallocated_amount": "4869.66"
+        },
+        "payment_allocations": {
+            "records": 1663,
+            "sum_amount": "1120841.89"
+        },
+        "account_transactions": {
+            "records": 2376,
+            "sum_amount": "2358765.41"
+        },
+        "cash_boxes": {
+            "records": 5
+        },
+        "cash_transactions": {
+            "records": 889,
+            "sum_amount": "1143985.80"
+        }
+    },
+    "integrity_checks": {
+        "due_account_reference": [],
+        "payment_account_reference": [],
+        "allocation_reference": [],
+        "due_balance": [],
+        "payment_balance": [],
+        "transaction_account_reference": [],
+        "cash_reference": [],
+        "transaction_dues_reference": [],
+        "transaction_payments_reference": [],
+        "transaction_expenses_reference": [],
+        "due_batch_type": [],
+        "cash_payment_account": [],
+        "allocations_to_deleted_dues": [],
+        "batch_due_plans": [],
+        "batch_assessment_plans": []
+    },
+    "row_fingerprints": {
+        "dues": "a4f5d1d5d784a245d04f3f7cf4feeb896a59bbf4f8299bd0d5259d256f53e725",
+        "due_batches": "385d397e7cf163989b897f8217b65718df09e17acc694be24fa4750c4aa7c7ce",
+        "due_plans": "93bad48481823d4593b24a149ab68531d82f4ac1cb02e1660f7a5f9f550d2d66",
+        "assessment_plans": "be5a2b414295a413fd226244b00288912179e247e5abf48c592f46a2732d13c7",
+        "payments": "24b0323defc68e392bc165f8e316e11e2c87eb0b9b0e48e7857e33f1ae7cb693",
+        "payment_allocations": "56a61a279ed4dd89392ea820d07bbca49af77f8fa41d9273f127f16a95a3abf2",
+        "account_transactions": "e9f55324d653050dc5578456bd38e35564b98f372dee2eed62204b2755affd88",
+        "cash_boxes": "83f226203f869489f466363eb09b3243f47b0daaf4b6c1c0f34e31bd76e2539d",
+        "cash_transactions": "5ba24b9d2b1a8a8c53d7d3175056a33d6a4ed5887dc1857a6b9baa74d968dd75"
+    },
+    "null_due_relationships": [
+        {
+            "id": 3493,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3494,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3495,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3496,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3497,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3498,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3499,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3500,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3501,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3502,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3503,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3504,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3505,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3506,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3507,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3508,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3509,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:52",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3510,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:52",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3511,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3512,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:52",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3513,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:52",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3514,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:52",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3515,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:52",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3516,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3517,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3518,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3519,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3520,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3521,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3522,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3523,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3524,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3525,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3526,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3527,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3528,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3529,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3530,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "600.00",
+            "remaining_amount": "600.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3531,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3532,
+            "apartment_id": 10,
+            "due_type": "aidat",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "900.00",
+            "remaining_amount": "900.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3533,
+            "apartment_id": 10,
+            "due_type": "malik_payi",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "750.00",
+            "remaining_amount": "750.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3534,
+            "apartment_id": 10,
+            "due_type": "malik_payi",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "750.00",
+            "remaining_amount": "750.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3535,
+            "apartment_id": 10,
+            "due_type": "malik_payi",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "750.00",
+            "remaining_amount": "750.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3536,
+            "apartment_id": 10,
+            "due_type": "malik_payi",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "750.00",
+            "remaining_amount": "750.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3537,
+            "apartment_id": 10,
+            "due_type": "malik_payi",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "750.00",
+            "remaining_amount": "750.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3538,
+            "apartment_id": 10,
+            "due_type": "malik_payi",
+            "deleted_at": "2026-10-28 09:08:48",
+            "amount": "750.00",
+            "remaining_amount": "750.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3539,
+            "apartment_id": 10,
+            "due_type": "malik_payi",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "750.00",
+            "remaining_amount": "750.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        },
+        {
+            "id": 3540,
+            "apartment_id": 10,
+            "due_type": "malik_payi",
+            "deleted_at": "2026-10-28 09:05:53",
+            "amount": "750.00",
+            "remaining_amount": "750.00",
+            "allocation_count": 0,
+            "transaction_count": 0
+        }
+    ]
+}

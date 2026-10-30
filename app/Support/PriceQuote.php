@@ -8,6 +8,8 @@ use App\Models\PriceCampaign;
 
 class PriceQuote
 {
+    public function __construct(private SubscriptionTax $tax) {}
+
     public function forUnits(int $unitCount, string $period = 'monthly', ?Apartment $apartment = null): array
     {
         $band = $this->bandFor($unitCount);
@@ -35,12 +37,15 @@ class PriceQuote
         $list = $period === 'yearly' ? (float) $band->yearly_price : (float) $band->monthly_price;
         $priced = $this->applyCampaign($band, $list);
 
+        $taxed = $this->tax->calculate($priced['amount']);
+        $taxedList = $this->tax->calculate($priced['list_amount'], $taxed['tax_rate']);
+
         return [
             'band' => $band,
-            'amount' => $priced['amount'],
-            'list_amount' => $priced['list_amount'],
+            ...$taxed,
+            'list_amount' => $taxedList['amount'],
             'campaign_name' => $priced['campaign_name'],
-            'discount_amount' => $priced['discount_amount'],
+            'discount_amount' => round($taxedList['amount'] - $taxed['amount'], 2),
             'requires_quote' => false,
             'message' => null,
         ];
@@ -68,10 +73,17 @@ class PriceQuote
 
     private function quoteResult(?PriceBand $band, ?float $amount, bool $requiresQuote, ?string $message): array
     {
+        $taxed = $amount === null ? [
+            'net_amount' => null,
+            'tax_rate' => $this->tax->rate(),
+            'tax_amount' => null,
+            'amount' => null,
+        ] : $this->tax->calculate($amount);
+
         return [
             'band' => $band,
-            'amount' => $amount,
-            'list_amount' => $amount,
+            ...$taxed,
+            'list_amount' => $taxed['amount'],
             'campaign_name' => null,
             'discount_amount' => $amount === null ? null : 0.0,
             'requires_quote' => $requiresQuote,

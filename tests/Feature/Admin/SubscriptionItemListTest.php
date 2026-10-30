@@ -8,11 +8,31 @@ use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class SubscriptionItemListTest extends TestCase
 {
     use RefreshDatabase;
+
+    #[TestWith([false, 'Ödeme bekliyor'])]
+    #[TestWith([true, 'Onay bekliyor'])]
+    public function test_legacy_pending_item_preserves_payment_and_approval_labels(bool $proofSent, string $label): void
+    {
+        $admin = User::factory()->admin()->create();
+        $payer = User::factory()->create();
+        $apartment = Apartment::factory()->forUser($payer)->create();
+        $apartment->members()->attach($payer->id, ['role' => 'owner', 'is_active' => true]);
+        $order = UserSubscription::factory()->create([
+            'user_id' => $payer->id, 'status' => UserSubscription::STATUS_PENDING, 'is_active' => false,
+            'receipt_reference' => $proofSent ? 'PENDING-PROOF' : null, 'receipt_path' => null,
+        ]);
+        $this->makeItem($order, $apartment, [
+            'status' => SubscriptionItem::STATUS_PENDING, 'started_at' => null, 'expires_at' => null,
+        ]);
+
+        $this->actingAs($admin)->get(route('admin.managers.index'))->assertOk()->assertSee($label);
+    }
 
     public function test_items_view_lists_each_subscription_item_from_its_own_fields(): void
     {

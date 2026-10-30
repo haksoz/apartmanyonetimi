@@ -6,7 +6,6 @@ use App\Models\AccountTransaction;
 use App\Models\Due;
 use App\Models\DueBatch;
 use App\Models\DuePlan;
-use App\Models\TenantAssignment;
 use App\Models\Unit;
 use App\Support\AidatPeriodReconciliation;
 use App\Support\AidatPlanSummary;
@@ -241,13 +240,12 @@ class DuePlanController extends Controller
             'monthly_amount' => $validated['monthly_amount'],
             'distribution_type' => $validated['distribution_type'],
             'round_to_integer' => $request->boolean('round_to_integer'),
-            'target_audience' => 'tenant_priority',
             'due_day' => $validated['due_day'],
             'generate_day' => $validated['generate_day'],
             'generation_mode' => $generationMode,
             'description' => $validated['description'] ?? null,
             'due_type' => 'aidat',
-            'category_id' => \App\Models\Category::where('apartment_id', $apartment->id)->where('name', 'Aidat')->value('id'),
+            'category_id' => $this->aidatReconciliation->categoryFor($apartment)->id,
             'auto_generate' => $generationMode === DuePlan::GENERATION_ON_SCHEDULE,
             'is_active' => $request->boolean('is_active', true),
         ];
@@ -515,7 +513,6 @@ class DuePlanController extends Controller
                     'category_id' => $category->id,
                     'source_type' => DueBatch::SOURCE_MANUAL,
                     'distribution_type' => $duePlan->distribution_type,
-                    'target_audience' => 'tenant_priority',
                     'source_amount' => $sourceAmount,
                     'description' => $batchDescription,
                     'distribution_snapshot' => $snapshot,
@@ -603,24 +600,9 @@ class DuePlanController extends Controller
         );
     }
 
-    private function getAccountForPeriod(Unit $unit, Carbon $periodDate, string $targetAudience): ?\App\Models\Account
+    private function getAccountForPeriod(Unit $unit, Carbon $periodDate): ?\App\Models\Account
     {
-        if ($targetAudience === 'owner_only') {
-            return $unit->ownerAccount;
-        }
-
-        $tenantAssignment = TenantAssignment::query()
-            ->where('unit_id', $unit->id)
-            ->where('move_in_date', '<=', $periodDate->endOfMonth())
-            ->where(fn ($q) => $q->whereNull('move_out_date')->orWhere('move_out_date', '>=', $periodDate->startOfMonth()))
-            ->with('account')
-            ->first();
-
-        if ($tenantAssignment && $tenantAssignment->account) {
-            return $tenantAssignment->account;
-        }
-
-        return $unit->ownerAccount;
+        return app(\App\Support\DueTargeting::class)->accountFor($unit, $periodDate, \App\Enums\DueType::Aidat);
     }
 
     private function getUnitAccountsForPeriod(DuePlan $duePlan, Carbon $periodDate, ?\Illuminate\Database\Eloquent\Collection $units = null): array
@@ -635,7 +617,7 @@ class DuePlanController extends Controller
         $totalWeight = 0;
 
         foreach ($units as $unit) {
-            $account = $this->getAccountForPeriod($unit, $periodDate, 'tenant_priority');
+            $account = $this->getAccountForPeriod($unit, $periodDate);
             if (! $account) {
                 continue;
             }

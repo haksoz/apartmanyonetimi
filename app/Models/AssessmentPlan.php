@@ -15,7 +15,7 @@ class AssessmentPlan extends Model
 
     public static function debtTypes(): array
     {
-        return [DueType::MasrafYansitma, DueType::MalikPayi];
+        return [DueType::MalikPayi];
     }
 
     protected $fillable = [
@@ -24,7 +24,6 @@ class AssessmentPlan extends Model
         'description',
         'total_amount',
         'distribution_type',
-        'target_audience',
         'due_type',
         'category_id',
         'installment_count',
@@ -43,6 +42,16 @@ class AssessmentPlan extends Model
         'due_type' => DueType::class,
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (AssessmentPlan $plan) {
+            if ($plan->due_type && $plan->due_type !== DueType::MalikPayi) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['due_type' => 'Taksitli Borç Planı yalnızca Kat Maliki Payı oluşturabilir.']);
+            }
+            $plan->due_type = DueType::MalikPayi;
+        });
+    }
+
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
@@ -50,7 +59,7 @@ class AssessmentPlan extends Model
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class)->withTrashed();
     }
 
     public function installments(): HasMany

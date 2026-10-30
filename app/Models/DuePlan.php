@@ -34,7 +34,6 @@ class DuePlan extends Model
         'per_unit_amount',
         'distribution_type',
         'round_to_integer',
-        'target_audience',
         'due_day',
         'auto_generate',
         'generation_mode',
@@ -63,7 +62,10 @@ class DuePlan extends Model
     protected static function booted(): void
     {
         static::saving(function (DuePlan $plan) {
-            $plan->target_audience = 'tenant_priority';
+            if ($plan->due_type && $plan->due_type !== DueType::Aidat) {
+                throw ValidationException::withMessages(['due_type' => 'Aidat Planı yalnızca Aidat türünde borç oluşturabilir.']);
+            }
+            $plan->due_type = DueType::Aidat;
             $plan->generation_mode = self::GENERATION_ON_SCHEDULE;
             $plan->auto_generate = true;
             if ($plan->plan_year) {
@@ -102,7 +104,7 @@ class DuePlan extends Model
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class)->withTrashed();
     }
 
     public function getDueTypeLabelAttribute(): string

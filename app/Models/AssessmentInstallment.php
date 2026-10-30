@@ -51,4 +51,14 @@ class AssessmentInstallment extends Model
     {
         return $this->status === self::STATUS_CANCELLED;
     }
+
+    public function getLiveDueCountAttribute(): int
+    {
+        return $this->lines->filter(fn ($line) => $line->due !== null)->count();
+    }
+
+    public function getHasMissingDuesAttribute(): bool
+    {
+        return $this->live_due_count < $this->lines->count();
+    }
 }

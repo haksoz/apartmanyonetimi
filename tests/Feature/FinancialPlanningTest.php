@@ -27,6 +27,15 @@ class FinancialPlanningTest extends TestCase
     {
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Test Apt', 'unit_count' => 2]);
+        $generalAidat = Category::create([
+            'apartment_id' => $apartment->id,
+            'name' => 'Genel Aidat',
+            'type' => Category::TYPE_INCOME,
+            'is_active' => true,
+            'is_system' => true,
+            'allow_aidat' => true,
+        ]);
+        $apartment->update(['default_aidat_category_id' => $generalAidat->id]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
         $this->grantPaidFeatures($apartment);
 
@@ -61,7 +70,6 @@ class FinancialPlanningTest extends TestCase
             'amount_type' => 'monthly',
             'monthly_amount' => 800,
             'distribution_type' => 'equal',
-            'target_audience' => 'owner_only',
             'due_day' => 1,
             'generate_day' => 1,
             'generation_mode' => 'on_schedule',
@@ -74,7 +82,6 @@ class FinancialPlanningTest extends TestCase
                 'plan_year' => 2026,
                 'monthly_amount' => 1000,
                 'distribution_type' => 'equal',
-                'target_audience' => 'owner_only',
                 'due_day' => 5,
                 'generate_day' => 1,
                 'generation_mode' => 'on_schedule',
@@ -98,7 +105,6 @@ class FinancialPlanningTest extends TestCase
             'amount_type' => 'monthly',
             'monthly_amount' => 1000,
             'distribution_type' => 'equal',
-            'target_audience' => 'owner_only',
             'due_day' => 1,
             'generate_day' => 1,
             'generation_mode' => 'on_schedule',
@@ -128,6 +134,7 @@ class FinancialPlanningTest extends TestCase
             'name' => 'Temizlik',
             'type' => Category::TYPE_EXPENSE,
             'is_active' => true,
+            'allow_expense' => true,
         ]);
 
         $plan = ExpensePlan::create([
@@ -305,6 +312,29 @@ class FinancialPlanningTest extends TestCase
             ->assertSee('id="due_days"', false);
     }
 
+    public function test_expense_plan_create_can_add_a_supplier_without_leaving_the_form(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        Account::create([
+            'apartment_id' => $apartment->id,
+            'type' => Account::TYPE_SUPPLIER,
+            'name' => 'Pali Temizlik',
+            'is_active' => true,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('expense-plans.create'))
+            ->assertOk()
+            ->assertSee('+ Yeni Tedarikçi Ekle')
+            ->assertSee('id="expense-plan-supplier-modal"', false)
+            ->assertSee('id="expense-plan-supplier-form"', false)
+            ->assertSee(route('accounts.store', [], false), false)
+            ->assertSee('option.dataset.categoryId', false)
+            ->assertSee('Pali Temizlik (Tedarikçi)')
+            ->assertDontSee('Pali Temizlik (supplier)');
+    }
+
     public function test_assessment_plan_distribution_and_create_all(): void
     {
         [$user, $apartment] = $this->setupApartment();
@@ -313,6 +343,7 @@ class FinancialPlanningTest extends TestCase
             'name' => 'Malik Payı',
             'type' => Category::TYPE_ALL,
             'is_active' => true,
+            'allow_malik_payi' => true,
         ]);
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
@@ -322,7 +353,6 @@ class FinancialPlanningTest extends TestCase
                 'name' => 'Çatı Yenileme',
                 'total_amount' => 1000,
                 'distribution_type' => 'equal',
-                'target_audience' => 'owner_only',
                 'category_id' => $category->id,
                 'installment_count' => 2,
                 'start_period' => now()->addMonth()->format('Y-m'), 'due_day' => 1,
@@ -359,6 +389,7 @@ class FinancialPlanningTest extends TestCase
             'total_amount' => 9999,
         ])->assertSessionHasNoErrors()->assertRedirect(route('assessment-plans.show', $plan));
         $this->assertSame('Çatı Bakımı', $plan->fresh()->name);
+        $this->assertSame(['malik_payi'], Due::where('apartment_id', $apartment->id)->distinct()->pluck('due_type')->map(fn ($type) => $type->value)->all());
         $this->assertFalse($plan->fresh()->is_active);
         $this->assertSame('1000.00', $plan->fresh()->total_amount);
         $this->assertEquals(1000.0, (float) $plan->installmentLines()->sum('amount'));
@@ -374,13 +405,121 @@ class FinancialPlanningTest extends TestCase
             ])->assertNotFound();
     }
 
+    public function test_assessment_owner_only_is_captured_and_survives_later_plan_changes(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Repair',
+            'type' => Category::TYPE_INCOME, 'is_active' => true, 'allow_malik_payi' => true]);
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
+            ->saveAssessmentPlan(route('assessment-plans.store'), [
+                'due_type' => 'malik_payi', 'category_mode' => 'existing', 'name' => 'Repair plan',
+                'total_amount' => 1000, 'distribution_type' => 'equal', 'category_id' => $category->id, 'installment_count' => 1,
+                'start_period' => now()->addMonth()->format('Y-m'), 'due_day' => 1, 'due_interval_months' => 1,
+                'generation_mode' => 'create_all_now', 'generate_day' => 1,
+                'include_past_installments' => 1, 'is_active' => 1,
+            ])->assertSessionHasNoErrors()->assertRedirect();
+        $dues = Due::where('apartment_id', $apartment->id)->get();
+        $this->assertNotEmpty($dues);
+        $this->assertSame(['malik_payi'], $dues->pluck('due_type')->map(fn ($type) => $type->value)->unique()->values()->all());
+        AssessmentPlan::where('apartment_id', $apartment->id)->firstOrFail()
+            ->update(['is_active' => false]);
+        $this->assertSame(['malik_payi'], Due::whereIn('id', $dues->modelKeys())
+            ->distinct()->pluck('due_type')->map(fn ($type) => $type->value)->all());
+    }
+
+    public function test_assessment_malik_payi_disables_tenant_priority_and_forces_owner_only_on_the_server(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $category = Category::create([
+            'apartment_id' => $apartment->id,
+            'name' => 'Malik Payı',
+            'type' => Category::TYPE_ALL,
+            'is_active' => true,
+            'allow_malik_payi' => true,
+        ]);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('assessment-plans.create'))
+            ->assertOk()
+            ->assertSee('Sadece Kat Malikleri')
+            ->assertSee('Kat Maliki Payı borçları yalnızca kat maliklerine dağıtılır.')
+            ->assertDontSee('name="target_audience"', false);
+
+        $preview = $this->post(route('assessment-plans.store'), [
+            ...$this->assessmentPayload([
+                'due_type' => 'malik_payi',
+                ]),
+            'category_mode' => 'existing',
+            'category_id' => $category->id,
+        ])->assertOk()->assertViewIs('assessment-plans.confirm');
+
+        $this->assertSame('malik_payi', $preview->viewData('proposed')->due_type->value);
+    }
+
     private function assessmentPayload(array $overrides = []): array
     {
         return [...[
-            'due_type' => 'masraf_yansitma', 'name' => 'Çatı Yenileme', 'total_amount' => 1000.01, 'distribution_type' => 'equal',
-            'target_audience' => 'owner_only', 'installment_count' => 3, 'start_period' => '2026-09', 'due_day' => 10,
+            'due_type' => 'malik_payi', 'name' => 'Çatı Yenileme', 'total_amount' => 1000.01, 'distribution_type' => 'equal',
+            'installment_count' => 3, 'start_period' => '2026-09', 'due_day' => 10,
             'due_interval_months' => 1, 'generation_mode' => 'create_all_now', 'generate_day' => 5, 'is_active' => 1,
         ], ...$overrides];
+    }
+
+    public function test_assessment_detects_deleted_dues_and_regenerates_only_missing_lines(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-08-01'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->saveAssessmentPlan(route('assessment-plans.store'), $this->assessmentPayload())->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $installment = $plan->installments()->firstOrFail();
+        $lines = $installment->lines()->with('due')->get();
+        $keptId = $lines[1]->due_id;
+        $deletedId = $lines[0]->due_id;
+        $lines[0]->due->transactions()->delete();
+        $lines[0]->due->delete();
+        $url = route('assessment-plans.regenerate-installment', [$plan, $installment]);
+        $this->get(route('assessment-plans.show', $plan))->assertOk()->assertSee('Eksik Borçları Oluştur')->assertSee('Eksik');
+        $this->post($url)->assertRedirect()->assertSessionHas('status', '1 eksik borç oluşturuldu. Mevcut borçlar korundu.');
+        $this->assertSame($keptId, $lines[1]->fresh()->due_id);
+        $this->assertNotEquals($deletedId, $lines[0]->fresh()->due_id);
+        $this->assertSame(2, $installment->lines()->whereHas('due')->count());
+        $count = Due::count();
+        $this->post($url)->assertRedirect();
+        $this->assertSame($count, Due::count());
+
+        foreach ($installment->lines()->with('due')->get() as $line) {
+            $line->due->transactions()->delete();
+            $line->due->delete();
+        }
+        $this->get(route('assessment-plans.show', $plan))->assertOk()->assertSee('Oluşturulmadı');
+        $plan->update(['is_active' => false]);
+        $this->post($url)->assertRedirect();
+        $this->assertSame(0, $installment->lines()->whereHas('due')->count());
+        $plan->update(['is_active' => true]);
+        $this->post($url)->assertRedirect();
+        $this->assertSame(2, $installment->lines()->whereHas('due')->count());
+        $installment->update(['status' => AssessmentInstallment::STATUS_CANCELLED]);
+        $this->post($url)->assertStatus(422);
+        $other = AssessmentPlan::create([...$plan->getAttributes(), 'id' => null, 'name' => 'Other plan']);
+        $this->post(route('assessment-plans.regenerate-installment', [$other, $installment]))->assertNotFound();
+        $this->travelBack();
+    }
+
+    public function test_assessment_plan_only_accepts_malik_payi(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->get(route('assessment-plans.create'))->assertOk()
+            ->assertDontSee('<option value="aidat"', false)
+            ->assertDontSee('<option value="masraf_yansitma"', false)
+            ->assertSee('<option value="malik_payi"', false);
+        foreach (['aidat', 'masraf_yansitma', 'ceza', 'faiz'] as $type) {
+            $this->post(route('assessment-plans.store'), $this->assessmentPayload(['due_type' => $type]))
+                ->assertSessionHasErrors('due_type');
+        }
+        $this->assertDatabaseCount('assessment_plans', 0);
     }
 
     public function test_assessment_summary_defers_all_writes_and_preserves_distribution_totals(): void
@@ -516,12 +655,41 @@ class FinancialPlanningTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_assessment_edit_summary_rechecks_deleted_dues_and_recreates_only_missing_ones(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-08-01'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->saveAssessmentPlan(route('assessment-plans.store'), $this->assessmentPayload())->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $lines = $plan->installments()->firstOrFail()->lines()->with('due')->get();
+        $preserved = $lines[1]->due->getAttributes();
+        $preview = $this->put(route('assessment-plans.update', $plan), [
+            'name' => $plan->name, 'generate_day' => 5, 'is_active' => 1,
+        ])->assertOk();
+        $this->assertSame(0, $preview->viewData('summary')['count']);
+        $lines[0]->due->transactions()->delete();
+        $lines[0]->due->delete();
+        $updated = $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
+        $summary = $updated->viewData('summary');
+        $this->assertTrue($updated->viewData('changed'));
+        $this->assertSame(1, $summary['count']);
+        $this->assertSame(5, $summary['existing']);
+        $this->assertSame('Oluşturulacak', $summary['rows'][0]['status']);
+        $this->assertEquals((float) $lines[0]->amount, $summary['amount']);
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
+        $this->assertSame(6, Due::count());
+        $this->assertSame($preserved, $lines[1]->fresh()->due->getAttributes());
+        $this->assertNotEquals($lines[0]->due_id, $lines[0]->fresh()->due_id);
+        $this->travelBack();
+    }
+
     public function test_assessment_debt_type_and_category_are_applied_to_every_generated_debt(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
         [$user, $apartment] = $this->setupApartment();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Isınma', 'type' => Category::TYPE_ALL, 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Isınma', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true]);
         foreach (AssessmentPlan::debtTypes() as $type) {
             $payload = $this->assessmentPayload([
                 'name' => $type->label().' Planı', 'due_type' => $type->value,
@@ -569,7 +737,7 @@ class FinancialPlanningTest extends TestCase
             $this->post(route('assessment-plans.store'), [...$payload, 'category_name' => $name])->assertSessionHasErrors('category_name');
             $this->assertSame($name === 'Gelir' ? Category::TYPE_INCOME : ($name === 'Gider' ? Category::TYPE_EXPENSE : Category::TYPE_ALL), $category->fresh()->type);
         }
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Onarım', 'type' => Category::TYPE_ALL, 'is_active' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Onarım', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true]);
         $preview = $this->post(route('assessment-plans.store'), [...$payload, 'category_mode' => 'existing', 'category_id' => $category->id])->assertOk();
         $category->update(['is_active' => false]);
         $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertSessionHasErrors('category_id');
@@ -581,7 +749,10 @@ class FinancialPlanningTest extends TestCase
         $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
         [$user, $apartment] = $this->setupApartment();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
-        $payload = $this->assessmentPayload(['category_name' => 'Çatı Onarımı']);
+        $payload = $this->assessmentPayload([
+            'category_name' => 'Çatı Onarımı',
+            'due_type' => 'malik_payi',
+        ]);
         $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
         $this->assertTrue($preview->viewData('summary')['category']['is_new']);
         $this->assertSame('Çatı Onarımı', $preview->viewData('summary')['category']['name']);
@@ -592,6 +763,9 @@ class FinancialPlanningTest extends TestCase
         $this->assertSame(Category::TYPE_ALL, $category->type);
         $this->assertSame('Çatı Onarımı', $category->name);
         $this->assertTrue($category->is_active);
+        $this->assertTrue($category->allow_malik_payi);
+        $this->assertTrue($category->allow_expense);
+        $this->assertFalse($category->allow_aidat);
         $this->assertSame(0, Due::where('category_id', '!=', $category->id)->count());
         $this->get(route('expense-plans.create'))->assertOk()->assertViewHas('categories', fn ($categories) => $categories->contains('id', $category->id));
         $this->saveAssessmentPlanUpdate($plan, ['name' => 'Yeni Plan Adı', 'generate_day' => 5, 'is_active' => 1])->assertRedirect();
@@ -600,21 +774,58 @@ class FinancialPlanningTest extends TestCase
         $this->travelBack();
     }
 
-    public function test_assessment_reuses_matching_work_category_and_rechecks_it_before_saving(): void
+    public function test_assessment_new_category_rejects_an_existing_name_and_requires_explicit_existing_selection(): void
     {
         [$user, $apartment] = $this->setupApartment();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         $payload = $this->assessmentPayload();
-        $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk();
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => $payload['name'], 'type' => Category::TYPE_ALL, 'is_active' => true]);
-        $updated = $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertOk();
-        $this->assertTrue($updated->viewData('changed'));
-        $this->assertFalse($updated->viewData('summary')['category']['is_new']);
-        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
-        $this->assertSame($category->id, AssessmentPlan::firstOrFail()->category_id);
-        $this->assertSame(1, Category::where('apartment_id', $apartment->id)->where('name', $payload['name'])->count());
-        $this->saveAssessmentPlan(route('assessment-plans.store'), [...$payload, 'category_name' => 'çatı yenileme'])->assertRedirect();
-        $this->assertSame($category->id, AssessmentPlan::latest('id')->firstOrFail()->category_id);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => $payload['name'], 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true]);
+
+        $this->post(route('assessment-plans.store'), $payload)
+            ->assertSessionHasErrors('category_name');
+        $this->post(route('assessment-plans.store'), [...$payload, 'category_name' => 'çatı yenileme'])
+            ->assertSessionHasErrors('category_name');
+
+        $preview = $this->post(route('assessment-plans.store'), [
+            ...$payload,
+            'category_mode' => 'existing',
+            'category_id' => $category->id,
+        ])->assertOk()->assertViewIs('assessment-plans.confirm');
+        $this->assertSame($category->id, $preview->viewData('summary')['category']['id']);
+    }
+
+    public function test_assessment_existing_categories_are_filtered_and_validated_for_the_selected_debt_type(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $malik = Category::create([
+            'apartment_id' => $apartment->id, 'name' => 'Malik Kategorisi',
+            'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true, 'allow_expense' => true,
+        ]);
+        $masraf = Category::create([
+            'apartment_id' => $apartment->id, 'name' => 'Masraf Kategorisi',
+            'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_aidat' => true, 'allow_expense' => true,
+        ]);
+
+        $this->get(route('assessment-plans.create'))
+            ->assertOk()
+            ->assertSee('data-usages="malik_payi"', false)
+            ->assertDontSee('data-usages="masraf_yansitma"', false)
+            ->assertSee('Yalnızca seçilen borç türünde kullanılabilen aktif kategoriler gösterilir.')
+            ->assertSee("includes(dueType?.value)", false);
+
+        $malikPayload = $this->assessmentPayload([
+            'due_type' => 'malik_payi',
+            'category_mode' => 'existing',
+            'category_id' => $masraf->id,
+        ]);
+        $this->post(route('assessment-plans.store'), $malikPayload)->assertSessionHasErrors('category_id');
+
+        $preview = $this->post(route('assessment-plans.store'), [
+            ...$malikPayload,
+            'category_id' => $malik->id,
+        ])->assertOk()->assertViewIs('assessment-plans.confirm');
+        $this->assertSame($malik->id, $preview->viewData('summary')['category']['id']);
     }
 
     public function test_assessment_calendar_uses_due_day_start_month_and_installment_interval(): void
@@ -772,14 +983,12 @@ class FinancialPlanningTest extends TestCase
             'apartment_id' => $apartment->id, 'name' => 'Aidat Kararı',
             'plan_year' => 2026, 'category_id' => $category->id, 'due_type' => 'aidat',
             'amount_type' => 'monthly', 'monthly_amount' => 1000,
-            'distribution_type' => 'equal', 'target_audience' => 'owner_only',
-            'due_day' => 5, 'generate_day' => 1, 'generation_mode' => 'on_schedule', 'is_active' => true,
+            'distribution_type' => 'equal', 'due_day' => 5, 'generate_day' => 1, 'generation_mode' => 'on_schedule', 'is_active' => true,
         ];
         $plan = DuePlan::create($planData);
         $batchData = [
             'apartment_id' => $apartment->id, 'due_type' => 'aidat', 'category_id' => $category->id,
-            'source_type' => 'manual', 'distribution_type' => 'equal', 'target_audience' => 'owner_only',
-            'period' => '2026-10', 'source_amount' => 1000,
+            'source_type' => 'manual', 'distribution_type' => 'equal', 'period' => '2026-10', 'source_amount' => 1000,
         ];
         $manualBatch = \App\Models\DueBatch::create($batchData);
         $dueData = [
@@ -831,7 +1040,7 @@ class FinancialPlanningTest extends TestCase
         [$user, $apartment] = $this->setupApartment();
         $payload = [
             'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
-            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 1,
+            'due_day' => 5, 'generate_day' => 1,
             'current_month_action' => 'create', 'is_active' => 1,
         ];
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
@@ -841,7 +1050,7 @@ class FinancialPlanningTest extends TestCase
         $this->assertEquals(1000, $preview->viewData('summary')['amount']);
         $this->assertSame(0, DuePlan::count());
         $this->assertSame(0, Due::count());
-        $this->assertSame(0, Category::count());
+        $this->assertSame(1, Category::count());
         $token = $preview->viewData('token');
         $this->post(route('due-plans.store'), ['confirmation_token' => $token, 'monthly_amount' => 99999])
             ->assertRedirect(route('due-plans.index', ['year' => 2026]));
@@ -880,7 +1089,7 @@ class FinancialPlanningTest extends TestCase
         [$user, $apartment] = $this->setupApartment();
         $payload = [
             'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
-            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 1,
+            'due_day' => 5, 'generate_day' => 1,
             'current_month_action' => 'create', 'is_active' => 1,
         ];
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user)
@@ -901,7 +1110,7 @@ class FinancialPlanningTest extends TestCase
         [$user, $apartment] = $this->setupApartment();
         $payload = [
             'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
-            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 1,
+            'due_day' => 5, 'generate_day' => 1,
             'generation_mode' => 'on_schedule', 'is_active' => 1,
         ];
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
@@ -959,7 +1168,7 @@ class FinancialPlanningTest extends TestCase
         [$user, $apartment] = $this->setupApartment();
         $payload = [
             'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
-            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 28,
+            'due_day' => 5, 'generate_day' => 28,
             'generation_mode' => 'on_schedule', 'is_active' => 1,
         ];
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
@@ -990,23 +1199,24 @@ class FinancialPlanningTest extends TestCase
             ->assertDontSee('name="target_audience"', false)->assertDontSee('Sadece Sahipler');
         $preview = $this->post(route('due-plans.store'), [
             'plan_year' => 2026, 'monthly_amount' => 1000, 'distribution_type' => 'equal',
-            'target_audience' => 'owner_only', 'due_day' => 5, 'generate_day' => 1,
+            'due_day' => 5, 'generate_day' => 1,
             'current_month_action' => 'create', 'generation_mode' => 'create_all_now', 'is_active' => 1,
         ])->assertOk();
-        $this->assertSame('tenant_priority', $preview->viewData('proposed')->target_audience);
+        $this->assertSame('aidat', $preview->viewData('proposed')->due_type->value);
         $this->post(route('due-plans.store'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
         $plan = DuePlan::firstOrFail();
-        $this->assertSame('tenant_priority', $plan->target_audience);
+        $this->assertSame('aidat', $plan->due_type->value);
         $this->assertSame(1, Due::where('account_id', $tenant->id)->count());
         $this->assertSame(0, Due::where('account_id', $units[0]->owner_account_id)->count());
         $this->assertSame(1, Due::where('account_id', $units[1]->owner_account_id)->count());
-        $plan->update(['target_audience' => 'owner_only']);
-        $this->assertSame('tenant_priority', $plan->fresh()->target_audience);
+        $plan->update(['description' => 'Updated plan']);
+        $this->assertSame('aidat', $plan->fresh()->due_type->value);
         \App\Models\TenantAssignment::where('account_id', $tenant->id)->update(['move_out_date' => '2026-10-31']);
         $this->travelTo(\Carbon\Carbon::parse('2026-11-01 12:00:00'));
         $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
         $this->assertSame(1, Due::where('account_id', $tenant->id)->count());
         $this->assertDatabaseHas('dues', ['account_id' => $units[0]->owner_account_id, 'period' => '2026-11']);
+        $this->assertSame(['aidat'], Due::where('apartment_id', $apartment->id)->distinct()->pluck('due_type')->map(fn ($type) => $type->value)->all());
         $this->travelBack();
     }
 
@@ -1113,6 +1323,7 @@ class FinancialPlanningTest extends TestCase
             'name' => 'Elektrik',
             'type' => Category::TYPE_EXPENSE,
             'is_active' => true,
+            'allow_expense' => true,
         ]);
 
         return [
@@ -1143,7 +1354,6 @@ class FinancialPlanningTest extends TestCase
                 'amount_type' => 'monthly',
                 'monthly_amount' => 1000,
                 'distribution_type' => 'equal',
-                'target_audience' => 'owner_only',
                 'due_day' => 5,
                 'generate_day' => 1,
                 'is_active' => $active,

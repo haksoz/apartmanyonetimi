@@ -35,6 +35,9 @@ class UserSubscription extends Model
         'package_id',
         'period',
         'price',
+        'net_amount',
+        'tax_rate',
+        'tax_amount',
         'started_at',
         'expires_at',
         'ended_at',
@@ -68,6 +71,9 @@ class UserSubscription extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'net_amount' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
         'started_at' => 'datetime',
         'expires_at' => 'datetime',
         'ended_at' => 'datetime',

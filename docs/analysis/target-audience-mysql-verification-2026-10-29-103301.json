@@ -1,0 +1,180 @@
+{
+    "checked_at_utc": "2026-10-29T10:33:01+00:00",
+    "source_database": "apartman_db",
+    "server_version": "8.0.45",
+    "source_connection_read_only": true,
+    "tables": 52,
+    "unsafe_tables": [],
+    "triggers": 0,
+    "events": 0,
+    "routines": 0,
+    "can_grant": true,
+    "grant_scopes": [
+        "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE, CREATE ROLE, DROP ROLE ON *.*",
+        "GRANT APPLICATION_PASSWORD_ADMIN,AUDIT_ABORT_EXEMPT,AUDIT_ADMIN,AUTHENTICATION_POLICY_ADMIN,BACKUP_ADMIN,BINLOG_ADMIN,BINLOG_ENCRYPTION_ADMIN,CLONE_ADMIN,CONNECTION_ADMIN,ENCRYPTION_KEY_ADMIN,FIREWALL_EXEMPT,FLUSH_OPTIMIZER_COSTS,FLUSH_STATUS,FLUSH_TABLES,FLUSH_USER_RESOURCES,GROUP_REPLICATION_ADMIN,GROUP_REPLICATION_STREAM,INNODB_REDO_LOG_ARCHIVE,INNODB_REDO_LOG_ENABLE,PASSWORDLESS_USER_ADMIN,PERSIST_RO_VARIABLES_ADMIN,REPLICATION_APPLIER,REPLICATION_SLAVE_ADMIN,RESOURCE_GROUP_ADMIN,RESOURCE_GROUP_USER,ROLE_ADMIN,SENSITIVE_VARIABLES_OBSERVER,SERVICE_CONNECTION_ADMIN,SESSION_VARIABLES_ADMIN,SET_USER_ID,SHOW_ROUTINE,SYSTEM_USER,SYSTEM_VARIABLES_ADMIN,TABLE_ENCRYPTION_ADMIN,TELEMETRY_LOG_ADMIN,XA_RECOVER_ADMIN ON *.*",
+        "GRANT PROXY ON ``@``"
+    ],
+    "global_all_privileges": false,
+    "clone_database": "aidatcepstage2test20261029bb0c62e0f077",
+    "clone_user": "aidatst2_bb0c62e0f077@localhost",
+    "retained_for_review": true,
+    "stage": "application_flows",
+    "database_created": true,
+    "source_access_denied_to_clone_user": true,
+    "all_52_tables_copied_exactly": true,
+    "copied_row_counts": {
+        "account_portal_access_events": 0,
+        "account_portal_offers": 0,
+        "account_transactions": 2376,
+        "accounts": 64,
+        "apartment_data_operations": 0,
+        "apartment_user": 2,
+        "apartments": 2,
+        "assessment_installment_lines": 8,
+        "assessment_installments": 2,
+        "assessment_plans": 1,
+        "assessment_unit_shares": 4,
+        "bank_accounts": 0,
+        "billing_profiles": 2,
+        "cache": 6,
+        "cache_locks": 0,
+        "cash_boxes": 5,
+        "cash_transactions": 889,
+        "categories": 32,
+        "due_batches": 20,
+        "due_plans": 1,
+        "dues": 1231,
+        "expense_documents": 4,
+        "expense_plans": 2,
+        "expenses": 358,
+        "failed_jobs": 0,
+        "features": 19,
+        "job_batches": 0,
+        "jobs": 0,
+        "legal_acceptances": 9,
+        "legal_document_versions": 0,
+        "management_offers": 0,
+        "migrations": 130,
+        "package_features": 28,
+        "packages": 5,
+        "password_reset_tokens": 0,
+        "payment_allocations": 1663,
+        "payments": 877,
+        "price_bands": 5,
+        "price_campaigns": 0,
+        "quote_requests": 0,
+        "sessions": 2,
+        "subscription_items": 4,
+        "subscription_payments": 3,
+        "subscriptions": 2,
+        "system_settings": 1,
+        "tenant_assignments": 20,
+        "unit_owner_histories": 0,
+        "units": 16,
+        "user_invitations": 0,
+        "user_quota_overrides": 2,
+        "user_subscriptions": 4,
+        "users": 3
+    },
+    "akbey_before": {
+        "dues": {
+            "count": 1131,
+            "sha256": "673dc03c35bd39e427b3a9124ed9aa1ddf1aefeac8becdd1c8e05f54713ce7a4",
+            "sum_amount": "601909.08",
+            "sum_remaining_amount": "54604.66"
+        },
+        "payments": {
+            "count": 871,
+            "sha256": "33118ab90bdb4a3a57818f818e0955245b41f9652c7004b10a8ecf796425c561",
+            "sum_amount": "1119111.55",
+            "sum_unallocated_amount": "4869.66"
+        },
+        "account_transactions": {
+            "count": 2298,
+            "sha256": "09f372f905bc48493b7de9074b20a1e07155b3202165f9182ed260dd2ca2f5d0",
+            "sum_amount": "2292965.41"
+        },
+        "cash_transactions": {
+            "count": 875,
+            "sha256": "e1bcbb953221a094c9204919b56e9712669c3016c182cb57ceea5e581b1a03db",
+            "sum_amount": "1131385.80"
+        },
+        "cash_boxes": {
+            "count": 3,
+            "sha256": "49a5dded762a20a2906a587b9ce0f05072ba648ab4c47535135a1306ce836121"
+        },
+        "accounts": {
+            "count": 54,
+            "sha256": "5dfac17be95e624caab8ca0d7e001f1cff1fa84ed28efdf96561abfbf3d6d135"
+        },
+        "payment_allocations": {
+            "count": 1654,
+            "sha256": "be6f6c87ee0fed243acfe9d8acaed728d54389f118ba328ea5bf4c4a22a405d1"
+        },
+        "active_dues": {
+            "records": 1114,
+            "amount": "594238.24",
+            "remaining_amount": "46933.82"
+        }
+    },
+    "migration_up_seconds": 0.7044,
+    "columns_removed": {
+        "dues": true,
+        "due_batches": true,
+        "due_plans": true,
+        "assessment_plans": true
+    },
+    "akbey_after_up": {
+        "dues": {
+            "count": 1131,
+            "sha256": "673dc03c35bd39e427b3a9124ed9aa1ddf1aefeac8becdd1c8e05f54713ce7a4",
+            "sum_amount": "601909.08",
+            "sum_remaining_amount": "54604.66"
+        },
+        "payments": {
+            "count": 871,
+            "sha256": "33118ab90bdb4a3a57818f818e0955245b41f9652c7004b10a8ecf796425c561",
+            "sum_amount": "1119111.55",
+            "sum_unallocated_amount": "4869.66"
+        },
+        "account_transactions": {
+            "count": 2298,
+            "sha256": "09f372f905bc48493b7de9074b20a1e07155b3202165f9182ed260dd2ca2f5d0",
+            "sum_amount": "2292965.41"
+        },
+        "cash_transactions": {
+            "count": 875,
+            "sha256": "e1bcbb953221a094c9204919b56e9712669c3016c182cb57ceea5e581b1a03db",
+            "sum_amount": "1131385.80"
+        },
+        "cash_boxes": {
+            "count": 3,
+            "sha256": "49a5dded762a20a2906a587b9ce0f05072ba648ab4c47535135a1306ce836121"
+        },
+        "accounts": {
+            "count": 54,
+            "sha256": "5dfac17be95e624caab8ca0d7e001f1cff1fa84ed28efdf96561abfbf3d6d135"
+        },
+        "payment_allocations": {
+            "count": 1654,
+            "sha256": "be6f6c87ee0fed243acfe9d8acaed728d54389f118ba328ea5bf4c4a22a405d1"
+        },
+        "active_dues": {
+            "records": 1114,
+            "amount": "594238.24",
+            "remaining_amount": "46933.82"
+        }
+    },
+    "akbey_ledger_balances_unchanged": true,
+    "akbey_report_scenarios_unchanged": 196,
+    "all_non_target_rows_unchanged_after_up": true,
+    "passed": false,
+    "error": {
+        "type": "Illuminate\\Database\\UniqueConstraintViolationException",
+        "code": "23000",
+        "message": "Database operation failed; no automatic repair performed.",
+        "file": "Connection.php",
+        "line": 857
+    },
+    "clone_user_locked_after_run": true
+}

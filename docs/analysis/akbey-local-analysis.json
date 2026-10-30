@@ -1,0 +1,1216 @@
+{
+    "connection": [
+        {
+            "db": "apartman_db",
+            "hostname": "DESKTOP-HJKM5UL",
+            "port": 3306
+        }
+    ],
+    "target_schema": [
+        {
+            "COLUMN_NAME": "target_audience",
+            "IS_NULLABLE": "YES",
+            "COLUMN_DEFAULT": null
+        }
+    ],
+    "prepared_totals": [
+        {
+            "total_dues": 1131,
+            "tenant_priority_count": "0",
+            "owner_only_count": "0",
+            "unknown_count": "1131"
+        }
+    ],
+    "prepared_null_sources": [
+        {
+            "recorded_source": "expenses",
+            "null_count": 48
+        },
+        {
+            "recorded_source": "fixed",
+            "null_count": 12
+        },
+        {
+            "recorded_source": "imported",
+            "null_count": 1071
+        }
+    ],
+    "scope": [
+        {
+            "scope": "active",
+            "n": 1114,
+            "amount": "594238.24",
+            "remaining": "46933.82"
+        },
+        {
+            "scope": "deleted",
+            "n": 17,
+            "amount": "7670.84",
+            "remaining": "7670.84"
+        }
+    ],
+    "rules": [
+        {
+            "target_audience": null,
+            "n": 1131,
+            "amount": "601909.08",
+            "remaining": "54604.66"
+        }
+    ],
+    "null_batch": [
+        {
+            "batch_link": "without_batch",
+            "n": 1071,
+            "amount": "578268.08",
+            "remaining": "47161.66"
+        },
+        {
+            "batch_link": "with_batch",
+            "n": 60,
+            "amount": "23641.00",
+            "remaining": "7443.00"
+        }
+    ],
+    "types": [
+        {
+            "due_type": "malik_payi",
+            "n": 179,
+            "amount": "216244.74",
+            "remaining": "47161.66",
+            "deleted": "5"
+        },
+        {
+            "due_type": "aidat",
+            "n": 952,
+            "amount": "385664.34",
+            "remaining": "7443.00",
+            "deleted": "12"
+        }
+    ],
+    "account_types": [
+        {
+            "account_type": "owner",
+            "accounts": 12,
+            "n": 863,
+            "amount": "506130.05",
+            "remaining": "52800.66",
+            "deleted": "14"
+        },
+        {
+            "account_type": "tenant",
+            "accounts": 8,
+            "n": 268,
+            "amount": "95779.03",
+            "remaining": "1804.00",
+            "deleted": "3"
+        }
+    ],
+    "owner_null": [
+        {
+            "scope": "active",
+            "n": 849,
+            "amount": "499853.21",
+            "remaining": "46523.82"
+        },
+        {
+            "scope": "deleted",
+            "n": 14,
+            "amount": "6276.84",
+            "remaining": "6276.84"
+        }
+    ],
+    "batches": [
+        {
+            "id": 8,
+            "source_type": "expenses",
+            "target_audience": "tenant_priority",
+            "due_type": "aidat",
+            "category_id": 70,
+            "due_plan_id": null,
+            "assessment_plan_id": null,
+            "assessment_installment_id": null,
+            "period": "2026-06",
+            "created_at": "2026-07-22 13:54:55",
+            "updated_at": "2026-07-22 13:54:55",
+            "n": 12,
+            "amount": "3769.16",
+            "remaining": "0.00",
+            "deleted": "0"
+        },
+        {
+            "id": 9,
+            "source_type": "expenses",
+            "target_audience": "tenant_priority",
+            "due_type": "aidat",
+            "category_id": 70,
+            "due_plan_id": null,
+            "assessment_plan_id": null,
+            "assessment_installment_id": null,
+            "period": "2026-07",
+            "created_at": "2026-07-22 13:55:31",
+            "updated_at": "2026-07-22 13:55:31",
+            "n": 12,
+            "amount": "3973.84",
+            "remaining": "0.00",
+            "deleted": "0"
+        },
+        {
+            "id": 12,
+            "source_type": "expenses",
+            "target_audience": "tenant_priority",
+            "due_type": "aidat",
+            "category_id": 70,
+            "due_plan_id": null,
+            "assessment_plan_id": null,
+            "assessment_installment_id": null,
+            "period": "2026-08",
+            "created_at": "2026-08-15 13:44:00",
+            "updated_at": "2026-08-15 13:44:00",
+            "n": 12,
+            "amount": "4088.00",
+            "remaining": "123.00",
+            "deleted": "0"
+        },
+        {
+            "id": 13,
+            "source_type": "expenses",
+            "target_audience": "tenant_priority",
+            "due_type": "aidat",
+            "category_id": null,
+            "due_plan_id": null,
+            "assessment_plan_id": null,
+            "assessment_installment_id": null,
+            "period": "2026-09",
+            "created_at": "2026-09-25 17:06:32",
+            "updated_at": "2026-09-25 17:06:33",
+            "n": 12,
+            "amount": "5890.00",
+            "remaining": "5890.00",
+            "deleted": "12"
+        },
+        {
+            "id": 14,
+            "source_type": "fixed",
+            "target_audience": "tenant_priority",
+            "due_type": "aidat",
+            "category_id": 70,
+            "due_plan_id": null,
+            "assessment_plan_id": null,
+            "assessment_installment_id": null,
+            "period": "2026-09",
+            "created_at": "2026-09-25 17:10:37",
+            "updated_at": "2026-09-25 17:10:37",
+            "n": 12,
+            "amount": "5920.00",
+            "remaining": "1430.00",
+            "deleted": "0"
+        }
+    ],
+    "plans": [],
+    "assessment_plans": [],
+    "assessment_lines": [],
+    "null_source_detail": [
+        {
+            "is_imported": 1,
+            "batch_link": "without_batch",
+            "due_type": "malik_payi",
+            "account_type": "owner",
+            "scope": "active",
+            "n": 174,
+            "amount": "214463.90",
+            "remaining": "45380.82",
+            "first_created": "2026-07-21 18:27:48",
+            "last_created": "2026-07-21 18:27:57"
+        },
+        {
+            "is_imported": 1,
+            "batch_link": "without_batch",
+            "due_type": "malik_payi",
+            "account_type": "owner",
+            "scope": "deleted",
+            "n": 5,
+            "amount": "1780.84",
+            "remaining": "1780.84",
+            "first_created": "2026-07-21 18:27:48",
+            "last_created": "2026-07-21 18:27:49"
+        },
+        {
+            "is_imported": 1,
+            "batch_link": "without_batch",
+            "due_type": "aidat",
+            "account_type": "owner",
+            "scope": "active",
+            "n": 639,
+            "amount": "271815.31",
+            "remaining": "0.00",
+            "first_created": "2026-07-21 18:27:49",
+            "last_created": "2026-07-21 18:27:57"
+        },
+        {
+            "is_imported": 1,
+            "batch_link": "without_batch",
+            "due_type": "aidat",
+            "account_type": "tenant",
+            "scope": "active",
+            "n": 253,
+            "amount": "90208.03",
+            "remaining": "0.00",
+            "first_created": "2026-07-21 18:27:49",
+            "last_created": "2026-07-21 18:27:57"
+        },
+        {
+            "is_imported": 0,
+            "batch_link": "with_batch",
+            "due_type": "aidat",
+            "account_type": "owner",
+            "scope": "active",
+            "n": 36,
+            "amount": "13574.00",
+            "remaining": "1143.00",
+            "first_created": "2026-07-22 13:54:55",
+            "last_created": "2026-09-25 17:10:38"
+        },
+        {
+            "is_imported": 0,
+            "batch_link": "with_batch",
+            "due_type": "aidat",
+            "account_type": "tenant",
+            "scope": "active",
+            "n": 12,
+            "amount": "4177.00",
+            "remaining": "410.00",
+            "first_created": "2026-07-22 13:54:55",
+            "last_created": "2026-09-25 17:10:37"
+        },
+        {
+            "is_imported": 0,
+            "batch_link": "with_batch",
+            "due_type": "aidat",
+            "account_type": "owner",
+            "scope": "deleted",
+            "n": 9,
+            "amount": "4496.00",
+            "remaining": "4496.00",
+            "first_created": "2026-09-25 17:06:33",
+            "last_created": "2026-09-25 17:06:33"
+        },
+        {
+            "is_imported": 0,
+            "batch_link": "with_batch",
+            "due_type": "aidat",
+            "account_type": "tenant",
+            "scope": "deleted",
+            "n": 3,
+            "amount": "1394.00",
+            "remaining": "1394.00",
+            "first_created": "2026-09-25 17:06:33",
+            "last_created": "2026-09-25 17:06:33"
+        }
+    ],
+    "unbatched_descriptions": [
+        {
+            "description": "2023 - Kasım ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "1673.27"
+        },
+        {
+            "description": "2024 - Şubat ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "2153.52"
+        },
+        {
+            "description": "2021 Ayedaş Avukatı  Logar  SuSayacı",
+            "is_imported": 1,
+            "due_type": "malik_payi",
+            "n": 12,
+            "amount": "11580.04"
+        },
+        {
+            "description": "2022 Bahçe Aydınlatma ve Kamera Takılması",
+            "is_imported": 1,
+            "due_type": "malik_payi",
+            "n": 12,
+            "amount": "6000.00"
+        },
+        {
+            "description": "2022 Ekim Elektrik Sayaçlarının Ayrılması",
+            "is_imported": 1,
+            "due_type": "malik_payi",
+            "n": 12,
+            "amount": "23440.68"
+        },
+        {
+            "description": "2022 Aralık Asansör Revize ve Ruhsatlanması",
+            "is_imported": 1,
+            "due_type": "malik_payi",
+            "n": 12,
+            "amount": "71295.95"
+        },
+        {
+            "description": "2023 - Ocak ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "1503.72"
+        },
+        {
+            "description": "2023 - Ocak Su İski",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "3892.97"
+        },
+        {
+            "description": "2023 - Şubat ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "1531.57"
+        },
+        {
+            "description": "2023 - Şubat Su İski",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "3059.00"
+        },
+        {
+            "description": "2023 - Mart ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "1435.56"
+        },
+        {
+            "description": "2023 - Mart Su İski",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "3312.06"
+        },
+        {
+            "description": "2023 - Nisan ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "1852.80"
+        },
+        {
+            "description": "2023 Nisan Ozalit İşi Mimari Proje",
+            "is_imported": 1,
+            "due_type": "malik_payi",
+            "n": 12,
+            "amount": "150.00"
+        },
+        {
+            "description": "2023 - Nisan Su İski",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "3170.03"
+        },
+        {
+            "description": "2023 - Mayıs ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "2050.82"
+        },
+        {
+            "description": "2023 - Mayıs Su İski",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "3159.99"
+        },
+        {
+            "description": "2023 Haziran Otopark Kepenk Yapım İşi",
+            "is_imported": 1,
+            "due_type": "malik_payi",
+            "n": 12,
+            "amount": "13500.00"
+        },
+        {
+            "description": "2023 - Haziran ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "2556.48"
+        },
+        {
+            "description": "2023 - Aralık Ayı Aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "1793.28"
+        },
+        {
+            "description": "2023 Ekim Dalgıç Pompa Alımı",
+            "is_imported": 1,
+            "due_type": "malik_payi",
+            "n": 12,
+            "amount": "2374.92"
+        },
+        {
+            "description": "2023 - Temmuz Ağustos ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "2705.29"
+        },
+        {
+            "description": "2024 Drenaj Kapakları Otopark Tente Otopark Izgara Yapımı",
+            "is_imported": 1,
+            "due_type": "malik_payi",
+            "n": 12,
+            "amount": "19200.00"
+        },
+        {
+            "description": "2023 - Ekim ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "2071.56"
+        },
+        {
+            "description": "2023 - Eylül ayı aidatı",
+            "is_imported": 1,
+            "due_type": "aidat",
+            "n": 12,
+            "amount": "1582.43"
+        }
+    ],
+    "batch_due_accounts": [
+        {
+            "id": 3335,
+            "due_batch_id": 8,
+            "account_id": 114,
+            "type": "owner",
+            "unit_id": 60,
+            "period": "2026-06",
+            "amount": "202.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3336,
+            "due_batch_id": 8,
+            "account_id": 166,
+            "type": "tenant",
+            "unit_id": 61,
+            "period": "2026-06",
+            "amount": "202.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3337,
+            "due_batch_id": 8,
+            "account_id": 116,
+            "type": "owner",
+            "unit_id": 62,
+            "period": "2026-06",
+            "amount": "336.36",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3338,
+            "due_batch_id": 8,
+            "account_id": 117,
+            "type": "owner",
+            "unit_id": 63,
+            "period": "2026-06",
+            "amount": "336.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3339,
+            "due_batch_id": 8,
+            "account_id": 118,
+            "type": "owner",
+            "unit_id": 64,
+            "period": "2026-06",
+            "amount": "337.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3340,
+            "due_batch_id": 8,
+            "account_id": 159,
+            "type": "tenant",
+            "unit_id": 65,
+            "period": "2026-06",
+            "amount": "337.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3341,
+            "due_batch_id": 8,
+            "account_id": 120,
+            "type": "owner",
+            "unit_id": 66,
+            "period": "2026-06",
+            "amount": "336.36",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3342,
+            "due_batch_id": 8,
+            "account_id": 121,
+            "type": "owner",
+            "unit_id": 67,
+            "period": "2026-06",
+            "amount": "336.36",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3343,
+            "due_batch_id": 8,
+            "account_id": 162,
+            "type": "tenant",
+            "unit_id": 68,
+            "period": "2026-06",
+            "amount": "336.36",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3344,
+            "due_batch_id": 8,
+            "account_id": 123,
+            "type": "owner",
+            "unit_id": 69,
+            "period": "2026-06",
+            "amount": "336.36",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3345,
+            "due_batch_id": 8,
+            "account_id": 124,
+            "type": "owner",
+            "unit_id": 70,
+            "period": "2026-06",
+            "amount": "336.36",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3346,
+            "due_batch_id": 8,
+            "account_id": 125,
+            "type": "owner",
+            "unit_id": 71,
+            "period": "2026-06",
+            "amount": "337.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:54:55"
+        },
+        {
+            "id": 3347,
+            "due_batch_id": 9,
+            "account_id": 114,
+            "type": "owner",
+            "unit_id": 60,
+            "period": "2026-07",
+            "amount": "213.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3348,
+            "due_batch_id": 9,
+            "account_id": 166,
+            "type": "tenant",
+            "unit_id": 61,
+            "period": "2026-07",
+            "amount": "213.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3349,
+            "due_batch_id": 9,
+            "account_id": 116,
+            "type": "owner",
+            "unit_id": 62,
+            "period": "2026-07",
+            "amount": "354.64",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3350,
+            "due_batch_id": 9,
+            "account_id": 117,
+            "type": "owner",
+            "unit_id": 63,
+            "period": "2026-07",
+            "amount": "355.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3351,
+            "due_batch_id": 9,
+            "account_id": 118,
+            "type": "owner",
+            "unit_id": 64,
+            "period": "2026-07",
+            "amount": "355.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3352,
+            "due_batch_id": 9,
+            "account_id": 159,
+            "type": "tenant",
+            "unit_id": 65,
+            "period": "2026-07",
+            "amount": "355.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3353,
+            "due_batch_id": 9,
+            "account_id": 120,
+            "type": "owner",
+            "unit_id": 66,
+            "period": "2026-07",
+            "amount": "354.64",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3354,
+            "due_batch_id": 9,
+            "account_id": 121,
+            "type": "owner",
+            "unit_id": 67,
+            "period": "2026-07",
+            "amount": "354.64",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3355,
+            "due_batch_id": 9,
+            "account_id": 162,
+            "type": "tenant",
+            "unit_id": 68,
+            "period": "2026-07",
+            "amount": "354.64",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3356,
+            "due_batch_id": 9,
+            "account_id": 123,
+            "type": "owner",
+            "unit_id": 69,
+            "period": "2026-07",
+            "amount": "354.64",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3357,
+            "due_batch_id": 9,
+            "account_id": 124,
+            "type": "owner",
+            "unit_id": 70,
+            "period": "2026-07",
+            "amount": "354.64",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3358,
+            "due_batch_id": 9,
+            "account_id": 125,
+            "type": "owner",
+            "unit_id": 71,
+            "period": "2026-07",
+            "amount": "355.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-07-22 13:55:31"
+        },
+        {
+            "id": 3457,
+            "due_batch_id": 12,
+            "account_id": 114,
+            "type": "owner",
+            "unit_id": 60,
+            "period": "2026-08",
+            "amount": "219.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3458,
+            "due_batch_id": 12,
+            "account_id": 166,
+            "type": "tenant",
+            "unit_id": 61,
+            "period": "2026-08",
+            "amount": "219.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3459,
+            "due_batch_id": 12,
+            "account_id": 116,
+            "type": "owner",
+            "unit_id": 62,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3460,
+            "due_batch_id": 12,
+            "account_id": 117,
+            "type": "owner",
+            "unit_id": 63,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3461,
+            "due_batch_id": 12,
+            "account_id": 118,
+            "type": "owner",
+            "unit_id": 64,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "123.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3462,
+            "due_batch_id": 12,
+            "account_id": 159,
+            "type": "tenant",
+            "unit_id": 65,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3463,
+            "due_batch_id": 12,
+            "account_id": 120,
+            "type": "owner",
+            "unit_id": 66,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3464,
+            "due_batch_id": 12,
+            "account_id": 121,
+            "type": "owner",
+            "unit_id": 67,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3465,
+            "due_batch_id": 12,
+            "account_id": 162,
+            "type": "tenant",
+            "unit_id": 68,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3466,
+            "due_batch_id": 12,
+            "account_id": 123,
+            "type": "owner",
+            "unit_id": 69,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3467,
+            "due_batch_id": 12,
+            "account_id": 124,
+            "type": "owner",
+            "unit_id": 70,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3468,
+            "due_batch_id": 12,
+            "account_id": 125,
+            "type": "owner",
+            "unit_id": 71,
+            "period": "2026-08",
+            "amount": "365.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-08-15 13:44:00"
+        },
+        {
+            "id": 3469,
+            "due_batch_id": 13,
+            "account_id": 114,
+            "type": "owner",
+            "unit_id": 60,
+            "period": "2026-09",
+            "amount": "360.00",
+            "remaining_amount": "360.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3470,
+            "due_batch_id": 13,
+            "account_id": 166,
+            "type": "tenant",
+            "unit_id": 61,
+            "period": "2026-09",
+            "amount": "360.00",
+            "remaining_amount": "360.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3471,
+            "due_batch_id": 13,
+            "account_id": 116,
+            "type": "owner",
+            "unit_id": 62,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3472,
+            "due_batch_id": 13,
+            "account_id": 117,
+            "type": "owner",
+            "unit_id": 63,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3473,
+            "due_batch_id": 13,
+            "account_id": 118,
+            "type": "owner",
+            "unit_id": 64,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3474,
+            "due_batch_id": 13,
+            "account_id": 159,
+            "type": "tenant",
+            "unit_id": 65,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3475,
+            "due_batch_id": 13,
+            "account_id": 120,
+            "type": "owner",
+            "unit_id": 66,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3476,
+            "due_batch_id": 13,
+            "account_id": 121,
+            "type": "owner",
+            "unit_id": 67,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3477,
+            "due_batch_id": 13,
+            "account_id": 162,
+            "type": "tenant",
+            "unit_id": 68,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3478,
+            "due_batch_id": 13,
+            "account_id": 123,
+            "type": "owner",
+            "unit_id": 69,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3479,
+            "due_batch_id": 13,
+            "account_id": 124,
+            "type": "owner",
+            "unit_id": 70,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3480,
+            "due_batch_id": 13,
+            "account_id": 125,
+            "type": "owner",
+            "unit_id": 71,
+            "period": "2026-09",
+            "amount": "517.00",
+            "remaining_amount": "517.00",
+            "deleted_at": "2026-09-25 17:07:50",
+            "created_at": "2026-09-25 17:06:33"
+        },
+        {
+            "id": 3481,
+            "due_batch_id": 14,
+            "account_id": 114,
+            "type": "owner",
+            "unit_id": 60,
+            "period": "2026-09",
+            "amount": "410.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:37"
+        },
+        {
+            "id": 3482,
+            "due_batch_id": 14,
+            "account_id": 166,
+            "type": "tenant",
+            "unit_id": 61,
+            "period": "2026-09",
+            "amount": "410.00",
+            "remaining_amount": "410.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:37"
+        },
+        {
+            "id": 3483,
+            "due_batch_id": 14,
+            "account_id": 116,
+            "type": "owner",
+            "unit_id": 62,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:37"
+        },
+        {
+            "id": 3484,
+            "due_batch_id": 14,
+            "account_id": 117,
+            "type": "owner",
+            "unit_id": 63,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "510.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:37"
+        },
+        {
+            "id": 3485,
+            "due_batch_id": 14,
+            "account_id": 118,
+            "type": "owner",
+            "unit_id": 64,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "510.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:37"
+        },
+        {
+            "id": 3486,
+            "due_batch_id": 14,
+            "account_id": 159,
+            "type": "tenant",
+            "unit_id": 65,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:37"
+        },
+        {
+            "id": 3487,
+            "due_batch_id": 14,
+            "account_id": 120,
+            "type": "owner",
+            "unit_id": 66,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:37"
+        },
+        {
+            "id": 3488,
+            "due_batch_id": 14,
+            "account_id": 121,
+            "type": "owner",
+            "unit_id": 67,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:37"
+        },
+        {
+            "id": 3489,
+            "due_batch_id": 14,
+            "account_id": 162,
+            "type": "tenant",
+            "unit_id": 68,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:37"
+        },
+        {
+            "id": 3490,
+            "due_batch_id": 14,
+            "account_id": 123,
+            "type": "owner",
+            "unit_id": 69,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:38"
+        },
+        {
+            "id": 3491,
+            "due_batch_id": 14,
+            "account_id": 124,
+            "type": "owner",
+            "unit_id": 70,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:38"
+        },
+        {
+            "id": 3492,
+            "due_batch_id": 14,
+            "account_id": 125,
+            "type": "owner",
+            "unit_id": 71,
+            "period": "2026-09",
+            "amount": "510.00",
+            "remaining_amount": "0.00",
+            "deleted_at": null,
+            "created_at": "2026-09-25 17:10:38"
+        }
+    ],
+    "missing_source_checks": [
+        {
+            "missing_account": "0",
+            "missing_batch": "0",
+            "wrong_batch_apartment": "0"
+        }
+    ]
+}

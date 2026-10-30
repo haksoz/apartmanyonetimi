@@ -89,7 +89,11 @@
     <p class="mb-4 text-sm font-medium text-slate-600">{{ $rangeLabel }}</p>
 
     {{-- Özet Kartlar --}}
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <p class="text-xs text-slate-500 mb-1">Devir Bakiyesi</p>
+            <p class="text-2xl font-bold {{ $openingBalance >= 0 ? 'text-emerald-600' : 'text-red-500' }}">{{ number_format($openingBalance, 2, ',', '.') }} ₺</p>
+        </div>
         <div class="bg-white rounded-2xl border border-slate-200 p-5">
             <p class="text-xs text-slate-500 mb-1">Toplam Tahsilat</p>
             <p class="text-2xl font-bold text-emerald-600">{{ number_format($totalIncome, 2, ',', '.') }} ₺</p>
@@ -99,9 +103,9 @@
             <p class="text-2xl font-bold text-red-500">{{ number_format($totalExpense, 2, ',', '.') }} ₺</p>
         </div>
         <div class="bg-white rounded-2xl border border-slate-200 p-5">
-            <p class="text-xs text-slate-500 mb-1">Net</p>
-            <p class="text-2xl font-bold {{ $totalNet >= 0 ? 'text-emerald-600' : 'text-red-500' }}">
-                {{ number_format($totalNet, 2, ',', '.') }} ₺
+            <p class="text-xs text-slate-500 mb-1">Dönem Sonu Bakiyesi</p>
+            <p class="text-2xl font-bold {{ $closingBalance >= 0 ? 'text-emerald-600' : 'text-red-500' }}">
+                {{ number_format($closingBalance, 2, ',', '.') }} ₺
             </p>
         </div>
     </div>
@@ -119,8 +123,8 @@
                 <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold">Dönem</th>
-                        <th class="px-4 py-3 text-right font-semibold">Tahsilat</th>
                         <th class="px-4 py-3 text-right font-semibold">Gider</th>
+                        <th class="px-4 py-3 text-right font-semibold">Tahsilat</th>
                         <th class="px-4 py-3 text-right font-semibold">Net</th>
                     </tr>
                 </thead>
@@ -128,8 +132,8 @@
                     @forelse($rows as $row)
                         <tr class="hover:bg-slate-50">
                             <td class="px-4 py-3 font-medium text-slate-800">{{ $row['month'] }}</td>
-                            <td class="px-4 py-3 text-right text-emerald-600 font-medium">{{ number_format($row['income'], 2, ',', '.') }} ₺</td>
                             <td class="px-4 py-3 text-right text-red-500 font-medium">{{ number_format($row['expense'], 2, ',', '.') }} ₺</td>
+                            <td class="px-4 py-3 text-right text-emerald-600 font-medium">{{ number_format($row['income'], 2, ',', '.') }} ₺</td>
                             <td class="px-4 py-3 text-right font-semibold {{ $row['net'] >= 0 ? 'text-emerald-600' : 'text-red-500' }}">
                                 {{ number_format($row['net'], 2, ',', '.') }} ₺
                             </td>
@@ -141,12 +145,21 @@
                 <tfoot class="bg-slate-50 border-t-2 border-slate-200">
                     <tr>
                         <td class="px-4 py-3 font-bold text-slate-700">TOPLAM</td>
-                        <td class="px-4 py-3 text-right font-bold text-emerald-600">{{ number_format($totalIncome, 2, ',', '.') }} ₺</td>
                         <td class="px-4 py-3 text-right font-bold text-red-500">{{ number_format($totalExpense, 2, ',', '.') }} ₺</td>
+                        <td class="px-4 py-3 text-right font-bold text-emerald-600">{{ number_format($totalIncome, 2, ',', '.') }} ₺</td>
                         <td class="px-4 py-3 text-right font-bold {{ $totalNet >= 0 ? 'text-emerald-600' : 'text-red-500' }}">{{ number_format($totalNet, 2, ',', '.') }} ₺</td>
                     </tr>
                 </tfoot>
             </table>
+        </div>
+    </div>
+
+    <div class="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 class="text-sm font-semibold text-slate-700">Tahsilat Kırılımı</h2>
+        <div class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+            <div><span class="text-slate-500">Aidat:</span> <strong>{{ number_format($aidatIncome, 2, ',', '.') }} ₺</strong></div>
+            <div><span class="text-slate-500">Kat Maliki Payı:</span> <strong>{{ number_format($ownerShareIncome, 2, ',', '.') }} ₺</strong></div>
+            <div><span class="text-slate-500">Borca bağlanmamış / diğer:</span> <strong>{{ number_format($otherIncome, 2, ',', '.') }} ₺</strong></div>
         </div>
     </div>
 

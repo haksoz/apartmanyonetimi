@@ -32,6 +32,7 @@
                         <td class="px-5 py-3">{{ $inst->due_date->format('d.m.Y') }}</td>
                         <td class="px-5 py-3">
                             @include('assessment-plans._installment-status')
+                            <p class="mt-2 text-xs text-slate-500">Borç / Daire: {{ $inst->live_due_count }} / {{ $inst->lines->count() }}</p>
                         </td>
                         <td class="px-5 py-3 text-right tabular-nums">{{ number_format((float) $inst->lines->sum('amount'), 2, ',', '.') }} ₺</td>
                         <td class="px-5 py-3 text-right">
@@ -54,7 +55,7 @@
                 @if ($plan->is_active && $plan->createsOnSchedule() && $inst->status === 'pending' && ! in_array($inst->period, $plan->skipped_periods ?? [], true))
                     <p class="mt-2 inline-flex items-center gap-1 text-xs text-slate-500">@include('financial-plans._clock') Planlanan: {{ $inst->due_date->copy()->startOfMonth()->day($plan->generate_day)->format('d.m.Y') }}</p>
                 @endif
-                <p class="mt-2 text-xs text-slate-500">Borç / Daire: {{ $inst->lines->whereNotNull('due_id')->count() }} / {{ $inst->lines->count() }}</p>
+                <p class="mt-2 text-xs text-slate-500">Borç / Daire: {{ $inst->live_due_count }} / {{ $inst->lines->count() }}</p>
                 <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
                     <p class="text-sm font-semibold tabular-nums text-slate-900">{{ number_format($inst->lines->sum('amount'), 2, ',', '.') }} ₺</p>
                     @include('assessment-plans._installment-actions')

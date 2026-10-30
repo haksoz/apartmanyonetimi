@@ -34,7 +34,6 @@ class DueBatch extends Model
         'category_id',
         'source_type',
         'distribution_type',
-        'target_audience',
         'period',
         'source_period',
         'category_filter_ids',
@@ -105,10 +104,10 @@ class DueBatch extends Model
 
     public function getTargetAudienceLabelAttribute(): string
     {
-        return match ($this->target_audience) {
-            'tenant_priority' => 'Kiracı Öncelikli',
-            'owner_only' => 'Sadece Sahipler',
-            default => ucfirst((string) $this->target_audience),
+        return match ($this->due_type) {
+            DueType::Aidat => 'Kiracı Öncelikli',
+            DueType::MalikPayi => 'Sadece Kat Maliki',
+            default => 'Belirlenmemiş',
         };
     }
 }

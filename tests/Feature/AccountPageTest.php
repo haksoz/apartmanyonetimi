@@ -956,7 +956,7 @@ class AccountPageTest extends TestCase
             ->assertJsonPath('message', 'Bu isimde bir hesap zaten mevcut.');
     }
 
-    public function test_account_statement_excel_and_pdf_are_free(): void
+    public function test_account_statement_html_is_free_and_exports_require_a_subscription(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create([
@@ -1008,6 +1008,14 @@ class AccountPageTest extends TestCase
             ->assertSee('+ Tahsilat Ekle')
             ->assertSee('Düzenle')
             ->assertDontSee("Excel'e Aktar");
+
+        foreach (['pdf', 'excel'] as $type) {
+            $this->withSession($session)->actingAs($user)
+                ->get(route('accounts.statement.export', ['id' => $account->id, 'type' => $type,
+                    'date_from' => '2026-01-01', 'date_to' => '2026-01-31']))
+                ->assertForbidden()->assertViewIs('reports.unavailable')->assertHeaderMissing('Content-Disposition');
+        }
+        $this->grantPaidFeatures($apartment);
 
         $this->withSession($session)
             ->actingAs($user)

@@ -29,6 +29,14 @@
     {{-- Filtreler --}}
     <form method="GET" action="{{ route('reports.overdue') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-3 items-end">
         <div>
+            <label class="block text-xs text-slate-500 mb-1">Borç Türü</label>
+            <select name="due_type" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="all" @selected($filterDueType === 'all')>Tüm Borçlar</option>
+                <option value="aidat" @selected($filterDueType === 'aidat')>Aidat Borçları</option>
+                <option value="malik_payi" @selected($filterDueType === 'malik_payi')>Kat Maliki Payı Borçları</option>
+            </select>
+        </div>
+        <div>
             <label class="block text-xs text-slate-500 mb-1">Daire</label>
             <select name="unit_id" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
                 <option value="">— Tüm Daireler —</option>

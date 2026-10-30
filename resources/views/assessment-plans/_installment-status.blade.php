@@ -1,5 +1,6 @@
 @php
     $installmentStatus = match (true) {
+        $inst->status === 'generated' && $inst->has_missing_dues => $inst->live_due_count > 0 ? 'Eksik' : 'Oluşturulmadı',
         $inst->status === 'generated' => 'Oluşturuldu',
         $inst->status === 'cancelled' => 'İptal',
         in_array($inst->period, $plan->skipped_periods ?? [], true) => 'Atlandı',

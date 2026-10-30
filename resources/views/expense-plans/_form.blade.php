@@ -17,13 +17,18 @@
     <h2 class="mb-4 text-sm font-semibold text-slate-700">İşlem Bilgileri</h2>
     <div class="grid gap-4 md:grid-cols-2">
                 <div>
-                    <label for="account_id" class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-medium text-slate-600">Hesap / Tedarikçi
-                        @isset($plan)<span class="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">Değiştirilemez</span>@endisset
+                    <label for="account_id" class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-medium text-slate-600">
+                        <span>Hesap / Tedarikçi</span>
+                        @isset($plan)
+                            <span class="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">Değiştirilemez</span>
+                        @else
+                            <button type="button" id="open-expense-plan-supplier-modal" class="text-xs font-semibold text-emerald-600 hover:text-emerald-700">+ Yeni Tedarikçi Ekle</button>
+                        @endisset
                     </label>
                     <select id="account_id" name="account_id" @disabled(isset($plan)) required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-100">
                         <option value="">Tedarikçi seçin</option>
                         @foreach ($accounts as $account)
-                            <option value="{{ $account->id }}" data-category-id="{{ $account->default_category_id }}" @selected((string) (isset($plan) ? $plan->account_id : old('account_id')) === (string) $account->id)>{{ $account->name }} ({{ $account->type }})</option>
+                            <option value="{{ $account->id }}" data-category-id="{{ $account->default_category_id }}" @selected((string) (isset($plan) ? $plan->account_id : old('account_id')) === (string) $account->id)>{{ $account->name }} ({{ $account->type_label }})</option>
                         @endforeach
                     </select>
                     @error('account_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror

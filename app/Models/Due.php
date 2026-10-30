@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DueType;
+use Illuminate\Validation\ValidationException;
 use App\Models\Traits\HasReferenceNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -41,6 +42,28 @@ class Due extends Model
         'due_type' => DueType::class,
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Due $due) {
+            $due->due_type ??= DueType::Aidat;
+        });
+
+        static::updating(function (Due $due) {
+            if ($due->isDirty('due_type')) {
+                throw ValidationException::withMessages(['due_type' => 'Kaydedilmiş borcun türü değiştirilemez. Yanlış tür için mevcut iptal/düzeltme sürecini kullanın.']);
+            }
+        });
+    }
+
+    public function getTargetingRuleLabelAttribute(): string
+    {
+        return match ($this->due_type) {
+            DueType::Aidat => 'Kiracı Öncelikli',
+            DueType::MalikPayi => 'Sadece Kat Maliki',
+            default => 'Belirlenmemiş',
+        };
+    }
+
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
@@ -63,7 +86,7 @@ class Due extends Model
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class)->withTrashed();
     }
 
     public function getDueTypeLabelAttribute(): string

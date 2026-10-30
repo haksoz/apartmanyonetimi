@@ -1,0 +1,1370 @@
+{
+    "connection": {
+        "env": "local",
+        "host": "127.0.0.1",
+        "database": "apartman_db"
+    },
+    "apartment": {
+        "id": 8,
+        "name": "Akbey Apartmanı",
+        "unit_count": 12
+    },
+    "cases": 96,
+    "all_match_independent_sql": true,
+    "all_financial_hashes_unchanged": true,
+    "fingerprints": {
+        "dues": "ef55080103cd1eb47576a0a2978c18a44fc278f4160f89cc6d480e55b174bd27",
+        "accounts": "bd74353146fe71d1df71aff32d24ddd8b6622dc67e49f8da91d4e45c698c3ca0",
+        "payments": "089d64fe1384bf880a88416f95ddcf724193d7622f9f3cca18b22e0504645d07",
+        "payment_allocations": "96e9173270bffb848cf3e03241f98d113aabe4bb5887223a9e3859ee34d64463",
+        "account_transactions": "a5bcd46aa7cceaa6d0f7915b0a22168d5dcd2c9f618b2453a162e0a7bef990a3",
+        "cash_transactions": "64bcbb4d7d309392791e3651cce8b909a474316a2e238f367cd012853604355f",
+        "due_batches": "01ea3c0ddbad2e14d2ea4b292546a0e9489cf2db831c54a6fb5425d5f90b41e3"
+    },
+    "results": [
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 2720,
+                "paid": 2720,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "inactive",
+            "accounts": 10,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 200,
+                "paid": 200,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 2920,
+                "paid": 2920,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "active",
+            "accounts": 13,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 2720,
+                "paid": 2720,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "inactive",
+            "accounts": 10,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 200,
+                "paid": 200,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "all",
+            "accounts": 23,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 2920,
+                "paid": 2920,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 2440,
+                "paid": 2440,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "inactive",
+            "accounts": 0,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 2440,
+                "paid": 2440,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "active",
+            "accounts": 1,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 280,
+                "paid": 280,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "inactive",
+            "accounts": 10,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 200,
+                "paid": 200,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "all",
+            "accounts": 11,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 480,
+                "paid": 480,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 43098.82,
+                "selectedAmount": 280,
+                "paid": 0,
+                "remaining": 43378.82
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "inactive",
+            "accounts": 10,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 43098.82,
+                "selectedAmount": 280,
+                "paid": 0,
+                "remaining": 43378.82
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "active",
+            "accounts": 13,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 43098.82,
+                "selectedAmount": 280,
+                "paid": 0,
+                "remaining": 43378.82
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "inactive",
+            "accounts": 10,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "all",
+            "accounts": 23,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 43098.82,
+                "selectedAmount": 280,
+                "paid": 0,
+                "remaining": 43378.82
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 43098.82,
+                "selectedAmount": 280,
+                "paid": 0,
+                "remaining": 43378.82
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "inactive",
+            "accounts": 0,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 43098.82,
+                "selectedAmount": 280,
+                "paid": 0,
+                "remaining": 43378.82
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "active",
+            "accounts": 1,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "inactive",
+            "accounts": 10,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-02",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "all",
+            "accounts": 11,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 3769.1600000000008,
+                "paid": 3769.1600000000008,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 3769.1600000000008,
+                "paid": 3769.1600000000008,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "active",
+            "accounts": 15,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 3769.1600000000008,
+                "paid": 3769.1600000000008,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "all",
+            "accounts": 24,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 3769.1600000000008,
+                "paid": 3769.1600000000008,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 2893.8000000000006,
+                "paid": 2893.8000000000006,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "inactive",
+            "accounts": 0,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 2893.8000000000006,
+                "paid": 2893.8000000000006,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "active",
+            "accounts": 3,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 875.36,
+                "paid": 875.36,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 875.36,
+                "paid": 875.36,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "active",
+            "accounts": 15,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "all",
+            "accounts": 24,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "inactive",
+            "accounts": 0,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "active",
+            "accounts": 3,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-06",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 123,
+                "selectedAmount": 5920,
+                "paid": 4490,
+                "remaining": 1553
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 123,
+                "selectedAmount": 5920,
+                "paid": 4490,
+                "remaining": 1553
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "active",
+            "accounts": 15,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 123,
+                "selectedAmount": 5920,
+                "paid": 4490,
+                "remaining": 1553
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "all",
+            "accounts": 24,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 123,
+                "selectedAmount": 5920,
+                "paid": 4490,
+                "remaining": 1553
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 123,
+                "selectedAmount": 4490,
+                "paid": 3470,
+                "remaining": 1143
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "inactive",
+            "accounts": 0,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 123,
+                "selectedAmount": 4490,
+                "paid": 3470,
+                "remaining": 1143
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "active",
+            "accounts": 3,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 1430,
+                "paid": 1020,
+                "remaining": 410
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 1430,
+                "paid": 1020,
+                "remaining": 410
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "active",
+            "accounts": 15,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "all",
+            "accounts": 24,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "inactive",
+            "accounts": 0,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "active",
+            "accounts": 3,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-09",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 1553,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 1553
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "resident",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 1553,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 1553
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "active",
+            "accounts": 15,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 1553,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 1553
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "all",
+            "status": "all",
+            "accounts": 24,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 1553,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 1553
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 1143,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 1143
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "inactive",
+            "accounts": 0,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "owner",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 1143,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 1143
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "active",
+            "accounts": 3,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 410,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 410
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "tenant_priority",
+            "type": "tenant",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 410,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 410
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "resident",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "active",
+            "accounts": 15,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "all",
+            "status": "all",
+            "accounts": 24,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "active",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "inactive",
+            "accounts": 0,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "owner",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 45380.82,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 45380.82
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "active",
+            "accounts": 3,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "inactive",
+            "accounts": 9,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        },
+        {
+            "month": "2026-10",
+            "rule": "owner_only",
+            "type": "tenant",
+            "status": "all",
+            "accounts": 12,
+            "unknown": 0,
+            "totals": {
+                "pastRemaining": 0,
+                "selectedAmount": 0,
+                "paid": 0,
+                "remaining": 0
+            }
+        }
+    ]
+}

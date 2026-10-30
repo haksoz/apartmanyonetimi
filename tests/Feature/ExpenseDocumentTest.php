@@ -43,6 +43,7 @@ class ExpenseDocumentTest extends TestCase
             'apartment_id' => $apartment->id,
             'name' => 'Elektrik',
             'type' => Category::TYPE_EXPENSE,
+            'allow_expense' => true,
         ]);
         $expense = Expense::create([
             'apartment_id' => $apartment->id,

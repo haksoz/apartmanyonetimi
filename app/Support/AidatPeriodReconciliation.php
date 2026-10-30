@@ -8,7 +8,6 @@ use App\Models\Apartment;
 use App\Models\Category;
 use App\Models\Due;
 use App\Models\DuePlan;
-use App\Models\TenantAssignment;
 use App\Models\Unit;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -17,23 +16,21 @@ class AidatPeriodReconciliation
 {
     public function categoryFor(Apartment $apartment): Category
     {
-        return Category::query()->firstOrCreate(
-            [
-                'apartment_id' => $apartment->id,
-                'name' => 'Aidat',
-            ],
-            [
-                'type' => Category::TYPE_INCOME,
-                'is_active' => true,
-                'is_system' => true,
-            ],
-        );
+        $category = $apartment->defaultAidatCategory;
+        if (! $apartment->default_aidat_category_id || ! $category) {
+            throw new \RuntimeException('Apartmanın Genel Aidat kategori referansı tanımlı değil. Kategori ayarlarını kontrol edin.');
+        }
+        if ($category->apartment_id !== $apartment->id) {
+            throw new \RuntimeException('Genel Aidat kategori referansı bu apartmana ait değil. Kategori ayarlarını kontrol edin.');
+        }
+
+        return $category;
     }
 
     public function reconcile(DuePlan $plan, string $period): array
     {
         $periodDate = Carbon::parse($period.'-01');
-        $category = Category::query()->where('apartment_id', $plan->apartment_id)->where('name', 'Aidat')->first();
+        $category = $plan->category ?: $this->categoryFor($plan->apartment);
         $targetAccounts = $this->targetAccounts($plan, $periodDate);
         $completedAccountIds = Due::query()
             ->where('apartment_id', $plan->apartment_id)
@@ -66,7 +63,7 @@ class AidatPeriodReconciliation
             ->get();
 
         return $units->map(function (Unit $unit) use ($plan, $periodDate) {
-            $account = $this->accountForPeriod($unit, $periodDate, 'tenant_priority');
+            $account = $this->accountForPeriod($unit, $periodDate, DueType::Aidat);
             if (! $account) {
                 return null;
             }
@@ -85,20 +82,9 @@ class AidatPeriodReconciliation
         })->filter()->values();
     }
 
-    public function accountForPeriod(Unit $unit, Carbon $periodDate, string $targetAudience): ?Account
+    public function accountForPeriod(Unit $unit, Carbon $periodDate, DueType $type): ?Account
     {
-        if ($targetAudience === 'owner_only') {
-            return $unit->ownerAccount;
-        }
-
-        $tenantAssignment = TenantAssignment::query()
-            ->where('unit_id', $unit->id)
-            ->where('move_in_date', '<=', $periodDate->copy()->endOfMonth())
-            ->where(fn ($query) => $query->whereNull('move_out_date')->orWhere('move_out_date', '>=', $periodDate->copy()->startOfMonth()))
-            ->with('account')
-            ->first();
-
-        return $tenantAssignment?->account ?? $unit->ownerAccount;
+        return app(DueTargeting::class)->accountFor($unit, $periodDate, $type);
     }
 
     public function hasExistingAidatDue(Apartment $apartment, int $accountId, string $period, ?int $excludeDueId = null): bool
