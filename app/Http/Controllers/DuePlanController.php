@@ -240,7 +240,6 @@ class DuePlanController extends Controller
             'monthly_amount' => $validated['monthly_amount'],
             'distribution_type' => $validated['distribution_type'],
             'round_to_integer' => $request->boolean('round_to_integer'),
-            'target_audience' => \App\Enums\DueType::Aidat->targetAudience(),
             'due_day' => $validated['due_day'],
             'generate_day' => $validated['generate_day'],
             'generation_mode' => $generationMode,
@@ -514,7 +513,6 @@ class DuePlanController extends Controller
                     'category_id' => $category->id,
                     'source_type' => DueBatch::SOURCE_MANUAL,
                     'distribution_type' => $duePlan->distribution_type,
-                    'target_audience' => \App\Enums\DueType::Aidat->targetAudience(),
                     'source_amount' => $sourceAmount,
                     'description' => $batchDescription,
                     'distribution_snapshot' => $snapshot,
@@ -535,7 +533,6 @@ class DuePlanController extends Controller
                 $due = Due::create([
                     'apartment_id' => $duePlan->apartment_id,
                     'due_batch_id' => $batch->id,
-                    'target_audience' => \App\Enums\DueType::Aidat->targetAudience(),
                     'unit_id' => $item['unit']->id,
                     'account_id' => $item['account']->id,
                     'due_type' => $duePlan->due_type,

@@ -95,7 +95,15 @@
                 <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ $subscription->payment_method === 'kredi_kartı' ? 'Kredi kartı' : 'Havale / EFT' }}</dd>
             </div>
             <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt class="text-slate-500">Tutar</dt>
+                <dt class="text-slate-500">Net tutar</dt>
+                <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ number_format((float) ($subscription->net_amount ?? $subscription->price), 2, ',', '.') }} ₺</dd>
+            </div>
+            <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-slate-500">KDV (%{{ number_format((float) $subscription->tax_rate, 2, ',', '.') }})</dt>
+                <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ number_format((float) $subscription->tax_amount, 2, ',', '.') }} ₺</dd>
+            </div>
+            <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-slate-500">Genel toplam</dt>
                 <dd class="mt-1 font-semibold text-slate-900 sm:col-span-2 sm:mt-0">{{ number_format((float) $subscription->price, 2, ',', '.') }} ₺</dd>
             </div>
             @if ($subscription->receipt_reference)

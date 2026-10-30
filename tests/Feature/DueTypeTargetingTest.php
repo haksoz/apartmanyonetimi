@@ -56,7 +56,7 @@ class DueTypeTargetingTest extends TestCase
         $this->post(route('dues.store'), $this->payload($tenant, $category))->assertSessionHasNoErrors();
         $due = Due::sole();
         $this->assertSame($tenant->id, $due->account_id);
-        $this->assertSame('tenant_priority', $due->target_audience);
+        $this->assertSame('aidat', $due->due_type->value);
         $this->assertEquals(100, $due->remaining_amount);
     }
 
@@ -75,7 +75,7 @@ class DueTypeTargetingTest extends TestCase
         $this->postJson(route('dues.store'), $this->payload($tenant, $category, 'malik_payi'))->assertUnprocessable()->assertJsonValidationErrors('account_id');
         $this->post(route('dues.store'), $this->payload($owner, $category, 'malik_payi'))->assertSessionHasNoErrors();
         $this->assertSame($owner->id, Due::sole()->account_id);
-        $this->assertSame('owner_only', Due::sole()->target_audience);
+        $this->assertSame('malik_payi', Due::sole()->due_type->value);
     }
 
     public function test_interface_eligibility_uses_the_same_server_rule_and_period(): void
@@ -154,6 +154,6 @@ class DueTypeTargetingTest extends TestCase
         $assignment->update(['move_out_date' => '2026-06-30']);
         app(DuePlanController::class)->createDuesForPeriod($plan, '2026-07');
         $this->assertSame($owner->id, Due::where('period', '2026-07')->sole()->account_id);
-        $this->assertSame(['tenant_priority'], Due::distinct()->pluck('target_audience')->all());
+        $this->assertSame(['aidat'], Due::distinct()->pluck('due_type')->map(fn ($type) => $type->value)->all());
     }
 }

@@ -104,7 +104,7 @@ class ImportDueTypeTest extends TestCase
         $this->assertSame('aidat', $due->due_type->value);
         $this->assertSame(500, (int) $due->amount);
         $this->assertTrue($due->is_imported);
-        $this->assertSame('tenant_priority', $due->target_audience);
+        $this->assertSame('aidat', $due->due_type->value);
     }
 
     public function test_excel_explicit_malik_payi_column_is_preserved_and_used(): void
@@ -123,6 +123,6 @@ class ImportDueTypeTest extends TestCase
             'account_types' => ['Ahmet Yılmaz|1' => 'owner'], 'due_categories' => [2 => (string) $category->id],
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertSame('malik_payi', Due::sole()->due_type->value);
-        $this->assertSame('owner_only', Due::sole()->target_audience);
+        $this->assertSame('malik_payi', Due::sole()->due_type->value);
     }
 }

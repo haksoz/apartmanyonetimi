@@ -138,7 +138,6 @@ class AccountTransactionDirectionTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => 'manual',
                 'distribution_type' => 'equal',
-                'target_audience' => 'owner_only',
                 'period' => '2026-06',
                 'due_date' => '2026-06-30',
                 'due_type' => DueType::Aidat->value,
@@ -187,7 +186,6 @@ class AccountTransactionDirectionTest extends TestCase
             'amount_type' => 'monthly',
             'monthly_amount' => 500,
             'distribution_type' => 'equal',
-            'target_audience' => 'owner_only',
             'due_day' => 1,
             'generate_day' => 1,
             'is_active' => true,

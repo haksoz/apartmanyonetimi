@@ -34,7 +34,6 @@ class DuePlan extends Model
         'per_unit_amount',
         'distribution_type',
         'round_to_integer',
-        'target_audience',
         'due_day',
         'auto_generate',
         'generation_mode',
@@ -67,7 +66,6 @@ class DuePlan extends Model
                 throw ValidationException::withMessages(['due_type' => 'Aidat Planı yalnızca Aidat türünde borç oluşturabilir.']);
             }
             $plan->due_type = DueType::Aidat;
-            $plan->target_audience = DueType::Aidat->targetAudience();
             $plan->generation_mode = self::GENERATION_ON_SCHEDULE;
             $plan->auto_generate = true;
             if ($plan->plan_year) {

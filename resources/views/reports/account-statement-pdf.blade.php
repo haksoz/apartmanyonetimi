@@ -42,7 +42,7 @@
                 <tr>
                     <td>{{ $tx->transaction_date?->format('d.m.Y') ?? '-' }}</td>
                     <td>{{ $tx->type === 'debit' ? 'Borç' : 'Alacak' }}</td>
-                    <td>{{ $tx->description ?? '-' }}</td>
+                    <td>{{ $tx->description ?? '-' }}@if($tx->transactionable instanceof \App\Models\Due && $tx->transactionable->due_type) · {{ $tx->transactionable->due_type->label() }}@endif</td>
                     <td class="text-right text-red">{{ $tx->type === 'debit' ? number_format($tx->amount, 2, ',', '.') . ' TL' : '—' }}</td>
                     <td class="text-right text-green">{{ $tx->type === 'credit' ? number_format($tx->amount, 2, ',', '.') . ' TL' : '—' }}</td>
                     <td class="text-right {{ $tx->running_balance < 0 ? 'text-red' : ($tx->running_balance > 0 ? 'text-green' : 'text-muted') }}">

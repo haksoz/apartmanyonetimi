@@ -159,16 +159,22 @@ class ReportController extends Controller
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('A2')->getFont()->setBold(true);
 
-        $sheet->fromArray(['Dönem', 'Tahsilat (₺)', 'Gider (₺)', 'Net (₺)'], null, 'A4');
+        $sheet->fromArray(['Dönem', 'Gider (₺)', 'Tahsilat (₺)', 'Net (₺)'], null, 'A4');
         $this->applyHeaderStyle($sheet, 'A4:D4');
 
         $row = 5;
         foreach ($data['rows'] as $r) {
-            $sheet->fromArray([$r['month'], $r['income'], $r['expense'], $r['net']], null, 'A' . $row);
+            $sheet->fromArray([$r['month'], $r['expense'], $r['income'], $r['net']], null, 'A' . $row);
             $row++;
         }
-        $sheet->fromArray(['TOPLAM', $data['totalIncome'], $data['totalExpense'], $data['totalNet']], null, 'A' . $row);
+        $sheet->fromArray(['TOPLAM', $data['totalExpense'], $data['totalIncome'], $data['totalNet']], null, 'A' . $row);
         $this->applyHeaderStyle($sheet, "A{$row}:D{$row}", 'FF2e7d32');
+        $row += 2;
+        $sheet->fromArray(['Devir Bakiyesi', $data['openingBalance']], null, 'A'.$row++);
+        $sheet->fromArray(['Dönem Sonu Bakiyesi', $data['closingBalance']], null, 'A'.$row++);
+        $sheet->fromArray(['Aidat Tahsilatı', $data['aidatIncome']], null, 'A'.$row++);
+        $sheet->fromArray(['Kat Maliki Payı Tahsilatı', $data['ownerShareIncome']], null, 'A'.$row++);
+        $sheet->fromArray(['Borca Bağlanmamış / Diğer Tahsilat', $data['otherIncome']], null, 'A'.$row);
 
         if ($data['showCategories'] && $data['expenseByCategory']->count()) {
             $row += 2;
@@ -201,13 +207,24 @@ class ReportController extends Controller
         $payments = Payment::where('apartment_id', $id)
             ->whereBetween('payment_date', [$dateFrom, $dateTo])
             ->whereHas('account', fn($q) => $q->where('type', '!=', Account::TYPE_SUPPLIER))
-            ->selectRaw("DATE_FORMAT(payment_date, '%Y-%m') as month, SUM(amount) as total")
-            ->groupBy('month')->orderBy('month')->pluck('total', 'month');
+            ->get(['payment_date', 'amount'])
+            ->groupBy(fn ($payment) => $payment->payment_date->format('Y-m'))
+            ->map(fn ($group) => $group->sum('amount'));
+
+        $openingIncome = (float) Payment::where('apartment_id', $id)
+            ->whereDate('payment_date', '<', $dateFrom)
+            ->whereHas('account', fn($q) => $q->where('type', '!=', Account::TYPE_SUPPLIER))
+            ->sum('amount');
 
         $expenses = Expense::where('apartment_id', $id)
             ->whereBetween('expense_date', [$dateFrom, $dateTo])
-            ->selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as month, SUM(amount) as total")
-            ->groupBy('month')->orderBy('month')->pluck('total', 'month');
+            ->get(['expense_date', 'amount'])
+            ->groupBy(fn ($expense) => $expense->expense_date->format('Y-m'))
+            ->map(fn ($group) => $group->sum('amount'));
+
+        $openingExpense = (float) Expense::where('apartment_id', $id)
+            ->whereDate('expense_date', '<', $dateFrom)
+            ->sum('amount');
 
         $months = collect(array_keys($payments->toArray() + $expenses->toArray()))->sort()->values();
         $rows = $months->map(function ($month) use ($payments, $expenses) {
@@ -227,6 +244,23 @@ class ReportController extends Controller
 
         $totalIncome  = $rows->sum('income');
         $totalExpense = $rows->sum('expense');
+        $openingBalance = $openingIncome - $openingExpense;
+        $closingBalance = $openingBalance + $totalIncome - $totalExpense;
+
+        $allocatedByType = DB::table('payment_allocations')
+            ->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')
+            ->join('accounts', 'accounts.id', '=', 'payments.account_id')
+            ->join('dues', 'dues.id', '=', 'payment_allocations.due_id')
+            ->where('payments.apartment_id', $id)
+            ->where('accounts.type', '!=', Account::TYPE_SUPPLIER)
+            ->whereBetween('payments.payment_date', [$dateFrom, $dateTo])
+            ->whereIn('dues.due_type', ['aidat', 'malik_payi'])
+            ->selectRaw('dues.due_type, SUM(payment_allocations.amount) as total')
+            ->groupBy('dues.due_type')
+            ->pluck('total', 'due_type');
+        $aidatIncome = (float) ($allocatedByType['aidat'] ?? 0);
+        $ownerShareIncome = (float) ($allocatedByType['malik_payi'] ?? 0);
+        $otherIncome = max(0, $totalIncome - $aidatIncome - $ownerShareIncome);
         $showCategories = $request->boolean('show_categories');
 
         $expenseByCategory = $showCategories
@@ -243,6 +277,11 @@ class ReportController extends Controller
             'totalIncome'  => $totalIncome,
             'totalExpense' => $totalExpense,
             'totalNet'     => $totalIncome - $totalExpense,
+            'openingBalance' => $openingBalance,
+            'closingBalance' => $closingBalance,
+            'aidatIncome' => $aidatIncome,
+            'ownerShareIncome' => $ownerShareIncome,
+            'otherIncome' => $otherIncome,
             'showCategories' => $showCategories,
             'expenseByCategory' => $expenseByCategory,
             'dateFrom' => $dateFrom,
@@ -656,10 +695,14 @@ class ReportController extends Controller
         $sheet->getStyle('D' . $row . ':F' . $row)->getNumberFormat()->setFormatCode($tlFormat);
         $row++;
         foreach ($transactions as $tx) {
+            $description = $tx->description ?? '-';
+            if ($tx->transactionable instanceof Due && $tx->transactionable->due_type) {
+                $description .= ' · '.$tx->transactionable->due_type->label();
+            }
             $sheet->fromArray([
                 $tx->transaction_date?->format('d.m.Y'),
                 $tx->type === 'debit' ? 'Borç' : 'Alacak',
-                $tx->description ?? '-',
+                $description,
                 $tx->type === 'debit' ? $tx->amount : 0,
                 $tx->type === 'credit' ? $tx->amount : 0,
                 $tx->running_balance,
@@ -707,7 +750,10 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
+        $request->validate(['due_type' => ['sometimes', 'in:aidat,malik_payi']]);
         $year     = (int)$request->input('year', now()->year);
+        $filterDueType = $request->input('due_type', 'aidat');
+        $reportTitle = $filterDueType === 'malik_payi' ? 'Kat Maliki Payı Tahsilat Raporu' : 'Aidat Tahsilat Raporu';
         $months   = range(1, 12);
 
         $accounts = Account::where('accounts.apartment_id', $apartment->id)
@@ -720,37 +766,23 @@ class ReportController extends Controller
             ->select('accounts.*')
             ->get();
 
-        // Her hesap × ay için borç durumunu çek (tüm due_type'lar dahil)
         $dues = Due::where('apartment_id', $apartment->id)
+            ->where('due_type', $filterDueType)
             ->where(function ($q) use ($year) {
-                $q->whereYear('period', $year)
-                  ->orWhereRaw("YEAR(due_date) = ?", [$year]);
+                $q->where('period', 'like', $year.'-%')
+                  ->orWhereBetween('due_date', [$year.'-01-01', $year.'-12-31']);
             })
             ->with(['unit', 'account'])
             ->get();
 
         // [account_id][month] = status
-        $matrix = [];
-        foreach ($dues as $due) {
-            $accountId = $due->account_id;
-            $month     = optional($due->period ? Carbon::parse($due->period) : $due->due_date)->month;
-            if (!$accountId || !$month) continue;
-
-            $existing = $matrix[$accountId][$month] ?? null;
-            $status   = $due->computed_status;
-
-            // paid > partial > overdue > pending
-            $priority = ['paid' => 4, 'partial' => 3, 'overdue' => 2, 'pending' => 1];
-            if (!$existing || ($priority[$status] ?? 0) > ($priority[$existing] ?? 0)) {
-                $matrix[$accountId][$month] = $status;
-            }
-        }
+        $matrix = $this->collectionStatusMatrix($dues);
 
         $monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
         $availableYears = range(now()->year, max(now()->year - 5, 2020), -1);
 
-        return view('reports.due-collection', compact('apartment', 'accounts', 'months', 'matrix', 'monthNames', 'year', 'availableYears'));
+        return view('reports.due-collection', compact('apartment', 'accounts', 'months', 'matrix', 'monthNames', 'year', 'availableYears', 'filterDueType', 'reportTitle'));
     }
 
     public function dueCollectionExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -758,7 +790,10 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
+        $request->validate(['due_type' => ['sometimes', 'in:aidat,malik_payi']]);
         $year     = (int)$request->input('year', now()->year);
+        $filterDueType = $request->input('due_type', 'aidat');
+        $reportTitle = $filterDueType === 'malik_payi' ? 'Kat Maliki Payı Tahsilat Raporu' : 'Aidat Tahsilat Raporu';
         $months   = range(1, 12);
 
         $accounts = Account::where('accounts.apartment_id', $apartment->id)
@@ -772,35 +807,25 @@ class ReportController extends Controller
             ->get();
 
         $dues = Due::where('apartment_id', $apartment->id)
+            ->where('due_type', $filterDueType)
             ->where(function ($q) use ($year) {
-                $q->whereYear('period', $year)
-                  ->orWhereRaw("YEAR(due_date) = ?", [$year]);
+                $q->where('period', 'like', $year.'-%')
+                  ->orWhereBetween('due_date', [$year.'-01-01', $year.'-12-31']);
             })
             ->with(['unit', 'account'])->get();
 
-        $matrix = [];
-        foreach ($dues as $due) {
-            $accountId = $due->account_id;
-            $month     = optional($due->period ? Carbon::parse($due->period) : $due->due_date)->month;
-            if (!$accountId || !$month) continue;
-            $status   = $due->computed_status;
-            $priority = ['paid' => 4, 'partial' => 3, 'overdue' => 2, 'pending' => 1];
-            $existing = $matrix[$accountId][$month] ?? null;
-            if (!$existing || ($priority[$status] ?? 0) > ($priority[$existing] ?? 0)) {
-                $matrix[$accountId][$month] = $status;
-            }
-        }
+        $matrix = $this->collectionStatusMatrix($dues);
 
         $monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.due-collection-pdf', compact('apartment', 'accounts', 'months', 'matrix', 'monthNames', 'year'), 'aidat-tahsilat-raporu', true);
+            return $this->pdfResponse('reports.due-collection-pdf', compact('apartment', 'accounts', 'months', 'matrix', 'monthNames', 'year', 'filterDueType', 'reportTitle'), 'tahsilat-raporu-'.$filterDueType, true);
         }
 
         $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet()->setTitle('Aidat Tahsilat');
+        $sheet = $spreadsheet->getActiveSheet()->setTitle($filterDueType === 'malik_payi' ? 'Malik Payı Tahsilat' : 'Aidat Tahsilat');
         $sheet->mergeCells('A1:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(13) . '1');
-        $sheet->setCellValue('A1', 'AİDAT TAHSİLAT RAPORU — ' . $apartment->name . ' — ' . $year);
+        $sheet->setCellValue('A1', mb_strtoupper($reportTitle, 'UTF-8') . ' — ' . $apartment->name . ' — ' . $year);
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
@@ -826,7 +851,27 @@ class ReportController extends Controller
             $sheet->getColumnDimensionByColumn($i)->setWidth(9);
         }
 
-        return $this->excelResponse($spreadsheet, 'aidat-tahsilat-raporu');
+        return $this->excelResponse($spreadsheet, 'tahsilat-raporu-'.$filterDueType);
+    }
+
+    private function collectionStatusMatrix($dues): array
+    {
+        $matrix = [];
+        foreach ($dues->groupBy(function ($due) {
+            $month = optional($due->period ? Carbon::parse($due->period) : $due->due_date)->month;
+            return $due->account_id.'-'.$month;
+        }) as $group) {
+            $first = $group->first();
+            $month = optional($first->period ? Carbon::parse($first->period) : $first->due_date)->month;
+            if (! $first->account_id || ! $month) continue;
+            $amount = (float) $group->sum('amount');
+            $remaining = (float) $group->sum('remaining_amount');
+            $hasOverdue = $group->contains(fn ($due) => (float) $due->remaining_amount > 0 && $due->due_date?->isPast());
+            $matrix[$first->account_id][$month] = $remaining <= 0
+                ? 'paid'
+                : ($remaining < $amount ? 'partial' : ($hasOverdue ? 'overdue' : 'pending'));
+        }
+        return $matrix;
     }
 
     // -------------------------------------------------------------------------
@@ -838,14 +883,17 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
+        $request->validate(['due_type' => ['sometimes', 'in:all,aidat,malik_payi']]);
         $filterUnit = $request->input('unit_id');
         $filterAccount = $request->input('account_filter', 'all');
+        $filterDueType = $request->input('due_type', 'all');
         $units = Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get();
 
         $dues = Due::with(['account', 'unit', 'category'])
             ->where('apartment_id', $apartment->id)
             ->where('remaining_amount', '>', 0)
             ->where('due_date', '<', now())
+            ->when($filterDueType !== 'all', fn ($q) => $q->where('due_type', $filterDueType))
             ->when($filterUnit, fn($q) => $q->where('unit_id', $filterUnit))
             ->tap(fn ($q) => $this->applyAccountFilter($q, $filterAccount))
             ->orderBy('due_date')
@@ -860,7 +908,64 @@ class ReportController extends Controller
         $totalOverdue = $dues->sum('remaining_amount');
         $avgDays      = $dues->count() ? round($dues->avg('days_overdue')) : 0;
 
-        return view('reports.overdue', compact('apartment', 'dues', 'units', 'filterUnit', 'filterAccount', 'totalOverdue', 'avgDays'));
+        return view('reports.overdue', compact('apartment', 'dues', 'units', 'filterUnit', 'filterAccount', 'filterDueType', 'totalOverdue', 'avgDays'));
+    }
+
+    private function debtListReportData($apartment, Request $request): array
+    {
+        $request->validate([
+            'unit_id' => ['sometimes', 'nullable', 'integer'],
+            'due_type' => ['sometimes', 'in:all,aidat,malik_payi'],
+            'show_inactive' => ['sometimes', 'boolean'],
+            'hide_account_names' => ['sometimes', 'boolean'],
+        ]);
+
+        $filterUnit = $request->input('unit_id');
+        $filterDueType = $request->input('due_type', 'all');
+        $showInactive = $request->boolean('show_inactive');
+        $hideAccountNames = $request->boolean('hide_account_names', true);
+        $units = Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get();
+
+        $dues = Due::with([
+                'account' => fn ($query) => $query->withTrashed(),
+                'unit',
+                'category',
+            ])
+            ->where('apartment_id', $apartment->id)
+            ->where('remaining_amount', '>', 0)
+            ->when($filterUnit, fn ($query) => $query->where('unit_id', $filterUnit))
+            ->when($filterDueType !== 'all', fn ($query) => $query->where('due_type', $filterDueType))
+            ->orderBy('due_date')
+            ->get()
+            ->filter(fn (Due $due) => $showInactive
+                || ($due->account && ! $due->account->trashed() && ! $due->account->residenceHasEnded()))
+            ->values();
+
+        $groups = $dues
+            ->groupBy(fn (Due $due) => $due->account_id)
+            ->map(function ($accountDues) {
+                $first = $accountDues->first();
+
+                return (object) [
+                    'account' => $first->account,
+                    'unit' => $first->unit,
+                    'dues' => $accountDues,
+                    'total_remaining' => $accountDues->sum('remaining_amount'),
+                ];
+            })
+            ->sortBy(fn ($group) => $group->unit?->unit_no, SORT_NATURAL, false)
+            ->values();
+
+        $dueTypeTitle = match ($filterDueType) {
+            'aidat' => 'Aidat Borç Listesi',
+            'malik_payi' => 'Kat Maliki Payı Borç Listesi',
+            default => 'Genel Borç Listesi',
+        };
+        $tableTitle = $dueTypeTitle.($showInactive ? ' - Eski/Pasif Hesaplar Dahil' : '');
+        $totalOverdue = $groups->sum('total_remaining');
+
+        return compact('apartment', 'groups', 'units', 'filterUnit', 'filterDueType',
+            'showInactive', 'hideAccountNames', 'tableTitle', 'totalOverdue');
     }
 
     public function overdue2(CurrentApartment $currentApartment, Request $request)
@@ -868,44 +973,7 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
-        $filterUnit = $request->input('unit_id');
-        $filterAccount = $request->input('account_filter', 'all');
-        $units = Unit::where('apartment_id', $apartment->id)->orderBy('unit_no')->get();
-
-        $dues = Due::with(['account', 'unit', 'category'])
-            ->where('apartment_id', $apartment->id)
-            ->where('remaining_amount', '>', 0)
-            ->when($filterUnit, fn($q) => $q->where('unit_id', $filterUnit))
-            ->tap(fn ($q) => $this->applyAccountFilter($q, $filterAccount))
-            ->orderBy('due_date')
-            ->get()
-            ->map(function ($due) {
-                $due->days_overdue = (int) now()->diffInDays($due->due_date, false) * -1;
-                return $due;
-            });
-
-        $groups = $dues
-            ->groupBy(fn($due) => $due->account_id)
-            ->map(function ($accountDues) {
-                $first = $accountDues->first();
-                $account = $first->account;
-
-                return (object) [
-                    'account' => $account,
-                    'unit' => $first->unit,
-                    'dues' => $accountDues,
-                    'total_remaining' => $accountDues->sum('remaining_amount'),
-                    'total_amount' => $accountDues->sum('amount'),
-                    'avg_days' => $accountDues->count() ? round($accountDues->avg('days_overdue')) : 0,
-                ];
-            })
-            ->sortBy(fn($group) => $group->unit?->unit_no, SORT_NATURAL, false)
-            ->values();
-
-        $totalOverdue = $groups->sum('total_remaining');
-        $avgDays = $dues->count() ? round($dues->avg('days_overdue')) : 0;
-
-        return view('reports.overdue2', compact('apartment', 'groups', 'units', 'filterUnit', 'filterAccount', 'totalOverdue', 'avgDays'));
+        return view('reports.overdue2', $this->debtListReportData($apartment, $request));
     }
 
     public function overdueExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -913,12 +981,15 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
+        $request->validate(['due_type' => ['sometimes', 'in:all,aidat,malik_payi']]);
         $filterAccount = $request->input('account_filter', 'all');
+        $filterDueType = $request->input('due_type', 'all');
 
         $dues = Due::with(['account', 'unit', 'category'])
             ->where('apartment_id', $apartment->id)
             ->where('remaining_amount', '>', 0)
             ->where('due_date', '<', now())
+            ->when($filterDueType !== 'all', fn ($q) => $q->where('due_type', $filterDueType))
             ->when($request->input('unit_id'), fn($q) => $q->where('unit_id', $request->input('unit_id')))
             ->tap(fn ($q) => $this->applyAccountFilter($q, $filterAccount))
             ->orderBy('due_date')->get()
@@ -933,7 +1004,7 @@ class ReportController extends Controller
         $avgDays      = $dues->count() ? round($dues->avg('days_overdue')) : 0;
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.overdue-pdf', ['apartment' => $apartment, 'dues' => $dues, 'totalOverdue' => $totalOverdue, 'avgDays' => $avgDays], 'gecikme-raporu');
+            return $this->pdfResponse('reports.overdue-pdf', ['apartment' => $apartment, 'dues' => $dues, 'totalOverdue' => $totalOverdue, 'avgDays' => $avgDays, 'filterDueType' => $filterDueType], 'gecikme-raporu');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -972,59 +1043,34 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
-        $filterUnit = $request->input('unit_id');
-        $filterAccount = $request->input('account_filter', 'all');
-
-        $tableTitleSuffix = match ($filterAccount) {
-            'residents' => ' - Daire Sakinleri',
-            'owners' => ' - Kat Malikleri',
-            'inactive' => ' - Pasif Hesaplar',
-            default => '',
-        };
-        $tableTitle = 'Genel Borç Listesi' . $tableTitleSuffix;
-
-        $dues = Due::with(['account', 'unit', 'category'])
-            ->where('apartment_id', $apartment->id)
-            ->where('remaining_amount', '>', 0)
-            ->when($filterUnit, fn($q) => $q->where('unit_id', $filterUnit))
-            ->tap(fn ($q) => $this->applyAccountFilter($q, $filterAccount))
-            ->orderBy('due_date')
-            ->get()
-            ->map(function ($due) {
-                $due->days_overdue = (int) now()->diffInDays($due->due_date, false) * -1;
-                return $due;
-            });
-
-        $groups = $dues
-            ->groupBy(fn($due) => $due->account_id)
-            ->map(function ($accountDues) {
-                $first = $accountDues->first();
-
-                return (object) [
-                    'account' => $first->account,
-                    'unit' => $first->unit,
-                    'dues' => $accountDues,
-                    'total_remaining' => $accountDues->sum('remaining_amount'),
-                ];
-            })
-            ->sortBy(fn($group) => $group->unit?->unit_no, SORT_NATURAL, false)
-            ->values();
-
-        $totalOverdue = $groups->sum('total_remaining');
-        $avgDays = $dues->count() ? round($dues->avg('days_overdue')) : 0;
+        $data = $this->debtListReportData($apartment, $request);
+        $groups = $data['groups'];
+        $tableTitle = $data['tableTitle'];
+        $totalOverdue = $data['totalOverdue'];
+        $hideAccountNames = $data['hideAccountNames'];
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.debt-list-pdf', ['apartment' => $apartment, 'groups' => $groups, 'tableTitle' => $tableTitle, 'totalOverdue' => $totalOverdue], 'borclar-listesi');
+            return $this->pdfResponse('reports.debt-list-pdf', [
+                'apartment' => $apartment,
+                'groups' => $groups,
+                'tableTitle' => $tableTitle,
+                'totalOverdue' => $totalOverdue,
+                'hideAccountNames' => $hideAccountNames,
+            ], 'borclar-listesi');
         }
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet()->setTitle('Borç Listesi');
-        $sheet->mergeCells('A1:D1');
+        $lastColumn = $hideAccountNames ? 'C' : 'D';
+        $sheet->mergeCells('A1:'.$lastColumn.'1');
         $sheet->setCellValue('A1', $tableTitle . ' — ' . $apartment->name . ' — ' . now()->format('d.m.Y'));
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->fromArray(['Daire', 'Hesap Adı', 'Detaylar', 'Toplam Borç (₺)'], null, 'A3');
-        $this->applyHeaderStyle($sheet, 'A3:D3');
+        $headers = $hideAccountNames
+            ? ['Daire', 'Detaylar', 'Toplam Borç (₺)']
+            : ['Daire', 'Hesap Adı', 'Detaylar', 'Toplam Borç (₺)'];
+        $sheet->fromArray($headers, null, 'A3');
+        $this->applyHeaderStyle($sheet, 'A3:'.$lastColumn.'3');
 
         $row = 4;
         foreach ($groups as $group) {
@@ -1033,29 +1079,35 @@ class ReportController extends Controller
                 $details[] = sprintf(
                     '%s | %s ₺ | %s',
                     $due->created_at_manual?->format('d.m.Y') ?? $due->created_at?->format('d.m.Y') ?? '-',
-                    number_format($due->amount, 2, ',', '.'),
+                    number_format($due->remaining_amount, 2, ',', '.'),
                     $due->description ?? '-'
                 );
             }
 
-            $sheet->fromArray([
-                $group->unit?->unit_no ?? '-',
-                $group->account?->name ?? '-',
-                implode("\n", $details),
-                $group->total_remaining,
-            ], null, 'A' . $row);
+            $rowData = $hideAccountNames
+                ? [$group->unit?->unit_no ?? '-', implode("\n", $details), $group->total_remaining]
+                : [$group->unit?->unit_no ?? '-', $group->account?->name ?? '-', implode("\n", $details), $group->total_remaining];
+            $sheet->fromArray($rowData, null, 'A' . $row);
             $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
-            $sheet->getStyle('B' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-            $sheet->getStyle('C' . $row)->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
-            $sheet->getStyle('D' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $detailColumn = $hideAccountNames ? 'B' : 'C';
+            $totalColumn = $hideAccountNames ? 'C' : 'D';
+            if (! $hideAccountNames) {
+                $sheet->getStyle('B' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            }
+            $sheet->getStyle($detailColumn . $row)->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+            $sheet->getStyle($totalColumn . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
             $row++;
         }
 
-        $sheet->setCellValue('D' . $row, $totalOverdue);
-        $this->applyHeaderStyle($sheet, "A{$row}:D{$row}", 'FFb71c1c');
-        $sheet->getStyle("D4:D{$row}")->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $totalColumn = $hideAccountNames ? 'C' : 'D';
+        $sheet->setCellValue($totalColumn . $row, $totalOverdue);
+        $this->applyHeaderStyle($sheet, "A{$row}:{$lastColumn}{$row}", 'FFb71c1c');
+        $sheet->getStyle("{$totalColumn}4:{$totalColumn}{$row}")->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
 
-        foreach (['A' => 10, 'B' => 22, 'C' => 70, 'D' => 18] as $col => $width) {
+        $widths = $hideAccountNames
+            ? ['A' => 10, 'B' => 70, 'C' => 18]
+            : ['A' => 10, 'B' => 22, 'C' => 70, 'D' => 18];
+        foreach ($widths as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
@@ -1066,17 +1118,40 @@ class ReportController extends Controller
     // 7. YILLIK FAALİYET RAPORU
     // -------------------------------------------------------------------------
 
+    private function annualDueQuery(int $apartmentId, int $year, string $dueType, ?int $month = null)
+    {
+        $period = $month ? sprintf('%04d-%02d', $year, $month) : (string) $year;
+        $from = $month
+            ? Carbon::create($year, $month, 1)->startOfMonth()->toDateString()
+            : Carbon::create($year, 1, 1)->toDateString();
+        $to = $month
+            ? Carbon::create($year, $month, 1)->endOfMonth()->toDateString()
+            : Carbon::create($year, 12, 31)->toDateString();
+
+        return Due::where('apartment_id', $apartmentId)
+            ->when($dueType !== 'all', fn ($query) => $query->where('due_type', $dueType))
+            ->where(function ($query) use ($period, $from, $to) {
+                $query->where('period', 'like', $period.'%')
+                    ->orWhere(function ($withoutPeriod) use ($from, $to) {
+                        $withoutPeriod->whereNull('period')->whereBetween('due_date', [$from, $to]);
+                    });
+            });
+    }
+
     public function annualActivity(CurrentApartment $currentApartment, Request $request)
     {
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
+        $request->validate(['due_type' => ['sometimes', 'in:all,aidat,malik_payi']]);
         $year = (int)$request->input('year', now()->year);
         $id   = $apartment->id;
+        $filterDueType = $request->input('due_type', 'all');
+        $dueTypeLabel = match ($filterDueType) { 'aidat' => 'Aidat', 'malik_payi' => 'Kat Maliki Payı', default => 'Tüm Borçlar' };
         $availableYears = range(now()->year, max(now()->year - 5, 2020), -1);
 
-        $totalDues    = (float) Due::where('apartment_id', $id)->whereYear('created_at', $year)->sum('amount');
-        $collectedDues= (float) Due::where('apartment_id', $id)->whereYear('created_at', $year)->sum(DB::raw('amount - remaining_amount'));
+        $totalDues    = (float) $this->annualDueQuery($id, $year, $filterDueType)->sum('amount');
+        $collectedDues= (float) $this->annualDueQuery($id, $year, $filterDueType)->sum(DB::raw('amount - remaining_amount'));
         $pendingDues  = $totalDues - $collectedDues;
 
         $totalExpenses = (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->sum('amount');
@@ -1090,8 +1165,10 @@ class ReportController extends Controller
         $monthlyData = [];
         for ($m = 1; $m <= 12; $m++) {
             $monthlyData[$m] = [
-                'dues'     => (float) Due::where('apartment_id', $id)->whereYear('created_at', $year)->whereMonth('created_at', $m)->sum('amount'),
-                'payments' => (float) Payment::where('apartment_id', $id)->whereYear('payment_date', $year)->whereMonth('payment_date', $m)->sum('amount'),
+                'dues'     => (float) $this->annualDueQuery($id, $year, $filterDueType, $m)->sum('amount'),
+                'payments' => $filterDueType === 'all'
+                    ? (float) Payment::where('apartment_id', $id)->whereYear('payment_date', $year)->whereMonth('payment_date', $m)->sum('amount')
+                    : (float) DB::table('payment_allocations')->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')->join('dues', 'dues.id', '=', 'payment_allocations.due_id')->where('payments.apartment_id', $id)->where('dues.due_type', $filterDueType)->whereYear('payments.payment_date', $year)->whereMonth('payments.payment_date', $m)->sum('payment_allocations.amount'),
                 'expenses' => (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->whereMonth('expense_date', $m)->sum('amount'),
             ];
         }
@@ -1108,7 +1185,7 @@ class ReportController extends Controller
             'apartment', 'year', 'availableYears',
             'totalDues', 'collectedDues', 'pendingDues',
             'totalExpenses', 'paidExpenses', 'unpaidExpenses',
-            'cashIn', 'cashOut',
+            'cashIn', 'cashOut', 'filterDueType', 'dueTypeLabel',
             'monthlyData', 'monthNames', 'expenseByCategory'
         ));
     }
@@ -1118,12 +1195,15 @@ class ReportController extends Controller
         $apartment = $this->getApartment($currentApartment);
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
+        $request->validate(['due_type' => ['sometimes', 'in:all,aidat,malik_payi']]);
         $year = (int)$request->input('year', now()->year);
         $id   = $apartment->id;
+        $filterDueType = $request->input('due_type', 'all');
+        $dueTypeLabel = match ($filterDueType) { 'aidat' => 'Aidat', 'malik_payi' => 'Kat Maliki Payı', default => 'Tüm Borçlar' };
         $availableYears = [];
 
-        $totalDues    = (float) Due::where('apartment_id', $id)->whereYear('created_at', $year)->sum('amount');
-        $collectedDues= (float) Due::where('apartment_id', $id)->whereYear('created_at', $year)->sum(DB::raw('amount - remaining_amount'));
+        $totalDues    = (float) $this->annualDueQuery($id, $year, $filterDueType)->sum('amount');
+        $collectedDues= (float) $this->annualDueQuery($id, $year, $filterDueType)->sum(DB::raw('amount - remaining_amount'));
         $pendingDues  = $totalDues - $collectedDues;
         $totalExpenses = (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->sum('amount');
         $paidExpenses  = (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->where('is_paid', true)->sum('amount');
@@ -1133,8 +1213,10 @@ class ReportController extends Controller
         $monthlyData = [];
         for ($m = 1; $m <= 12; $m++) {
             $monthlyData[$m] = [
-                'dues'     => (float) Due::where('apartment_id', $id)->whereYear('created_at', $year)->whereMonth('created_at', $m)->sum('amount'),
-                'payments' => (float) Payment::where('apartment_id', $id)->whereYear('payment_date', $year)->whereMonth('payment_date', $m)->sum('amount'),
+                'dues'     => (float) $this->annualDueQuery($id, $year, $filterDueType, $m)->sum('amount'),
+                'payments' => $filterDueType === 'all'
+                    ? (float) Payment::where('apartment_id', $id)->whereYear('payment_date', $year)->whereMonth('payment_date', $m)->sum('amount')
+                    : (float) DB::table('payment_allocations')->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')->join('dues', 'dues.id', '=', 'payment_allocations.due_id')->where('payments.apartment_id', $id)->where('dues.due_type', $filterDueType)->whereYear('payments.payment_date', $year)->whereMonth('payments.payment_date', $m)->sum('payment_allocations.amount'),
                 'expenses' => (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->whereMonth('expense_date', $m)->sum('amount'),
             ];
         }
@@ -1146,7 +1228,7 @@ class ReportController extends Controller
         $monthNames = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
         if ($type === 'pdf') {
-            return $this->pdfResponse('reports.annual-activity-pdf', compact('apartment', 'year', 'totalDues', 'collectedDues', 'pendingDues', 'totalExpenses', 'paidExpenses', 'unpaidExpenses', 'cashIn', 'cashOut', 'monthlyData', 'monthNames', 'expenseByCategory'), 'yillik-faaliyet-raporu');
+            return $this->pdfResponse('reports.annual-activity-pdf', compact('apartment', 'year', 'totalDues', 'collectedDues', 'pendingDues', 'totalExpenses', 'paidExpenses', 'unpaidExpenses', 'cashIn', 'cashOut', 'monthlyData', 'monthNames', 'expenseByCategory', 'filterDueType', 'dueTypeLabel'), 'yillik-faaliyet-raporu');
         }
 
         $spreadsheet = new Spreadsheet();
@@ -1159,9 +1241,9 @@ class ReportController extends Controller
         $sheet->fromArray(['Kalem', 'Tutar (₺)'], null, 'A3');
         $this->applyHeaderStyle($sheet, 'A3:B3');
         $summaryRows = [
-            ['Toplam Tahakkuk Eden Aidat', $totalDues],
-            ['Tahsil Edilen Aidat', $collectedDues],
-            ['Tahsil Edilemeyen Aidat', $pendingDues],
+            ['Toplam Tahakkuk - '.$dueTypeLabel, $totalDues],
+            ['Tahsil Edilen - '.$dueTypeLabel, $collectedDues],
+            ['Kalan - '.$dueTypeLabel, $pendingDues],
             ['Toplam Gider', $totalExpenses],
             ['Ödenen Gider', $paidExpenses],
             ['Ödenmemiş Gider', $unpaidExpenses],
@@ -1318,12 +1400,15 @@ class ReportController extends Controller
     {
         $request->validate([
             'due_type' => ['sometimes', \Illuminate\Validation\Rule::in(\App\Enums\DueType::values())],
-            'target_audience' => ['sometimes', 'in:tenant_priority,owner_only'],
             'month' => ['sometimes', 'date_format:Y-m'],
             'period_year' => ['required_with:period_month', 'integer', 'between:1,9999'],
             'period_month' => ['required_with:period_year', 'integer', 'between:1,12'],
             'period_step' => ['sometimes', 'in:previous,next,current'],
+            'view_mode' => ['sometimes', 'in:current,movements'],
+            'hide_account_type' => ['sometimes', 'boolean'],
+            'hide_account_names' => ['sometimes', 'boolean'],
         ]);
+        $viewMode = $request->input('view_mode', 'current');
         $month = $request->input('month', now()->format('Y-m'));
         if ($request->filled('period_year') && $request->filled('period_month')) {
             $month = sprintf('%04d-%02d', $request->integer('period_year'), $request->integer('period_month'));
@@ -1335,15 +1420,19 @@ class ReportController extends Controller
             'current' => today()->startOfMonth(),
             default => $parsedMonth,
         };
+        $currentMonth = today()->startOfMonth();
+        if ($viewMode === 'current' || $parsedMonth->gt($currentMonth)) {
+            $parsedMonth = $currentMonth;
+        }
         abort_unless($parsedMonth->year >= 1 && $parsedMonth->year <= 9999, 422);
         $month = $parsedMonth->format('Y-m');
         $selectedMonthStr = $parsedMonth->format('Y-m');
-        $balanceDate = $parsedMonth->copy()->endOfMonth()->min(today())->toDateString();
+        $hideAccountType = $request->boolean('hide_account_type', true);
+        $hideAccountNames = $request->boolean('hide_account_names', true);
+        $balanceDate = $viewMode === 'current' ? today()->toDateString() : $parsedMonth->copy()->endOfMonth()->min(today())->toDateString();
         $openingDate = $parsedMonth->copy()->startOfMonth()->min(today()->addDay())->toDateString();
-        // Eski bağlantılar kabul edilir; kayıtların sınıflandırması yalnız borç türündendir.
-        $reportDueType = $request->input('due_type', $request->input('target_audience') === 'owner_only' ? 'malik_payi' : 'aidat');
-        $targetAudience = \App\Enums\DueType::from($reportDueType)->targetAudience();
-        $reportLabel = $reportDueType === 'malik_payi' ? 'Kat Maliki Borç Tablosu' : 'Aidat Borç Tablosu';
+        $reportDueType = $request->input('due_type', 'aidat');
+        $reportLabel = $reportDueType === 'malik_payi' ? 'Kat Malikleri Demirbaş Borç Tablosu' : 'Aidat Borç Tablosu';
         $id = $apartment->id;
 
         $accountsQuery = Account::withTrashed()->where('accounts.apartment_id', $id)
@@ -1388,7 +1477,7 @@ class ReportController extends Controller
             $due->board_month_paid = round((float) $due->board_allocated_amount - (float) $due->board_opening_paid, 2);
         })->filter(fn ($due) => ($due->period
             ? Carbon::parse($due->period)->format('Y-m')
-            : $due->due_date?->format('Y-m')) === $selectedMonthStr || $due->board_opening_amount > 0);
+            : $due->due_date?->format('Y-m')) === $selectedMonthStr || ($viewMode === 'current' ? $due->board_remaining_amount : $due->board_opening_amount) > 0);
         $unknownDuesCount = $reportDues->filter(fn ($due) => ! in_array($due->getRawOriginal('due_type'), \App\Enums\DueType::values(), true))->count();
         $allDues = $reportDues->filter(fn ($due) => $due->getRawOriginal('due_type') === $reportDueType);
 
@@ -1396,7 +1485,7 @@ class ReportController extends Controller
             $account->is_active && ! $account->trashed()
         ), $parsedMonth)->pluck('id')->flip();
         $relevantAccountIds = $allDues->pluck('account_id')->flip();
-        $accounts = $accounts->groupBy('unit_id')->flatMap(function ($group) use ($relevantAccountIds, $targetAudience, $eligibleResidents) {
+        $accounts = $accounts->groupBy('unit_id')->flatMap(function ($group) use ($relevantAccountIds, $reportDueType, $eligibleResidents) {
             // Keep every relevant account; selecting a single resident can hide debts.
             $relevant = $group->filter(fn ($account) => $relevantAccountIds->has($account->id));
             if ($relevant->isNotEmpty()) {
@@ -1406,7 +1495,7 @@ class ReportController extends Controller
             if ($group->isEmpty()) {
                 return collect();
             }
-            $preferredType = $targetAudience === 'owner_only' ? Account::TYPE_OWNER : Account::TYPE_TENANT;
+            $preferredType = $reportDueType === 'malik_payi' ? Account::TYPE_OWNER : Account::TYPE_TENANT;
             return collect([$group->firstWhere('type', $preferredType) ?? $group->first()]);
         })->values();
 
@@ -1419,24 +1508,27 @@ class ReportController extends Controller
         foreach ($accounts as $account) {
             $selected = $selectedByAccount[$account->id] ?? collect();
             $past = $pastByAccount[$account->id] ?? collect();
-            $pastRemaining = (float) $past->sum('board_opening_amount');
+            $pastRemaining = (float) $past->sum($viewMode === 'current' ? 'board_remaining_amount' : 'board_opening_amount');
             $accountData[$account->id] = [
                 'pastRemaining' => $pastRemaining,
                 'selectedAmount' => (float) $selected->sum('amount'),
-                'paid' => (float) $selected->sum('board_month_paid') + (float) $past->sum('board_month_paid'),
+                'paid' => $viewMode === 'current' ? (float) $selected->sum('board_allocated_amount') : (float) $selected->sum('board_month_paid') + (float) $past->sum('board_month_paid'),
                 'remaining' => (float) $past->sum('board_remaining_amount') + (float) $selected->sum('board_remaining_amount'),
             ];
         }
 
         $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
-        $tableLabel = $reportDueType === 'malik_payi' ? 'Kat Malikleri Demirbaş Borç Tablosu' : $reportLabel;
-        $title = mb_strtoupper(str_replace(['i', 'ı'], ['İ', 'I'], $tableLabel), 'UTF-8');
+        $reportTitle = mb_strtoupper(str_replace(['i', 'ı'], ['İ', 'I'], $reportLabel), 'UTF-8');
         $periodLabel = mb_strtoupper(str_replace(['i', 'ı'], ['İ', 'I'], $trMonths[$parsedMonth->month]), 'UTF-8').' '.$parsedMonth->year;
         $subtitle = $periodLabel.' - '.$apartment->name;
+        $title = $reportTitle.' - '.$subtitle;
+        $viewLabel = $viewMode === 'current' ? 'Güncel Borç Tablosu' : 'Dönemsel Borç Tablosu';
+        $paidLabel = $viewMode === 'current' ? $trMonths[$parsedMonth->month].' Borcuna Ödenen' : 'Ay İçinde Ödenen';
 
         return compact('apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
-            'targetAudience', 'reportDueType', 'reportLabel', 'accountData', 'balanceDate',
-            'unknownDuesCount', 'trMonths', 'title', 'subtitle');
+            'reportDueType', 'reportLabel', 'accountData', 'balanceDate',
+            'unknownDuesCount', 'trMonths', 'title', 'subtitle', 'viewMode', 'viewLabel', 'paidLabel',
+            'hideAccountType', 'hideAccountNames');
     }
 
     public function monthlyBoard(CurrentApartment $currentApartment, Request $request)
@@ -1453,7 +1545,7 @@ class ReportController extends Controller
         if ($apartment instanceof \Illuminate\Http\RedirectResponse) return $apartment;
 
         $data = $this->monthlyBoardData($apartment, $request);
-        $filename = 'aylik-borc-tablosu-'.$data['reportDueType'].'-'.$data['month'];
+        $filename = 'aylik-borc-tablosu-'.$data['reportDueType'].'-'.$data['month'].'-'.$data['viewMode'];
         if ($type === 'pdf') {
             return $this->pdfResponse('reports.monthly-board-pdf', $data, $filename);
         }
@@ -1462,46 +1554,50 @@ class ReportController extends Controller
         $trMonths = $data['trMonths'];
         $parsedMonth = $data['parsedMonth'];
         $title = $data['title'];
+        $hideAccountType = $data['hideAccountType'];
+        $hideAccountNames = $data['hideAccountNames'];
 
         $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet()->setTitle($data['reportLabel']);
-        $sheet->mergeCells('A1:F1');
+        $sheet = $spreadsheet->getActiveSheet()->setTitle($data['reportDueType'] === 'malik_payi' ? 'Kat Maliki Borç Tablosu' : 'Aidat Borç Tablosu');
+        $lastColumn = $hideAccountNames ? 'E' : 'F';
+        $sheet->mergeCells('A1:'.$lastColumn.'1');
         $sheet->setCellValue('A1', $title);
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->mergeCells('A2:F2');
-        $sheet->setCellValue('A2', $data['subtitle']);
+        $sheet->mergeCells('A2:'.$lastColumn.'2');
+        $sheet->setCellValue('A2', '');
         $sheet->getStyle('A2')->getFont()->setSize(11);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        if ($data['unknownDuesCount'] > 0) {
-            $sheet->mergeCells('A3:F3');
-            $sheet->setCellValue('A3', $data['unknownDuesCount'].' adet borç türü belirlenmemiş borç bu tabloya dahil edilmedi.');
-        }
-        $header = ['Daire No', 'Hesap Adı', 'Geçmiş Borç (₺)', $trMonths[$parsedMonth->month] . ' Borç (₺)', 'Ödenen (₺)', 'Kalan (₺)'];
+        $sheet->mergeCells('A3:'.$lastColumn.'3');
+        $sheet->setCellValue('A3', $data['unknownDuesCount'] > 0 ? $data['unknownDuesCount'].' adet borç türü belirlenmemiş borç bu tabloya dahil edilmedi.' : '');
+        $header = $hideAccountNames
+            ? ['Daire No', 'Geçmiş Borç (₺)', $trMonths[$parsedMonth->month] . ' Borç (₺)', $data['paidLabel'].' (₺)', 'Kalan (₺)']
+            : ['Daire No', 'Hesap Adı', 'Geçmiş Borç (₺)', $trMonths[$parsedMonth->month] . ' Borç (₺)', $data['paidLabel'].' (₺)', 'Kalan (₺)'];
         $sheet->fromArray($header, null, 'A4');
-        $this->applyHeaderStyle($sheet, 'A4:F4');
+        $this->applyHeaderStyle($sheet, 'A4:'.$lastColumn.'4');
         $row = 5;
         foreach ($accounts as $account) {
             $data = $accountData[$account->id];
-            $rowData = [
-                $account->unit?->unit_no,
-                $account->name.' ('.$account->type_label.')',
-                $data['pastRemaining'],
-                $data['selectedAmount'],
-                $data['paid'],
-                $data['remaining'],
-            ];
+            $unitLabel = $account->unit?->unit_no.($hideAccountType ? '' : ' ('.$account->type_label.')');
+            $rowData = $hideAccountNames
+                ? [$unitLabel, $data['pastRemaining'], $data['selectedAmount'], $data['paid'], $data['remaining']]
+                : [$unitLabel, $account->name,
+                    $data['pastRemaining'], $data['selectedAmount'], $data['paid'], $data['remaining']];
             $sheet->fromArray($rowData, null, 'A' . $row++);
         }
         if ($row > 5) {
-            $sheet->getStyle('C5:F' . ($row - 1))
+            $firstAmountColumn = $hideAccountNames ? 'B' : 'C';
+            $sheet->getStyle($firstAmountColumn.'5:'.$lastColumn . ($row - 1))
                 ->getNumberFormat()
                 ->setFormatCode('#,##0.00 "₺"');
             $sheet->getStyle('A5:A' . ($row - 1))
                 ->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
-        foreach (['A' => 10, 'B' => 24, 'C' => 16, 'D' => 16, 'E' => 16, 'F' => 16] as $col => $width) {
+        $widths = $hideAccountNames
+            ? ['A' => 10, 'B' => 16, 'C' => 16, 'D' => 16, 'E' => 16]
+            : ['A' => 10, 'B' => 24, 'C' => 16, 'D' => 16, 'E' => 16, 'F' => 16];
+        foreach ($widths as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 

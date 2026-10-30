@@ -18,7 +18,6 @@ class Due extends Model
     protected $fillable = [
         'apartment_id',
         'due_batch_id',
-        'target_audience',
         'unit_id',
         'account_id',
         'due_type',
@@ -46,24 +45,17 @@ class Due extends Model
     protected static function booted(): void
     {
         static::creating(function (Due $due) {
-            if (! in_array($due->target_audience, [null, 'tenant_priority', 'owner_only'], true)) {
-                throw new \InvalidArgumentException('Invalid due target audience.');
-            }
             $due->due_type ??= DueType::Aidat;
-            $due->target_audience = $due->due_type->targetAudience();
         });
 
         static::updating(function (Due $due) {
             if ($due->isDirty('due_type')) {
                 throw ValidationException::withMessages(['due_type' => 'Kaydedilmiş borcun türü değiştirilemez. Yanlış tür için mevcut iptal/düzeltme sürecini kullanın.']);
             }
-            if ($due->isDirty('target_audience')) {
-                throw new \LogicException('The due creation rule cannot be changed.');
-            }
         });
     }
 
-    public function getTargetAudienceLabelAttribute(): string
+    public function getTargetingRuleLabelAttribute(): string
     {
         return match ($this->due_type) {
             DueType::Aidat => 'Kiracı Öncelikli',

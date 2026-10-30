@@ -53,10 +53,42 @@ class CommercialBillingTest extends TestCase
         $this->actingAs($user)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->get(route('reports.due-collection'))
-            ->assertForbidden();
+            ->assertForbidden()
+            ->assertViewIs('reports.unavailable')
+            ->assertSee('Bu rapor şu an kullanılamıyor')
+            ->assertViewMissing('matrix');
 
         $this->assertFalse(FeatureGate::allows($apartment, 'report_pdf', $user));
         $this->assertFalse(FeatureGate::allows($apartment, 'auto_dues', $user));
+    }
+
+    public function test_free_apartment_cannot_access_advanced_reports_or_their_exports(): void
+    {
+        $user = User::factory()->create();
+        $apartment = $this->own($user, ['name' => 'Ücretsiz Rapor Kontrolü', 'unit_count' => 8, 'billing_plan' => 'free']);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+
+        foreach (['due-collection', 'overdue', 'annual-activity', 'budget', 'monthly-board'] as $report) {
+            $this->get(route('reports.'.$report))->assertForbidden()->assertViewIs('reports.unavailable');
+            foreach (['pdf', 'excel'] as $type) {
+                $this->get(route('reports.'.$report.'.export', ['type' => $type]))
+                    ->assertForbidden()->assertViewIs('reports.unavailable')->assertHeaderMissing('Content-Disposition');
+            }
+        }
+    }
+
+    public function test_free_apartment_cannot_export_basic_reports_as_pdf_or_excel(): void
+    {
+        $user = User::factory()->create();
+        $apartment = $this->own($user, ['name' => 'Ücretsiz Dışa Aktarma Kontrolü', 'unit_count' => 8, 'billing_plan' => 'free']);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+
+        foreach (['account-statement', 'income-expense', 'debt-list', 'receivable-list', 'expenses'] as $report) {
+            foreach (['pdf', 'excel'] as $type) {
+                $this->get(route('reports.'.$report.'.export', ['type' => $type]))
+                    ->assertForbidden()->assertHeaderMissing('Content-Disposition');
+            }
+        }
     }
 
     public function test_one_hundred_units_can_be_created_free(): void
@@ -260,14 +292,17 @@ class CommercialBillingTest extends TestCase
 
         $item = SubscriptionItem::query()->where('apartment_id', $apartment->id)->firstOrFail();
         $this->assertSame('Eski Ad', $item->apartment_name);
-        $this->assertEquals(1500, (float) $item->amount);
+        $this->assertEquals(1500, (float) $item->net_amount);
+        $this->assertEquals(20, (float) $item->tax_rate);
+        $this->assertEquals(300, (float) $item->tax_amount);
+        $this->assertEquals(1800, (float) $item->amount);
 
         $apartment->update(['name' => 'Yeni Ad', 'unit_count' => 40]);
         $item->refresh();
 
         $this->assertSame('Eski Ad', $item->apartment_name);
         $this->assertSame(10, $item->unit_count);
-        $this->assertEquals(1500, (float) $item->amount);
+        $this->assertEquals(1800, (float) $item->amount);
     }
 
     public function test_admin_can_edit_a_band_and_store_a_custom_quote(): void
@@ -290,6 +325,14 @@ class CommercialBillingTest extends TestCase
             ->assertRedirect();
 
         $this->assertEquals(175, (float) $band->fresh()->monthly_price);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.commercial.tax.update'), [
+                'subscription_tax_rate' => 18,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('system_settings', ['subscription_tax_rate' => 18]);
 
         $manager = User::factory()->create();
         $apartment = Apartment::factory()->forUser($manager)->create(['unit_count' => 160]);

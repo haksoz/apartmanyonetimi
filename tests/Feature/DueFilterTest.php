@@ -20,14 +20,13 @@ class DueFilterTest extends TestCase
         $aidat = DuePlan::create([
             'apartment_id' => $apartment->id, 'name' => 'Aidat Kararı', 'plan_year' => 2026,
             'due_type' => 'aidat', 'amount_type' => 'monthly', 'monthly_amount' => 1000,
-            'distribution_type' => 'equal', 'target_audience' => 'owner_only', 'due_day' => 1, 'generate_day' => 1,
+            'distribution_type' => 'equal', 'due_day' => 1, 'generate_day' => 1,
         ]);
         $assessment = AssessmentPlan::create([
             'apartment_id' => $apartment->id, 'name' => 'Çatı Yenileme', 'total_amount' => 1000,
-            'due_type' => 'malik_payi', 'distribution_type' => 'equal', 'target_audience' => 'owner_only',
-            'installment_count' => 1, 'generation_mode' => 'on_schedule', 'generate_day' => 1,
+            'due_type' => 'malik_payi', 'distribution_type' => 'equal', 'installment_count' => 1, 'generation_mode' => 'on_schedule', 'generate_day' => 1,
         ]);
-        $batchData = ['apartment_id' => $apartment->id, 'source_type' => 'manual', 'distribution_type' => 'equal', 'target_audience' => 'owner_only', 'period' => '2026-06', 'source_amount' => 1000];
+        $batchData = ['apartment_id' => $apartment->id, 'source_type' => 'manual', 'distribution_type' => 'equal', 'period' => '2026-06', 'source_amount' => 1000];
         $aidatBatch = DueBatch::create([...$batchData, 'due_type' => 'aidat', 'due_plan_id' => $aidat->id]);
         $assessmentBatch = DueBatch::create([...$batchData, 'due_type' => 'malik_payi', 'assessment_plan_id' => $assessment->id]);
         $batch = DueBatch::create([...$batchData, 'due_type' => 'aidat']);

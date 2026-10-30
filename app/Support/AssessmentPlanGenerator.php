@@ -211,7 +211,6 @@ class AssessmentPlanGenerator
                 'category_id' => $plan->category_id,
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => $plan->distribution_type,
-                'target_audience' => $plan->due_type->targetAudience(),
                 'period' => $installment->period,
                 'source_amount' => $installment->lines->sum('amount'),
                 'description' => $plan->installmentDescription($installment->sequence),
@@ -237,7 +236,6 @@ class AssessmentPlanGenerator
                 $due = Due::create([
                     'apartment_id' => $plan->apartment_id,
                     'due_batch_id' => $batch->id,
-                    'target_audience' => $plan->due_type->targetAudience(),
                     'unit_id' => $unit->id,
                     'account_id' => $account->id,
                     'due_type' => $plan->due_type,

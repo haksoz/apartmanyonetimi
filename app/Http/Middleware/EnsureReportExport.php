@@ -25,7 +25,7 @@ class EnsureReportExport
         $key = $type === 'pdf' ? 'report_pdf' : 'report_excel';
 
         if (! FeatureGate::allows($apartment, $key, $user)) {
-            abort(403, 'Bu özellik ücretli plandadır.');
+            return response()->view('reports.unavailable', [], 403);
         }
 
         return $next($request);

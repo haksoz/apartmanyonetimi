@@ -36,6 +36,8 @@ class SubscriptionCheckout
 
         $lines = [];
         $total = 0.0;
+        $totalNet = 0.0;
+        $totalTax = 0.0;
 
         $blocked = SubscriptionItem::query()
             ->whereIn('apartment_id', $apartments->pluck('id'))
@@ -59,6 +61,8 @@ class SubscriptionCheckout
 
             $lines[] = [$apartment, $quote];
             $total += $quote['amount'];
+            $totalNet += $quote['net_amount'];
+            $totalTax += $quote['tax_amount'];
         }
 
         $records = [];
@@ -87,6 +91,9 @@ class SubscriptionCheckout
             'package_id' => $this->carrierPackageId(),
             'period' => $period,
             'price' => $total,
+            'net_amount' => $totalNet,
+            'tax_rate' => $lines[0][1]['tax_rate'],
+            'tax_amount' => $totalTax,
             'started_at' => now(),
             'expires_at' => null,
             'is_active' => false,
@@ -117,6 +124,9 @@ class SubscriptionCheckout
                 'band_min_units' => $band?->min_units ?? (int) $apartment->unit_count,
                 'band_max_units' => $band?->max_units,
                 'amount' => $quote['amount'],
+                'net_amount' => $quote['net_amount'],
+                'tax_rate' => $quote['tax_rate'],
+                'tax_amount' => $quote['tax_amount'],
                 'list_amount' => $quote['list_amount'],
                 'campaign_name' => $quote['campaign_name'],
                 'discount_amount' => $quote['discount_amount'],

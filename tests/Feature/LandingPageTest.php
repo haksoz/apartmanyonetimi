@@ -58,7 +58,7 @@ class LandingPageTest extends TestCase
         $home->assertDontSee('1.234,50');
         $home->assertDontSee('12.345,00');
         $home->assertDontSee($band->label);
-        $home->assertDontSee('1–100');
+        $home->assertSee('1–100');
         $home->assertDontSee('101–150');
         $home->assertDontSee('151 ve üzeri');
         $home->assertDontSee('sakin yönetimi');
@@ -76,6 +76,7 @@ class LandingPageTest extends TestCase
         $pricing->assertSee($band->label);
         $pricing->assertSee('1.234,50 ₺');
         $pricing->assertSee('12.345,00 ₺');
+        $pricing->assertSee('Fiyatlara KDV dahil değildir.');
         $pricing->assertSee('101+ daire');
         $pricing->assertSee('Özel Teklif');
         $pricing->assertDontSee($quote->label);

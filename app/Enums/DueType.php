@@ -42,12 +42,4 @@ enum DueType: string
         return 'allow_'.$this->value;
     }
 
-    public function targetAudience(): string
-    {
-        return match ($this) {
-            self::Aidat => 'tenant_priority',
-            self::MalikPayi => 'owner_only',
-        };
-    }
-
 }

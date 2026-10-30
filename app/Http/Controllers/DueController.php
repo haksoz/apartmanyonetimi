@@ -332,16 +332,9 @@ class DueController extends Controller
             abort(403, 'Bu işlem için yönetici yetkisi gereklidir.');
         }
 
-        // Yeni borçlandırmada hedef kitle borç türünden türetilir; istemciye bırakılmaz.
-        if (in_array($request->input('source_type'), [DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_FIXED, DueBatch::SOURCE_INDIVIDUAL], true)
-            && in_array($request->input('due_type'), DueType::values(), true)) {
-            $request->merge(['target_audience' => DueType::from($request->input('due_type'))->targetAudience()]);
-        }
-
         $validated = $request->validate([
             'source_type' => ['required', Rule::in([DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_INDIVIDUAL, DueBatch::SOURCE_FIXED])],
             'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL, DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT])],
-            'target_audience' => ['required', Rule::in(['tenant_priority', 'owner_only'])],
             'period' => ['nullable', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'due_type' => ['required', Rule::in($request->input('source_type') === DueBatch::SOURCE_INDIVIDUAL
@@ -427,7 +420,6 @@ class DueController extends Controller
                 'category_id' => $validated['category_id'] ?? null,
                 'source_type' => $validated['source_type'],
                 'distribution_type' => $validated['distribution_type'],
-                'target_audience' => $validated['target_audience'],
                 'period' => $validated['period'],
                 'source_period' => isset($validated['source_period']) ? $validated['source_period'].'-01' : null,
                 'category_filter_ids' => $selectedExpenseIds,
@@ -1023,7 +1015,6 @@ class DueController extends Controller
         $due = Due::create([
             'apartment_id' => $batch->apartment_id,
             'due_batch_id' => $batch->id,
-            'target_audience' => $batch->due_type->targetAudience(),
             'unit_id' => $unit?->id ?? $account->unit_id,
             'account_id' => $account->id,
             'due_type' => $batch->due_type,

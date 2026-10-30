@@ -205,7 +205,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
         Route::resource('accounts', AccountController::class);
         Route::get('accounts/{id}/statement', [AccountController::class, 'statement'])->name('accounts.statement');
-        Route::get('accounts/{id}/statement/export/{type}', [AccountController::class, 'statementExport'])->name('accounts.statement.export');
+        Route::get('accounts/{id}/statement/export/{type}', [AccountController::class, 'statementExport'])->middleware('feature.export')->name('accounts.statement.export');
 
         Route::delete('accounts/{id}/transactions/{transaction}', [AccountController::class, 'destroyTransaction'])->name('accounts.transactions.destroy');
         Route::post('accounts/imported-transactions', [AccountController::class, 'destroyAllImported'])->name('accounts.imported.destroy-all');
@@ -337,6 +337,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('quote-requests/{quoteRequest}', [AdminQuoteRequestController::class, 'update'])->name('quote-requests.update');
 
     Route::get('commercial', [AdminCommercialController::class, 'index'])->name('commercial.index');
+    Route::patch('commercial/tax', [AdminCommercialController::class, 'updateTax'])->name('commercial.tax.update');
     Route::patch('commercial/bands/{band}', [AdminCommercialController::class, 'updateBand'])->name('commercial.bands.update');
     Route::post('commercial/campaigns', [AdminCommercialController::class, 'storeCampaign'])->name('commercial.campaigns.store');
     Route::patch('commercial/features/{feature}', [AdminCommercialController::class, 'updateFeature'])->name('commercial.features.update');

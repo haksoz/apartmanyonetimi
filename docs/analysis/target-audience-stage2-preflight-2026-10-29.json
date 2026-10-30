@@ -1,0 +1,552 @@
+{
+    "scope": "local MySQL; all apartments; no soft-delete filters; read-only snapshot",
+    "checked_at_utc": "2026-10-29T09:38:10+00:00",
+    "apartments": [
+        8,
+        10
+    ],
+    "tables": {
+        "dues": {
+            "columns_present": [
+                "due_type",
+                "target_audience",
+                "deleted_at"
+            ],
+            "groups": [
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 940
+                },
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 0,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 174
+                },
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 12
+                },
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 5
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 40
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 12
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "records": 40
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "records": 8
+                }
+            ],
+            "issues": [
+                {
+                    "id": 3493,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3494,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3495,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3496,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3497,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3498,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3499,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3500,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3501,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3502,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3503,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3504,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3505,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3506,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3507,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3508,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3509,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3510,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3511,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3512,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3513,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3514,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3515,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3516,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3517,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3518,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3519,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3520,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3521,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3522,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3523,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3524,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3525,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3526,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3527,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3528,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3529,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3530,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3531,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3532,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "aidat",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3533,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3534,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3535,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3536,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3537,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3538,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3539,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                },
+                {
+                    "id": 3540,
+                    "apartment_id": 10,
+                    "soft_deleted": 1,
+                    "due_type": "malik_payi",
+                    "target_audience": null,
+                    "issue": "null_target"
+                }
+            ]
+        },
+        "due_batches": {
+            "columns_present": [
+                "due_type",
+                "target_audience"
+            ],
+            "groups": [
+                {
+                    "apartment_id": 8,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 5
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 10
+                },
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 5
+                }
+            ],
+            "issues": []
+        },
+        "due_plans": {
+            "columns_present": [
+                "due_type",
+                "target_audience"
+            ],
+            "groups": [
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "aidat",
+                    "target_audience": "tenant_priority",
+                    "records": 1
+                }
+            ],
+            "issues": [],
+            "unsupported_plan_types": []
+        },
+        "assessment_plans": {
+            "columns_present": [
+                "due_type",
+                "target_audience"
+            ],
+            "groups": [
+                {
+                    "apartment_id": 10,
+                    "soft_deleted": 0,
+                    "due_type": "malik_payi",
+                    "target_audience": "owner_only",
+                    "records": 1
+                }
+            ],
+            "issues": [],
+            "unsupported_plan_types": []
+        }
+    },
+    "financial_snapshot": {
+        "dues": {
+            "records": 1231,
+            "sum_amount": "677109.08",
+            "sum_remaining_amount": "123204.66"
+        },
+        "payments": {
+            "records": 877,
+            "sum_amount": "1125711.55",
+            "sum_unallocated_amount": "4869.66"
+        },
+        "payment_allocations": {
+            "records": 1663,
+            "sum_amount": "1120841.89"
+        },
+        "account_transactions": {
+            "records": 2376,
+            "sum_amount": "2358765.41"
+        },
+        "cash_boxes": {
+            "records": 5
+        },
+        "cash_transactions": {
+            "records": 889,
+            "sum_amount": "1143985.80"
+        }
+    }
+}

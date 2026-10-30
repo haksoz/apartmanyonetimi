@@ -48,7 +48,7 @@ class ThreeCategoryPermissionsTest extends TestCase
                 $this->post(route('dues.store'), [
                     'source_type' => $source, 'due_type' => $type,
                     'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                    'target_audience' => 'owner_only', 'period' => '2026-10',
+                    'period' => '2026-10',
                     'due_date' => '2026-10-31', 'fixed_amount' => 100,
                 ])->assertSessionHasErrors('due_type');
             }

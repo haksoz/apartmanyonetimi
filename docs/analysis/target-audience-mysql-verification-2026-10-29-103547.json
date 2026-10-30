@@ -1,0 +1,407 @@
+{
+    "checked_at_utc": "2026-10-29T10:35:47+00:00",
+    "source_database": "apartman_db",
+    "server_version": "8.0.45",
+    "source_connection_read_only": true,
+    "tables": 52,
+    "unsafe_tables": [],
+    "triggers": 0,
+    "events": 0,
+    "routines": 0,
+    "can_grant": true,
+    "grant_scopes": [
+        "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE, CREATE ROLE, DROP ROLE ON *.*",
+        "GRANT APPLICATION_PASSWORD_ADMIN,AUDIT_ABORT_EXEMPT,AUDIT_ADMIN,AUTHENTICATION_POLICY_ADMIN,BACKUP_ADMIN,BINLOG_ADMIN,BINLOG_ENCRYPTION_ADMIN,CLONE_ADMIN,CONNECTION_ADMIN,ENCRYPTION_KEY_ADMIN,FIREWALL_EXEMPT,FLUSH_OPTIMIZER_COSTS,FLUSH_STATUS,FLUSH_TABLES,FLUSH_USER_RESOURCES,GROUP_REPLICATION_ADMIN,GROUP_REPLICATION_STREAM,INNODB_REDO_LOG_ARCHIVE,INNODB_REDO_LOG_ENABLE,PASSWORDLESS_USER_ADMIN,PERSIST_RO_VARIABLES_ADMIN,REPLICATION_APPLIER,REPLICATION_SLAVE_ADMIN,RESOURCE_GROUP_ADMIN,RESOURCE_GROUP_USER,ROLE_ADMIN,SENSITIVE_VARIABLES_OBSERVER,SERVICE_CONNECTION_ADMIN,SESSION_VARIABLES_ADMIN,SET_USER_ID,SHOW_ROUTINE,SYSTEM_USER,SYSTEM_VARIABLES_ADMIN,TABLE_ENCRYPTION_ADMIN,TELEMETRY_LOG_ADMIN,XA_RECOVER_ADMIN ON *.*",
+        "GRANT PROXY ON ``@``"
+    ],
+    "global_all_privileges": false,
+    "clone_database": "aidatcepstage2test2026102962403db0b982",
+    "clone_user": "aidatst2_62403db0b982@localhost",
+    "retained_for_review": true,
+    "source_before_fingerprints": {
+        "account_portal_access_events": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "account_portal_offers": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "account_transactions": {
+            "count": 2376,
+            "sha256": "a2919a63169fcd0ddaf47eb165facebdb092f6e256d2606970420bec5ab00d97"
+        },
+        "accounts": {
+            "count": 64,
+            "sha256": "27f9a951189f31901c23a13778758500e7508be627e592a0fe6f5288c2f8a880"
+        },
+        "apartment_data_operations": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "apartment_user": {
+            "count": 2,
+            "sha256": "7e8d1e437d3a63107978d99bc7713c84f0dc9350e74591506918ed069f229ce7"
+        },
+        "apartments": {
+            "count": 2,
+            "sha256": "17ace4cfd4bb3997577e41d9189120c649fd88095123e3c6f2d89c41eee9bfe4"
+        },
+        "assessment_installment_lines": {
+            "count": 8,
+            "sha256": "3aacbaeaa377dda926b8fa932f485f8ed540bb348182a68a99edf366b455ccdc"
+        },
+        "assessment_installments": {
+            "count": 2,
+            "sha256": "4fd973eb41f16e0f784c24d4a09122210799a64b0ddcb0add4aa686fdb35c668"
+        },
+        "assessment_plans": {
+            "count": 1,
+            "sha256": "def9fc4c0fc065040d68b7b27884d17d8a75f88e47d56df30dd0f7b6429b90a3"
+        },
+        "assessment_unit_shares": {
+            "count": 4,
+            "sha256": "8574e7851536ba3e268af8374f60cf64e466083852f66377a2650c537c463e5e"
+        },
+        "bank_accounts": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "billing_profiles": {
+            "count": 2,
+            "sha256": "541be5af4f9bb35b16c95ab38b653cb5d7162feb6cce66c671a8e6dbe1c7115a"
+        },
+        "cache": {
+            "count": 6,
+            "sha256": "1508cd1d5f88682b2385618868c8b3b0d5b9f43f475a8aba20457c8a4e83dc18"
+        },
+        "cache_locks": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cash_boxes": {
+            "count": 5,
+            "sha256": "345d717f270a58e5822168aabd91287dc6eca79127aa594d650346dd1e9f6a2c"
+        },
+        "cash_transactions": {
+            "count": 889,
+            "sha256": "355c6d2b26745107a61c5f370d347d4dd9c20f04237204313952432d03347135"
+        },
+        "categories": {
+            "count": 32,
+            "sha256": "21c24a603e00621e337c46b95063211b99e621e4aacf6ac1364d5ecde32415e6"
+        },
+        "due_batches": {
+            "count": 20,
+            "sha256": "1c511e0983cdeef8dd5052146349dbe245d8446a6cca53326e9ccd290e958c6b"
+        },
+        "due_plans": {
+            "count": 1,
+            "sha256": "6c6755c470706a816744567bd2c1bd8e475caf8cb1c2d423be18f161d4800f04"
+        },
+        "dues": {
+            "count": 1231,
+            "sha256": "e120e8d7e5b5032a592a91767d3d5510064d2fe5d390ba7cc664505dd8e9a94a"
+        },
+        "expense_documents": {
+            "count": 4,
+            "sha256": "d35d708af62614fc5ad6e2aa4e70145456b0d41117d5d194f4e390e378a29758"
+        },
+        "expense_plans": {
+            "count": 2,
+            "sha256": "048aafe6d6a70a2c18df32d1c07d05598ba2a154dbe7f0b6d3396ceb998d3da5"
+        },
+        "expenses": {
+            "count": 358,
+            "sha256": "126aeb859e33e44d0fdb6439a1c6bcf83bd477b076ff75ce1e39a1d1a8a00b09"
+        },
+        "failed_jobs": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "features": {
+            "count": 19,
+            "sha256": "ca6901d6f676878704b275bc2bd4d6751c020fdef2f202c3b0ca7be4cc56e248"
+        },
+        "job_batches": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "jobs": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "legal_acceptances": {
+            "count": 9,
+            "sha256": "51e2bfc857a7e7649cdefbadf7a9507e729545e40c1a80ecc2336fb7f80959a1"
+        },
+        "legal_document_versions": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "management_offers": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "migrations": {
+            "count": 130,
+            "sha256": "2d15cb906ab24b2d424cd962e78b51df89d78bf0957f5cb49dc19c3926ccc716"
+        },
+        "package_features": {
+            "count": 28,
+            "sha256": "b0723524679a8ad2848c4300c560ab223369c0c8b75e1adb953e0cad829160e3"
+        },
+        "packages": {
+            "count": 5,
+            "sha256": "daa1eeda24a21f445b510dbb32009d213f4172c267d6001297321d2df06af0df"
+        },
+        "password_reset_tokens": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "payment_allocations": {
+            "count": 1663,
+            "sha256": "6665230dacb0cde46ace5e1a2e06c53b675656c0353bc2554f4db4ec7b8befb2"
+        },
+        "payments": {
+            "count": 877,
+            "sha256": "6d9aa0012ba8ff5dd40a5efe74049e4b7a04e00df09269606dff8da860b2ec7d"
+        },
+        "price_bands": {
+            "count": 5,
+            "sha256": "c832e40d27a29d70d4c491a93e2f016515cc308e74d221cbff29c54ad3af974d"
+        },
+        "price_campaigns": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "quote_requests": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "sessions": {
+            "count": 2,
+            "sha256": "05cd7bfbab1ba53e9cc856793bb250301501c360721d33af201498ef49271deb"
+        },
+        "subscription_items": {
+            "count": 4,
+            "sha256": "d8169520d3aa1e1bec0bb14fc026fb0615792ce2662f632e69e84bfa1ff2f569"
+        },
+        "subscription_payments": {
+            "count": 3,
+            "sha256": "4c41c97a1feb4095e3048cb2994ebb8173b0559b94ae434fd28b87902e798c32"
+        },
+        "subscriptions": {
+            "count": 2,
+            "sha256": "ded3fccc63504cebf89e9afce1e8851658f6b49e1d6815848e4256e7d6360685"
+        },
+        "system_settings": {
+            "count": 1,
+            "sha256": "d3da6778a8fb1c1b2d58e392508c96fb9fca32756d3eccc8f3b91edb325949c7"
+        },
+        "tenant_assignments": {
+            "count": 20,
+            "sha256": "91e47f64ea666e6434a93a3fcaa935a9c249542cc91196ce66d11cf6da986c43"
+        },
+        "unit_owner_histories": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "units": {
+            "count": 16,
+            "sha256": "a51bde9ae38199bec8ecdbf23ca6a6c74ea14b2dcb1926df83276ab235c6d57c"
+        },
+        "user_invitations": {
+            "count": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "user_quota_overrides": {
+            "count": 2,
+            "sha256": "060d10115d3e205b68ffe956eeffcac537719d6da73276d61170292494f843b0"
+        },
+        "user_subscriptions": {
+            "count": 4,
+            "sha256": "daeed28e99a138b08e49bf4b5dd286dd13df74c08503f29b567baa591c8cfeec"
+        },
+        "users": {
+            "count": 3,
+            "sha256": "21ba0a160be249c7b15b144102a204986b8b4a3e1bde094c9211d3cdc0bcf189"
+        }
+    },
+    "stage": "application_flows",
+    "database_created": true,
+    "source_access_denied_to_clone_user": true,
+    "all_52_tables_copied_exactly": true,
+    "copied_row_counts": {
+        "account_portal_access_events": 0,
+        "account_portal_offers": 0,
+        "account_transactions": 2376,
+        "accounts": 64,
+        "apartment_data_operations": 0,
+        "apartment_user": 2,
+        "apartments": 2,
+        "assessment_installment_lines": 8,
+        "assessment_installments": 2,
+        "assessment_plans": 1,
+        "assessment_unit_shares": 4,
+        "bank_accounts": 0,
+        "billing_profiles": 2,
+        "cache": 6,
+        "cache_locks": 0,
+        "cash_boxes": 5,
+        "cash_transactions": 889,
+        "categories": 32,
+        "due_batches": 20,
+        "due_plans": 1,
+        "dues": 1231,
+        "expense_documents": 4,
+        "expense_plans": 2,
+        "expenses": 358,
+        "failed_jobs": 0,
+        "features": 19,
+        "job_batches": 0,
+        "jobs": 0,
+        "legal_acceptances": 9,
+        "legal_document_versions": 0,
+        "management_offers": 0,
+        "migrations": 130,
+        "package_features": 28,
+        "packages": 5,
+        "password_reset_tokens": 0,
+        "payment_allocations": 1663,
+        "payments": 877,
+        "price_bands": 5,
+        "price_campaigns": 0,
+        "quote_requests": 0,
+        "sessions": 2,
+        "subscription_items": 4,
+        "subscription_payments": 3,
+        "subscriptions": 2,
+        "system_settings": 1,
+        "tenant_assignments": 20,
+        "unit_owner_histories": 0,
+        "units": 16,
+        "user_invitations": 0,
+        "user_quota_overrides": 2,
+        "user_subscriptions": 4,
+        "users": 3
+    },
+    "akbey_before": {
+        "dues": {
+            "count": 1131,
+            "sha256": "673dc03c35bd39e427b3a9124ed9aa1ddf1aefeac8becdd1c8e05f54713ce7a4",
+            "sum_amount": "601909.08",
+            "sum_remaining_amount": "54604.66"
+        },
+        "payments": {
+            "count": 871,
+            "sha256": "33118ab90bdb4a3a57818f818e0955245b41f9652c7004b10a8ecf796425c561",
+            "sum_amount": "1119111.55",
+            "sum_unallocated_amount": "4869.66"
+        },
+        "account_transactions": {
+            "count": 2298,
+            "sha256": "09f372f905bc48493b7de9074b20a1e07155b3202165f9182ed260dd2ca2f5d0",
+            "sum_amount": "2292965.41"
+        },
+        "cash_transactions": {
+            "count": 875,
+            "sha256": "e1bcbb953221a094c9204919b56e9712669c3016c182cb57ceea5e581b1a03db",
+            "sum_amount": "1131385.80"
+        },
+        "cash_boxes": {
+            "count": 3,
+            "sha256": "49a5dded762a20a2906a587b9ce0f05072ba648ab4c47535135a1306ce836121"
+        },
+        "accounts": {
+            "count": 54,
+            "sha256": "5dfac17be95e624caab8ca0d7e001f1cff1fa84ed28efdf96561abfbf3d6d135"
+        },
+        "payment_allocations": {
+            "count": 1654,
+            "sha256": "be6f6c87ee0fed243acfe9d8acaed728d54389f118ba328ea5bf4c4a22a405d1"
+        },
+        "active_dues": {
+            "records": 1114,
+            "amount": "594238.24",
+            "remaining_amount": "46933.82"
+        }
+    },
+    "migration_up_seconds": 0.6315,
+    "columns_removed": {
+        "dues": true,
+        "due_batches": true,
+        "due_plans": true,
+        "assessment_plans": true
+    },
+    "akbey_after_up": {
+        "dues": {
+            "count": 1131,
+            "sha256": "673dc03c35bd39e427b3a9124ed9aa1ddf1aefeac8becdd1c8e05f54713ce7a4",
+            "sum_amount": "601909.08",
+            "sum_remaining_amount": "54604.66"
+        },
+        "payments": {
+            "count": 871,
+            "sha256": "33118ab90bdb4a3a57818f818e0955245b41f9652c7004b10a8ecf796425c561",
+            "sum_amount": "1119111.55",
+            "sum_unallocated_amount": "4869.66"
+        },
+        "account_transactions": {
+            "count": 2298,
+            "sha256": "09f372f905bc48493b7de9074b20a1e07155b3202165f9182ed260dd2ca2f5d0",
+            "sum_amount": "2292965.41"
+        },
+        "cash_transactions": {
+            "count": 875,
+            "sha256": "e1bcbb953221a094c9204919b56e9712669c3016c182cb57ceea5e581b1a03db",
+            "sum_amount": "1131385.80"
+        },
+        "cash_boxes": {
+            "count": 3,
+            "sha256": "49a5dded762a20a2906a587b9ce0f05072ba648ab4c47535135a1306ce836121"
+        },
+        "accounts": {
+            "count": 54,
+            "sha256": "5dfac17be95e624caab8ca0d7e001f1cff1fa84ed28efdf96561abfbf3d6d135"
+        },
+        "payment_allocations": {
+            "count": 1654,
+            "sha256": "be6f6c87ee0fed243acfe9d8acaed728d54389f118ba328ea5bf4c4a22a405d1"
+        },
+        "active_dues": {
+            "records": 1114,
+            "amount": "594238.24",
+            "remaining_amount": "46933.82"
+        }
+    },
+    "akbey_ledger_balances_unchanged": true,
+    "akbey_report_scenarios_unchanged": 196,
+    "all_non_target_rows_unchanged_after_up": true,
+    "application_flow_progress": {
+        "individual_aidat_targets_tenant": true,
+        "aidat_rejects_owner_when_tenant_exists": true,
+        "individual_malik_payi_targets_owner": true,
+        "malik_payi_rejects_tenant": true
+    },
+    "passed": false,
+    "error": {
+        "type": "Illuminate\\Validation\\ValidationException",
+        "code": 0,
+        "message": "The category id field is required.",
+        "file": "helpers.php",
+        "line": 423,
+        "tool_trace": [
+            {
+                "file": "verify-target-audience-mysql-flows.php",
+                "line": 71
+            },
+            {
+                "file": "verify-target-audience-mysql.php",
+                "line": 239
+            }
+        ]
+    },
+    "source_all_52_table_rows_unchanged": true,
+    "clone_user_locked_after_run": true
+}

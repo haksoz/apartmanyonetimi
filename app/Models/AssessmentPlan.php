@@ -24,7 +24,6 @@ class AssessmentPlan extends Model
         'description',
         'total_amount',
         'distribution_type',
-        'target_audience',
         'due_type',
         'category_id',
         'installment_count',
@@ -50,7 +49,6 @@ class AssessmentPlan extends Model
                 throw \Illuminate\Validation\ValidationException::withMessages(['due_type' => 'Taksitli Borç Planı yalnızca Kat Maliki Payı oluşturabilir.']);
             }
             $plan->due_type = DueType::MalikPayi;
-            $plan->target_audience = DueType::MalikPayi->targetAudience();
         });
     }
 

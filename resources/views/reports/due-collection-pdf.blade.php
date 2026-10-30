@@ -1,9 +1,9 @@
 @extends('layouts.report-pdf')
 
-@section('title', 'Aidat Tahsilat Raporu — ' . $apartment->name)
+@section('title', $reportTitle . ' — ' . $apartment->name)
 
 @section('content')
-    <h2>AİDAT TAHSİLAT RAPORU — {{ $apartment->name }} — {{ $year }}</h2>
+    <h2>{{ mb_strtoupper($reportTitle, 'UTF-8') }} — {{ $apartment->name }} — {{ $year }}</h2>
     <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı</div>
     <p class="note">Ödendi · Kısmi · Gecikmeli · Bekliyor · Yok</p>
 

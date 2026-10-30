@@ -68,21 +68,6 @@
             </div>
         </a>
 
-        {{-- Borç Listesi --}}
-        <a href="{{ route('reports.debt-list') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-red-400 hover:shadow-md transition-all">
-            <div class="flex items-start gap-4">
-                <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center group-hover:bg-red-100 transition">
-                    <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l-4-4 4-4m6 8l4-4-4-4M3 12h18"/>
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-red-600">Borç Listesi</h2>
-                    <p class="mt-1 text-xs text-slate-500">Ödenmemiş ve gecikmiş aidat borçları</p>
-                </div>
-            </div>
-        </a>
-
         {{-- Alacak Listesi --}}
         <a href="{{ route('reports.receivable-list') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-blue-400 hover:shadow-md transition-all">
             <div class="flex items-start gap-4">
@@ -98,7 +83,7 @@
             </div>
         </a>
 
-        {{-- Aidat Tahsilat Raporu --}}
+        {{-- Borç Tahsilat Raporu --}}
         <a href="{{ route('reports.due-collection') }}" class="group bg-white rounded-2xl border border-slate-200 p-5 hover:border-teal-400 hover:shadow-md transition-all">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-teal-50 flex items-center justify-center group-hover:bg-teal-100 transition">
@@ -107,8 +92,8 @@
                     </svg>
                 </div>
                 <div>
-                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-teal-700">Aidat Tahsilat Raporu</h2>
-                    <p class="mt-1 text-xs text-slate-500">Yıllık daire × ay matris tablosu</p>
+                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-teal-700">Borç Tahsilat Raporu</h2>
+                    <p class="mt-1 text-xs text-slate-500">Aidat ve Kat Maliki Payı için yıllık durum</p>
                 </div>
             </div>
         </a>
@@ -137,8 +122,8 @@
                     </svg>
                 </div>
                 <div>
-                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-rose-600">Borç Listesi</h2>
-                    <p class="mt-1 text-xs text-slate-500">Hesap bazında birleştirilmiş borçlar</p>
+                    <h2 class="text-sm font-semibold text-slate-800 group-hover:text-rose-600">Genel Borç Listesi</h2>
+                    <p class="mt-1 text-xs text-slate-500">Aidat ve Kat Maliki Payı açık borçları</p>
                 </div>
             </div>
         </a>

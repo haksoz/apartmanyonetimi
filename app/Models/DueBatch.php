@@ -34,7 +34,6 @@ class DueBatch extends Model
         'category_id',
         'source_type',
         'distribution_type',
-        'target_audience',
         'period',
         'source_period',
         'category_filter_ids',
@@ -51,15 +50,6 @@ class DueBatch extends Model
         'distribution_snapshot' => 'array',
         'due_type' => DueType::class,
     ];
-
-    protected static function booted(): void
-    {
-        static::saving(function (DueBatch $batch) {
-            if ($batch->due_type) {
-                $batch->target_audience = $batch->due_type->targetAudience();
-            }
-        });
-    }
 
     public function apartment(): BelongsTo
     {

@@ -336,7 +336,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_EXPENSES,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
@@ -380,7 +379,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'due_type' => \App\Enums\DueType::Aidat->value,
@@ -412,7 +410,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'due_type' => \App\Enums\DueType::Aidat->value,
@@ -875,7 +872,6 @@ class DuePageTest extends TestCase
             'amount_type' => DuePlan::AMOUNT_TYPE_MONTHLY,
             'monthly_amount' => 1000,
             'distribution_type' => DuePlan::DISTRIBUTION_EQUAL,
-            'target_audience' => 'tenant_priority',
             'due_day' => 1,
             'generate_day' => 1,
             'is_active' => true,
@@ -887,7 +883,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'target_audience' => 'tenant_priority',
                 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'due_type' => \App\Enums\DueType::Aidat->value,
@@ -930,7 +925,6 @@ class DuePageTest extends TestCase
             'amount_type' => DuePlan::AMOUNT_TYPE_MONTHLY,
             'monthly_amount' => 1000,
             'distribution_type' => DuePlan::DISTRIBUTION_EQUAL,
-            'target_audience' => 'tenant_priority',
             'due_day' => 1,
             'generate_day' => 1,
             'is_active' => true,
@@ -979,7 +973,6 @@ class DuePageTest extends TestCase
             'amount_type' => DuePlan::AMOUNT_TYPE_MONTHLY,
             'monthly_amount' => 1000,
             'distribution_type' => DuePlan::DISTRIBUTION_EQUAL,
-            'target_audience' => 'tenant_priority',
             'due_day' => 1,
             'generate_day' => 1,
             'is_active' => true,
@@ -1042,7 +1035,6 @@ class DuePageTest extends TestCase
                 'plan_year' => 2026,
                 'monthly_amount' => 1000,
                 'distribution_type' => 'equal',
-                'target_audience' => 'owner_only',
                 'due_day' => 1,
                 'generate_day' => 1,
                 'generation_mode' => 'on_schedule',
@@ -1090,7 +1082,6 @@ class DuePageTest extends TestCase
             'amount_type' => DuePlan::AMOUNT_TYPE_MONTHLY,
             'monthly_amount' => 1000,
             'distribution_type' => DuePlan::DISTRIBUTION_EQUAL,
-            'target_audience' => 'owner_only',
             'due_day' => 1,
             'generate_day' => 1,
             'is_active' => true,
@@ -1119,7 +1110,6 @@ class DuePageTest extends TestCase
             'category_id' => $category->id,
             'source_type' => 'manual',
             'distribution_type' => 'equal',
-            'target_audience' => 'owner_only',
             'period' => '2026-06',
             'source_amount' => 1000,
         ]);
@@ -1171,7 +1161,6 @@ class DuePageTest extends TestCase
             'amount_type' => DuePlan::AMOUNT_TYPE_MONTHLY,
             'monthly_amount' => 1000,
             'distribution_type' => DuePlan::DISTRIBUTION_EQUAL,
-            'target_audience' => 'owner_only',
             'due_day' => 1,
             'generate_day' => now()->day,
             'is_active' => true,
@@ -1227,7 +1216,6 @@ class DuePageTest extends TestCase
             'amount_type' => DuePlan::AMOUNT_TYPE_MONTHLY,
             'monthly_amount' => 1000,
             'distribution_type' => DuePlan::DISTRIBUTION_EQUAL,
-            'target_audience' => 'owner_only',
             'due_day' => 1,
             'generate_day' => now()->day,
             'is_active' => true,
@@ -1312,7 +1300,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'target_audience' => 'owner_only',
                 'period' => '2026-06',
                 'due_date' => '2026-06-01',
                 'due_type' => \App\Enums\DueType::Aidat->value,
@@ -1515,7 +1502,7 @@ class DuePageTest extends TestCase
         $this->post(route('dues.store'), [
             'source_type' => DueBatch::SOURCE_INDIVIDUAL,
             'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-            'target_audience' => 'tenant_priority', 'due_type' => 'aidat',
+            'due_type' => 'aidat',
             'account_id' => $inactive->id, 'individual_amount' => 100, 'due_date' => '2026-07-31',
         ])->assertSessionHasErrors('account_id');
         $this->assertDatabaseCount('dues', 0);
@@ -1538,8 +1525,7 @@ class DuePageTest extends TestCase
         $apartment->refresh();
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
         $data = ['source_type' => DueBatch::SOURCE_INDIVIDUAL,
-            'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL, 'target_audience' => 'owner_only',
-            'due_type' => 'malik_payi', 'category_id' => $category->id, 'individual_amount' => 100,
+            'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL, 'due_type' => 'malik_payi', 'category_id' => $category->id, 'individual_amount' => 100,
             'period' => '2026-07', 'due_date' => '2026-07-31'];
         $this->post(route('dues.store'), $data + ['account_id' => $tenant->id])
             ->assertSessionHasErrors('account_id');
@@ -1550,14 +1536,13 @@ class DuePageTest extends TestCase
         $this->assertDatabaseHas('dues', ['account_id' => $owner->id, 'due_type' => 'malik_payi']);
         $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'move_in_date' => '2026-01-01']);
         $data['due_type'] = 'aidat';
-        $data['target_audience'] = 'tenant_priority';
         $data['category_id'] = $apartment->default_aidat_category_id;
         $this->post(route('dues.store'), $data + ['account_id' => $tenant->id])
             ->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
         $this->assertDatabaseHas('dues', ['account_id' => $tenant->id, 'due_type' => 'aidat']);
     }
 
-    public function test_batch_malik_payi_always_targets_owners_even_when_tenant_priority_is_submitted(): void
+    public function test_batch_malik_payi_always_targets_owners_and_aidat_uses_tenant_priority(): void
     {
         // The batch form uses MySQL DATE_FORMAT for its expense preview.
         if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') {
@@ -1593,12 +1578,12 @@ class DuePageTest extends TestCase
         foreach ([DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_FIXED] as $source) {
             $this->post(route('dues.store'), [
                 'source_type' => $source, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'target_audience' => 'tenant_priority', 'due_type' => 'malik_payi',
+                'due_type' => 'malik_payi',
                 'category_id' => $category->id, 'period' => '2026-07', 'due_date' => '2026-07-31',
                 'source_amount' => 100, 'fixed_amount' => 100,
             ])->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
             $batch = DueBatch::latest('id')->firstOrFail();
-            $this->assertSame('owner_only', $batch->target_audience);
+            $this->assertSame('malik_payi', $batch->due_type->value);
             $this->assertDatabaseHas('dues', ['due_batch_id' => $batch->id,
                 'account_id' => $owner->id, 'due_type' => 'malik_payi']);
             $this->assertDatabaseMissing('dues', ['due_batch_id' => $batch->id, 'account_id' => $tenant->id]);
@@ -1611,12 +1596,11 @@ class DuePageTest extends TestCase
         foreach ([DueBatch::SOURCE_MANUAL => '2026-08', DueBatch::SOURCE_FIXED => '2026-09'] as $source => $period) {
             $this->post(route('dues.store'), [
                 'source_type' => $source, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                ...($source === DueBatch::SOURCE_MANUAL ? ['target_audience' => 'owner_only'] : []),
                 'due_type' => 'aidat', 'category_id' => $apartment->default_aidat_category_id,
                 'period' => $period, 'due_date' => $period.'-28', 'source_amount' => 100, 'fixed_amount' => 100,
             ])->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
             $batch = DueBatch::latest('id')->firstOrFail();
-            $this->assertSame('tenant_priority', $batch->target_audience);
+            $this->assertSame('aidat', $batch->due_type->value);
             $this->assertDatabaseHas('dues', ['due_batch_id' => $batch->id, 'account_id' => $tenant->id]);
             $this->assertDatabaseHas('dues', ['due_batch_id' => $batch->id, 'account_id' => $secondOwner->id]);
             $this->assertDatabaseMissing('dues', ['due_batch_id' => $batch->id, 'account_id' => $owner->id]);
@@ -1654,7 +1638,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'target_audience' => 'owner_only',
                 'period' => '2026-07',
                 'due_date' => '2026-07-31',
                 'due_type' => \App\Enums\DueType::Aidat->value,
@@ -1676,7 +1659,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'target_audience' => 'owner_only',
                 'period' => '2026-08',
                 'due_date' => '2026-08-31',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
@@ -1697,7 +1679,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'target_audience' => 'owner_only',
                 'period' => '2026-09',
                 'due_date' => '2026-09-30',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
@@ -1718,7 +1699,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'target_audience' => 'owner_only',
                 'period' => '2026-10',
                 'due_date' => '2026-10-31',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
@@ -1740,7 +1720,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'target_audience' => 'owner_only',
                 'period' => '2026-11',
                 'due_date' => '2026-11-30',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
@@ -1757,7 +1736,6 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'target_audience' => 'owner_only',
                 'period' => '2026-12',
                 'due_date' => '2026-12-31',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,

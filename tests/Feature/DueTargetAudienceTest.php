@@ -39,23 +39,23 @@ class DueTargetAudienceTest extends TestCase
             'type' => 'tenant', 'name' => 'Tenant', 'is_active' => true]);
         TenantAssignment::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'account_id' => $tenant->id, 'move_in_date' => '2026-06-01']);
-        foreach ([['2026-06', 'aidat', 'tenant_priority', $tenant->id], ['2026-07', 'malik_payi', 'owner_only', $owner->id],
-            ['2026-02', 'aidat', 'tenant_priority', $owner->id]] as [$period, $type, $rule, $accountId]) {
+        foreach ([['2026-06', 'aidat', $tenant->id], ['2026-07', 'malik_payi', $owner->id],
+            ['2026-02', 'aidat', $owner->id]] as [$period, $type, $accountId]) {
             $this->post(route('dues.store'), [
                 'source_type' => 'fixed', 'distribution_type' => 'equal', 'fixed_amount' => 100,
-                'target_audience' => 'invalid', 'due_type' => $type,
+                'due_type' => $type,
                 'category_id' => $type === 'aidat' ? $category->id : $ownerCategory->id,
                 'period' => $period, 'due_date' => $period.'-10',
             ])->assertSessionHasNoErrors()->assertRedirect();
             $due = Due::where('period', $period)->sole();
-            $this->assertSame($rule, $due->target_audience);
+            $this->assertSame($type, $due->due_type->value);
             $this->assertSame($accountId, $due->account_id);
         }
     }
 
-    #[TestWith(['aidat', 'tenant_priority'])]
-    #[TestWith(['malik_payi', 'owner_only'])]
-    public function test_individual_rule_is_derived_from_type_and_preserved_after_editing(string $type, string $rule): void
+    #[TestWith(['aidat'])]
+    #[TestWith(['malik_payi'])]
+    public function test_individual_rule_is_derived_from_type_and_preserved_after_editing(string $type): void
     {
         [$apartment, $unit, $owner, $category] = $this->fixture();
         if ($type === 'malik_payi') {
@@ -64,21 +64,21 @@ class DueTargetAudienceTest extends TestCase
         }
         $this->post(route('dues.store'), [
             'source_type' => 'individual', 'distribution_type' => 'individual', 'individual_amount' => 100,
-            'target_audience' => $rule === 'owner_only' ? 'tenant_priority' : 'owner_only', 'account_id' => $owner->id,
+            'account_id' => $owner->id,
             'due_type' => $type, 'category_id' => $category->id, 'period' => '2026-02', 'due_date' => '2026-02-10',
         ])->assertSessionHasNoErrors()->assertRedirect();
         $due = Due::sole();
-        $this->assertSame($rule, $due->target_audience);
-        $this->assertSame($rule, $due->batch->target_audience);
-        foreach (['tenant_priority', 'owner_only'] as $reportRule) {
+        $this->assertSame($type, $due->due_type->value);
+        $this->assertSame($type, $due->batch->due_type->value);
+        foreach (['aidat', 'malik_payi'] as $reportRule) {
             $report = $this->get(route('reports.monthly-board', [
-                'month' => '2026-02', 'target_audience' => $reportRule, 'type_filter' => 'all',
+                'month' => '2026-02', 'due_type' => $reportRule, 'type_filter' => 'all',
             ]))->assertOk();
-            $this->assertEquals($reportRule === $rule ? 100 : 0,
+            $this->assertEquals($reportRule === $type ? 100 : 0,
                 collect($report->viewData('accountData'))->sum('selectedAmount'));
         }
         $this->editDue($due, $owner, $category);
-        $this->assertSame($rule, $due->fresh()->target_audience);
+        $this->assertSame($type, $due->fresh()->due_type->value);
     }
 
     public function test_individual_create_uses_debt_type_cards_and_preserves_selected_account(): void
@@ -150,9 +150,10 @@ class DueTargetAudienceTest extends TestCase
             $payload = ['source_type' => 'individual', 'distribution_type' => 'individual',
                 'account_id' => $owner->id, 'individual_amount' => 100, 'due_type' => 'aidat',
                 'category_id' => $category->id, 'period' => '2026-0'.($index + 1), 'due_date' => '2026-02-10'];
+            // Unsupported client fields must not override the authoritative type.
             if ($scope !== null) $payload['target_audience'] = $scope;
             $this->post(route('dues.store'), $payload)->assertSessionHasNoErrors()->assertRedirect();
-            $this->assertSame('tenant_priority', Due::where('period', $payload['period'])->sole()->target_audience);
+            $this->assertSame('aidat', Due::where('period', $payload['period'])->sole()->due_type->value);
         }
     }
 
@@ -166,17 +167,16 @@ class DueTargetAudienceTest extends TestCase
         $this->getJson(route('dues.create', ['account_id' => $tenant->id, 'due_type' => 'malik_payi']))
             ->assertUnprocessable()->assertJsonValidationErrors('account_id');
         $payload = ['source_type' => 'individual', 'distribution_type' => 'individual',
-            'target_audience' => 'tenant_priority', 'account_id' => $tenant->id, 'individual_amount' => 100,
+            'account_id' => $tenant->id, 'individual_amount' => 100,
             'due_type' => 'malik_payi', 'category_id' => $malikCategory->id, 'period' => '2026-02', 'due_date' => '2026-02-10'];
         $this->postJson(route('dues.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('account_id');
         foreach (['dues', 'due_batches', 'account_transactions'] as $table) $this->assertDatabaseCount($table, 0);
         $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'move_in_date' => '2026-01-01']);
         $payload['due_type'] = 'aidat';
         $payload['category_id'] = $category->id;
-        $payload['target_audience'] = 'owner_only';
         $this->post(route('dues.store'), $payload)->assertSessionHasNoErrors()->assertRedirect();
         $this->assertSame($tenant->id, Due::sole()->account_id);
-        $this->assertSame('tenant_priority', Due::sole()->target_audience);
+        $this->assertSame('aidat', Due::sole()->due_type->value);
     }
 
     public function test_individual_aidat_blocks_explicit_owner_when_the_unit_has_a_tenant(): void
@@ -207,8 +207,7 @@ class DueTargetAudienceTest extends TestCase
         $this->patch(route('dues.update', $due), [
             'account_id' => $owner->id, 'category_id' => $category->id, 'due_type' => $due->due_type?->value ?? 'aidat',
             'period' => $due->period, 'due_date' => '2026-02-10', 'amount' => 120,
-            'target_audience' => 'owner_only',
-        ])->assertSessionHasNoErrors()->assertRedirect();
+            ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertEquals(120, $due->fresh()->amount);
     }
 
@@ -220,58 +219,55 @@ class DueTargetAudienceTest extends TestCase
         $due = Due::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'account_id' => $owner->id, 'category_id' => $category->id, 'due_type' => 'aidat',
             'period' => '2026-02', 'due_date' => '2026-02-10', 'amount' => 100,
-            'remaining_amount' => 100, 'status' => 'unpaid', 'target_audience' => 'tenant_priority']);
+            'remaining_amount' => 100, 'status' => 'unpaid']);
         $this->editDue($due, $owner, $category);
-        $this->assertSame('tenant_priority', $due->fresh()->target_audience);
+        $this->assertSame('aidat', $due->fresh()->due_type->value);
         $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'move_in_date' => '2026-01-01']);
-        $this->post(route('dues.transfer', $due), ['target_account_id' => $tenant->id,
-            'target_audience' => 'owner_only'])->assertSessionHasNoErrors()->assertRedirect();
+        $this->post(route('dues.transfer', $due), ['target_account_id' => $tenant->id])
+            ->assertSessionHasNoErrors()->assertRedirect();
         $due->refresh();
         $this->assertSame($tenant->id, $due->account_id);
-        $this->assertSame('tenant_priority', $due->target_audience);
+        $this->assertSame('aidat', $due->due_type->value);
         foreach ([20, 100] as $amount) {
             $payment = Payment::create(['apartment_id' => $apartment->id, 'account_id' => $tenant->id,
                 'amount' => $amount, 'unallocated_amount' => $amount, 'payment_date' => '2026-03-01']);
             $payment->allocateToDue($due, $amount);
-            $this->assertSame('tenant_priority', $due->fresh()->target_audience);
+            $this->assertSame('aidat', $due->fresh()->due_type->value);
         }
         $this->assertEquals(0, $due->fresh()->remaining_amount);
         $this->assertEquals(120, $due->allocations()->sum('amount'));
     }
 
-    public function test_migration_preserves_existing_rows_without_assigning_a_rule(): void
+    public function test_soft_deleted_history_keeps_type_account_and_remaining_balance(): void
     {
         [$apartment, $unit, $owner] = $this->fixture();
-        $migration = require database_path('migrations/2026_10_27_000001_add_target_audience_to_dues.php');
-        $migration->down();
-        $id = \Illuminate\Support\Facades\DB::table('dues')->insertGetId([
-            'apartment_id' => $apartment->id, 'account_id' => $owner->id, 'unit_id' => $unit->id,
-            'amount' => 100, 'remaining_amount' => 75, 'due_date' => '2026-02-10', 'status' => 'partial',
-        ]);
-        $migration->up();
-        $due = Due::findOrFail($id);
-        $this->assertNull($due->target_audience);
-        $this->assertEquals(75, $due->remaining_amount);
-        $this->assertSame($owner->id, $due->account_id);
+        $due = Due::create(['apartment_id' => $apartment->id, 'account_id' => $owner->id,
+            'unit_id' => $unit->id, 'due_type' => 'aidat', 'amount' => 100, 'remaining_amount' => 100,
+            'due_date' => '2026-02-10', 'status' => 'unpaid']);
+        $due->delete();
+        $historical = Due::withTrashed()->findOrFail($due->id);
+        $this->assertTrue($historical->trashed());
+        $this->assertSame('aidat', $historical->due_type->value);
+        $this->assertSame($owner->id, $historical->account_id);
+        $this->assertEquals(100, $historical->remaining_amount);
+        $this->assertNull(Due::find($due->id));
     }
 
-    public function test_invalid_rule_is_rejected_when_creating_a_due(): void
+    public function test_new_schema_has_no_separately_stored_targeting(): void
     {
-        [$apartment, $unit, $owner] = $this->fixture();
-        $this->expectException(\InvalidArgumentException::class);
-        Due::create(['apartment_id' => $apartment->id, 'account_id' => $owner->id,
-            'unit_id' => $unit->id, 'amount' => 100, 'remaining_amount' => 100,
-            'due_date' => '2026-02-10', 'status' => 'unpaid', 'target_audience' => 'invalid']);
+        foreach (['dues', 'due_batches', 'due_plans', 'assessment_plans'] as $table) {
+            $this->assertFalse(\Illuminate\Support\Facades\Schema::hasColumn($table, 'target_audience'));
+        }
     }
 
-    public function test_existing_rule_cannot_be_overwritten_on_the_model(): void
+    public function test_existing_type_cannot_be_overwritten_on_the_model(): void
     {
         [$apartment, $unit, $owner] = $this->fixture();
         $due = Due::create(['apartment_id' => $apartment->id, 'account_id' => $owner->id,
             'unit_id' => $unit->id, 'amount' => 100, 'remaining_amount' => 100,
             'due_date' => '2026-02-10', 'status' => 'unpaid']);
-        $this->assertSame('tenant_priority', $due->target_audience);
-        $this->expectException(\LogicException::class);
-        $due->update(['target_audience' => 'owner_only']);
+        $this->assertSame('aidat', $due->due_type->value);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $due->update(['due_type' => 'malik_payi']);
     }
 }

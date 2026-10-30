@@ -10,6 +10,11 @@ class SystemSetting extends Model
         'trial_package_id',
         'trial_duration_months',
         'fallback_package_id',
+        'subscription_tax_rate',
+    ];
+
+    protected $casts = [
+        'subscription_tax_rate' => 'decimal:2',
     ];
 
     public function trialPackage()

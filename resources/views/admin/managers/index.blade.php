@@ -68,8 +68,8 @@
             $statusLabel = match (true) {
                 $item->status === \App\Models\SubscriptionItem::STATUS_PENDING && $proofSent => 'Onay bekliyor',
                 $item->status === \App\Models\SubscriptionItem::STATUS_PENDING => 'Ödeme bekliyor',
-                \App\Models\SubscriptionItem::STATUS_ACTIVE => 'Aktif',
-                \App\Models\SubscriptionItem::STATUS_CANCELLED => 'İptal',
+                $item->status === \App\Models\SubscriptionItem::STATUS_ACTIVE => 'Aktif',
+                $item->status === \App\Models\SubscriptionItem::STATUS_CANCELLED => 'İptal',
                 default => '—',
             };
             $started = $item->started_at?->format('d.m.Y') ?? '—';

@@ -153,7 +153,7 @@
 
                     <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                         <div class="text-xs text-slate-500">Oluşturma Kuralı</div>
-                        <div class="font-semibold text-slate-900">{{ $due->target_audience_label }}</div>
+                        <div class="font-semibold text-slate-900">{{ $due->targeting_rule_label }}</div>
                     </div>
 
                     <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">

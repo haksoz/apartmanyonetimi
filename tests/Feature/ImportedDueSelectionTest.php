@@ -75,7 +75,7 @@ class ImportedDueSelectionTest extends TestCase
         $this->withSession(['bulk_import_accounts' => ['owner' => ['name' => 'Malik', 'unit_no' => '1', 'unit_id' => $owner->unit_id]]]);
         $this->post(route('accounts.bulk-import-confirm'), $this->payload($owner, $tenant, $category))->assertSessionHasNoErrors();
         $this->assertSame('aidat', Due::sole()->due_type->value);
-        $this->assertSame('tenant_priority', Due::sole()->target_audience);
+        $this->assertSame('aidat', Due::sole()->due_type->value);
         $this->assertSame($category->id, Due::sole()->category_id);
     }
 
@@ -102,7 +102,7 @@ class ImportedDueSelectionTest extends TestCase
         $this->withSession(['bulk_import_transactions' => [$this->row('owner', 2)]]);
         $this->post(route('accounts.bulk-import-confirm'), $payload)->assertSessionHasNoErrors();
         $this->assertSame('malik_payi', Due::sole()->due_type->value);
-        $this->assertSame('owner_only', Due::sole()->target_audience);
+        $this->assertSame('malik_payi', Due::sole()->due_type->value);
     }
 
     public function test_category_permission_is_required_and_never_silently_enabled(): void

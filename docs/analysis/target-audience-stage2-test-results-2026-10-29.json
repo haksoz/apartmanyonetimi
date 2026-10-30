@@ -1,0 +1,96 @@
+{
+  "baseline": {
+    "tests": 633,
+    "failures": 13,
+    "errors": 0,
+    "skipped": 23,
+    "assertions": 5561
+  },
+  "final": {
+    "tests": 634,
+    "passed": 598,
+    "failures": 13,
+    "errors": 0,
+    "skipped": 23,
+    "assertions": 5577
+  },
+  "new_failures": [],
+  "unchanged_failure_tests": [
+    {
+      "class": "Tests\\Feature\\Admin\\ManagerSubscriptionOrderTest",
+      "name": "test_free_apartment_is_listed_and_complimentary_months_open_paid_use",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\Admin\\SubscriptionItemListTest",
+      "name": "test_items_view_lists_each_subscription_item_from_its_own_fields",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\Admin\\SubscriptionItemListTest",
+      "name": "test_one_order_with_two_apartments_and_past_items_are_separate_rows",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\Admin\\SubscriptionItemListTest",
+      "name": "test_deleted_apartment_uses_the_item_snapshot_name",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\CashPageTest",
+      "name": "test_cash_index_opens_empty_for_selected_apartment",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\CashPageTest",
+      "name": "test_cash_index_uses_only_selected_apartment_transactions",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\CommercialBillingTest",
+      "name": "test_existing_free_apartment_stays_usable_without_a_subscription",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\ExampleTest",
+      "name": "test_guests_are_redirected_to_login",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\LandingPageTest",
+      "name": "test_landing_reads_active_price_bands_and_drops_package_pricing",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\MonthlyBoardReportTest",
+      "name": "test_monthly_board_limits_accounts_to_the_selected_residence_month_and_includes_deleted_accounts_when_requested",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\PublishedSaleDocumentsTest",
+      "name": "test_version_one_of_the_sale_documents_is_what_the_order_accepts",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\RevertAllocationModalTest",
+      "name": "test_due_detail_shows_revert_modal_markup",
+      "kind": "failure"
+    },
+    {
+      "class": "Tests\\Feature\\RevertAllocationModalTest",
+      "name": "test_due_detail_disables_delete_payment_when_payment_has_multiple_allocations",
+      "kind": "failure"
+    }
+  ],
+  "related_final": {
+    "tests": 189,
+    "passed": 186,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 2
+  },
+  "skipped_by_class": {
+    "Tests\\Feature\\DuePageTest": 2,
+    "Tests\\Feature\\ExpensePaymentConcurrencyTest": 21
+  }
+}

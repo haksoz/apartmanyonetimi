@@ -14,6 +14,20 @@
 
     <div class="space-y-6">
         <section class="rounded-xl border border-slate-200 bg-white p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Vergi ayarı</h2>
+            <p class="mt-1 text-sm text-slate-500">Fiyat bantları ve özel teklif fiyatları KDV hariç net tutardır. Kampanya indirimi net tutara uygulanır, ardından KDV eklenir.</p>
+            <form method="POST" action="{{ route('admin.commercial.tax.update') }}" class="mt-4 flex max-w-md items-end gap-3">
+                @csrf
+                @method('PATCH')
+                <label class="flex-1 text-sm font-medium text-slate-700">
+                    Abonelik KDV oranı (%)
+                    <input type="number" step="0.01" min="0" max="100" name="subscription_tax_rate" value="{{ old('subscription_tax_rate', $settings->subscription_tax_rate) }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+                </label>
+                <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Kaydet</button>
+            </form>
+        </section>
+
+        <section class="rounded-xl border border-slate-200 bg-white p-6">
             <h2 class="text-lg font-semibold text-slate-900">Fiyat bantları</h2>
             <div class="mt-4 space-y-4">
                 @foreach ($bands as $band)
@@ -28,11 +42,11 @@
                             <div class="sm:col-span-2 text-sm text-slate-500">Teklif bandı. Fiyat, apartman kaydına yazılır.</div>
                         @else
                             <label class="text-xs font-medium text-slate-600">
-                                Aylık
+                                Aylık net (KDV hariç)
                                 <input type="number" step="0.01" min="0" name="monthly_price" value="{{ $band->monthly_price }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                             </label>
                             <label class="text-xs font-medium text-slate-600">
-                                Yıllık
+                                Yıllık net (KDV hariç)
                                 <input type="number" step="0.01" min="0" name="yearly_price" value="{{ $band->yearly_price }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                             </label>
                         @endif
@@ -69,7 +83,7 @@
                     <input type="number" step="0.01" min="0" max="100" name="percent_off" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 </label>
                 <label class="text-sm font-medium text-slate-700">
-                    Tutar indirimi
+                    Net tutar indirimi
                     <input type="number" step="0.01" min="0" name="amount_off" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 </label>
                 <label class="text-sm font-medium text-slate-700">

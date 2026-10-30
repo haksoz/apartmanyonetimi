@@ -107,7 +107,6 @@ class CategoryUsagePermissionTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_FIXED,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'target_audience' => 'owner_only',
                 'period' => '2026-10',
                 'due_date' => '2026-10-31',
                 'due_type' => 'ceza',

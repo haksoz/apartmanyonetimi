@@ -1,15 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-    @php
-        $tableTitleSuffix = match ($filterAccount) {
-            'residents' => ' - Daire Sakinleri',
-            'owners' => ' - Kat Malikleri',
-            'inactive' => ' - Pasif Hesaplar',
-            default => '',
-        };
-        $tableTitle = 'Genel Borç Listesi' . $tableTitleSuffix;
-    @endphp
     @if(!isset($pdfMode))
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -22,12 +13,12 @@
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }} — {{ now()->format('d.m.Y') }}</p>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('reports.debt-list.export', array_merge(['type'=>'excel'], request()->query())) }}"
+            <a href="{{ route('reports.debt-list.export', array_merge(['type'=>'excel', 'hide_account_names'=>(int) $hideAccountNames], request()->query())) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.debt-list.export', array_merge(['type'=>'pdf'], request()->query())) }}"
+            <a href="{{ route('reports.debt-list.export', array_merge(['type'=>'pdf', 'hide_account_names'=>(int) $hideAccountNames], request()->query())) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
@@ -36,11 +27,12 @@
     </div>
 
     @php
-        $accountLabels = ['all' => 'Tümü', 'residents' => 'Daire Sakinleri', 'owners' => 'Kat Malikleri', 'inactive' => 'Pasif Hesaplar'];
+        $dueTypeLabels = ['all' => 'Tüm Borçlar', 'aidat' => 'Aidat Borçları', 'malik_payi' => 'Kat Maliki Payı Borçları'];
         $activeUnit = $filterUnit ? $units->firstWhere('id', $filterUnit) : null;
         $activeFilterCount = 0;
         if ($filterUnit) $activeFilterCount++;
-        if ($filterAccount !== 'all') $activeFilterCount++;
+        if ($filterDueType !== 'all') $activeFilterCount++;
+        if ($showInactive) $activeFilterCount++;
     @endphp
 
     {{-- Filtre Butonu + Rozetler --}}
@@ -67,10 +59,17 @@
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif
-            @if ($filterAccount !== 'all')
-                <a href="{{ route('reports.debt-list', request()->except('account_filter')) }}"
+            @if ($showInactive)
+                <a href="{{ route('reports.debt-list', request()->except('show_inactive')) }}"
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ $accountLabels[$filterAccount] ?? $filterAccount }}
+                    Eski/Pasif Hesaplar Dahil
+                    <span class="text-slate-500">&times;</span>
+                </a>
+            @endif
+            @if ($filterDueType !== 'all')
+                <a href="{{ route('reports.debt-list', request()->except('due_type')) }}"
+                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                    {{ $dueTypeLabels[$filterDueType] ?? $filterDueType }}
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif
@@ -104,14 +103,33 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Hesaplar</label>
-                        <select name="account_filter" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
-                            <option value="all" @selected($filterAccount === 'all')>Tümü</option>
-                            <option value="residents" @selected($filterAccount === 'residents')>Daire Sakinleri</option>
-                            <option value="owners" @selected($filterAccount === 'owners')>Kat Malikleri</option>
-                            <option value="inactive" @selected($filterAccount === 'inactive')>Pasif Hesaplar</option>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Borç Türü</label>
+                        <select name="due_type" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
+                            <option value="all" @selected($filterDueType === 'all')>Tüm Borçlar</option>
+                            <option value="aidat" @selected($filterDueType === 'aidat')>Aidat Borçları</option>
+                            <option value="malik_payi" @selected($filterDueType === 'malik_payi')>Kat Maliki Payı Borçları</option>
                         </select>
                     </div>
+
+                    <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-700">
+                        <input type="hidden" name="show_inactive" value="0">
+                        <input type="checkbox" name="show_inactive" value="1" @checked($showInactive)
+                               class="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400">
+                        <span>
+                            <span class="block font-medium">Eski/Pasif hesapları da göster</span>
+                            <span class="mt-0.5 block text-xs text-slate-500">Açık borcu bulunan eski sakinleri ve pasif hesapları listeye dahil eder.</span>
+                        </span>
+                    </label>
+
+                    <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-700">
+                        <input type="hidden" name="hide_account_names" value="0">
+                        <input type="checkbox" name="hide_account_names" value="1" @checked($hideAccountNames)
+                               class="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400">
+                        <span>
+                            <span class="block font-medium">Hesap adlarını gizle</span>
+                            <span class="mt-0.5 block text-xs text-slate-500">Ekran ve dışa aktarılan belgelerde Hesap Adı sütununu kaldırır.</span>
+                        </span>
+                    </label>
                 </div>
 
                 <div class="mt-6 flex items-center gap-3 pt-4 border-t border-slate-100">
@@ -132,9 +150,7 @@
             document.getElementById('filter-modal').classList.add('hidden');
         }
         function resetFilters() {
-            const form = document.getElementById('filter-form');
-            form.querySelectorAll('select').forEach(el => el.value = '');
-            form.submit();
+            window.location.href = @json(route('reports.debt-list'));
         }
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') closeFilterModal();
@@ -162,7 +178,9 @@
                 <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold">Daire</th>
-                        <th class="px-4 py-3 text-left font-semibold">Hesap Adı</th>
+                        @unless($hideAccountNames)
+                            <th class="px-4 py-3 text-left font-semibold">Hesap Adı</th>
+                        @endunless
                         <th class="px-4 py-3 text-left font-semibold">Detaylar</th>
                         <th class="px-4 py-3 text-right font-semibold">Toplam Borç</th>
                     </tr>
@@ -171,14 +189,16 @@
                     @forelse($groups as $group)
                         <tr class="hover:bg-slate-50 align-top">
                             <td class="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">{{ $group->unit?->unit_no ?? '-' }}</td>
-                            <td class="px-4 py-3 text-slate-800 whitespace-nowrap">{{ $group->account?->name ?? '-' }}</td>
+                            @unless($hideAccountNames)
+                                <td class="px-4 py-3 text-slate-800 whitespace-nowrap">{{ $group->account?->name ?? '-' }}</td>
+                            @endunless
                             <td class="px-4 py-3 text-slate-600">
                                 <div class="flex flex-col gap-1">
                                     @foreach($group->dues as $due)
                                         <div class="text-xs">
                                             <span class="font-medium">{{ $due->created_at_manual?->format('d.m.Y') ?? $due->created_at?->format('d.m.Y') ?? '-' }}</span>
                                             <span class="mx-1 text-slate-300">|</span>
-                                            {{ number_format($due->amount, 2, ',', '.') }} ₺
+                                            {{ number_format($due->remaining_amount, 2, ',', '.') }} ₺
                                             <span class="mx-1 text-slate-300">|</span>
                                             {{ $due->description ?? '-' }}
                                         </div>
@@ -188,13 +208,13 @@
                             <td class="px-4 py-3 text-right font-semibold text-red-600 whitespace-nowrap">{{ number_format($group->total_remaining, 2, ',', '.') }} ₺</td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="px-4 py-8 text-center text-slate-400">Borçlu hesap bulunamadı.</td></tr>
+                        <tr><td colspan="{{ $hideAccountNames ? 3 : 4 }}" class="px-4 py-8 text-center text-slate-400">Borçlu hesap bulunamadı.</td></tr>
                     @endforelse
                 </tbody>
                 @if($groups->count())
                 <tfoot class="bg-slate-50 border-t-2 border-slate-200">
                     <tr>
-                        <td colspan="3" class="px-4 py-3 font-bold text-slate-700">TOPLAM</td>
+                        <td colspan="{{ $hideAccountNames ? 2 : 3 }}" class="px-4 py-3 font-bold text-slate-700">TOPLAM</td>
                         <td class="px-4 py-3 text-right font-bold text-red-600">{{ number_format($totalOverdue, 2, ',', '.') }} ₺</td>
                     </tr>
                 </tfoot>

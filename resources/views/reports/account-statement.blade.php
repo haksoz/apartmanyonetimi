@@ -130,7 +130,12 @@
                                     {{ $tx->type === 'debit' ? 'Borç' : 'Alacak' }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-slate-700">{{ $tx->description ?? '-' }}</td>
+                            <td class="px-4 py-3 text-slate-700">
+                                {{ $tx->description ?? '-' }}
+                                @if($tx->transactionable instanceof \App\Models\Due && $tx->transactionable->due_type)
+                                    <span class="ml-1 text-xs text-slate-400">· {{ $tx->transactionable->due_type->label() }}</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-right text-red-500">{{ $tx->type === 'debit' ? number_format($tx->amount, 2, ',', '.') . ' ₺' : '' }}</td>
                             <td class="px-4 py-3 text-right text-emerald-600">{{ $tx->type === 'credit' ? number_format($tx->amount, 2, ',', '.') . ' ₺' : '' }}</td>
                             <td class="px-4 py-3 text-right font-medium {{ $tx->running_balance >= 0 ? 'text-emerald-600' : 'text-red-500' }}">

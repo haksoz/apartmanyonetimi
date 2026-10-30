@@ -99,7 +99,6 @@ class AssessmentPlanController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        $validated['target_audience'] = DueType::from($validated['due_type'])->targetAudience();
 
         return $this->preview($request, $apartment, $validated);
     }

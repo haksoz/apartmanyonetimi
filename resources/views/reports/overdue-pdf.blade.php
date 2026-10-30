@@ -4,6 +4,7 @@
 
 @section('content')
     <h2>GECİKME RAPORU — {{ $apartment->name }}</h2>
+    <div class="meta">{{ match($filterDueType) { 'aidat' => 'Aidat Borçları', 'malik_payi' => 'Kat Maliki Payı Borçları', default => 'Tüm Borçlar' } }}</div>
     <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı</div>
     <p class="note">{{ $dues->count() }} kayıt · Toplam {{ number_format($totalOverdue, 2, ',', '.') }} ₺ · Ortalama {{ $avgDays }} gün</p>
 

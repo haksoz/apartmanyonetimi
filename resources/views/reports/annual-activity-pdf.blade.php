@@ -4,7 +4,7 @@
 
 @section('content')
     <h2>YILLIK FAALİYET RAPORU — {{ $apartment->name }} — {{ $year }}</h2>
-    <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı</div>
+    <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı · {{ $dueTypeLabel }}</div>
     <p class="note">
         Tahakkuk {{ number_format($totalDues, 2, ',', '.') }} ₺
         · Tahsil {{ number_format($collectedDues, 2, ',', '.') }} ₺
