@@ -173,13 +173,7 @@
                     <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                         <div class="text-xs text-slate-500">Kaynak</div>
                         <div class="font-semibold text-slate-900 text-right">
-                            @if ($due->batch?->plan)
-                                <span class="inline-flex items-center gap-1.5 rounded-lg bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 border border-violet-200">Aidat Planı: {{ $due->batch->plan->name }}</span>
-                            @elseif ($due->batch)
-                                <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 border border-slate-200">Toplu Borçlandırma</span>
-                            @else
-                                <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 border border-slate-200">Manuel</span>
-                            @endif
+                            <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 border border-slate-200">{{ $due->source_label }}</span>
                         </div>
                     </div>
                 </div>

@@ -60,13 +60,8 @@
             dialog.close();
         };
         const syncViewMode = () => {
-            const isCurrent = document.querySelector('input[name="view_mode"]:checked')?.value === 'current';
-            opener.disabled = isCurrent;
-            periodControl.classList.toggle('opacity-50', isCurrent);
-            if (isCurrent) {
-                setPeriod(current.year, current.month);
-                if (dialog.open) dialog.close();
-            }
+            opener.disabled = false;
+            periodControl.classList.remove('opacity-50');
         };
         opener.addEventListener('click', () => {
             pickerYear.value = year.value;

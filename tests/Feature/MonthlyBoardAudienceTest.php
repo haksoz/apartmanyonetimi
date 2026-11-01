@@ -87,13 +87,14 @@ class MonthlyBoardAudienceTest extends TestCase
 
     private function screen(array $filters = [])
     {
-        return $this->get(route('reports.monthly-board', array_merge(['month' => '2026-06', 'view_mode' => 'movements', 'hide_account_names' => 0], $filters)))->assertOk();
+        return $this->get(route('reports.monthly-board', array_merge(['month' => '2026-06', 'view_mode' => 'movements', 'hide_account_names' => 0, 'only_period_residents' => 0], $filters)))->assertOk();
     }
 
     #[TestWith(['aidat'])]
     #[TestWith(['malik_payi'])]
     public function test_current_view_does_not_count_past_debt_payments_as_selected_month_payments(string $type): void
     {
+        $this->travelTo(now()->addDays(7)->setTime(12, 0));
         Due::where('apartment_id', $this->apartment->id)->delete();
         $rule = $type;
         $currentMonth = now()->format('Y-m');
@@ -113,8 +114,9 @@ class MonthlyBoardAudienceTest extends TestCase
         $this->assertEquals($current['remaining'], $movement['remaining']);
         $default->assertSee($default->viewData('trMonths')[now()->month].' Borcuna')->assertSee('Ödenen (₺)')->assertSee('view_mode=current', false);
         $january = $this->get(route('reports.monthly-board', ['month' => '2026-01', 'due_type' => $type]))->assertOk();
-        $this->assertSame($currentMonth, $january->viewData('month'));
+        $this->assertSame('2026-01', $january->viewData('month'));
         $this->getJson(route('reports.monthly-board', ['view_mode' => 'invalid']))->assertUnprocessable();
+        $this->travelBack();
     }
 
     #[TestWith(['connection'])]
@@ -271,6 +273,7 @@ class MonthlyBoardAudienceTest extends TestCase
     public function test_month_selection_does_not_overflow_and_empty_units_keep_one_familiar_row(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-10-31 12:00:00'));
+        $this->grantPaidFeatures($this->apartment);
         $aidat = $this->screen(['month' => '2026-02']);
         $this->assertSame('2026-02', $aidat->viewData('selectedMonthStr'));
         $this->assertSame([$this->tenant->id], $aidat->viewData('accounts')->pluck('id')->all());
@@ -318,7 +321,7 @@ class MonthlyBoardAudienceTest extends TestCase
         Payment::query()->update(['payment_date' => '2026-10-01']);
         $this->owner->update(['is_active' => false, 'account_end_date' => '2026-05-31']);
         $this->tenant->delete();
-        $filters = ['month' => '2026-06', 'due_type' => $rule, 'view_mode' => $mode, 'hide_account_names' => 0, 'hide_account_type' => 0];
+        $filters = ['month' => '2026-06', 'due_type' => $rule, 'view_mode' => $mode, 'hide_account_names' => 0, 'hide_account_type' => 0, 'only_period_residents' => 0];
         $screen = $this->screen($filters);
         $expected = $screen->viewData('accountData');
         $request = Request::create('/reports/monthly-board/export', 'GET', $filters);
@@ -374,7 +377,7 @@ class MonthlyBoardAudienceTest extends TestCase
 
     public function test_hidden_account_names_remove_the_column_from_pdf_and_excel_without_merging_rows(): void
     {
-        $filters = ['month' => '2026-06', 'due_type' => 'aidat', 'view_mode' => 'movements'];
+        $filters = ['month' => '2026-06', 'due_type' => 'aidat', 'view_mode' => 'movements', 'hide_account_names' => 1, 'only_period_residents' => 0];
         $screen = $this->get(route('reports.monthly-board', $filters))->assertOk()
             ->assertDontSee('>Hesap Adı</th>', false);
         $this->assertTrue($screen->viewData('hideAccountNames'));

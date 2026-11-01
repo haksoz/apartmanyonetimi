@@ -94,6 +94,27 @@ class Due extends Model
         return $this->due_type?->label() ?? '-';
     }
 
+    public function getSourceLabelAttribute(): string
+    {
+        if ($this->is_imported) {
+            return 'İçe Aktarma';
+        }
+
+        if ($this->batch?->plan) {
+            return 'Aidat Planı: '.$this->batch->plan->name;
+        }
+
+        if ($this->batch?->assessment_plan_id) {
+            return 'Taksitli Borç Planı';
+        }
+
+        if ($this->batch?->source_type === DueBatch::SOURCE_INDIVIDUAL) {
+            return 'Birebir Borçlandırma';
+        }
+
+        return $this->batch ? 'Toplu Borçlandırma' : 'Manuel';
+    }
+
     public function allocations(): HasMany
     {
         return $this->hasMany(PaymentAllocation::class);

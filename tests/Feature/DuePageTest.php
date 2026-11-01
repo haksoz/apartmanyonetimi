@@ -117,7 +117,7 @@ class DuePageTest extends TestCase
             ->get(route('dues.index', [
                 'period' => '2026-01',
                 'status' => 'unpaid',
-                'source' => 'manual',
+                'source' => 'import',
                 'unit_id' => (string) $unit->id,
                 'account_type' => 'owner',
                 'show_imported' => '1',

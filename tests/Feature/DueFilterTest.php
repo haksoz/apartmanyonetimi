@@ -30,19 +30,35 @@ class DueFilterTest extends TestCase
         $aidatBatch = DueBatch::create([...$batchData, 'due_type' => 'aidat', 'due_plan_id' => $aidat->id]);
         $assessmentBatch = DueBatch::create([...$batchData, 'due_type' => 'malik_payi', 'assessment_plan_id' => $assessment->id]);
         $batch = DueBatch::create([...$batchData, 'due_type' => 'aidat']);
+        $individualBatch = DueBatch::create([...$batchData, 'due_type' => 'malik_payi',
+            'source_type' => DueBatch::SOURCE_INDIVIDUAL, 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL]);
         $dueData = ['apartment_id' => $apartment->id, 'account_id' => $account->id, 'period' => '2026-06', 'amount' => 1000, 'remaining_amount' => 1000, 'due_date' => '2026-06-05', 'status' => 'unpaid'];
         $planDue = Due::create([...$dueData, 'due_type' => 'aidat', 'due_batch_id' => $aidatBatch->id]);
         $assessmentDue = Due::create([...$dueData, 'due_type' => 'malik_payi', 'due_batch_id' => $assessmentBatch->id]);
         $batchDue = Due::create([...$dueData, 'due_type' => 'aidat', 'due_batch_id' => $batch->id]);
         $manualDue = Due::create([...$dueData, 'due_type' => 'malik_payi']);
+        $individualDue = Due::create([...$dueData, 'due_type' => 'malik_payi', 'due_batch_id' => $individualBatch->id]);
+        $importedDue = Due::create([...$dueData, 'due_type' => 'aidat', 'period' => null,
+            'due_date' => '2026-01-05', 'is_imported' => true]);
+        $unusedPlan = DuePlan::create([
+            'apartment_id' => $apartment->id, 'name' => 'Sonuçsuz Plan', 'plan_year' => 2025,
+            'due_type' => 'aidat', 'amount_type' => 'monthly', 'monthly_amount' => 500,
+            'distribution_type' => 'equal', 'due_day' => 1, 'generate_day' => 1,
+        ]);
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $this->get(route('dues.show', $individualDue))->assertOk()
+            ->assertSee('Birebir Borçlandırma')
+            ->assertDontSee('>Toplu Borçlandırma</span>', false);
         foreach ([
             [['source' => 'plan'], [$planDue->id]],
             [['source' => 'assessment'], [$assessmentDue->id]],
             [['source' => 'batch'], [$batchDue->id]],
-            [['source' => 'manual'], [$manualDue->id]],
+            [['source' => 'manual'], [$manualDue->id, $individualDue->id]],
+            [['source' => 'import'], [$importedDue->id]],
+            [['source' => 'import', 'period' => '2026-01'], [$importedDue->id]],
+            [['status' => 'open'], [$planDue->id, $assessmentDue->id, $batchDue->id, $manualDue->id, $individualDue->id]],
             [['due_type' => 'aidat'], [$planDue->id, $batchDue->id]],
-            [['due_type' => 'malik_payi'], [$manualDue->id, $assessmentDue->id]],
+            [['due_type' => 'malik_payi'], [$manualDue->id, $individualDue->id, $assessmentDue->id]],
             [['source' => 'assessment', 'plan' => 'assessment:'.$assessment->id, 'due_type' => 'malik_payi', 'period' => '2026-06'], [$assessmentDue->id]],
             [['plan' => 'aidat:'.$aidat->id, 'source' => 'batch'], []],
         ] as [$query, $ids]) {
@@ -51,6 +67,12 @@ class DueFilterTest extends TestCase
         }
         $this->get(route('dues.index', ['source' => 'assessment', 'plan' => 'assessment:'.$assessment->id]))
             ->assertSee('Çatı Yenileme')->assertSee('Taksitli Borç Planı');
+        $this->get(route('dues.index'))->assertOk()
+            ->assertSee('Tüm Açık Borçlar')
+            ->assertSee('Vadesi Gelmemiş')
+            ->assertSee('İçe Aktarma')
+            ->assertDontSee('value="supplier"', false)
+            ->assertDontSee($unusedPlan->name);
         $this->get(route('dues.index', ['batch_id' => $batch->id]))->assertOk()
             ->assertViewHas('dues', fn ($dues) => $dues->total() === 1);
         $other = Apartment::create(['user_id' => $user->id, 'name' => 'Diğer Apartman', 'unit_count' => 1]);

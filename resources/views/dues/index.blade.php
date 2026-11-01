@@ -100,9 +100,9 @@
     </div>
 
     @php
-        $statusLabels = ['unpaid' => 'Bekliyor', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
-        $accountTypeLabels = ['owner' => 'Kat Maliki', 'tenant' => 'Kiracı', 'supplier' => 'Tedarikçi'];
-        $sourceLabels = ['plan' => 'Aidat Planı', 'assessment' => 'Taksitli Borç Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel'];
+        $statusLabels = ['open' => 'Tüm Açık Borçlar', 'unpaid' => 'Vadesi Gelmemiş', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
+        $accountTypeLabels = ['owner' => 'Kat Maliki', 'tenant' => 'Kiracı'];
+        $sourceLabels = ['plan' => 'Aidat Planı', 'assessment' => 'Taksitli Borç Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel', 'import' => 'İçe Aktarma'];
     @endphp
 
     @if ($activeFilterCount > 0)
@@ -245,7 +245,8 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">Durum</label>
                         <select name="status" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
                             <option value="">Tüm Durumlar</option>
-                            <option value="unpaid"  {{ $filters['filterStatus'] === 'unpaid'  ? 'selected' : '' }}>Bekliyor</option>
+                            <option value="open" @selected($filters['filterStatus'] === 'open')>Tüm Açık Borçlar</option>
+                            <option value="unpaid"  {{ $filters['filterStatus'] === 'unpaid'  ? 'selected' : '' }}>Vadesi Gelmemiş</option>
                             <option value="partial" {{ $filters['filterStatus'] === 'partial' ? 'selected' : '' }}>Kısmen Ödendi</option>
                             <option value="paid"    {{ $filters['filterStatus'] === 'paid'    ? 'selected' : '' }}>Ödendi</option>
                             <option value="overdue" {{ $filters['filterStatus'] === 'overdue' ? 'selected' : '' }}>Gecikmiş</option>
@@ -268,7 +269,6 @@
                             <option value="">Tüm Hesaplar</option>
                             <option value="owner" {{ $filters['filterAccountType'] === 'owner' ? 'selected' : '' }}>Kat Maliki</option>
                             <option value="tenant" {{ $filters['filterAccountType'] === 'tenant' ? 'selected' : '' }}>Kiracı</option>
-                            <option value="supplier" {{ $filters['filterAccountType'] === 'supplier' ? 'selected' : '' }}>Tedarikçi</option>
                         </select>
                     </div>
 
@@ -280,6 +280,7 @@
                             <option value="assessment" @selected($filters['filterSource'] === 'assessment')>Taksitli Borç Planı</option>
                             <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
                             <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
+                            <option value="import" @selected($filters['filterSource'] === 'import')>İçe Aktarma</option>
                         </select>
                     </div>
 
@@ -387,15 +388,7 @@
                         <td class="px-5 py-4">
                             <div class="text-slate-700 tabular-nums">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</div>
                             <div class="text-xs text-slate-500 mt-1">
-                                @if ($due->batch?->plan)
-                                    Aidat Planı ile
-                                @elseif ($due->batch?->assessment_plan_id)
-                                    Taksitli Borç Planı
-                                @elseif ($due->batch)
-                                    Toplu Borçlandırma
-                                @else
-                                    Manuel
-                                @endif
+                                {{ $due->source_label }}
                             </div>
                         </td>
                         <td class="px-5 py-4">

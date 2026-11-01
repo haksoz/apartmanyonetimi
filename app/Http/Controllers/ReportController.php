@@ -1407,6 +1407,7 @@ class ReportController extends Controller
             'view_mode' => ['sometimes', 'in:current,movements'],
             'hide_account_type' => ['sometimes', 'boolean'],
             'hide_account_names' => ['sometimes', 'boolean'],
+            'only_period_residents' => ['sometimes', 'boolean'],
         ]);
         $viewMode = $request->input('view_mode', 'current');
         $month = $request->input('month', now()->format('Y-m'));
@@ -1421,17 +1422,18 @@ class ReportController extends Controller
             default => $parsedMonth,
         };
         $currentMonth = today()->startOfMonth();
-        if ($viewMode === 'current' || $parsedMonth->gt($currentMonth)) {
+        if ($parsedMonth->gt($currentMonth)) {
             $parsedMonth = $currentMonth;
         }
         abort_unless($parsedMonth->year >= 1 && $parsedMonth->year <= 9999, 422);
         $month = $parsedMonth->format('Y-m');
         $selectedMonthStr = $parsedMonth->format('Y-m');
-        $hideAccountType = $request->boolean('hide_account_type', true);
-        $hideAccountNames = $request->boolean('hide_account_names', true);
+        $hideAccountType = $request->boolean('hide_account_type', false);
+        $hideAccountNames = $request->boolean('hide_account_names', false);
         $balanceDate = $viewMode === 'current' ? today()->toDateString() : $parsedMonth->copy()->endOfMonth()->min(today())->toDateString();
         $openingDate = $parsedMonth->copy()->startOfMonth()->min(today()->addDay())->toDateString();
         $reportDueType = $request->input('due_type', 'aidat');
+        $onlyPeriodResidents = $reportDueType === 'aidat' && $request->boolean('only_period_residents', true);
         $reportLabel = $reportDueType === 'malik_payi' ? 'Kat Malikleri Demirbaş Borç Tablosu' : 'Aidat Borç Tablosu';
         $id = $apartment->id;
 
@@ -1504,6 +1506,36 @@ class ReportController extends Controller
             : $due->due_date?->format('Y-m');
         $selectedByAccount = $allDues->filter(fn ($due) => $getDueMonth($due) === $selectedMonthStr)->groupBy('account_id');
         $pastByAccount = $allDues->filter(fn ($due) => $getDueMonth($due) < $selectedMonthStr)->groupBy('account_id');
+        if ($onlyPeriodResidents) {
+            $accounts = $accounts->groupBy('unit_id')->flatMap(function ($group) use ($parsedMonth, $selectedByAccount) {
+                $periodAccounts = $this->accountsInReportMonth($group, $parsedMonth);
+                $tenants = $periodAccounts->filter(function ($account) use ($parsedMonth) {
+                    if ($account->type !== Account::TYPE_TENANT) {
+                        return false;
+                    }
+                    $monthStart = $parsedMonth->copy()->startOfMonth();
+                    $monthEnd = $parsedMonth->copy()->endOfMonth();
+                    $assignments = $account->tenantAssignments->where('unit_id', $account->unit_id);
+                    if ($assignments->isNotEmpty()) {
+                        return $assignments->contains(fn ($assignment) =>
+                            $assignment->move_in_date?->lte($monthEnd)
+                            && (! $assignment->move_out_date || $assignment->move_out_date->gte($monthStart))
+                        );
+                    }
+                    return (int) $account->unit?->occupant_account_id === (int) $account->id;
+                })->values();
+                if ($tenants->isNotEmpty()) {
+                    return $tenants;
+                }
+                $selectedOwner = $periodAccounts->first(fn ($account) =>
+                    $account->type === Account::TYPE_OWNER && $selectedByAccount->has($account->id));
+                $owner = $selectedOwner
+                    ?? $periodAccounts->first(fn ($account) => $account->type === Account::TYPE_OWNER
+                        && (int) $account->unit?->owner_account_id === (int) $account->id)
+                    ?? $periodAccounts->firstWhere('type', Account::TYPE_OWNER);
+                return $owner ? collect([$owner]) : collect();
+            })->values();
+        }
         $accountData = [];
         foreach ($accounts as $account) {
             $selected = $selectedByAccount[$account->id] ?? collect();
@@ -1528,7 +1560,7 @@ class ReportController extends Controller
         return compact('apartment', 'accounts', 'month', 'parsedMonth', 'selectedMonthStr',
             'reportDueType', 'reportLabel', 'accountData', 'balanceDate',
             'unknownDuesCount', 'trMonths', 'title', 'subtitle', 'viewMode', 'viewLabel', 'paidLabel',
-            'hideAccountType', 'hideAccountNames');
+            'hideAccountType', 'hideAccountNames', 'onlyPeriodResidents');
     }
 
     public function monthlyBoard(CurrentApartment $currentApartment, Request $request)

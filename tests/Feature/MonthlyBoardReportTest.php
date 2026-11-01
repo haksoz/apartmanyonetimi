@@ -39,16 +39,17 @@ class MonthlyBoardReportTest extends TestCase
             ->assertSee('filterForm.requestSubmit();', false)
             ->assertSee('name="view_mode" value="current"', false)
             ->assertSee('name="view_mode" value="movements"', false);
-        $this->assertSame('2026-10', $current->viewData('month'));
+        $this->assertSame('2026-01', $current->viewData('month'));
         $this->assertSame('Güncel Borç Tablosu', $current->viewData('viewLabel'));
-        $current->assertSee('id="board-period-control" class="min-w-0 transition-opacity opacity-50"', false);
+        $current->assertSee('id="board-period-control" class="min-w-0 transition-opacity"', false)
+            ->assertDontSee('disabled="disabled"', false);
 
         $past = $this->get(route('reports.monthly-board', [
             'view_mode' => 'movements', 'month' => '2026-03',
         ]))->assertOk();
         $this->assertSame('2026-03', $past->viewData('month'));
         $this->assertSame('Dönemsel Borç Tablosu', $past->viewData('viewLabel'));
-        $past->assertSee('id="board-period-control" class="min-w-0 transition-opacity "', false);
+        $past->assertSee('id="board-period-control" class="min-w-0 transition-opacity"', false);
 
         foreach (['current', 'movements'] as $mode) {
             $normalized = $this->get(route('reports.monthly-board', [
@@ -116,7 +117,12 @@ class MonthlyBoardReportTest extends TestCase
             ->assertSee('AİDAT BORÇ TABLOSU - OCAK 2026 - Akbey Apartmanı')
             ->assertDontSee('Geçmiş borçlar ve seçilen ayın ödeme durumu bugün itibarıyla gösterilir.');
 
-        $hidden = $this->get(route('reports.monthly-board', ['month' => '2026-01', 'view_mode' => 'movements']))
+        $default = $this->get(route('reports.monthly-board', ['month' => '2026-01', 'view_mode' => 'movements']))
+            ->assertOk()->assertSee('>Hesap Adı</th>', false)->assertSee('Ali Malik')->assertSee('Ayşe Kiracı');
+        $this->assertFalse($default->viewData('hideAccountNames'));
+        $this->assertFalse($default->viewData('hideAccountType'));
+
+        $hidden = $this->get(route('reports.monthly-board', ['month' => '2026-01', 'view_mode' => 'movements', 'hide_account_names' => 1]))
             ->assertOk()->assertDontSee('>Hesap Adı</th>', false)->assertDontSee('Ali Malik')->assertDontSee('Ayşe Kiracı');
         $this->assertCount(2, $hidden->viewData('accounts'));
     }
@@ -157,18 +163,60 @@ class MonthlyBoardReportTest extends TestCase
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         $response = $this->get(route('reports.monthly-board', [
-            'month' => '2026-02', 'due_type' => 'aidat', 'view_mode' => 'movements', 'hide_account_names' => 0,
+            'month' => '2026-02', 'due_type' => 'aidat', 'view_mode' => 'movements', 'hide_account_names' => 0, 'only_period_residents' => 0,
         ]))->assertOk()->assertSee('Existing owner')->assertSee('Deleted debtor')
             ->assertDontSee('June tenant')->assertDontSee('Assignment tenant')->assertDontSee('Former tenant');
         $this->assertEqualsCanonicalizing([$owner->id, $debtor->id], $response->viewData('accounts')->pluck('id')->all());
         $this->assertEquals(['pastRemaining' => 50, 'selectedAmount' => 100, 'paid' => 0, 'remaining' => 150],
             $response->viewData('accountData')[$debtor->id]);
         $this->get(route('reports.monthly-board', [
-            'month' => '2026-06', 'due_type' => 'aidat', 'view_mode' => 'movements', 'hide_account_names' => 0,
+            'month' => '2026-06', 'due_type' => 'aidat', 'view_mode' => 'movements', 'hide_account_names' => 0, 'only_period_residents' => 0,
         ]))->assertOk()->assertSee('June tenant')->assertSee('Assignment tenant')->assertSee('Deleted debtor')->assertDontSee('Former tenant');
         $this->get(route('reports.monthly-board.export', [
-            'type' => 'excel', 'month' => '2026-02', 'due_type' => 'aidat', 'view_mode' => 'movements', 'hide_account_names' => 0,
+            'type' => 'excel', 'month' => '2026-02', 'due_type' => 'aidat', 'view_mode' => 'movements', 'hide_account_names' => 0, 'only_period_residents' => 0,
         ]))->assertOk()->assertDownload();
+    }
+
+    public function test_only_period_residents_hides_other_debtor_rows_only_for_aidat_table(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-15 12:00:00'));
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Sakin Filtresi', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $this->grantPaidFeatures($apartment);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $owner = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER, 'name' => 'Eski Borçlu Malik', 'is_active' => true]);
+        $tenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_TENANT, 'name' => 'Ekim Kiracısı', 'is_active' => true]);
+        $unit->update(['owner_account_id' => $owner->id, 'occupant_account_id' => $tenant->id]);
+        $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'move_in_date' => '2026-10-01']);
+        Due::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'account_id' => $owner->id,
+            'due_type' => 'aidat', 'period' => '2026-09', 'due_date' => '2026-09-01',
+            'amount' => 100, 'remaining_amount' => 100, 'status' => 'unpaid']);
+        Due::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'account_id' => $tenant->id,
+            'due_type' => 'aidat', 'period' => '2026-10', 'due_date' => '2026-10-01',
+            'amount' => 200, 'remaining_amount' => 200, 'status' => 'unpaid']);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $default = $this->get(route('reports.monthly-board', ['month' => '2026-10', 'due_type' => 'aidat',
+            'view_mode' => 'current', 'hide_account_names' => 0]))->assertOk()
+            ->assertSee('Sadece Dönem Sakinleri')->assertDontSee('Eski Borçlu Malik')->assertSee('Ekim Kiracısı');
+        $this->assertTrue($default->viewData('onlyPeriodResidents'));
+        $this->assertSame([$tenant->id], $default->viewData('accounts')->pluck('id')->all());
+
+        $allDebtors = $this->get(route('reports.monthly-board', ['month' => '2026-10', 'due_type' => 'aidat',
+            'view_mode' => 'current', 'hide_account_names' => 0, 'only_period_residents' => 0]))->assertOk()
+            ->assertSee('Eski Borçlu Malik')->assertSee('Ekim Kiracısı')
+            ->assertSee('only_period_residents=0', false);
+        $this->assertFalse($allDebtors->viewData('onlyPeriodResidents'));
+        $this->assertCount(2, $allDebtors->viewData('accounts'));
+
+        $malik = $this->get(route('reports.monthly-board', ['month' => '2026-10', 'due_type' => 'malik_payi',
+            'view_mode' => 'current', 'only_period_residents' => 1]))->assertOk()->assertDontSee('Sadece Dönem Sakinleri');
+        $this->assertFalse($malik->viewData('onlyPeriodResidents'));
+        $this->travelBack();
     }
 
 }

@@ -63,12 +63,15 @@ class DueController extends Controller
         $request->validate([
             'due_type' => ['nullable', Rule::in(DueType::values())],
             'plan' => ['nullable', 'regex:/^(aidat|assessment):[1-9][0-9]*$/'],
-            'source' => ['nullable', Rule::in(['plan', 'assessment', 'batch', 'manual'])],
+            'source' => ['nullable', Rule::in(['plan', 'assessment', 'batch', 'manual', 'import'])],
+            'status' => ['nullable', Rule::in(['open', 'unpaid', 'partial', 'paid', 'overdue'])],
+            'account_type' => ['nullable', Rule::in([Account::TYPE_OWNER, Account::TYPE_TENANT])],
         ]);
         $filterDueType = $request->query('due_type');
         $filterPlan = $request->query('plan');
         [$planType, $planId] = $filterPlan ? explode(':', $filterPlan) : [null, null];
         $showImported = $request->boolean('show_imported', false);
+        $includeImported = $showImported || $filterSource === 'import';
 
         $isOwner = $this->isOwnerOf($apartment);
 
@@ -105,7 +108,14 @@ class DueController extends Controller
                     $q->whereRaw("{$column} <= ?", [$filterEndDate]);
                 }
             })
-            ->when($filterPeriod, fn ($q) => $q->where('period', $filterPeriod))
+            ->when($filterPeriod, fn ($q) => $q->where(function ($periodQuery) use ($filterPeriod) {
+                $periodQuery->where('period', $filterPeriod)
+                    ->orWhere(function ($withoutPeriod) use ($filterPeriod) {
+                        $withoutPeriod->whereNull('period')
+                            ->whereYear('due_date', substr($filterPeriod, 0, 4))
+                            ->whereMonth('due_date', substr($filterPeriod, 5, 2));
+                    });
+            }))
             ->when($filterDueType, fn ($q) => $q->where('due_type', $filterDueType))
             ->when($filterPlan, fn ($q) => $q->whereHas('batch', fn ($b) => $b->where($planType === 'aidat' ? 'due_plan_id' : 'assessment_plan_id', $planId)))
             ->when($filterStatus,  fn ($q) => $this->applyStatusFilter($q, $filterStatus))
@@ -114,9 +124,16 @@ class DueController extends Controller
             ->when($filterAccountType, fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $filterAccountType)))
             ->when($filterSource === 'plan',   fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('due_plan_id')))
             ->when($filterSource === 'assessment', fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('assessment_plan_id')))
-            ->when($filterSource === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNull('due_plan_id')->whereNull('assessment_plan_id')))
-            ->when($filterSource === 'manual', fn ($q) => $q->whereNull('due_batch_id'))
-            ->when(! $showImported, fn ($q) => $q->where('is_imported', false));
+            ->when($filterSource === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b
+                ->whereNull('due_plan_id')->whereNull('assessment_plan_id')
+                ->where('source_type', '!=', DueBatch::SOURCE_INDIVIDUAL)))
+            ->when($filterSource === 'manual', fn ($q) => $q->where('is_imported', false)
+                ->where(function ($manual) {
+                    $manual->whereNull('due_batch_id')
+                        ->orWhereHas('batch', fn ($batch) => $batch->where('source_type', DueBatch::SOURCE_INDIVIDUAL));
+                }))
+            ->when($filterSource === 'import', fn ($q) => $q->where('is_imported', true))
+            ->when(! $includeImported, fn ($q) => $q->where('is_imported', false));
 
         if ($sortBy === 'unit_id') {
             $dues->orderByRaw('unit_id IS NULL, unit_id ' . $sortDirection);
@@ -143,14 +160,15 @@ class DueController extends Controller
         $planOptions = collect();
         if ($apartment) {
             $visibleBatches = DueBatch::query()->where('apartment_id', $apartment->id)
+                ->whereHas('dues', fn ($dueQuery) => $dueQuery->when(! $includeImported, fn ($query) => $query->where('is_imported', false)))
                 ->when($memberAccountIds !== null, fn ($q) => $q->whereHas('dues', fn ($d) => $d->whereIn('account_id', $memberAccountIds)));
             foreach (DuePlan::where('apartment_id', $apartment->id)
-                ->when($memberAccountIds !== null, fn ($q) => $q->whereIn('id', (clone $visibleBatches)->select('due_plan_id')))
+                ->whereIn('id', (clone $visibleBatches)->whereNotNull('due_plan_id')->select('due_plan_id'))
                 ->orderByDesc('plan_year')->get() as $plan) {
                 $planOptions->push(['value' => 'aidat:'.$plan->id, 'source' => 'plan', 'label' => $plan->name.' ('.$plan->plan_year.')']);
             }
             foreach (AssessmentPlan::where('apartment_id', $apartment->id)
-                ->when($memberAccountIds !== null, fn ($q) => $q->whereIn('id', (clone $visibleBatches)->select('assessment_plan_id')))
+                ->whereIn('id', (clone $visibleBatches)->whereNotNull('assessment_plan_id')->select('assessment_plan_id'))
                 ->orderByDesc('id')->get() as $plan) {
                 $planOptions->push(['value' => 'assessment:'.$plan->id, 'source' => 'assessment', 'label' => $plan->name]);
             }
@@ -1133,8 +1151,14 @@ class DueController extends Controller
             ->when($request->query('unit_id'),      fn ($q) => $q->where('unit_id', $request->query('unit_id')))
             ->when($request->query('account_type'), fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $request->query('account_type'))))
             ->when($request->query('source') === 'plan',   fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('due_plan_id')))
-            ->when($request->query('source') === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNull('due_plan_id')))
-            ->when($request->query('source') === 'manual', fn ($q) => $q->whereNull('due_batch_id'))
+            ->when($request->query('source') === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b
+                ->whereNull('due_plan_id')->whereNull('assessment_plan_id')
+                ->where('source_type', '!=', DueBatch::SOURCE_INDIVIDUAL)))
+            ->when($request->query('source') === 'manual', fn ($q) => $q->where('is_imported', false)
+                ->where(function ($manual) {
+                    $manual->whereNull('due_batch_id')
+                        ->orWhereHas('batch', fn ($batch) => $batch->where('source_type', DueBatch::SOURCE_INDIVIDUAL));
+                }))
             ->when(! $showImported, fn ($q) => $q->where('is_imported', false));
 
         if ($sortBy === 'unit_id') {
@@ -1200,6 +1224,9 @@ class DueController extends Controller
     {
         return $query->where(function ($sub) use ($status) {
             switch ($status) {
+                case 'open':
+                    $sub->where('remaining_amount', '>', 0);
+                    break;
                 case 'paid':
                     $sub->where('remaining_amount', '<=', 0);
                     break;
