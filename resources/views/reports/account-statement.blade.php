@@ -97,7 +97,6 @@
                 <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold">Tarih</th>
-                        <th class="px-4 py-3 text-left font-semibold">Tür</th>
                         <th class="px-4 py-3 text-left font-semibold">Açıklama</th>
                         <th class="px-4 py-3 text-right font-semibold">Borç</th>
                         <th class="px-4 py-3 text-right font-semibold">Alacak</th>
@@ -108,16 +107,13 @@
                     @if($dateFrom && isset($openingBalance))
                         <tr class="bg-slate-50">
                             <td class="px-4 py-3 text-slate-500 font-medium">{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }}</td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">Açılış</span>
-                            </td>
                             <td class="px-4 py-3 text-slate-500 font-medium">Dönem Açılış Bakiyesi</td>
-                            <td class="px-4 py-3 text-right text-red-500">{{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' ₺' : '' }}</td>
-                            <td class="px-4 py-3 text-right text-emerald-600">{{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' ₺' : '' }}</td>
-                            <td class="px-4 py-3 text-right font-medium {{ $openingBalance > 0 ? 'text-red-500' : ($openingBalance < 0 ? 'text-emerald-600' : 'text-slate-400') }}">
+                            <td class="px-4 py-3 text-right text-red-500">{{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' ₺' : '' }}</td>
+                            <td class="px-4 py-3 text-right text-emerald-600">{{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' ₺' : '' }}</td>
+                            <td class="px-4 py-3 text-right font-medium {{ $openingBalance < 0 ? 'text-red-500' : ($openingBalance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
                                 {{ number_format(abs($openingBalance), 2, ',', '.') }} ₺
                                 @if($openingBalance != 0)
-                                    <span class="text-xs font-normal">{{ $openingBalance > 0 ? 'B' : 'A' }}</span>
+                                    <span class="text-xs font-normal">{{ $openingBalance < 0 ? 'B' : 'A' }}</span>
                                 @endif
                             </td>
                         </tr>
@@ -125,11 +121,6 @@
                     @forelse($transactions as $tx)
                         <tr class="hover:bg-slate-50">
                             <td class="px-4 py-3 text-slate-600">{{ $tx->transaction_date?->format('d.m.Y') ?? '-' }}</td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium {{ $tx->type === 'debit' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700' }}">
-                                    {{ $tx->type === 'debit' ? 'Borç' : 'Alacak' }}
-                                </span>
-                            </td>
                             <td class="px-4 py-3 text-slate-700">
                                 {{ $tx->description ?? '-' }}
                                 @if($tx->transactionable instanceof \App\Models\Due && $tx->transactionable->due_type)
@@ -143,13 +134,13 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Bu dönemde hareket bulunamadı.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Bu dönemde hareket bulunamadı.</td></tr>
                     @endforelse
                     @if($transactions->isNotEmpty())
                         <tr class="bg-slate-100 font-bold text-sm border-t-2 border-slate-300">
-                            <td class="px-4 py-3 text-slate-700" colspan="3">TOPLAM</td>
-                            <td class="px-4 py-3 text-right text-red-600">{{ number_format($totalDebit, 2, ',', '.') }} ₺</td>
-                            <td class="px-4 py-3 text-right text-emerald-600">{{ number_format($totalCredit, 2, ',', '.') }} ₺</td>
+                            <td class="px-4 py-3 text-slate-700" colspan="2">TOPLAM</td>
+                            <td class="px-4 py-3 text-right text-red-600">{{ number_format($statementDebitTotal, 2, ',', '.') }} ₺</td>
+                            <td class="px-4 py-3 text-right text-emerald-600">{{ number_format($statementCreditTotal, 2, ',', '.') }} ₺</td>
                             <td class="px-4 py-3 text-right {{ $runningBalance < 0 ? 'text-red-600' : ($runningBalance > 0 ? 'text-emerald-600' : 'text-slate-500') }}">
                                 {{ number_format(abs($runningBalance), 2, ',', '.') }} ₺
                                 @if($runningBalance != 0)

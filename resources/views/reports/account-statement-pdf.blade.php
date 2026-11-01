@@ -17,7 +17,6 @@
         <thead>
             <tr>
                 <th>Tarih</th>
-                <th>Tür</th>
                 <th>Açıklama</th>
                 <th class="text-right">Borç (TL)</th>
                 <th class="text-right">Alacak (TL)</th>
@@ -28,20 +27,18 @@
             @if($dateFrom && isset($openingBalance))
                 <tr class="row-opening">
                     <td>{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }}</td>
-                    <td>Açılış</td>
                     <td>Dönem Açılış Bakiyesi</td>
-                    <td class="text-right text-red">{{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' TL' : '—' }}</td>
-                    <td class="text-right text-green">{{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' TL' : '—' }}</td>
-                    <td class="text-right {{ $openingBalance < 0 ? 'text-green' : ($openingBalance > 0 ? 'text-red' : 'text-muted') }}">
+                    <td class="text-right text-red">{{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' TL' : '—' }}</td>
+                    <td class="text-right text-green">{{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' TL' : '—' }}</td>
+                    <td class="text-right {{ $openingBalance < 0 ? 'text-red' : ($openingBalance > 0 ? 'text-green' : 'text-muted') }}">
                         {{ number_format(abs($openingBalance), 2, ',', '.') }} TL
-                        @if($openingBalance != 0)<span class="text-small">{{ $openingBalance > 0 ? 'B' : 'A' }}</span>@endif
+                        @if($openingBalance != 0)<span class="text-small">{{ $openingBalance < 0 ? 'B' : 'A' }}</span>@endif
                     </td>
                 </tr>
             @endif
             @forelse($transactions as $tx)
                 <tr>
                     <td>{{ $tx->transaction_date?->format('d.m.Y') ?? '-' }}</td>
-                    <td>{{ $tx->type === 'debit' ? 'Borç' : 'Alacak' }}</td>
                     <td>{{ $tx->description ?? '-' }}@if($tx->transactionable instanceof \App\Models\Due && $tx->transactionable->due_type) · {{ $tx->transactionable->due_type->label() }}@endif</td>
                     <td class="text-right text-red">{{ $tx->type === 'debit' ? number_format($tx->amount, 2, ',', '.') . ' TL' : '—' }}</td>
                     <td class="text-right text-green">{{ $tx->type === 'credit' ? number_format($tx->amount, 2, ',', '.') . ' TL' : '—' }}</td>
@@ -51,15 +48,15 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="text-center text-muted">Bu dönemde hareket bulunamadı.</td></tr>
+                <tr><td colspan="5" class="text-center text-muted">Bu dönemde hareket bulunamadı.</td></tr>
             @endforelse
         </tbody>
         @if($transactions->isNotEmpty())
         <tfoot>
             <tr>
-                <td colspan="3" class="text-right">TOPLAM</td>
-                <td class="text-right text-red">{{ number_format($totalDebit, 2, ',', '.') }} TL</td>
-                <td class="text-right text-green">{{ number_format($totalCredit, 2, ',', '.') }} TL</td>
+                <td colspan="2" class="text-right">TOPLAM</td>
+                <td class="text-right text-red">{{ number_format($statementDebitTotal, 2, ',', '.') }} TL</td>
+                <td class="text-right text-green">{{ number_format($statementCreditTotal, 2, ',', '.') }} TL</td>
                 <td class="text-right {{ $runningBalance < 0 ? 'text-red' : ($runningBalance > 0 ? 'text-green' : 'text-muted') }}">
                     {{ number_format(abs($runningBalance), 2, ',', '.') }} TL
                     @if($runningBalance != 0)<span class="text-small">{{ $runningBalance < 0 ? 'B' : 'A' }}</span>@endif

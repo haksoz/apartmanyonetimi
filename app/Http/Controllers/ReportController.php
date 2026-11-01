@@ -566,6 +566,8 @@ class ReportController extends Controller
         $openingBalance = 0;
         $totalDebit = 0;
         $totalCredit = 0;
+        $statementDebitTotal = 0;
+        $statementCreditTotal = 0;
 
         if ($accountId) {
             $account = $accounts->firstWhere('id', (int) $accountId);
@@ -597,9 +599,11 @@ class ReportController extends Controller
 
             $totalDebit  = $transactions->where('type', 'debit')->sum('amount');
             $totalCredit = $transactions->where('type', 'credit')->sum('amount');
+            $statementDebitTotal = $totalDebit + max(0, -$openingBalance);
+            $statementCreditTotal = $totalCredit + max(0, $openingBalance);
         }
 
-        return view('reports.account-statement', compact('apartment', 'accounts', 'account', 'transactions', 'accountId', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'runningBalance', 'openingBalance', 'ownStatement'));
+        return view('reports.account-statement', compact('apartment', 'accounts', 'account', 'transactions', 'accountId', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'statementDebitTotal', 'statementCreditTotal', 'runningBalance', 'openingBalance', 'ownStatement'));
     }
 
     public function accountStatementExport(CurrentApartment $currentApartment, Request $request, string $type)
@@ -637,6 +641,8 @@ class ReportController extends Controller
 
         $totalDebit  = $transactions->where('type', 'debit')->sum('amount');
         $totalCredit = $transactions->where('type', 'credit')->sum('amount');
+        $statementDebitTotal = $totalDebit + max(0, -$openingBalance);
+        $statementCreditTotal = $totalCredit + max(0, $openingBalance);
         $accounts    = collect();
         $pdfMode     = true;
 
@@ -653,7 +659,7 @@ class ReportController extends Controller
                 ['c','g','i','o','s','u','c','g','i','o','s','u'],
                 $account->name
             ))) : 'hesap';
-            return $this->pdfResponse('reports.account-statement-pdf', compact('apartment', 'account', 'transactions', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'runningBalance', 'openingBalance', 'summaryText'), 'cari-ekstre-' . $pdfSlug);
+            return $this->pdfResponse('reports.account-statement-pdf', compact('apartment', 'account', 'transactions', 'dateFrom', 'dateTo', 'totalDebit', 'totalCredit', 'statementDebitTotal', 'statementCreditTotal', 'runningBalance', 'openingBalance', 'summaryText'), 'cari-ekstre-' . $pdfSlug);
         }
 
         $unitNo   = $account?->unit?->unit_no ? 'Daire ' . $account->unit->unit_no . ' — ' : '';
@@ -661,11 +667,11 @@ class ReportController extends Controller
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet()->setTitle('Cari Ekstre');
-        $sheet->mergeCells('A1:F1');
+        $sheet->mergeCells('A1:E1');
         $sheet->setCellValue('A1', 'CARİ EKSTRE — ' . $unitNo . ($account?->name ?? '-') . ' — ' . $apartment->name);
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->mergeCells('A2:F2');
+        $sheet->mergeCells('A2:E2');
         $sheet->setCellValue('A2', 'Dönem: ' . \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') . ' – ' . \Carbon\Carbon::parse($dateTo)->format('d.m.Y'));
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $summaryText = $runningBalance < 0
@@ -673,26 +679,25 @@ class ReportController extends Controller
             : ($runningBalance > 0
                 ? 'Hesabın toplam ' . number_format($runningBalance, 2, ',', '.') . ' TL alacağı vardır.'
                 : 'Hesabın borcu yoktur.');
-        $sheet->mergeCells('A3:F3');
+        $sheet->mergeCells('A3:E3');
         $sheet->setCellValue('A3', $summaryText);
         $sheet->getStyle('A3')->getFont()->setBold(true);
         $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $summaryRgb = $runningBalance < 0 ? 'FEE2E2' : ($runningBalance > 0 ? 'D1FAE5' : 'F1F5F9');
         $sheet->getStyle('A3')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($summaryRgb);
-        $sheet->fromArray(['Tarih', 'Tür', 'Açıklama', 'Borç (TL)', 'Alacak (TL)', 'Bakiye (TL)'], null, 'A4');
-        $this->applyHeaderStyle($sheet, 'A4:F4');
+        $sheet->fromArray(['Tarih', 'Açıklama', 'Borç (TL)', 'Alacak (TL)', 'Bakiye (TL)'], null, 'A4');
+        $this->applyHeaderStyle($sheet, 'A4:E4');
         $row = 5;
         // Açılış bakiyesi satırı
         $sheet->fromArray([
             \Carbon\Carbon::parse($dateFrom)->format('d.m.Y'),
-            'Açılış',
             'Dönem Açılış Bakiyesi',
-            $openingBalance > 0 ? $openingBalance : 0,
             $openingBalance < 0 ? abs($openingBalance) : 0,
+            $openingBalance > 0 ? $openingBalance : 0,
             $openingBalance,
         ], null, 'A' . $row);
-        $sheet->getStyle('A' . $row . ':F' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F8FAFC');
-        $sheet->getStyle('D' . $row . ':F' . $row)->getNumberFormat()->setFormatCode($tlFormat);
+        $sheet->getStyle('A' . $row . ':E' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F8FAFC');
+        $sheet->getStyle('C' . $row . ':E' . $row)->getNumberFormat()->setFormatCode($tlFormat);
         $row++;
         foreach ($transactions as $tx) {
             $description = $tx->description ?? '-';
@@ -701,13 +706,12 @@ class ReportController extends Controller
             }
             $sheet->fromArray([
                 $tx->transaction_date?->format('d.m.Y'),
-                $tx->type === 'debit' ? 'Borç' : 'Alacak',
                 $description,
                 $tx->type === 'debit' ? $tx->amount : 0,
                 $tx->type === 'credit' ? $tx->amount : 0,
                 $tx->running_balance,
             ], null, 'A' . $row);
-            $sheet->getStyle('D' . $row . ':F' . $row)->getNumberFormat()->setFormatCode($tlFormat);
+            $sheet->getStyle('C' . $row . ':E' . $row)->getNumberFormat()->setFormatCode($tlFormat);
             $row++;
         }
         // Dip toplam satırı
@@ -715,20 +719,19 @@ class ReportController extends Controller
         $dataEndRow   = $row - 1;
         $sheet->fromArray([
             '',
-            '',
             'TOPLAM',
-            $totalDebit,
-            $totalCredit,
+            $statementDebitTotal,
+            $statementCreditTotal,
             $runningBalance,
         ], null, 'A' . $row);
-        $sheet->getStyle('A' . $row . ':F' . $row)->getFont()->setBold(true);
-        $sheet->getStyle('A' . $row . ':F' . $row)->getFill()
+        $sheet->getStyle('A' . $row . ':E' . $row)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $row . ':E' . $row)->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setRGB('F1F5F9');
-        $sheet->getStyle('D' . $row . ':F' . $row)->getNumberFormat()->setFormatCode($tlFormat);
-        $sheet->getStyle('C' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle('C' . $row . ':E' . $row)->getNumberFormat()->setFormatCode($tlFormat);
+        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
 
-        foreach (['A' => 13, 'B' => 10, 'C' => 32, 'D' => 14, 'E' => 14, 'F' => 14] as $col => $width) {
+        foreach (['A' => 13, 'B' => 36, 'C' => 14, 'D' => 14, 'E' => 14] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 

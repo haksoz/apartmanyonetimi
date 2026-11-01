@@ -487,11 +487,15 @@ class AccountController extends Controller
             ->orderBy('transaction_date')->orderBy('id');
 
         $netSql = "COALESCE(SUM(CASE WHEN type = 'debit' THEN amount ELSE -amount END), 0)";
-        $periodNet = (float) $account->transactions()
+        $periodTotals = $account->transactions()
             ->when($dateFrom, fn ($q) => $q->where('transaction_date', '>=', $dateFrom))
             ->when($dateTo, fn ($q) => $q->where('transaction_date', '<=', $dateTo))
-            ->selectRaw($netSql.' as net')
-            ->value('net');
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'debit' THEN amount ELSE 0 END), 0) as debit_total")
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'credit' THEN amount ELSE 0 END), 0) as credit_total")
+            ->first();
+        $totalDebit = (float) $periodTotals->debit_total;
+        $totalCredit = (float) $periodTotals->credit_total;
+        $periodNet = $totalDebit - $totalCredit;
         $closingBalance = $openingBalance + $periodNet;
 
         $transactions = $query->paginate(25)->withQueryString();
@@ -562,7 +566,8 @@ class AccountController extends Controller
         $importedCount = $account->transactions()->where('is_imported', true)->count();
 
         return view('accounts.statement', compact(
-            'account', 'transactions', 'openingBalance', 'closingBalance', 'dateFrom', 'dateTo', 'importedCount', 'cashUrlMap'
+            'account', 'transactions', 'openingBalance', 'closingBalance', 'dateFrom', 'dateTo', 'importedCount', 'cashUrlMap',
+            'totalDebit', 'totalCredit'
         ));
     }
 

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\{Account, Apartment, Due, Expense, Payment, Unit, User};
+use App\Models\{Account, AccountTransaction, Apartment, Due, Expense, Payment, Unit, User};
 use App\Support\CurrentApartment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -102,6 +102,40 @@ class ReportDueTypeEnhancementsTest extends TestCase
         $html = $this->get(route('reports.index'))->assertOk()->getContent();
         $this->assertSame(1, substr_count($html, 'href="'.route('reports.debt-list').'"'));
         $this->assertStringContainsString('Genel Borç Listesi', $html);
+    }
+
+    public function test_account_statement_shows_debt_opening_balance_on_the_debit_side(): void
+    {
+        AccountTransaction::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->resident->id,
+            'type' => 'debit', 'amount' => 1000, 'description' => 'Eski borç', 'transaction_date' => '2025-12-01']);
+        AccountTransaction::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->resident->id,
+            'type' => 'credit', 'amount' => 400, 'description' => 'Eski ödeme', 'transaction_date' => '2025-12-15']);
+        AccountTransaction::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->resident->id,
+            'type' => 'debit', 'amount' => 100, 'description' => 'Dönem borcu', 'transaction_date' => '2026-01-10']);
+        AccountTransaction::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->resident->id,
+            'type' => 'credit', 'amount' => 50, 'description' => 'Dönem ödemesi', 'transaction_date' => '2026-01-20']);
+
+        $response = $this->get(route('reports.account-statement', [
+            'account_id' => $this->resident->id, 'date_from' => '2026-01-01', 'date_to' => '2026-01-31',
+        ]))->assertOk()->assertSee('600,00 ₺')->assertSee('>B</span>', false)
+            ->assertDontSee('>Tür</th>', false);
+
+        $this->assertSame(-600.0, $response->viewData('openingBalance'));
+        $this->assertSame(700.0, $response->viewData('statementDebitTotal'));
+        $this->assertSame(50.0, $response->viewData('statementCreditTotal'));
+        $this->assertSame(-650.0, $response->viewData('runningBalance'));
+        $this->assertStringContainsString('text-right text-red-500">600,00 ₺</td>', $response->getContent());
+        $this->assertStringContainsString('text-right text-emerald-600"></td>', $response->getContent());
+
+        $pdf = view('reports.account-statement-pdf', [
+            'apartment' => $this->apartment, 'account' => $this->resident, 'transactions' => collect(),
+            'dateFrom' => '2026-01-01', 'dateTo' => '2026-01-31', 'totalDebit' => 0, 'totalCredit' => 0,
+            'statementDebitTotal' => 600, 'statementCreditTotal' => 0,
+            'runningBalance' => -600, 'openingBalance' => -600, 'summaryText' => 'Hesabın toplam 600,00 TL borcu vardır.',
+        ])->render();
+        $this->assertStringContainsString('text-right text-red">600,00 TL</td>', $pdf);
+        $this->assertStringContainsString('text-right text-green">—</td>', $pdf);
+        $this->assertStringNotContainsString('<th>Tür</th>', $pdf);
     }
 
     public function test_updated_report_excel_exports_accept_the_same_filters(): void
