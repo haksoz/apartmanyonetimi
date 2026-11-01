@@ -70,11 +70,11 @@
         </div>
         <div class="bg-white rounded-2xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500 mb-1">Toplam Borç</p>
-            <p class="text-xl font-bold text-red-500">{{ number_format($totalDebit, 2, ',', '.') }} ₺</p>
+            <p class="text-xl font-bold text-red-500">{{ number_format($statementDebitTotal, 2, ',', '.') }} ₺</p>
         </div>
         <div class="bg-white rounded-2xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500 mb-1">Toplam Alacak</p>
-            <p class="text-xl font-bold text-emerald-600">{{ number_format($totalCredit, 2, ',', '.') }} ₺</p>
+            <p class="text-xl font-bold text-emerald-600">{{ number_format($statementCreditTotal, 2, ',', '.') }} ₺</p>
         </div>
     </div>
     @php

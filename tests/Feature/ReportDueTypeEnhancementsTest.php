@@ -138,6 +138,26 @@ class ReportDueTypeEnhancementsTest extends TestCase
         $this->assertStringNotContainsString('<th>Tür</th>', $pdf);
     }
 
+    public function test_supplier_statement_total_credit_card_includes_opening_credit(): void
+    {
+        AccountTransaction::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->supplier->id,
+            'type' => 'credit', 'amount' => 1000, 'description' => 'Eski gider', 'transaction_date' => '2025-12-01']);
+        AccountTransaction::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->supplier->id,
+            'type' => 'debit', 'amount' => 400, 'description' => 'Eski ödeme', 'transaction_date' => '2025-12-15']);
+        AccountTransaction::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->supplier->id,
+            'type' => 'credit', 'amount' => 100, 'description' => 'Dönem gideri', 'transaction_date' => '2026-01-10']);
+        AccountTransaction::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->supplier->id,
+            'type' => 'debit', 'amount' => 250, 'description' => 'Dönem ödemesi', 'transaction_date' => '2026-01-20']);
+
+        $response = $this->get(route('reports.account-statement', [
+            'account_id' => $this->supplier->id, 'date_from' => '2026-01-01', 'date_to' => '2026-01-31',
+        ]))->assertOk()->assertSee('700,00 ₺')->assertSee('250,00 ₺');
+
+        $this->assertSame(250.0, $response->viewData('statementDebitTotal'));
+        $this->assertSame(700.0, $response->viewData('statementCreditTotal'));
+        $this->assertSame(450.0, $response->viewData('runningBalance'));
+    }
+
     public function test_updated_report_excel_exports_accept_the_same_filters(): void
     {
         $this->due('aidat', 100, 100);
