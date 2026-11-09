@@ -1,6 +1,7 @@
 @php
     $withOverview = $withOverview ?? true;
     $showTransfer = $showTransfer ?? false;
+    $compactHeader = $compactHeader ?? false;
 
     $tabs = [];
 
@@ -44,7 +45,7 @@
 
 {{-- Mobil işlemler menüsü --}}
 <details class="lg:hidden relative group">
-    <summary class="cursor-pointer list-none min-h-[3.5rem] inline-flex items-center justify-center rounded-2xl bg-slate-950 px-5 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800 gap-2 focus:outline-none">
+    <summary class="cursor-pointer list-none inline-flex items-center justify-center bg-slate-950 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800 gap-2 focus:outline-none {{ $compactHeader ? 'min-h-11 rounded-xl px-3 sm:px-4' : 'min-h-[3.5rem] rounded-2xl px-5' }}">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
         </svg>

@@ -205,7 +205,7 @@
 
     <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
 
-        <h2 class="text-lg font-semibold text-slate-950 mb-4">Aidatı Kapatan Tahsilat / Tahsilatlar</h2>
+        <h2 class="text-lg font-semibold text-slate-950 mb-4">Aidat İçin Yapılan Tahsilatlar</h2>
 
         @if ($due->allocations->isEmpty())
 

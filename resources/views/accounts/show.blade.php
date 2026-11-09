@@ -1,24 +1,29 @@
 @extends('layouts.app')
 
+@section('content_spacing', 'py-3 sm:py-8')
 
 
 @section('content')
 
-    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+    <div class="mb-2 flex items-center justify-between gap-2 min-w-0 sm:mb-6 sm:gap-3">
         <div class="min-w-0 flex-1">
             <h1 class="text-2xl font-bold text-slate-950">
                 <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
-                <span class="font-normal text-slate-400"> / </span>
-                @if ($account->unit)
-                    Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                @if ($account->type === App\Models\Account::TYPE_SUPPLIER)
+                    <span class="font-normal text-slate-400"> / </span>
+                    Tedarikçi
                 @else
-                    {{ $account->name }}
+                    <span class="font-normal text-slate-400"> / </span>
+                    @if ($account->unit)
+                        Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                    @else
+                        {{ $account->name }}
+                    @endif
                 @endif
                 @if (!$account->is_active)
                     <span class="ml-2 align-middle inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
                 @endif
             </h1>
-            <p class="mt-1 text-base font-semibold text-slate-800">{{ $account->name }} ({{ $account->type_label }})</p>
         </div>
 
         {{-- Hesap Sekmeleri --}}
@@ -26,7 +31,7 @@
             @php
                 $showTransfer = in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && ($account->dues->isNotEmpty() || $importedDues->isNotEmpty()) && $transferableAccounts->isNotEmpty();
             @endphp
-            @include('accounts._tabs', ['account' => $account, 'active' => 'overview', 'withOverview' => false, 'showTransfer' => $showTransfer])
+            @include('accounts._tabs', ['account' => $account, 'active' => 'overview', 'withOverview' => false, 'showTransfer' => $showTransfer, 'compactHeader' => true])
         </div>
     </div>
 
@@ -114,19 +119,19 @@
     </div>
 
     {{-- Alt: Borç / Alacak / Bakiye --}}
-        <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
-                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Borç</div>
-                <div class="text-lg md:text-xl font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
+        <div class="grid grid-cols-3 gap-2 px-3 py-3 text-center text-xs md:gap-0 md:p-0 md:text-left md:divide-x divide-slate-100">
+            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
+                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Borç</div>
+                <div class="font-medium md:text-xl md:font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
             </div>
-            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
-                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Alacak</div>
-                <div class="text-lg md:text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
+            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
+                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Alacak</div>
+                <div class="font-medium md:text-xl md:font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
             </div>
-            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
-                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Bakiye</div>
+            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
+                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Bakiye</div>
                 @php $balance = $account->ledger_balance; @endphp
-                <div class="text-lg md:text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
+                <div class="md:text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
                     {{ number_format(abs($balance), 2, ',', '.') }} TL
                     <span class="text-xs font-normal">{{ $balance < 0 ? '(B)' : ($balance > 0 ? '(A)' : '') }}</span>
                 </div>
@@ -718,17 +723,17 @@
 
         <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
 
-            <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
 
                 <h2 class="text-lg font-semibold text-slate-950">Açık Giderler</h2>
 
-                <div class="flex items-center gap-3 flex-wrap">
+                <div class="flex items-center gap-3 w-full md:w-auto">
 
                     <input type="hidden" id="multi-expense-pay-ids">
                     <button type="button" id="multi-expense-pay-btn"
                         onclick="openMultiExpensePayFromSelection({{ $account->id }})"
-                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
-                        Seçilileri Öde &mdash; <span id="selected-expense-count">0</span> gider / <span id="selected-expense-total">0,00</span> TL
+                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed w-full md:w-auto" disabled>
+                        Seçilenleri Öde &mdash; <span id="selected-expense-count">0</span> gider / <span id="selected-expense-total">0,00</span> TL
                     </button>
 
                 </div>
@@ -737,9 +742,9 @@
 
             <div class="overflow-hidden rounded-2xl border border-slate-200">
 
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <table class="block md:table min-w-full divide-y divide-slate-200 text-sm">
 
-                    <thead class="bg-slate-50 text-left text-slate-500">
+                    <thead class="hidden md:table-header-group bg-slate-50 text-left text-slate-500">
 
                         <tr>
 
@@ -751,31 +756,40 @@
 
                             <th class="px-5 py-3 text-right">Tutar</th>
 
+                            <th class="px-5 py-3 text-right">Durum</th>
+
                             <th class="px-5 py-3 text-right">İşlem</th>
 
                         </tr>
 
                     </thead>
 
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="block md:table-row-group divide-y divide-slate-100">
 
                         @foreach ($account->expenses as $expense)
 
-                            <tr class="cursor-pointer hover:bg-slate-50" data-href="{{ route('expenses.show', $expense) }}">
+                            <tr class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 md:table-row md:p-0 cursor-pointer hover:bg-slate-50" data-href="{{ route('expenses.show', $expense) }}">
 
-                                <td class="px-4 py-4">
+                                <td class="col-start-1 row-start-1 row-span-2 md:px-4 md:py-4">
                                     <input type="checkbox" class="expense-checkbox rounded"
                                         data-expense-id="{{ $expense->id }}"
                                         data-amount="{{ $expense->amount }}">
                                 </td>
 
-                                <td class="px-5 py-4 text-slate-700">{{ $expense->expense_date?->format('d.m.Y') ?? ($expense->period_month?->format('d.m.Y') ?? '-') }}</td>
+                                <td class="col-start-2 row-start-1 text-xs text-slate-500 md:px-5 md:py-4 md:text-sm md:text-slate-700">{{ $expense->expense_date?->format('d.m.Y') ?? ($expense->period_month?->format('d.m.Y') ?? '-') }}</td>
 
-                                <td class="px-5 py-4 text-slate-700">{{ $expense->description ?: $expense->category }}</td>
+                                <td class="col-start-2 row-start-2 min-w-0 break-words text-sm text-slate-700 md:px-5 md:py-4">{{ $expense->description ?: $expense->category }}</td>
 
-                                <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
+                                <td class="col-start-3 row-start-1 row-span-2 text-right text-sm font-semibold text-slate-900 tabular-nums whitespace-nowrap md:px-5 md:py-4">
+                                    {{ number_format($expense->amount, 2, ',', '.') }} TL
+                                    <div class="md:hidden mt-0.5 text-xs font-normal {{ $expense->payment_status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">{{ $expense->payment_status_label }}</div>
+                                </td>
 
-                                <td class="px-5 py-4 text-right">
+                                <td class="hidden md:table-cell px-5 py-4 text-right {{ $expense->payment_status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">
+                                    {{ $expense->payment_status_label }}
+                                </td>
+
+                                <td class="hidden md:table-cell px-5 py-4 text-right">
 
                                     <button type="button"
                                             onclick="openExpensePaymentModal({{ $expense->id }}, {{ $expense->amount }}, '{{ addslashes($expense->description ?: $expense->category) }}', '{{ addslashes($expense->category ?: '-') }}', '{{ addslashes($expense->account?->name ?: '-') }}')"
@@ -808,9 +822,9 @@
 
         <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
 
-            <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
 
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-3">
 
                     <h2 class="text-lg font-semibold text-slate-950">Açık Ödemeler</h2>
 
@@ -835,9 +849,9 @@
                     <input type="hidden" name="payment_ids" id="multi-supplier-allocate-payment-ids">
 
                     <button type="submit" id="multi-supplier-allocate-btn"
-                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed" disabled>
+                        class="rounded-xl px-4 py-2 text-sm font-semibold transition-colors bg-slate-200 text-slate-400 cursor-not-allowed w-full md:w-auto" disabled>
 
-                        Seçilileri Kapat &mdash; <span id="selected-supplier-payment-count">0</span> ödeme / <span id="selected-supplier-payment-total">0,00</span> TL
+                        Seçilenleri Gidere Bağla &mdash; <span id="selected-supplier-payment-count">0</span> ödeme / <span id="selected-supplier-payment-total">0,00</span> TL
 
                     </button>
 
@@ -847,9 +861,9 @@
 
             <div class="overflow-hidden rounded-2xl border border-slate-200">
 
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <table class="block md:table min-w-full divide-y divide-slate-200 text-sm">
 
-                    <thead class="bg-slate-50 text-left text-slate-500">
+                    <thead class="hidden md:table-header-group bg-slate-50 text-left text-slate-500">
 
                         <tr>
 
@@ -867,13 +881,13 @@
 
                     </thead>
 
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="block md:table-row-group divide-y divide-slate-100">
 
                         @foreach ($account->payments as $payment)
 
-                            <tr class="supplier-payment-row" data-imported="0">
+                            <tr class="supplier-payment-row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 md:table-row md:p-0" data-imported="0">
 
-                                <td class="px-4 py-4">
+                                <td class="col-start-1 row-start-1 row-span-2 md:px-4 md:py-4">
 
                                     <input type="checkbox" class="supplier-payment-checkbox rounded"
 
@@ -883,17 +897,17 @@
 
                                 </td>
 
-                                <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
+                                <td class="col-start-2 row-start-1 text-xs text-slate-500 md:px-5 md:py-4 md:text-sm md:text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
 
-                                <td class="px-5 py-4 text-slate-700">{{ $payment->description ?: 'Ödeme' }}</td>
+                                <td class="col-start-2 row-start-2 min-w-0 break-words text-sm text-slate-700 md:px-5 md:py-4">{{ $payment->description ?: 'Ödeme' }}</td>
 
-                                <td class="px-5 py-4 text-right font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
+                                <td class="col-start-3 row-start-1 row-span-2 text-right text-sm font-semibold text-slate-900 tabular-nums whitespace-nowrap md:px-5 md:py-4">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
 
-                                <td class="px-5 py-4 text-right space-x-2">
+                                <td class="col-start-2 col-span-2 row-start-3 pt-3 text-right space-x-2 md:px-5 md:py-4">
 
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
 
-                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Kapat</a>
+                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Gidere Bağla</a>
 
                                 </td>
 
@@ -903,9 +917,9 @@
 
                         @foreach ($importedPayments as $payment)
 
-                            <tr class="supplier-payment-row imported-supplier-payment-row hidden bg-blue-50/40" data-imported="1">
+                            <tr class="supplier-payment-row imported-supplier-payment-row hidden grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 md:[&:not(.hidden)]:table-row md:p-0 bg-blue-50/40" data-imported="1">
 
-                                <td class="px-4 py-4">
+                                <td class="col-start-1 row-start-1 row-span-2 md:px-4 md:py-4">
 
                                     <input type="checkbox" class="supplier-payment-checkbox rounded"
 
@@ -915,9 +929,9 @@
 
                                 </td>
 
-                                <td class="px-5 py-4 text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
+                                <td class="col-start-2 row-start-1 text-xs text-slate-500 md:px-5 md:py-4 md:text-sm md:text-slate-700">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</td>
 
-                                <td class="px-5 py-4 text-slate-700">
+                                <td class="col-start-2 row-start-2 min-w-0 break-words text-sm text-slate-700 md:px-5 md:py-4">
 
                                     {{ $payment->description ?: 'Ödeme' }}
 
@@ -925,13 +939,13 @@
 
                                 </td>
 
-                                <td class="px-5 py-4 text-right font-semibold text-slate-900">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
+                                <td class="col-start-3 row-start-1 row-span-2 text-right text-sm font-semibold text-slate-900 tabular-nums whitespace-nowrap md:px-5 md:py-4">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</td>
 
-                                <td class="px-5 py-4 text-right space-x-2">
+                                <td class="col-start-2 col-span-2 row-start-3 pt-3 text-right space-x-2 md:px-5 md:py-4">
 
                                     <a href="{{ route('payments.show', $payment) }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Detay</a>
 
-                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Kapat</a>
+                                    <a href="{{ route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Gidere Bağla</a>
 
                                 </td>
 

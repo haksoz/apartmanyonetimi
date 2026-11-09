@@ -319,26 +319,29 @@
                             <div class="text-slate-700 font-medium whitespace-nowrap">${due.due_date}</div>
                             <div class="text-slate-700">
                                 ${due.description}
-                                ${due.is_imported ? '<span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>' : ''}
                             </div>
                         </td>
                         <td class="hidden sm:table-cell px-4 py-3 text-slate-700 whitespace-nowrap">${due.due_date}</td>
                         <td class="hidden sm:table-cell px-4 py-3 text-slate-700">
                             ${due.description}
-                            ${due.is_imported ? '<span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>' : ''}
                         </td>
-                        <td class="hidden sm:table-cell px-4 py-3 text-right font-semibold text-slate-900 whitespace-nowrap">${remainingFormatted}</td>
+                        <td class="hidden sm:table-cell px-4 py-3 text-right font-semibold text-slate-900 whitespace-nowrap">
+                            <button type="button" data-fill="${idx}" title="Kalan tutarı tahsise yaz" aria-label="${remainingFormatted} kalan tutarı tahsise yaz" class="rounded text-blue-700 underline decoration-dotted underline-offset-4 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">${remainingFormatted}</button>
+                        </td>
                         <td class="px-4 py-3 text-right">
-                            <div class="sm:hidden mb-2 text-right font-semibold text-slate-900 whitespace-nowrap">${remainingFormatted}</div>
+                            <div class="sm:hidden mb-2 text-right font-semibold text-slate-900 whitespace-nowrap">
+                                <button type="button" data-fill="${idx}" title="Kalan tutarı tahsise yaz" aria-label="${remainingFormatted} kalan tutarı tahsise yaz" class="rounded text-blue-700 underline decoration-dotted underline-offset-4 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">${remainingFormatted}</button>
+                            </div>
                             <input type="hidden" name="_popup_alloc_due_id_${idx}" data-due-id="${due.id}">
-                            <div class="flex flex-col sm:flex-row items-end sm:items-baseline justify-end gap-2">
+                            <div class="flex justify-end">
                                 <input
                                     type="number" min="0" step="0.01" max="${due.remaining_amount}"
+                                    inputmode="decimal" aria-label="Tahsis tutarı"
                                     data-alloc data-remaining="${due.remaining_amount}" data-idx="${idx}"
                                     value="${due.suggested_amount > 0 ? due.suggested_amount.toFixed(2) : ''}"
-                                    class="w-full sm:w-28 rounded-xl border border-slate-300 px-3 py-2 text-sm text-right focus:border-slate-950 focus:outline-none"
+                                    style="text-align: right; appearance: textfield; -moz-appearance: textfield;"
+                                    class="w-28 sm:w-32 max-w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-right tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus:border-slate-950 focus:outline-none"
                                 >
-                                <button type="button" data-fill="${idx}" class="text-xs text-slate-500 hover:underline whitespace-nowrap">Tamamı</button>
                             </div>
                         </td>`;
                     tbody.appendChild(tr);

@@ -22,17 +22,13 @@
 
     {{-- Header --}}
 
-    <div class="mb-6 flex flex-row items-center justify-between gap-4">
+    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
 
-        <div>
+        <div class="min-w-0 flex-1">
 
-            <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">{{ $label }} Detayı</h1>
-
-            @if ($payment->reference_number)
-                <div class="mt-1">
-                    <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600">Referans: {{ $payment->reference_number }}</span>
-                </div>
-            @endif
+            <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">
+                <a href="{{ route('payments.index') }}" class="hover:text-slate-600">{{ $label }}</a>
+            </h1>
 
             @if ($payment->account)
                 <div class="mt-1">
@@ -47,20 +43,21 @@
 
         </div>
 
+        <div class="flex items-center justify-end gap-2 shrink-0">
         {{-- Masaüstü butonlar --}}
-        <div class="hidden lg:flex flex-wrap gap-2">
+        <div class="hidden lg:flex flex-wrap items-center gap-2">
 
             @if ($payment->unallocated_amount > 0)
 
-                <a href="{{ $isTahsilat ? route('payments.allocations.create', $payment) : route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
+                <a href="{{ $isTahsilat ? route('payments.allocations.create', $payment) : route('payments.supplier-allocations.create', $payment) }}" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Tahsis Et</a>
 
             @endif
 
-            <a href="{{ route('payments.edit', $payment) }}" class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">{{ $labelAccusative }} Düzenle</a>
+            <a href="{{ route('payments.edit', $payment) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
 
             @if ($payment->allocations->isNotEmpty())
 
-                <button type="button" onclick="document.getElementById('delete-payment-modal').classList.remove('hidden')" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">{{ $labelAccusative }} Sil</button>
+                <button type="button" onclick="document.getElementById('delete-payment-modal').classList.remove('hidden')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
 
             @else
 
@@ -70,7 +67,7 @@
 
                     @method('DELETE')
 
-                    <button type="submit" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">{{ $labelAccusative }} Sil</button>
+                    <button type="submit" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
 
                 </form>
 
@@ -80,7 +77,7 @@
 
         {{-- Mobil işlemler menüsü --}}
         <details class="lg:hidden relative group">
-            <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
+            <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -90,15 +87,15 @@
 
                 @if ($payment->unallocated_amount > 0)
 
-                    <a href="{{ $isTahsilat ? route('payments.allocations.create', $payment) : route('payments.supplier-allocations.create', $payment) }}" class="block w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-emerald-700">Tahsis Et</a>
+                    <a href="{{ $isTahsilat ? route('payments.allocations.create', $payment) : route('payments.supplier-allocations.create', $payment) }}" class="block w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-left hover:bg-emerald-700">Tahsis Et</a>
 
                 @endif
 
-                <a href="{{ route('payments.edit', $payment) }}" class="block w-full rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-amber-600">{{ $labelAccusative }} Düzenle</a>
+                <a href="{{ route('payments.edit', $payment) }}" class="block w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-left hover:bg-slate-50">Düzenle</a>
 
                 @if ($payment->allocations->isNotEmpty())
 
-                    <button type="button" onclick="document.getElementById('delete-payment-modal').classList.remove('hidden')" class="block w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-red-700">{{ $labelAccusative }} Sil</button>
+                    <button type="button" onclick="document.getElementById('delete-payment-modal').classList.remove('hidden')" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
 
                 @else
 
@@ -108,7 +105,7 @@
 
                         @method('DELETE')
 
-                        <button type="submit" class="block w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white text-left hover:bg-red-700">{{ $labelAccusative }} Sil</button>
+                        <button type="submit" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
 
                     </form>
 
@@ -116,6 +113,14 @@
 
             </div>
         </details>
+
+            <button type="button" onclick="history.back()" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                </svg>
+                Geri
+            </button>
+        </div>
 
     </div>
 
@@ -129,24 +134,23 @@
 
         <div class="p-4 md:p-6 border-b border-slate-100">
 
-            <div class="mb-5">
-                <div class="text-xs text-slate-500 mb-1">Açıklama</div>
-                <div class="text-2xl font-bold text-slate-900">{{ $payment->description ?: '-' }}</div>
+            <div class="mb-4">
+                <div class="text-xl font-bold text-slate-900">{{ $payment->description ?: '-' }}</div>
             </div>
 
-            <details class="group">
-                <summary class="cursor-pointer list-none inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <details class="group" open>
+                <summary class="flex cursor-pointer list-none items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 focus:outline-none">
+                    <span>Detaylar</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
-                    Detaylar
                 </summary>
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 text-sm">
 
                     @if ($payment->account)
-                        <div class="flex items-center justify-between gap-2 md:col-span-2 md:justify-start">
-                            <div class="text-xs text-slate-500 md:w-24 shrink-0">Hesap</div>
-                            <div class="font-semibold text-slate-900 text-right md:text-left">
+                        <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                            <div class="text-xs text-slate-500 shrink-0">Hesap</div>
+                            <div class="font-semibold text-slate-900 text-right">
                                 <a href="{{ route('accounts.show', $payment->account) }}" class="hover:text-emerald-600 hover:underline">{{ $payment->account->name }}</a>
                                 @if ($payment->account->unit)
                                     - Daire {{ str_pad($payment->account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
@@ -155,14 +159,14 @@
                         </div>
                     @endif
 
-                    <div class="flex items-center justify-between gap-2 md:justify-start">
-                        <div class="text-xs text-slate-500 md:w-24 shrink-0">{{ $label }} Tarihi</div>
-                        <div class="font-semibold text-slate-900 text-right md:text-left">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</div>
+                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                        <div class="text-xs text-slate-500 shrink-0">{{ $label }} Tarihi</div>
+                        <div class="font-semibold text-slate-900 text-right">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</div>
                     </div>
 
-                    <div class="flex items-center justify-between gap-2 md:justify-start">
-                        <div class="text-xs text-slate-500 md:w-24 shrink-0">Durum</div>
-                        <div class="font-semibold text-slate-900 text-right md:text-left">
+                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                        <div class="text-xs text-slate-500 shrink-0">Durum</div>
+                        <div class="font-semibold text-slate-900 text-right">
                             @if ($payment->unallocated_amount <= 0)
                                 <span class="inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">Tam Tahsis</span>
                             @elseif ($payment->allocated_amount > 0)
@@ -174,16 +178,16 @@
                     </div>
 
                     @if ($payment->reference_number)
-                        <div class="flex items-center justify-between gap-2 md:justify-start">
-                            <div class="text-xs text-slate-500 md:w-24 shrink-0">Referans</div>
-                            <div class="font-semibold text-slate-900 text-right md:text-left">{{ $payment->reference_number }}</div>
+                        <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                            <div class="text-xs text-slate-500 shrink-0">Referans</div>
+                            <div class="font-semibold text-slate-900 text-right">{{ $payment->reference_number }}</div>
                         </div>
                     @endif
 
                     @if ($cashTx)
-                        <div class="flex items-center justify-between gap-2 md:justify-start">
-                            <div class="text-xs text-slate-500 md:w-24 shrink-0">Kasa Hareketi</div>
-                            <div class="font-semibold text-slate-900 text-right md:text-left">
+                        <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                            <div class="text-xs text-slate-500 shrink-0">Kasa Hareketi</div>
+                            <div class="font-semibold text-slate-900 text-right">
                                 <a href="{{ route('cash.show', $cashTx) }}" class="text-blue-700 hover:text-blue-800 hover:underline">
                                     {{ $cashTx->reference_number }} — {{ $cashTx->cashBox?->name }}
                                 </a>
@@ -221,7 +225,7 @@
     <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
 
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-            <h2 class="text-lg font-semibold text-slate-950">{{ $isTahsilat ? 'Bağlı Aidatlar (Borçlar)' : 'Bağlı Giderler' }}</h2>
+            <h2 class="text-lg font-semibold text-slate-950">{{ $isTahsilat ? 'Tahsilatın Dağıtıldığı Aidatlar' : 'Bağlı Giderler' }}</h2>
 
             <form id="bulk-destroy-allocations-form" method="POST" action="{{ route('payments.allocations.bulk-destroy', $payment) }}" class="md:hidden">
                 @csrf

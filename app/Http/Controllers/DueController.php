@@ -86,17 +86,7 @@ class DueController extends Controller
             ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
             ->when($memberAccountIds, fn ($q) => $q->whereIn('account_id', $memberAccountIds))
             ->when($filterSearch, function ($q) use ($filterSearch) {
-                $terms = array_filter(preg_split('/\s+/', trim($filterSearch)));
-
-                $q->where(function ($sub) use ($terms) {
-                    foreach ($terms as $term) {
-                        $sub->where(function ($inner) use ($term) {
-                            $inner->whereHas('account', fn ($a) => $a->where('name', 'like', '%' . $term . '%'))
-                                ->orWhereHas('unit', fn ($u) => $u->where('unit_no', 'like', '%' . $term . '%'))
-                                ->orWhere('description', 'like', '%' . $term . '%');
-                        });
-                    }
-                });
+                \App\Support\DueSearch::apply($q, (string) $filterSearch);
             })
             ->when($filterStartDate || $filterEndDate, function ($q) use ($filterStartDate, $filterEndDate) {
                 $column = 'COALESCE(DATE(created_at_manual), DATE(created_at))';

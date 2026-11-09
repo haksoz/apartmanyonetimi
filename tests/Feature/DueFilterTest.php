@@ -2,7 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Models\{Account, Apartment, AssessmentPlan, Due, DueBatch, DuePlan, User};
+use App\Models\Account;
+use App\Models\Apartment;
+use App\Models\AssessmentPlan;
+use App\Models\Due;
+use App\Models\DueBatch;
+use App\Models\DuePlan;
+use App\Models\Unit;
+use App\Models\User;
 use App\Support\CurrentApartment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,6 +17,33 @@ use Tests\TestCase;
 class DueFilterTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_search_recognizes_unit_aliases_and_description_words(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Test', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'type' => 'owner', 'name' => 'Malik']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '08']);
+        $data = ['apartment_id' => $apartment->id, 'account_id' => $account->id, 'amount' => 100,
+            'remaining_amount' => 100, 'due_date' => '2026-06-05', 'status' => 'unpaid', 'due_type' => 'aidat'];
+        $byUnit = Due::create([...$data, 'unit_id' => $unit->id, 'description' => 'Aidat']);
+        $byDescription = Due::create([...$data, 'description' => 'Daire 08: ÇATI-onarımı']);
+        Due::create([...$data, 'description' => 'Daire 80: Çatı onarımı']);
+        Due::create([...$data, 'description' => 'Daire 18: Çatı onarımı']);
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+
+        foreach (['D8', 'd08', 'Daire 08', 'D 8', 'D:08'] as $search) {
+            $response = $this->get(route('dues.index', ['search' => $search, 'from' => 'menu']))->assertOk();
+            $this->assertEqualsCanonicalizing([$byUnit->id, $byDescription->id], $response->viewData('dues')->pluck('id')->all());
+        }
+        foreach (['D8 cati ONARIMI', 'onarimi daire 8', 'D8 çatı'] as $search) {
+            $response = $this->get(route('dues.index', ['search' => $search]))->assertOk();
+            $this->assertSame([$byDescription->id], $response->viewData('dues')->pluck('id')->all());
+        }
+        $this->get(route('dues.index', ['search' => '%']))->assertOk()
+            ->assertViewHas('dues', fn ($dues) => $dues->total() === 0);
+    }
 
     public function test_sources_debt_types_and_named_plans_filter_independently(): void
     {
