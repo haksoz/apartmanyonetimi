@@ -12,78 +12,36 @@
             <h1 class="text-2xl font-bold text-slate-950">Gelir-Gider Raporu</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }}</p>
         </div>
-        <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('reports.income-expense.export', array_filter(['type'=>'excel', 'date_from'=>$dateFrom, 'date_to'=>$dateTo, 'period_from'=>$periodFrom, 'period_to'=>$periodTo, 'show_categories'=>$showCategories ? 1 : null])) }}"
+        <div class="flex flex-wrap justify-end gap-2">
+            <a href="{{ route('reports.income-expense.export', ['type'=>'excel', 'month'=>$month, 'month_end'=>$monthEnd]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.income-expense.export', array_filter(['type'=>'pdf', 'date_from'=>$dateFrom, 'date_to'=>$dateTo, 'period_from'=>$periodFrom, 'period_to'=>$periodTo, 'show_categories'=>$showCategories ? 1 : null])) }}"
+            <a href="{{ route('reports.income-expense.export', ['type'=>'pdf', 'month'=>$month, 'month_end'=>$monthEnd]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
             </a>
+            @include('reports._back-button')
         </div>
     </div>
 
-    {{-- Filtreler --}}
-    <form method="GET" action="{{ route('reports.income-expense') }}" class="mb-5 bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-3 items-end">
+    <form method="GET" action="{{ route('reports.income-expense') }}" id="income-expense-filter-form" class="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4">
         <div>
-            <label class="block text-xs text-slate-500 mb-1">Başlangıç Dönemi</label>
-            <input type="month" name="period_from" value="{{ $periodFrom }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <label id="board-period-label" class="mb-1 block text-xs text-slate-500">Dönem</label>
+            <input type="hidden" name="period_year" id="board-year" value="{{ $parsedMonth->year }}">
+            <input type="hidden" name="period_month" id="board-month" value="{{ $parsedMonth->month }}">
+            <input type="hidden" name="month_end" id="board-month-end" value="{{ $monthEnd }}">
+            <button type="button" id="board-period-open" aria-haspopup="dialog" aria-labelledby="board-period-label board-period-text"
+                    class="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 hover:bg-slate-50 sm:min-w-40">
+                <span id="board-period-text">{{ $pickerLabel }}</span>
+                <svg class="h-4 w-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 3v4m8-4v4M4 10h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/></svg>
+            </button>
         </div>
-        <div>
-            <label class="block text-xs text-slate-500 mb-1">Bitiş Dönemi</label>
-            <input type="month" name="period_to" value="{{ $periodTo }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-        </div>
-        <div>
-            <label class="block text-xs text-slate-500 mb-1">Başlangıç Tarihi</label>
-            <input type="date" name="date_from" value="{{ $dateFrom }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-        </div>
-        <div>
-            <label class="block text-xs text-slate-500 mb-1">Bitiş Tarihi</label>
-            <input type="date" name="date_to" value="{{ $dateTo }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
-        </div>
-        <label class="flex items-center gap-2 pb-2 text-sm text-slate-700">
-            <input type="checkbox" name="show_categories" value="1" @checked($showCategories) class="rounded border-slate-300 text-slate-950 focus:ring-slate-300">
-            Kategoriye göre giderleri göster
-        </label>
-        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
-        <p class="w-full text-xs text-slate-400">Dönem seçildiğinde rapor o ayların tamamını kapsar. Tarih aralığı, dönem boşken kullanılır.</p>
+        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Görüntüle</button>
     </form>
-    <script>
-        (function () {
-            const form = document.querySelector('form[action="{{ route('reports.income-expense') }}"]');
-            if (!form) return;
-            const periodFrom = form.querySelector('[name="period_from"]');
-            const periodTo = form.querySelector('[name="period_to"]');
-            const dateFrom = form.querySelector('[name="date_from"]');
-            const dateTo = form.querySelector('[name="date_to"]');
-
-            function monthBounds(value, edge) {
-                if (!value) return '';
-                const [year, month] = value.split('-').map(Number);
-                if (edge === 'start') return value + '-01';
-                const last = new Date(year, month, 0).getDate();
-                return value + '-' + String(last).padStart(2, '0');
-            }
-
-            function syncDatesFromPeriod() {
-                const start = periodFrom.value || periodTo.value;
-                const end = periodTo.value || periodFrom.value;
-                if (!start && !end) return;
-                const from = start <= end ? start : end;
-                const to = start <= end ? end : start;
-                dateFrom.value = monthBounds(from, 'start');
-                dateTo.value = monthBounds(to, 'end');
-            }
-
-            periodFrom.addEventListener('change', syncDatesFromPeriod);
-            periodTo.addEventListener('change', syncDatesFromPeriod);
-            dateFrom.addEventListener('input', function () { periodFrom.value = ''; periodTo.value = ''; });
-            dateTo.addEventListener('input', function () { periodFrom.value = ''; periodTo.value = ''; });
-        })();
-    </script>
+    @include('reports._board-period-picker')
     @endif
 
     <p class="mb-4 text-sm font-medium text-slate-600">{{ $rangeLabel }}</p>
@@ -95,7 +53,7 @@
             <p class="text-2xl font-bold {{ $openingBalance >= 0 ? 'text-emerald-600' : 'text-red-500' }}">{{ number_format($openingBalance, 2, ',', '.') }} ₺</p>
         </div>
         <div class="bg-white rounded-2xl border border-slate-200 p-5">
-            <p class="text-xs text-slate-500 mb-1">Toplam Tahsilat</p>
+            <p class="text-xs text-slate-500 mb-1">Toplam Gelir</p>
             <p class="text-2xl font-bold text-emerald-600">{{ number_format($totalIncome, 2, ',', '.') }} ₺</p>
         </div>
         <div class="bg-white rounded-2xl border border-slate-200 p-5">
@@ -115,7 +73,7 @@
         <div class="px-5 py-4 border-b border-slate-100">
             <h2 class="text-sm font-semibold text-slate-700">Aylık Döküm</h2>
             <p class="text-xs text-slate-400 mt-1">
-                <strong>Not:</strong> Tahsilat, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır. Tahsis durumuna bakılmaksızın hesaplanır.
+                <strong>Not:</strong> Gelir, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır. Tahsis durumuna bakılmaksızın hesaplanır.
             </p>
         </div>
         <div class="overflow-x-auto">
@@ -124,7 +82,7 @@
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold">Dönem</th>
                         <th class="px-4 py-3 text-right font-semibold">Gider</th>
-                        <th class="px-4 py-3 text-right font-semibold">Tahsilat</th>
+                        <th class="px-4 py-3 text-right font-semibold">Gelir</th>
                         <th class="px-4 py-3 text-right font-semibold">Net</th>
                     </tr>
                 </thead>
@@ -154,8 +112,10 @@
         </div>
     </div>
 
+    @include('reports._income-expense-history')
+
     <div class="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 class="text-sm font-semibold text-slate-700">Tahsilat Kırılımı</h2>
+        <h2 class="text-sm font-semibold text-slate-700">Gelir Kırılımı</h2>
         <div class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
             <div><span class="text-slate-500">Aidat:</span> <strong>{{ number_format($aidatIncome, 2, ',', '.') }} ₺</strong></div>
             <div><span class="text-slate-500">Kat Maliki Payı:</span> <strong>{{ number_format($ownerShareIncome, 2, ',', '.') }} ₺</strong></div>
@@ -163,34 +123,4 @@
         </div>
     </div>
 
-    @if($showCategories && $expenseByCategory->count())
-    {{-- Kategori Bazlı Giderler --}}
-    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100">
-            <h2 class="text-sm font-semibold text-slate-700">Gider Kategorileri</h2>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                    <tr>
-                        <th class="px-4 py-3 text-left font-semibold">Kategori</th>
-                        <th class="px-4 py-3 text-right font-semibold">Tutar</th>
-                        <th class="px-4 py-3 text-right font-semibold">Pay %</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach($expenseByCategory as $cat => $total)
-                        <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3 text-slate-700">{{ $cat }}</td>
-                            <td class="px-4 py-3 text-right font-medium text-slate-800">{{ number_format($total, 2, ',', '.') }} ₺</td>
-                            <td class="px-4 py-3 text-right text-slate-500">
-                                {{ $totalExpense > 0 ? number_format(($total / $totalExpense) * 100, 1) : '0' }}%
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
-    @endif
 @endsection

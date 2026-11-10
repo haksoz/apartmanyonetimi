@@ -89,12 +89,40 @@ class ReportDueTypeEnhancementsTest extends TestCase
             'category' => 'Cari', 'description' => 'Dönem gideri', 'amount' => 70, 'expense_date' => '2026-01-22']);
 
         $response = $this->get(route('reports.income-expense', ['date_from' => '2026-01-01', 'date_to' => '2026-01-31']))
-            ->assertOk()->assertSeeInOrder(['>Gider</th>', '>Tahsilat</th>'], false);
+            ->assertOk()->assertSeeInOrder(['>Gider</th>', '>Gelir</th>'], false);
         $this->assertSame(400.0, $response->viewData('openingBalance'));
         $this->assertSame(680.0, $response->viewData('closingBalance'));
         $this->assertSame(100.0, $response->viewData('aidatIncome'));
         $this->assertSame(200.0, $response->viewData('ownerShareIncome'));
         $this->assertSame(50.0, $response->viewData('otherIncome'));
+    }
+
+    public function test_prior_years_are_descending_exclude_the_selection_and_reconcile_to_opening_balance(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-10'));
+        foreach (['2022-12-31' => 100, '2024-01-01' => 200, '2026-08-31' => 300, '2026-09-01' => 400] as $date => $amount) {
+            Payment::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->resident->id,
+                'amount' => $amount, 'unallocated_amount' => $amount, 'payment_date' => $date]);
+        }
+        Expense::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->supplier->id,
+            'category' => 'Bakım', 'description' => 'Eski gider', 'amount' => 50, 'expense_date' => '2024-12-31']);
+        Payment::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->supplier->id,
+            'amount' => 999, 'unallocated_amount' => 999, 'payment_date' => '2023-01-01']);
+        $screen = $this->get(route('reports.income-expense', ['month' => '2026-09']))->assertOk()->assertSee('Geçmiş Dönemler');
+        $history = $screen->viewData('historyRows');
+        $this->assertSame([2026, 2025, 2024, 2023, 2022], $history->pluck('year')->all());
+        $this->assertSame('01.01.2026 – 31.08.2026', $history->first()['period']);
+        $this->assertEquals(600, $history->sum('income'));
+        $this->assertEquals(50, $history->sum('expense'));
+        $this->assertEquals(550, $history->sum('net'));
+        $this->assertEquals($screen->viewData('openingBalance'), $history->sum('net'));
+        $this->assertEquals(400, $screen->viewData('totalIncome'));
+        $january = $this->get(route('reports.income-expense', ['month' => '2026-01']))->assertOk();
+        $this->assertSame(2025, $january->viewData('historyRows')->first()['year']);
+        $pdf = view('reports.income-expense-pdf', $screen->original->getData())->render();
+        $this->assertStringContainsString('Geçmiş Dönemler', $pdf);
+        $this->assertStringNotContainsString('Tahsilat', $pdf);
+        $this->travelBack();
     }
 
     public function test_reports_index_contains_one_general_debt_list_card(): void

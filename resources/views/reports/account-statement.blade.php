@@ -16,8 +16,7 @@
             <h1 class="text-2xl font-bold text-slate-950">Cari Ekstreler</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }}</p>
         </div>
-        <div class="flex gap-2 flex-wrap">
-            <a href="{{ $ownStatement ? route('residence.home') : route('reports.index') }}" class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri</a>
+        <div class="flex flex-wrap justify-end gap-2">
             @if($accountId)
             <a href="{{ route('reports.account-statement.export', array_merge(['type'=>'excel'], request()->query())) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
@@ -30,6 +29,7 @@
                 PDF
             </a>
             @endif
+            @include('reports._back-button', ['backUrl' => $ownStatement ? route('residence.home') : route('reports.index')])
         </div>
     </div>
 

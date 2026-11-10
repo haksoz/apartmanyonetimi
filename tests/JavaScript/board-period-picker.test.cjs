@@ -9,6 +9,7 @@ function picker() {
         if (!elements.has(id)) elements.set(id, {
             value: '', handlers: {}, attributes: {}, classList: { toggle() {}, remove() {}, add() {} },
             addEventListener(name, fn) { this.handlers[name] = fn; },
+            dispatchEvent(event) { this.lastEvent = event; this.handlers[event.type]?.(event); },
             setAttribute(name, value) { this.attributes[name] = value; },
             reportValidity() { return Number(this.value) >= 1 && Number(this.value) <= 2026; },
             stepDown() { this.value = Number(this.value) - 1; },
@@ -29,7 +30,10 @@ function picker() {
     let source = fs.readFileSync('resources/views/reports/_board-period-picker.blade.php', 'utf8').split('<script>')[1].split('</script>')[0];
     source = source.replace('@json($trMonths)', JSON.stringify({ 1: 'Ocak', 2: 'Şubat', 3: 'Mart', 4: 'Nisan', 5: 'Mayıs', 6: 'Haziran', 7: 'Temmuz', 8: 'Ağustos', 9: 'Eylül', 10: 'Ekim', 11: 'Kasım', 12: 'Aralık' }))
         .replace("@json(['year' => now()->year, 'month' => now()->month])", '{"year":2026,"month":11}');
-    vm.runInNewContext(source, { document: { getElementById: element, querySelectorAll: () => [] } });
+    vm.runInNewContext(source, {
+        document: { getElementById: element, querySelectorAll: () => [] },
+        CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
+    });
     const click = id => element(id).handlers.click({});
     click('board-period-open');
     return { element, click };
@@ -89,4 +93,3 @@ test('year navigation retains the start and future months are disabled', () => {
     assert.equal(element('board-month').value, 12);
     assert.equal(element('board-month-end').value, '2026-02');
 });
-

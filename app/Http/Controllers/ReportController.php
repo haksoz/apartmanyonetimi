@@ -159,7 +159,7 @@ class ReportController extends Controller
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('A2')->getFont()->setBold(true);
 
-        $sheet->fromArray(['Dönem', 'Gider (₺)', 'Tahsilat (₺)', 'Net (₺)'], null, 'A4');
+        $sheet->fromArray(['Dönem', 'Gider (₺)', 'Gelir (₺)', 'Net (₺)'], null, 'A4');
         $this->applyHeaderStyle($sheet, 'A4:D4');
 
         $row = 5;
@@ -170,27 +170,19 @@ class ReportController extends Controller
         $sheet->fromArray(['TOPLAM', $data['totalExpense'], $data['totalIncome'], $data['totalNet']], null, 'A' . $row);
         $this->applyHeaderStyle($sheet, "A{$row}:D{$row}", 'FF2e7d32');
         $row += 2;
+        $sheet->setCellValue('A'.$row++, 'GEÇMİŞ DÖNEMLER');
+        $sheet->fromArray(['Yıl / Dönem', 'Gider (₺)', 'Gelir (₺)', 'Net (₺)'], null, 'A'.$row);
+        $this->applyHeaderStyle($sheet, 'A'.$row.':D'.$row);
+        $row++;
+        foreach ($data['historyRows'] as $history) {
+            $sheet->fromArray([$history['period'], $history['expense'], $history['income'], $history['net']], null, 'A'.$row++);
+        }
+        $row += 2;
         $sheet->fromArray(['Devir Bakiyesi', $data['openingBalance']], null, 'A'.$row++);
         $sheet->fromArray(['Dönem Sonu Bakiyesi', $data['closingBalance']], null, 'A'.$row++);
-        $sheet->fromArray(['Aidat Tahsilatı', $data['aidatIncome']], null, 'A'.$row++);
-        $sheet->fromArray(['Kat Maliki Payı Tahsilatı', $data['ownerShareIncome']], null, 'A'.$row++);
-        $sheet->fromArray(['Borca Bağlanmamış / Diğer Tahsilat', $data['otherIncome']], null, 'A'.$row);
-
-        if ($data['showCategories'] && $data['expenseByCategory']->count()) {
-            $row += 2;
-            $sheet->mergeCells("A{$row}:C{$row}");
-            $sheet->setCellValue("A{$row}", 'GİDER KATEGORİLERİ');
-            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}");
-            $row++;
-            $sheet->fromArray(['Kategori', 'Tutar (₺)', 'Pay %'], null, 'A' . $row);
-            $this->applyHeaderStyle($sheet, "A{$row}:C{$row}", 'FF37474f');
-            $row++;
-            foreach ($data['expenseByCategory'] as $cat => $total) {
-                $share = $data['totalExpense'] > 0 ? round(($total / $data['totalExpense']) * 100, 1) : 0;
-                $sheet->fromArray([$cat, $total, $share], null, 'A' . $row);
-                $row++;
-            }
-        }
+        $sheet->fromArray(['Aidat Geliri', $data['aidatIncome']], null, 'A'.$row++);
+        $sheet->fromArray(['Kat Maliki Payı Geliri', $data['ownerShareIncome']], null, 'A'.$row++);
+        $sheet->fromArray(['Borca Bağlanmamış / Diğer Gelir', $data['otherIncome']], null, 'A'.$row);
 
         foreach (['A' => 28, 'B' => 18, 'C' => 18, 'D' => 18] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
@@ -201,37 +193,65 @@ class ReportController extends Controller
 
     private function incomeExpenseData($apartment, Request $request): array
     {
-        [$dateFrom, $dateTo, $periodFrom, $periodTo, $rangeLabel] = $this->resolveIncomeExpenseRange($request);
+        $periodRequest = clone $request;
+        if (! $request->filled('month') && ! $request->filled('period_year') && ! $request->filled('period_from')) {
+            $periodRequest->merge(['month' => $request->filled('date_from') ? substr($request->input('date_from'), 0, 7) : today()->startOfYear()->format('Y-m')]);
+        }
+        if (! $request->filled('month_end') && ! $request->filled('period_to')) {
+            $periodRequest->merge(['month_end' => $request->filled('date_to') ? substr($request->input('date_to'), 0, 7)
+                : ($request->hasAny(['month', 'period_year', 'period_from']) ? $periodRequest->input('month') : now()->format('Y-m'))]);
+        }
+        $periodData = $this->reportPeriodData($periodRequest);
+        $dateFrom = $periodData['dateFrom'];
+        $dateTo = $periodData['dateTo'];
         $id       = $apartment->id;
 
         $payments = Payment::where('apartment_id', $id)
-            ->whereBetween('payment_date', [$dateFrom, $dateTo])
+            ->whereDate('payment_date', '>=', $dateFrom)->whereDate('payment_date', '<=', $dateTo)
             ->whereHas('account', fn($q) => $q->where('type', '!=', Account::TYPE_SUPPLIER))
             ->get(['payment_date', 'amount'])
             ->groupBy(fn ($payment) => $payment->payment_date->format('Y-m'))
             ->map(fn ($group) => $group->sum('amount'));
 
-        $openingIncome = (float) Payment::where('apartment_id', $id)
+        $historicalIncome = Payment::where('apartment_id', $id)
             ->whereDate('payment_date', '<', $dateFrom)
             ->whereHas('account', fn($q) => $q->where('type', '!=', Account::TYPE_SUPPLIER))
-            ->sum('amount');
+            ->selectRaw('SUBSTR(payment_date, 1, 4) as year, SUM(amount) as total')
+            ->groupByRaw('SUBSTR(payment_date, 1, 4)')->pluck('total', 'year');
+        $openingIncome = (float) $historicalIncome->sum();
 
         $expenses = Expense::where('apartment_id', $id)
-            ->whereBetween('expense_date', [$dateFrom, $dateTo])
+            ->whereDate('expense_date', '>=', $dateFrom)->whereDate('expense_date', '<=', $dateTo)
             ->get(['expense_date', 'amount'])
             ->groupBy(fn ($expense) => $expense->expense_date->format('Y-m'))
             ->map(fn ($group) => $group->sum('amount'));
 
-        $openingExpense = (float) Expense::where('apartment_id', $id)
+        $historicalExpense = Expense::where('apartment_id', $id)
             ->whereDate('expense_date', '<', $dateFrom)
-            ->sum('amount');
+            ->selectRaw('SUBSTR(expense_date, 1, 4) as year, SUM(amount) as total')
+            ->groupByRaw('SUBSTR(expense_date, 1, 4)')->pluck('total', 'year');
+        $openingExpense = (float) $historicalExpense->sum();
+
+        $historyRows = collect();
+        $historyYears = $historicalIncome->keys()->merge($historicalExpense->keys());
+        if ($historyYears->isNotEmpty()) {
+            $historyEnd = Carbon::parse($dateFrom)->subDay();
+            for ($year = $historyEnd->year; $year >= (int) $historyYears->min(); $year--) {
+                $income = (float) ($historicalIncome[$year] ?? 0);
+                $expense = (float) ($historicalExpense[$year] ?? 0);
+                $yearEnd = $year === $historyEnd->year ? $historyEnd : Carbon::create($year, 12, 31);
+                $historyRows->push(['year' => $year, 'income' => $income, 'expense' => $expense,
+                    'net' => $income - $expense,
+                    'period' => '01.01.'.$year.' – '.$yearEnd->format('d.m.Y')]);
+            }
+        }
 
         $months = collect(array_keys($payments->toArray() + $expenses->toArray()))->sort()->values();
         $rows = $months->map(function ($month) use ($payments, $expenses) {
             $income  = (float)($payments[$month] ?? 0);
             $expense = (float)($expenses[$month] ?? 0);
             
-            $carbonDate = Carbon::createFromFormat('Y-m', $month);
+            $carbonDate = Carbon::createFromFormat('!Y-m', $month);
             $turkishMonths = [
                 'January' => 'Ocak', 'February' => 'Şubat', 'March' => 'Mart', 'April' => 'Nisan',
                 'May' => 'Mayıs', 'June' => 'Haziran', 'July' => 'Temmuz', 'August' => 'Ağustos',
@@ -253,7 +273,7 @@ class ReportController extends Controller
             ->join('dues', 'dues.id', '=', 'payment_allocations.due_id')
             ->where('payments.apartment_id', $id)
             ->where('accounts.type', '!=', Account::TYPE_SUPPLIER)
-            ->whereBetween('payments.payment_date', [$dateFrom, $dateTo])
+            ->whereDate('payments.payment_date', '>=', $dateFrom)->whereDate('payments.payment_date', '<=', $dateTo)
             ->whereIn('dues.due_type', ['aidat', 'malik_payi'])
             ->selectRaw('dues.due_type, SUM(payment_allocations.amount) as total')
             ->groupBy('dues.due_type')
@@ -261,19 +281,9 @@ class ReportController extends Controller
         $aidatIncome = (float) ($allocatedByType['aidat'] ?? 0);
         $ownerShareIncome = (float) ($allocatedByType['malik_payi'] ?? 0);
         $otherIncome = max(0, $totalIncome - $aidatIncome - $ownerShareIncome);
-        $showCategories = $request->boolean('show_categories');
-
-        $expenseByCategory = $showCategories
-            ? Expense::where('expenses.apartment_id', $id)
-                ->whereBetween('expense_date', [$dateFrom, $dateTo])
-                ->leftJoin('categories', fn($j) => $j->on('categories.id', '=', 'expenses.category_id')->whereNull('categories.deleted_at'))
-                ->selectRaw("COALESCE(NULLIF(categories.name,''), NULLIF(expenses.category,''), 'Diğer') as cat, SUM(expenses.amount) as total")
-                ->groupBy('cat')->orderByDesc('total')
-                ->pluck('total', 'cat')
-            : collect();
-
-        return [
+        return array_merge($periodData, [
             'rows' => $rows,
+            'historyRows' => $historyRows,
             'totalIncome'  => $totalIncome,
             'totalExpense' => $totalExpense,
             'totalNet'     => $totalIncome - $totalExpense,
@@ -282,14 +292,7 @@ class ReportController extends Controller
             'aidatIncome' => $aidatIncome,
             'ownerShareIncome' => $ownerShareIncome,
             'otherIncome' => $otherIncome,
-            'showCategories' => $showCategories,
-            'expenseByCategory' => $expenseByCategory,
-            'dateFrom' => $dateFrom,
-            'dateTo'   => $dateTo,
-            'periodFrom' => $periodFrom,
-            'periodTo' => $periodTo,
-            'rangeLabel' => $rangeLabel,
-        ];
+        ]);
     }
 
     /**
@@ -1719,31 +1722,48 @@ class ReportController extends Controller
         return $this->excelResponse($spreadsheet, 'gider-raporu');
     }
 
+    private function reportPeriodData(Request $request): array
+    {
+        $request->validate([
+            'month' => ['nullable', 'date_format:Y-m'],
+            'month_end' => ['nullable', 'date_format:Y-m'],
+            'period_year' => ['required_with:period_month', 'integer', 'between:1,9999'],
+            'period_month' => ['required_with:period_year', 'integer', 'between:1,12'],
+            'period_from' => ['nullable', 'date_format:Y-m'],
+            'period_to' => ['nullable', 'date_format:Y-m'],
+        ]);
+        $trMonths = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
+        $month = $request->input('month') ?: $request->input('period_from') ?: $request->input('period_to') ?: now()->format('Y-m');
+        if ($request->filled('period_year')) {
+            $month = sprintf('%04d-%02d', $request->integer('period_year'), $request->integer('period_month'));
+        }
+        $parsedMonth = Carbon::createFromFormat('!Y-m', $month)->min(today()->startOfMonth());
+        $endMonth = Carbon::createFromFormat('!Y-m', $request->input('month_end') ?: $request->input('period_to') ?: $parsedMonth->format('Y-m'))
+            ->min(today()->startOfMonth());
+        abort_if($endMonth->lt($parsedMonth), 422, 'Bitiş ayı başlangıç ayından önce olamaz.');
+        $month = $parsedMonth->format('Y-m');
+        $monthEnd = $endMonth->format('Y-m');
+        $rangeRequest = new Request(['period_from' => $month, 'period_to' => $monthEnd]);
+        [$dateFrom, $dateTo, $periodFrom, $periodTo, $rangeLabel] = $this->resolveIncomeExpenseRange($rangeRequest);
+        $pickerLabel = $trMonths[$parsedMonth->month].' '.$parsedMonth->year;
+        if ($monthEnd !== $parsedMonth->format('Y-m')) {
+            $endMonth = Carbon::createFromFormat('!Y-m', $monthEnd);
+            $pickerLabel .= ' – '.$trMonths[$endMonth->month].' '.$endMonth->year;
+        }
+        return compact('month', 'monthEnd', 'parsedMonth', 'trMonths', 'pickerLabel', 'dateFrom', 'dateTo', 'periodFrom', 'periodTo', 'rangeLabel');
+    }
+
     private function expenseReportData($apartment, Request $request): array
     {
-        $month = $request->input('month');
-        $month = is_string($month) && preg_match('/^\d{4}-\d{2}$/', $month) ? $month : null;
-
-        if ($month) {
-            $request->merge([
-                'period_from' => $month,
-                'period_to' => $month,
-            ]);
-        } elseif (! $request->hasAny(['date_from', 'date_to'])) {
-            $month = now()->format('Y-m');
-            $request->merge([
-                'period_from' => $month,
-                'period_to' => $month,
-            ]);
-        }
-
-        [$dateFrom, $dateTo, $periodFrom, $periodTo, $rangeLabel] = $this->resolveIncomeExpenseRange($request);
+        $periodData = $this->reportPeriodData($request);
+        $dateFrom = $periodData['dateFrom'];
+        $dateTo = $periodData['dateTo'];
         $basis = $request->input('basis') === 'category' ? 'category' : 'description';
-        $column = ($periodFrom || $periodTo) ? 'period_month' : 'expense_date';
 
         $expenses = Expense::with('categoryRelation')
             ->where('apartment_id', $apartment->id)
-            ->whereBetween($column, [$dateFrom, $dateTo])
+            ->whereDate('period_month', '>=', $dateFrom)
+            ->whereDate('period_month', '<=', $dateTo)
             ->orderBy('expense_date')
             ->orderBy('id')
             ->get();
@@ -1766,16 +1786,12 @@ class ReportController extends Controller
             ];
         })->sortByDesc('amount')->values();
 
-        return [
+        return array_merge($periodData, [
             'apartment' => $apartment,
             'basis' => $basis,
             'rows' => $rows,
             'categories' => $categories,
             'total' => (float) $rows->sum('amount'),
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-            'month' => $month,
-            'rangeLabel' => $rangeLabel,
-        ];
+        ]);
     }
 }

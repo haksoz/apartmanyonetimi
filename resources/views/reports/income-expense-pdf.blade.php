@@ -5,7 +5,7 @@
 @section('content')
     <h2>GELİR-GİDER RAPORU — {{ $apartment->name }}</h2>
     <div class="meta">{{ $rangeLabel }} — {{ now()->format('d.m.Y') }} tarihli çıktı</div>
-    <p class="note">Tahsilat, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır. Tahsis durumuna bakılmaksızın hesaplanır.</p>
+    <p class="note">Gelir, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır. Tahsis durumuna bakılmaksızın hesaplanır.</p>
     <p class="note">Devir {{ number_format($openingBalance, 2, ',', '.') }} ₺ · Dönem sonu {{ number_format($closingBalance, 2, ',', '.') }} ₺ · Aidat {{ number_format($aidatIncome, 2, ',', '.') }} ₺ · Kat Maliki Payı {{ number_format($ownerShareIncome, 2, ',', '.') }} ₺ · Diğer {{ number_format($otherIncome, 2, ',', '.') }} ₺</p>
 
     <table>
@@ -13,7 +13,7 @@
             <tr>
                 <th>Dönem</th>
                 <th class="text-right">Gider</th>
-                <th class="text-right">Tahsilat</th>
+                <th class="text-right">Gelir</th>
                 <th class="text-right">Net</th>
             </tr>
         </thead>
@@ -39,25 +39,5 @@
         </tfoot>
     </table>
 
-    @if($showCategories && $expenseByCategory->count())
-        <h3>Gider Kategorileri</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Kategori</th>
-                    <th class="text-right">Tutar</th>
-                    <th class="text-right">Pay %</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($expenseByCategory as $cat => $total)
-                    <tr>
-                        <td>{{ $cat }}</td>
-                        <td class="text-right">{{ number_format($total, 2, ',', '.') }} ₺</td>
-                        <td class="text-right">{{ $totalExpense > 0 ? number_format(($total / $totalExpense) * 100, 1) : '0' }}%</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
+    @include('reports._income-expense-history')
 @endsection
