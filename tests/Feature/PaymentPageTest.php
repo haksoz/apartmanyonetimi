@@ -122,7 +122,7 @@ class PaymentPageTest extends TestCase
         ]);
     }
 
-    public function test_payments_index_paginates_after_twenty_five_rows(): void
+    public function test_payments_in_unified_ledger_paginate_after_twenty_five_rows(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
@@ -148,7 +148,7 @@ class PaymentPageTest extends TestCase
 
         $this->withSession($session)
             ->actingAs($user)
-            ->get(route('payments.index'))
+            ->get(route('ledger.index'))
             ->assertOk()
             ->assertSee('Tahsilat 25')
             ->assertSee('Tahsilat 1')
@@ -159,7 +159,7 @@ class PaymentPageTest extends TestCase
 
         $this->withSession($session)
             ->actingAs($user)
-            ->get(route('payments.index', ['page' => 2]))
+            ->get(route('ledger.index', ['page' => 2]))
             ->assertOk()
             ->assertSee('Tahsilat 0')
             ->assertSee('Önceki')
@@ -169,7 +169,7 @@ class PaymentPageTest extends TestCase
 
         $this->withSession($session)
             ->actingAs($user)
-            ->get(route('payments.index', ['filter' => 'orphan', 'page' => 2]))
+            ->get(route('ledger.index', ['filter' => 'orphan', 'page' => 2]))
             ->assertOk()
             ->assertDontSee('Tahsilat 0');
     }

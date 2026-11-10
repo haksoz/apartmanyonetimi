@@ -27,7 +27,7 @@
         <div class="min-w-0 flex-1">
 
             <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">
-                <a href="{{ route('payments.index') }}" class="hover:text-slate-600">{{ $label }}</a>
+                <a href="{{ route('ledger.index') }}" class="hover:text-slate-600">{{ $label }}</a>
             </h1>
 
             @if ($payment->account)

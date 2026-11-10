@@ -151,7 +151,7 @@
     {{-- Hesapsız Ödemeler Kartı --}}
     @if($orphanPaymentsCount > 0)
     <div class="mb-5">
-        <a href="{{ route('payments.index') }}?filter=orphan" class="flex items-center justify-between p-4 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors">
+        <a href="{{ route('ledger.index') }}?filter=orphan" class="flex items-center justify-between p-4 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors">
             <div class="flex items-center gap-3">
                 <div class="p-2 rounded-lg bg-amber-100">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -277,34 +277,9 @@ class PaymentController extends Controller
         return $message;
     }
 
-    public function index(Request $request, CurrentApartment $currentApartment)
+    public function index(Request $request)
     {
-        $apartment = $currentApartment->getFor(auth()->user());
-
-        if (! $apartment && $currentApartment->hasAvailableFor(auth()->user())) {
-            return redirect()->route('subscriber.dashboard');
-        }
-
-        if (! $apartment) {
-            return redirect()->route('apartments.create');
-        }
-
-        $filter = $request->query('filter');
-
-        $payments = Payment::query()
-            ->with('account')
-            ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
-            ->when($filter === 'orphan', fn ($query) => $query
-                ->whereNull('account_id')
-                ->where('unallocated_amount', '>', 0))
-            ->orderByDesc('payment_date')
-            ->orderByDesc('id')
-            ->paginate(25)
-            ->withQueryString();
-
-        $isOrphanFilter = $filter === 'orphan';
-
-        return view('payments.index', compact('payments', 'isOrphanFilter'));
+        return redirect()->route('ledger.index', $request->only(['kind', 'filter', 'page']));
     }
 
     public function show(CurrentApartment $currentApartment, Payment $payment)
@@ -504,7 +479,7 @@ class PaymentController extends Controller
             return redirect()->route('accounts.show', $accountId)->with('status', 'Ödeme kaydı ve tüm tahsisler silindi.');
         }
 
-        return redirect()->route('payments.index')->with('status', 'Ödeme kaydı ve tüm tahsisler silindi.');
+        return redirect()->route('ledger.index')->with('status', 'Ödeme kaydı ve tüm tahsisler silindi.');
     }
 
     public function createSupplierRefund(Request $request, CurrentApartment $currentApartment)

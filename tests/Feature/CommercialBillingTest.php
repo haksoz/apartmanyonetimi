@@ -38,7 +38,7 @@ class CommercialBillingTest extends TestCase
         $this->actingAs($user)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->get(route('payments.index'))
-            ->assertOk();
+            ->assertRedirect(route('ledger.index'));
 
         $this->actingAs($user)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
