@@ -12,23 +12,26 @@
     </div>
     <div class="grid grid-cols-3 gap-2" role="group" aria-label="Ay seçimi">
         @foreach ($trMonths as $number => $label)
-            <button type="button" data-board-month="{{ $number }}" aria-pressed="false" class="rounded-xl border border-slate-200 px-2 py-3 text-sm hover:bg-slate-50 aria-pressed:border-indigo-600 aria-pressed:bg-indigo-50 aria-pressed:font-semibold aria-pressed:text-indigo-700">{{ $label }}</button>
+            <button type="button" data-board-month="{{ $number }}" aria-pressed="false" class="rounded-xl border border-slate-200 px-2 py-3 text-sm hover:bg-slate-50 aria-pressed:font-semibold data-[selection=pending]:border-blue-600 data-[selection=pending]:bg-blue-50 data-[selection=pending]:text-blue-700 data-[selection=complete]:border-emerald-600 data-[selection=complete]:bg-emerald-50 data-[selection=complete]:text-emerald-700">{{ $label }}</button>
         @endforeach
     </div>
-    <p class="mt-3 text-xs text-slate-500">Yılı belirleyip aya dokunun.</p>
+    <p class="mt-3 text-xs text-slate-500">Önce başlangıç, sonra bitiş ayına dokunun. Tek ay için aynı aya iki kez dokunabilirsiniz.</p>
+    <p id="board-picker-selection" class="mt-3 text-sm font-medium" aria-live="polite"></p>
+    <button type="button" id="board-picker-apply" class="mt-4 w-full rounded-xl bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white">Uygula</button>
     <button type="button" id="board-picker-current" class="mt-4 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold hover:bg-slate-50">Bu Ay</button>
 </dialog>
 <script>
     (() => {
         const dialog = document.getElementById('board-period-dialog');
         const opener = document.getElementById('board-period-open');
-        const filterForm = document.getElementById('board-filter-form');
-        const viewOptions = document.getElementById('board-view-options');
-        const viewLoading = document.getElementById('board-view-loading');
-        const periodControl = document.getElementById('board-period-control');
-        const viewInputs = document.querySelectorAll('input[name="view_mode"]');
         const year = document.getElementById('board-year');
         const month = document.getElementById('board-month');
+        const endInput = document.getElementById('board-month-end');
+        const apply = document.getElementById('board-picker-apply');
+        const selection = document.getElementById('board-picker-selection');
+        let startKey, endKey, awaitingEnd = false;
+        const key = (y, m) => `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}`;
+        const label = value => `${months[Number(value.slice(5))]} ${Number(value.slice(0, 4))}`;
         const pickerYear = document.getElementById('board-picker-year');
         const previous = document.getElementById('board-year-previous');
         const next = document.getElementById('board-year-next');
@@ -36,6 +39,9 @@
         const current = @json(['year' => now()->year, 'month' => now()->month]);
         const buttons = dialog.querySelectorAll('[data-board-month]');
         const refresh = () => {
+            selection.textContent = `${label(startKey)}${startKey !== endKey ? ' – ' + label(endKey) : ''}${awaitingEnd ? ' · Bitiş ayını seçin' : ' · Seçim tamamlandı'}`;
+            selection.classList.toggle('text-blue-700', awaitingEnd);
+            selection.classList.toggle('text-emerald-700', !awaitingEnd);
             previous.disabled = Number(pickerYear.value) <= 1;
             next.disabled = Number(pickerYear.value) >= current.year;
             buttons.forEach(button => {
@@ -45,25 +51,37 @@
                 button.disabled = isFuture;
                 button.classList.toggle('cursor-not-allowed', isFuture);
                 button.classList.toggle('opacity-35', isFuture);
-                button.setAttribute('aria-pressed',
-                    Number(pickerYear.value) === Number(year.value) && buttonMonth === Number(month.value) ? 'true' : 'false');
+                const selected = key(Number(pickerYear.value), buttonMonth) >= startKey
+                    && key(Number(pickerYear.value), buttonMonth) <= endKey;
+                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+                button.setAttribute('data-selection', selected ? (awaitingEnd ? 'pending' : 'complete') : 'none');
             });
         };
-        const setPeriod = (selectedYear, selectedMonth) => {
-            year.value = selectedYear;
-            month.value = selectedMonth;
-            document.getElementById('board-period-text').textContent = `${months[selectedMonth]} ${selectedYear}`;
+        const commit = () => {
+            year.value = Number(startKey.slice(0, 4));
+            month.value = Number(startKey.slice(5));
+            endInput.value = endKey;
+            document.getElementById('board-period-text').textContent = label(startKey) + (startKey !== endKey ? ' – ' + label(endKey) : '');
+            dialog.close();
         };
         const choose = (selectedYear, selectedMonth) => {
             if (selectedYear > current.year || (selectedYear === current.year && selectedMonth > current.month)) return;
-            setPeriod(selectedYear, selectedMonth);
-            dialog.close();
+            const selected = key(selectedYear, selectedMonth);
+            if (!awaitingEnd) {
+                startKey = endKey = selected;
+                awaitingEnd = true;
+            } else {
+                endKey = selected;
+                if (endKey < startKey) [startKey, endKey] = [endKey, startKey];
+                awaitingEnd = false;
+            }
+            refresh();
         };
-        const syncViewMode = () => {
-            opener.disabled = false;
-            periodControl.classList.remove('opacity-50');
-        };
+        apply.addEventListener('click', commit);
         opener.addEventListener('click', () => {
+            startKey = key(Number(year.value), Number(month.value));
+            endKey = endInput.value;
+            awaitingEnd = false;
             pickerYear.value = year.value;
             refresh();
             dialog.showModal();
@@ -79,18 +97,10 @@
         buttons.forEach(button => button.addEventListener('click', () => {
             if (pickerYear.reportValidity()) choose(Number(pickerYear.value), Number(button.dataset.boardMonth));
         }));
-        document.getElementById('board-picker-current').addEventListener('click', () => choose(current.year, current.month));
-        viewInputs.forEach(input => input.addEventListener('change', () => {
-            syncViewMode();
-            viewOptions.setAttribute('aria-busy', 'true');
-            viewOptions.classList.add('pointer-events-none', 'opacity-70');
-            viewLoading.classList.remove('hidden');
-            filterForm.requestSubmit();
-        }));
+        document.getElementById('board-picker-current').addEventListener('click', () => { startKey = endKey = key(current.year, current.month); commit(); });
         dialog.addEventListener('click', event => {
             const bounds = dialog.getBoundingClientRect();
             if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
         });
-        syncViewMode();
     })();
 </script>

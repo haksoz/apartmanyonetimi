@@ -15,7 +15,7 @@ class MonthlyBoardReportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_view_mode_cards_and_period_rules_follow_the_current_month(): void
+    public function test_single_board_hides_mode_cards_and_keeps_period_rules(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-10-29 12:00:00'));
         $user = User::factory()->create();
@@ -27,37 +27,22 @@ class MonthlyBoardReportTest extends TestCase
             'type' => Account::TYPE_OWNER, 'name' => 'Dönem Maliki', 'is_active' => true]);
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
 
-        $current = $this->get(route('reports.monthly-board', [
-            'view_mode' => 'current', 'month' => '2026-01',
-        ]))->assertOk()
-            ->assertSee('Güncel Borç Tablosu')
-            ->assertSee('Bu ayın borçlarını, geçmişten kalan borçları ve bugün itibarıyla ödeme durumunu gösterir.')
-            ->assertSee('Dönemsel Borç Tablosu')
-            ->assertSee('Seçilen ayın devreden borçlarını, yeni borçlarını, tahsilatlarını ve dönem sonu durumunu gösterir.')
+        $current = $this->get(route('reports.monthly-board', ['month' => '2026-01']))->assertOk()
+            ->assertDontSee('Dönemsel Borç Tablosu')
+            ->assertDontSee('name="view_mode"', false)
+            ->assertDontSee('board-view-options')
             ->assertSee('id="board-filter-form"', false)
-            ->assertSee('Rapor hazırlanıyor…')
-            ->assertSee('filterForm.requestSubmit();', false)
-            ->assertSee('name="view_mode" value="current"', false)
-            ->assertSee('name="view_mode" value="movements"', false);
+            ->assertSee('id="board-period-open"', false);
         $this->assertSame('2026-01', $current->viewData('month'));
-        $this->assertSame('Güncel Borç Tablosu', $current->viewData('viewLabel'));
-        $current->assertSee('id="board-period-control" class="min-w-0 transition-opacity"', false)
-            ->assertDontSee('disabled="disabled"', false);
-
-        $past = $this->get(route('reports.monthly-board', [
-            'view_mode' => 'movements', 'month' => '2026-03',
-        ]))->assertOk();
-        $this->assertSame('2026-03', $past->viewData('month'));
-        $this->assertSame('Dönemsel Borç Tablosu', $past->viewData('viewLabel'));
-        $past->assertSee('id="board-period-control" class="min-w-0 transition-opacity"', false);
-
+        // Previously saved links must use the single current-balance calculation too.
         foreach (['current', 'movements'] as $mode) {
-            $normalized = $this->get(route('reports.monthly-board', [
-                'view_mode' => $mode, 'month' => '2027-04',
-            ]))->assertOk();
+            $legacy = $this->get(route('reports.monthly-board', [
+                'view_mode' => $mode, 'month' => '2026-09', 'month_end' => '2026-10',
+            ]))->assertOk()->assertDontSee('view_mode=', false);
+            $this->assertSame(['2026-09', '2026-10'], $legacy->viewData('reportMonths'));
+            $normalized = $this->get(route('reports.monthly-board', ['month' => '2027-04']))->assertOk();
             $this->assertSame('2026-10', $normalized->viewData('month'));
         }
-
         $this->travelBack();
     }
 

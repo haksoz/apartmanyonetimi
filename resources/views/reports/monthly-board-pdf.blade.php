@@ -44,9 +44,34 @@
         .monthly-board-table .text-muted {
             color: #334155;
         }
+        .monthly-board-amount {
+            display: block;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .monthly-board-status {
+            display: block;
+            margin-top: 3px;
+            font-size: 9px;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .monthly-board-total {
+            display: inline-block;
+            padding: 3px 5px;
+            border: 1px solid #fecaca;
+            border-radius: 5px;
+            background: #fef2f2;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .monthly-board-total-zero {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
     </style>
     @php
-        $trMonthsH = [1=>'Ocak',2=>'Şubat',3=>'Mart',4=>'Nisan',5=>'Mayıs',6=>'Haziran',7=>'Temmuz',8=>'Ağustos',9=>'Eylül',10=>'Ekim',11=>'Kasım',12=>'Aralık'];
         $totalBorç = 0;
         $totalÖdenen = 0;
         $pastRemainingAll = 0;
@@ -75,8 +100,9 @@
                     <th>Hesap Adı</th>
                 @endunless
                 <th class="text-right">Geçmiş Borç (₺)</th>
-                <th class="text-right">{{ $trMonthsH[$parsedMonth->month] }} Borç (₺)</th>
-                <th class="text-right">{{ \Illuminate\Support\Str::beforeLast($paidLabel, ' Ödenen') }}<br>Ödenen (₺)</th>
+                @foreach($reportMonths as $key)
+                    <th class="px-4 py-3 text-right font-semibold">{{ $trMonths[(int) substr($key, 5, 2)] }} {{ substr($key, 0, 4) }}</th>
+                @endforeach
                 <th class="text-right">TOPLAM<br>BORÇ</th>
             </tr>
         </thead>
@@ -89,23 +115,32 @@
                         <td>{{ $account->name }}</td>
                     @endunless
                     <td class="text-right">{{ $data['pastRemaining'] > 0 ? number_format($data['pastRemaining'], 2, ',', '.') . ' ₺' : '—' }}</td>
-                    <td class="text-right">{{ $data['selectedAmount'] > 0 ? number_format($data['selectedAmount'], 2, ',', '.') . ' ₺' : '—' }}</td>
-                    <td class="text-right text-green">{{ $data['paid'] > 0 ? number_format($data['paid'], 2, ',', '.') . ' ₺' : '—' }}</td>
+                    @foreach($reportMonths as $key)
+                        @php $cell = $monthlyData[$account->id][$key]; @endphp
+                        <td class="text-right">
+                            @if($cell['amount'] > 0)
+                                <span class="monthly-board-amount">{{ number_format($cell['amount'], 2, ',', '.') }} ₺</span>
+                                <span class="monthly-board-status {{ $cell['remaining'] <= 0 ? 'text-green' : ($cell['paid'] > 0 ? '' : 'text-red') }}">({{ $cell['status'] }})</span>
+                            @else — @endif
+                        </td>
+                    @endforeach
                     <td class="text-right {{ $data['remaining'] > 0 ? 'text-red' : 'text-muted' }}">
-                        {{ $data['remaining'] > 0 ? number_format($data['remaining'], 2, ',', '.') . ' ₺' : '—' }}
+                        <span class="monthly-board-total {{ $data['remaining'] > 0 ? '' : 'monthly-board-total-zero' }}">{{ $data['remaining'] > 0 ? number_format($data['remaining'], 2, ',', '.') . ' ₺' : '—' }}</span>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="{{ $hideAccountNames ? 5 : 6 }}" class="text-center text-muted">Hesap kaydı bulunamadı.</td></tr>
+                <tr><td colspan="{{ count($reportMonths) + ($hideAccountNames ? 3 : 4) }}" class="text-center text-muted">Hesap kaydı bulunamadı.</td></tr>
             @endforelse
         </tbody>
         <tfoot>
             <tr>
                 <td colspan="{{ $hideAccountNames ? 1 : 2 }}">TOPLAM</td>
                 <td class="text-right">{{ $pastRemainingAll > 0 ? number_format($pastRemainingAll, 2, ',', '.') . ' ₺' : '—' }}</td>
-                <td class="text-right">{{ $selectedAmountAll > 0 ? number_format($selectedAmountAll, 2, ',', '.') . ' ₺' : '—' }}</td>
-                <td class="text-right text-green">{{ $totalÖdenen > 0 ? number_format($totalÖdenen, 2, ',', '.') . ' ₺' : '—' }}</td>
-                <td class="text-right text-red">{{ $remainingAll > 0 ? number_format($remainingAll, 2, ',', '.') . ' ₺' : '—' }}</td>
+                @foreach($reportMonths as $key)
+                    @php $monthTotal = array_sum(array_map(fn ($item) => $item[$key]['amount'], $monthlyData)); @endphp
+                    <td class="px-4 py-3 text-right font-bold">{{ $monthTotal > 0 ? number_format($monthTotal, 2, ',', '.').' ₺' : '—' }}</td>
+                @endforeach
+                <td class="text-right text-red"><span class="monthly-board-total">{{ $remainingAll > 0 ? number_format($remainingAll, 2, ',', '.') . ' ₺' : '—' }}</span></td>
             </tr>
         </tfoot>
     </table>

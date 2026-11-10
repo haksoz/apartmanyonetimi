@@ -191,18 +191,18 @@
 
         @php $remaining = $expense->remaining_amount ?? $expense->amount; @endphp
 
-        <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
-                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Tutar</div>
-                <div class="text-lg md:text-xl font-bold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
+        <div class="grid grid-cols-3 gap-2 px-3 py-3 text-center text-xs md:gap-0 md:p-0 md:text-left md:divide-x divide-slate-100">
+            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
+                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Tutar</div>
+                <div class="font-medium md:text-xl md:font-bold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
             </div>
-            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
-                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Ödenen</div>
-                <div class="text-lg md:text-xl font-bold text-emerald-600 tabular-nums">{{ number_format($expense->paid_amount ?? 0, 2, ',', '.') }} TL</div>
+            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
+                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Ödenen</div>
+                <div class="font-medium md:text-xl md:font-bold text-emerald-600 tabular-nums">{{ number_format($expense->paid_amount ?? 0, 2, ',', '.') }} TL</div>
             </div>
-            <div class="py-3 px-4 md:p-5 flex items-center justify-between gap-1">
-                <div class="text-[10px] md:text-xs font-semibold uppercase tracking-wide text-slate-400">Kalan</div>
-                <div class="text-lg md:text-xl font-bold {{ $remaining > 0 ? 'text-amber-600' : 'text-slate-400' }} tabular-nums">{{ number_format($remaining, 2, ',', '.') }} TL</div>
+            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
+                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Kalan</div>
+                <div class="font-medium md:text-xl md:font-bold {{ $remaining > 0 ? 'text-amber-600' : 'text-slate-400' }} tabular-nums">{{ number_format($remaining, 2, ',', '.') }} TL</div>
             </div>
         </div>
 
