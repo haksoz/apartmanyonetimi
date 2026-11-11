@@ -156,6 +156,7 @@ class ReportController extends Controller
 
         $sheet->mergeCells('A2:D2');
         $sheet->setCellValue('A2', $data['rangeLabel']);
+        $sheet->setCellValue('A3', 'Gider İlişkisi: '.$data['expenseRelationLabel']);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('A2')->getFont()->setBold(true);
 
@@ -193,6 +194,7 @@ class ReportController extends Controller
 
     private function incomeExpenseData($apartment, Request $request): array
     {
+        [$expenseRelation, $expenseRelationLabel] = $this->reportExpenseRelation($request);
         $periodRequest = clone $request;
         if (! $request->filled('month') && ! $request->filled('period_year') && ! $request->filled('period_from')) {
             $periodRequest->merge(['month' => $request->filled('date_from') ? substr($request->input('date_from'), 0, 7) : today()->startOfYear()->format('Y-m')]);
@@ -206,27 +208,43 @@ class ReportController extends Controller
         $dateTo = $periodData['dateTo'];
         $id       = $apartment->id;
 
-        $payments = Payment::where('apartment_id', $id)
+        $incomeQuery = Payment::where('payments.apartment_id', $id)
+            ->whereHas('account', fn ($query) => $query->where('type', '!=', Account::TYPE_SUPPLIER));
+        $incomeAmount = 'payments.amount';
+        if ($expenseRelation !== 'all') {
+            // Split a payment by its actual allocations, never by the payer's account type.
+            $allocations = DB::table('payment_allocations')
+                ->join('dues', 'dues.id', '=', 'payment_allocations.due_id')
+                ->where('dues.apartment_id', $id)->whereNull('dues.deleted_at')
+                ->whereIn('dues.due_type', ['aidat', 'malik_payi'])
+                ->selectRaw('payment_allocations.payment_id, SUM(payment_allocations.amount) as known_amount')
+                ->selectRaw("SUM(CASE WHEN dues.due_type = ? THEN payment_allocations.amount ELSE 0 END) as selected_amount", [$expenseRelation])
+                ->groupBy('payment_allocations.payment_id');
+            $incomeQuery->leftJoinSub($allocations, 'report_allocations', fn ($join) => $join->on('report_allocations.payment_id', '=', 'payments.id'));
+            $incomeAmount = $expenseRelation === 'unassigned'
+                ? 'CASE WHEN payments.amount > COALESCE(report_allocations.known_amount, 0) THEN payments.amount - COALESCE(report_allocations.known_amount, 0) ELSE 0 END'
+                : 'COALESCE(report_allocations.selected_amount, 0)';
+            $incomeQuery->whereRaw('('.$incomeAmount.') > 0');
+        }
+        $payments = (clone $incomeQuery)
             ->whereDate('payment_date', '>=', $dateFrom)->whereDate('payment_date', '<=', $dateTo)
-            ->whereHas('account', fn($q) => $q->where('type', '!=', Account::TYPE_SUPPLIER))
-            ->get(['payment_date', 'amount'])
+            ->selectRaw('payments.payment_date, '.$incomeAmount.' as report_amount')->get()
             ->groupBy(fn ($payment) => $payment->payment_date->format('Y-m'))
-            ->map(fn ($group) => $group->sum('amount'));
+            ->map(fn ($group) => $group->sum('report_amount'));
 
-        $historicalIncome = Payment::where('apartment_id', $id)
+        $historicalIncome = (clone $incomeQuery)
             ->whereDate('payment_date', '<', $dateFrom)
-            ->whereHas('account', fn($q) => $q->where('type', '!=', Account::TYPE_SUPPLIER))
-            ->selectRaw('SUBSTR(payment_date, 1, 4) as year, SUM(amount) as total')
+            ->selectRaw('SUBSTR(payment_date, 1, 4) as year, SUM('.$incomeAmount.') as total')
             ->groupByRaw('SUBSTR(payment_date, 1, 4)')->pluck('total', 'year');
         $openingIncome = (float) $historicalIncome->sum();
 
-        $expenses = Expense::where('apartment_id', $id)
+        $expenses = Expense::where('apartment_id', $id)->forRelation($expenseRelation)
             ->whereDate('expense_date', '>=', $dateFrom)->whereDate('expense_date', '<=', $dateTo)
             ->get(['expense_date', 'amount'])
             ->groupBy(fn ($expense) => $expense->expense_date->format('Y-m'))
             ->map(fn ($group) => $group->sum('amount'));
 
-        $historicalExpense = Expense::where('apartment_id', $id)
+        $historicalExpense = Expense::where('apartment_id', $id)->forRelation($expenseRelation)
             ->whereDate('expense_date', '<', $dateFrom)
             ->selectRaw('SUBSTR(expense_date, 1, 4) as year, SUM(amount) as total')
             ->groupByRaw('SUBSTR(expense_date, 1, 4)')->pluck('total', 'year');
@@ -273,6 +291,9 @@ class ReportController extends Controller
             ->join('dues', 'dues.id', '=', 'payment_allocations.due_id')
             ->where('payments.apartment_id', $id)
             ->where('accounts.type', '!=', Account::TYPE_SUPPLIER)
+            ->whereNull('accounts.deleted_at')->whereNull('dues.deleted_at')
+            ->where('dues.apartment_id', $id)
+            ->when($expenseRelation !== 'all', fn ($query) => $query->where('dues.due_type', $expenseRelation))
             ->whereDate('payments.payment_date', '>=', $dateFrom)->whereDate('payments.payment_date', '<=', $dateTo)
             ->whereIn('dues.due_type', ['aidat', 'malik_payi'])
             ->selectRaw('dues.due_type, SUM(payment_allocations.amount) as total')
@@ -282,6 +303,8 @@ class ReportController extends Controller
         $ownerShareIncome = (float) ($allocatedByType['malik_payi'] ?? 0);
         $otherIncome = max(0, $totalIncome - $aidatIncome - $ownerShareIncome);
         return array_merge($periodData, [
+            'expenseRelation' => $expenseRelation,
+            'expenseRelationLabel' => $expenseRelationLabel,
             'rows' => $rows,
             'historyRows' => $historyRows,
             'totalIncome'  => $totalIncome,
@@ -1683,6 +1706,7 @@ class ReportController extends Controller
 
         $sheet->mergeCells("A2:{$lastCol}2");
         $sheet->setCellValue('A2', $data['rangeLabel']);
+        $sheet->setCellValue('A3', 'Gider İlişkisi: '.$data['expenseRelationLabel']);
         $sheet->getStyle('A2')->getFont()->setBold(true);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
@@ -1722,6 +1746,14 @@ class ReportController extends Controller
         return $this->excelResponse($spreadsheet, 'gider-raporu');
     }
 
+    private function reportExpenseRelation(Request $request): array
+    {
+        $request->validate(['expense_relation' => ['sometimes', \Illuminate\Validation\Rule::in(['all', ...\App\Enums\ExpenseRelation::values()])]]);
+        $relation = $request->input('expense_relation', 'all');
+        $label = $relation === 'all' ? 'Tümü' : \App\Enums\ExpenseRelation::from($relation)->label();
+        return [$relation, $label];
+    }
+
     private function reportPeriodData(Request $request): array
     {
         $request->validate([
@@ -1755,12 +1787,13 @@ class ReportController extends Controller
 
     private function expenseReportData($apartment, Request $request): array
     {
+        [$expenseRelation, $expenseRelationLabel] = $this->reportExpenseRelation($request);
         $periodData = $this->reportPeriodData($request);
         $dateFrom = $periodData['dateFrom'];
         $dateTo = $periodData['dateTo'];
         $basis = $request->input('basis') === 'category' ? 'category' : 'description';
 
-        $expenses = Expense::with('categoryRelation')
+        $expenses = Expense::with('categoryRelation')->forRelation($expenseRelation)
             ->where('apartment_id', $apartment->id)
             ->whereDate('period_month', '>=', $dateFrom)
             ->whereDate('period_month', '<=', $dateTo)
@@ -1789,6 +1822,8 @@ class ReportController extends Controller
         return array_merge($periodData, [
             'apartment' => $apartment,
             'basis' => $basis,
+            'expenseRelation' => $expenseRelation,
+            'expenseRelationLabel' => $expenseRelationLabel,
             'rows' => $rows,
             'categories' => $categories,
             'total' => (float) $rows->sum('amount'),

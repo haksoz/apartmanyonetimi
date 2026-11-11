@@ -13,12 +13,12 @@
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }}</p>
         </div>
         <div class="flex flex-wrap justify-end gap-2">
-            <a href="{{ route('reports.income-expense.export', ['type'=>'excel', 'month'=>$month, 'month_end'=>$monthEnd]) }}"
+            <a href="{{ route('reports.income-expense.export', ['type'=>'excel', 'month'=>$month, 'month_end'=>$monthEnd, 'expense_relation'=>$expenseRelation]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Excel
             </a>
-            <a href="{{ route('reports.income-expense.export', ['type'=>'pdf', 'month'=>$month, 'month_end'=>$monthEnd]) }}"
+            <a href="{{ route('reports.income-expense.export', ['type'=>'pdf', 'month'=>$month, 'month_end'=>$monthEnd, 'expense_relation'=>$expenseRelation]) }}"
                class="flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 PDF
@@ -28,6 +28,7 @@
     </div>
 
     <form method="GET" action="{{ route('reports.income-expense') }}" id="income-expense-filter-form" class="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+        @include('reports._expense-relation-filter')
         <div>
             <label id="board-period-label" class="mb-1 block text-xs text-slate-500">Dönem</label>
             <input type="hidden" name="period_year" id="board-year" value="{{ $parsedMonth->year }}">
@@ -45,6 +46,7 @@
     @endif
 
     <p class="mb-4 text-sm font-medium text-slate-600">{{ $rangeLabel }}</p>
+    <p class="mb-4 text-sm text-slate-600">Gider İlişkisi: {{ $expenseRelationLabel }}</p>
 
     {{-- Özet Kartlar --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -73,7 +75,13 @@
         <div class="px-5 py-4 border-b border-slate-100">
             <h2 class="text-sm font-semibold text-slate-700">Aylık Döküm</h2>
             <p class="text-xs text-slate-400 mt-1">
-                <strong>Not:</strong> Gelir, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır. Tahsis durumuna bakılmaksızın hesaplanır.
+                @if($expenseRelation === 'all')
+                    <strong>Not:</strong> Gelir, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır. Tahsis durumuna bakılmaksızın hesaplanır.
+                @elseif($expenseRelation === 'unassigned')
+                    Gelir, aidat veya kat maliki payı borcuna bağlanmamış tutarları; gider, ilişkisi henüz belirlenmemiş kayıtları gösterir.
+                @else
+                    Gelir, seçilen türdeki borçlara bağlanan ödeme tutarlarını; gider, seçilen gider ilişkisine ait kayıtları gösterir. Borca bağlanmamış gelirler dahil değildir.
+                @endif
             </p>
         </div>
         <div class="overflow-x-auto">

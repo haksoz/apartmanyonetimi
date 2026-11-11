@@ -4,8 +4,9 @@
 
 @section('content')
     <h2>GELİR-GİDER RAPORU — {{ $apartment->name }}</h2>
+    <p class="note">Gider İlişkisi: {{ $expenseRelationLabel }}</p>
     <div class="meta">{{ $rangeLabel }} — {{ now()->format('d.m.Y') }} tarihli çıktı</div>
-    <p class="note">Gelir, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır. Tahsis durumuna bakılmaksızın hesaplanır.</p>
+    <p class="note">{{ $expenseRelation === 'all' ? 'Gelir, tedarikçi ödemeleri hariç tüm ödemelerin toplamıdır.' : ($expenseRelation === 'unassigned' ? 'Gelir: borç türü belirlenmemiş tutarlar. Gider: ilişkisi henüz belirlenmemiş kayıtlar.' : 'Gelir: seçilen borç türüne bağlanan tutarlar. Gider: seçilen gider ilişkisine ait kayıtlar.') }}</p>
     <p class="note">Devir {{ number_format($openingBalance, 2, ',', '.') }} ₺ · Dönem sonu {{ number_format($closingBalance, 2, ',', '.') }} ₺ · Aidat {{ number_format($aidatIncome, 2, ',', '.') }} ₺ · Kat Maliki Payı {{ number_format($ownerShareIncome, 2, ',', '.') }} ₺ · Diğer {{ number_format($otherIncome, 2, ',', '.') }} ₺</p>
 
     <table>

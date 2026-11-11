@@ -7,6 +7,7 @@
     @if ($apartment->address)
         <p class="subtitle">{{ $apartment->address }}</p>
     @endif
+    <p class="note">Gider İlişkisi: {{ $expenseRelationLabel }}</p>
     <div class="meta">{{ $rangeLabel }} — {{ now()->format('d.m.Y') }} tarihli çıktı</div>
 
     @if ($basis === 'category')

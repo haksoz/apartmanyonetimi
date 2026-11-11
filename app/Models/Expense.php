@@ -20,6 +20,7 @@ class Expense extends Model
         'plan_occurrence_key',
         'account_id',
         'category_id',
+        'expense_relation',
         'category',
         'description',
         'amount',
@@ -34,6 +35,7 @@ class Expense extends Model
     ];
 
     protected $casts = [
+        'expense_relation' => \App\Enums\ExpenseRelation::class,
         'amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
@@ -43,6 +45,13 @@ class Expense extends Model
         'is_paid' => 'boolean',
         'is_imported' => 'boolean',
     ];
+
+    protected $attributes = ['expense_relation' => 'unassigned'];
+
+    public function scopeForRelation($query, string $relation)
+    {
+        return $query->when($relation !== 'all', fn ($query) => $query->where('expense_relation', $relation));
+    }
 
     protected static function booted(): void
     {

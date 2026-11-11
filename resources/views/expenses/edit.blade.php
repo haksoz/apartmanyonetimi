@@ -64,6 +64,8 @@
                     @error('period_month')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
+                @include('expenses._relation-field')
+
                 <div class="md:col-span-2">
                     <label for="description" class="mb-2 block text-sm font-medium text-slate-600">Açıklama</label>
                     <input id="description" name="description" value="{{ old('description', $expense->description) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none" placeholder="Fatura no, dönem veya kısa açıklama">

@@ -84,7 +84,7 @@ class ExpenseFullPaymentTest extends TestCase
             'accounts' => ['apartment_id', 'unit_id', 'type', 'name', 'is_active'],
             'categories' => ['apartment_id', 'name', 'type', 'is_active', 'allow_expense'],
             'cash_boxes' => ['apartment_id', 'name', 'is_active'],
-            'expenses' => ['apartment_id', 'expense_plan_id', 'plan_occurrence_key', 'account_id', 'category_id', 'category', 'description', 'amount', 'paid_amount', 'remaining_amount', 'expense_date', 'due_date', 'period_month', 'is_paid', 'is_imported', 'reference_number'],
+            'expenses' => ['apartment_id', 'expense_plan_id', 'plan_occurrence_key', 'account_id', 'category_id', 'expense_relation', 'category', 'description', 'amount', 'paid_amount', 'remaining_amount', 'expense_date', 'due_date', 'period_month', 'is_paid', 'is_imported', 'reference_number'],
             'payments' => ['apartment_id', 'account_id', 'amount', 'unallocated_amount', 'payment_date', 'method', 'description', 'is_imported', 'reference_number'],
             'payment_allocations' => ['payment_id', 'expense_id', 'due_id', 'amount'],
             'account_transactions' => ['apartment_id', 'account_id', 'transactionable_type', 'transactionable_id', 'type', 'description', 'amount', 'transaction_date', 'is_imported'],

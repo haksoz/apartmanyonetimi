@@ -336,6 +336,8 @@ class ExpenseController extends Controller
 
             'description' => ['nullable', 'string', 'max:255'],
 
+            'expense_relation' => ['sometimes', \Illuminate\Validation\Rule::in(\App\Enums\ExpenseRelation::values())],
+
             'amount' => ['required', 'numeric', 'min:0.01'],
 
             'expense_date' => ['required', 'date'],
@@ -426,6 +428,8 @@ class ExpenseController extends Controller
                 'category_id' => $category->id,
 
                 'category' => $category->name,
+
+                'expense_relation' => $validated['expense_relation'] ?? 'unassigned',
 
                 'description' => $validated['description'] ?? null,
 
@@ -646,6 +650,8 @@ class ExpenseController extends Controller
                 'category_id' => $validated['category_id'],
 
                 'category' => Category::withTrashed()->findOrFail($validated['category_id'])->name,
+
+                'expense_relation' => $validated['expense_relation'] ?? $expense->expense_relation->value,
 
                 'description' => $validated['description'] ?? null,
 
@@ -1061,6 +1067,8 @@ class ExpenseController extends Controller
             ],
 
             'description' => ['nullable', 'string', 'max:255'],
+
+            'expense_relation' => ['sometimes', \Illuminate\Validation\Rule::in(\App\Enums\ExpenseRelation::values())],
 
             'amount' => ['required', 'numeric', 'min:0.01'],
 

@@ -2,7 +2,7 @@
 
 @section('content')
     @php
-        $modeQuery = ['month' => $month, 'month_end' => $monthEnd];
+        $modeQuery = ['month' => $month, 'month_end' => $monthEnd, 'expense_relation' => $expenseRelation];
         $exportQuery = array_merge(['basis' => $basis], $modeQuery);
     @endphp
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -31,6 +31,7 @@
     </div>
 
     <form method="GET" action="{{ route('reports.expenses') }}" id="expense-filter-form" class="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+        @include('reports._expense-relation-filter')
         <div>
             <label for="expense-report-basis" class="mb-1 block text-xs text-slate-500">Rapor Türü</label>
             <select name="basis" id="expense-report-basis" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800">
@@ -61,6 +62,7 @@
                 <p class="text-xs text-slate-500">{{ $apartment->address }}</p>
             @endif
             <p class="mt-1 text-sm text-slate-600">{{ $rangeLabel }}</p>
+    <p class="mb-4 text-sm text-slate-600">Gider İlişkisi: {{ $expenseRelationLabel }}</p>
         </div>
         <div class="overflow-x-auto">
             @if ($basis === 'category')
