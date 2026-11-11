@@ -6,18 +6,24 @@
 
     @php
         $dueTitle = $due->description ?: 'Aidat';
-        $dueCrumb = $due->account?->name ?: $dueTitle;
     @endphp
 
     {{-- Header --}}
     <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
         <div class="min-w-0 flex-1">
             <h1 class="text-2xl font-bold text-slate-950">
-                <a href="{{ route('dues.index') }}" class="hover:text-slate-600">Aidatlar</a>
-                <span class="font-normal text-slate-400"> / </span>
-                <span class="text-lg font-semibold text-slate-800">{{ $dueCrumb }}</span>
+                <a href="{{ route('dues.index') }}" class="hover:text-slate-600">Aidat</a>
             </h1>
-            <p class="mt-1 text-sm text-slate-500">Tutar, tahsilat durumu ve borç bilgileri.</p>
+            @if ($due->account)
+                <div class="mt-1">
+                    <a href="{{ route('accounts.show', $due->account) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600 hover:text-emerald-600 hover:bg-slate-100">
+                        {{ $due->account->name }}
+                        @if ($due->account->unit)
+                            - Daire {{ str_pad($due->account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                        @endif
+                    </a>
+                </div>
+            @endif
         </div>
 
         <div class="flex items-center justify-end gap-2 shrink-0">
@@ -72,6 +78,7 @@
                             <button type="submit" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
                         </form>
                     @endif
+
                 </div>
             </details>
 
@@ -104,18 +111,23 @@
 
             <div class="mb-4">
                 <div class="text-xl font-bold text-slate-900">{{ $dueTitle }}</div>
-                @if ($due->due_type_label && $due->due_type_label !== '-')
-                    <p class="mt-0.5 text-sm text-slate-400">{{ $due->due_type_label }}</p>
-                @endif
             </div>
 
-            <details class="group" open>
-                <summary class="flex cursor-pointer list-none items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 focus:outline-none">
-                    <span>Detaylar</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </summary>
+            <div class="mb-5 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:gap-3 sm:overflow-visible sm:border-0 sm:bg-transparent sm:grid-cols-3">
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4 sm:block">
+                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-slate-600">Tutar</div>
+                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold text-slate-900 tabular-nums sm:mt-2">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
+                </div>
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:border-emerald-200 sm:bg-emerald-50 sm:p-4 sm:block">
+                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-emerald-700">Ödenen</div>
+                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold text-emerald-700 tabular-nums sm:mt-2">{{ number_format($paidAmount, 2, ',', '.') }} TL</div>
+                </div>
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:p-4 sm:block {{ $due->remaining_amount > 0 ? 'sm:border-amber-200 sm:bg-amber-50' : 'sm:border-slate-200 sm:bg-slate-50' }}">
+                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-slate-600">Kalan</div>
+                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold {{ $due->remaining_amount > 0 ? 'text-amber-700' : 'text-slate-900' }} tabular-nums sm:mt-2">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                </div>
+            </div>
+
                 <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 text-sm">
                     @if ($due->account)
                         <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
@@ -131,7 +143,10 @@
 
                     <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                         <div class="text-xs text-slate-500">Borç Türü</div>
-                        <div class="font-semibold text-slate-900">{{ $due->due_type_label }}</div>
+                        <div class="text-right font-semibold text-slate-900">
+                            {{ $due->due_type_label }}
+                            <span class="text-xs font-normal text-slate-500">({{ $due->targeting_rule_label }})</span>
+                        </div>
                     </div>
 
                     @if ($due->category)
@@ -141,19 +156,15 @@
                         </div>
                     @endif
 
-                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                        <div class="text-xs text-slate-500">Oluşturulma</div>
-                        <div class="font-semibold text-slate-900">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</div>
-                    </div>
-
-                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                        <div class="text-xs text-slate-500">Son Ödeme</div>
-                        <div class="font-semibold text-slate-900">{{ $due->due_date?->format('d.m.Y') ?? '-' }}</div>
-                    </div>
-
-                    <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                        <div class="text-xs text-slate-500">Oluşturma Kuralı</div>
-                        <div class="font-semibold text-slate-900">{{ $due->targeting_rule_label }}</div>
+                    <div class="flex items-center justify-between gap-4 bg-white px-4 py-3">
+                        <div class="flex items-center gap-2 whitespace-nowrap">
+                            <div class="text-xs text-slate-500">Oluşturulma</div>
+                            <div class="font-semibold text-slate-900">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</div>
+                        </div>
+                        <div class="flex items-center gap-2 whitespace-nowrap">
+                            <div class="text-xs text-slate-500">Son Ödeme</div>
+                            <div class="font-semibold text-slate-900">{{ $due->due_date?->format('d.m.Y') ?? '-' }}</div>
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
@@ -163,43 +174,23 @@
                         </div>
                     </div>
 
-                    @if ($due->reference_number)
-                        <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                            <div class="text-xs text-slate-500">Referans</div>
-                            <div class="font-semibold text-slate-900">{{ $due->reference_number }}</div>
-                        </div>
-                    @endif
-
                     <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
                         <div class="text-xs text-slate-500">Kaynak</div>
                         <div class="font-semibold text-slate-900 text-right">
                             <span class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 border border-slate-200">{{ $due->source_label }}</span>
                         </div>
                     </div>
+                    @if ($due->reference_number)
+                        <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                            <div class="text-xs text-slate-500">Referans</div>
+                            <div class="font-semibold text-slate-900">{{ $due->reference_number }}</div>
+                        </div>
+                    @endif
                 </div>
-            </details>
 
-        </div>
-
-        {{-- Alt: Tutar / Ödenen / Kalan --}}
-        <div class="grid grid-cols-3 gap-2 px-3 py-3 text-center text-xs md:gap-0 md:p-0 md:text-left md:divide-x divide-slate-100">
-            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
-                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Tutar</div>
-                <div class="font-medium md:text-xl md:font-bold text-slate-900 tabular-nums">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
-            </div>
-            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
-                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Ödenen</div>
-                <div class="font-medium md:text-xl md:font-bold text-emerald-600 tabular-nums">{{ number_format($paidAmount, 2, ',', '.') }} TL</div>
-            </div>
-            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
-                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Kalan</div>
-                <div class="font-medium md:text-xl md:font-bold {{ $due->remaining_amount > 0 ? 'text-amber-600' : 'text-slate-400' }} tabular-nums">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
-            </div>
         </div>
 
     </div>
-
-
 
     {{-- Payment Allocations Section --}}
 

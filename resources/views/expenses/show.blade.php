@@ -41,6 +41,16 @@
             <h1 class="text-2xl font-bold text-slate-950">
                 <a href="{{ route('expenses.index') }}" class="hover:text-slate-600">Gider</a>
             </h1>
+            @if ($expense->account)
+                <div class="mt-1">
+                    <a href="{{ route('accounts.show', $expense->account) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600 hover:text-emerald-600 hover:bg-slate-100">
+                        {{ $expense->account->name }}
+                        @if ($expense->account->unit)
+                            - Daire {{ str_pad($expense->account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
+                        @endif
+                    </a>
+                </div>
+            @endif
         </div>
 
         <div class="flex items-center justify-end gap-2 shrink-0">
