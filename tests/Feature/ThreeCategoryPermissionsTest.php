@@ -48,7 +48,7 @@ class ThreeCategoryPermissionsTest extends TestCase
                 $this->post(route('dues.store'), [
                     'source_type' => $source, 'due_type' => $type,
                     'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                    'period' => '2026-10',
+                    'created_at_manual' => '2026-10-01',
                     'due_date' => '2026-10-31', 'fixed_amount' => 100,
                 ])->assertSessionHasErrors('due_type');
             }
@@ -86,7 +86,7 @@ class ThreeCategoryPermissionsTest extends TestCase
         // Eski tür artık enum içinde yok; beklenmeyen eski veriyi doğrudan fixture olarak oluştur.
         \Illuminate\Support\Facades\DB::table('dues')->insert([
             'apartment_id' => $apartment->id, 'account_id' => $account->id,
-            'due_type' => 'ceza', 'period' => '2026-10', 'due_date' => '2026-10-31',
+            'due_type' => 'ceza', 'created_at_manual' => '2026-10-01', 'due_date' => '2026-10-31',
             'amount' => 100, 'remaining_amount' => 100, 'status' => 'unpaid',
         ]);
         $migration = require database_path('migrations/2026_10_28_000001_reduce_category_usage_permissions.php');

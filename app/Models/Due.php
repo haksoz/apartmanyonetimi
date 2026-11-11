@@ -15,6 +15,41 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class Due extends Model
 {
     use HasReferenceNumber, SoftDeletes;
+
+    // Compatibility for legacy model callers; no independent month is persisted.
+    private ?string $legacyPeriod = null;
+
+    public function setPeriodAttribute($value): void
+    {
+        $this->legacyPeriod = $value ? \Carbon\Carbon::parse($value)->format('Y-m') : null;
+    }
+
+    public function getPeriodAttribute(): ?string
+    {
+        return $this->record_date?->format('Y-m');
+    }
+
+    public function getRecordDateAttribute(): ?\Carbon\Carbon
+    {
+        return $this->created_at_manual ?? $this->created_at;
+    }
+
+    public function scopeForMonth($query, string $month)
+    {
+        $date = \Carbon\Carbon::createFromFormat('!Y-m', $month);
+        return $query->recordDatesBetween($date->toDateString(), $date->copy()->endOfMonth()->toDateString());
+    }
+
+    public function scopeRecordDatesBetween($query, string $from, string $to)
+    {
+        return $query->whereRaw('DATE(COALESCE(dues.created_at_manual, dues.created_at)) >= ?', [$from])
+            ->whereRaw('DATE(COALESCE(dues.created_at_manual, dues.created_at)) <= ?', [$to]);
+    }
+
+    public function scopeBeforeRecordDate($query, string $date)
+    {
+        return $query->whereRaw('DATE(COALESCE(dues.created_at_manual, dues.created_at)) < ?', [$date]);
+    }
     protected $fillable = [
         'apartment_id',
         'due_batch_id',
@@ -46,6 +81,7 @@ class Due extends Model
     {
         static::creating(function (Due $due) {
             $due->due_type ??= DueType::Aidat;
+            $due->created_at_manual ??= $due->legacyPeriod ? $due->legacyPeriod.'-01' : today()->toDateString();
         });
 
         static::updating(function (Due $due) {

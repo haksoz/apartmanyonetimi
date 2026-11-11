@@ -67,7 +67,7 @@ class MonthlyBoardAudienceTest extends TestCase
             // Yeni kayıtlarda tür zorunlu; tanınmayan tarihsel veri yalnız ham fixture olarak eklenir.
             $id = \Illuminate\Support\Facades\DB::table('dues')->insertGetId([
                 'apartment_id' => $account->apartment_id, 'account_id' => $account->id, 'unit_id' => $account->unit_id,
-                'due_type' => 'legacy_unknown', 'period' => $month,
+                'due_type' => 'legacy_unknown', 'created_at_manual' => $month.'-01',
                 'due_date' => $month.'-10', 'amount' => $amount, 'remaining_amount' => $amount, 'status' => 'unpaid',
             ]);
             return Due::findOrFail($id);
@@ -75,7 +75,7 @@ class MonthlyBoardAudienceTest extends TestCase
         $due = Due::create(['apartment_id' => $account->apartment_id, 'account_id' => $account->id,
             'unit_id' => $account->unit_id,
             'due_type' => $rule,
-            'period' => $withoutPeriod ? null : $month, 'due_date' => $month.'-10',
+            'created_at_manual' => $month.'-01', 'due_date' => $month.'-10',
             'amount' => $amount, 'remaining_amount' => $amount, 'status' => 'unpaid']);
         if ($paid > 0) {
             $payment = Payment::create(['apartment_id' => $account->apartment_id, 'account_id' => $account->id,
@@ -373,6 +373,7 @@ class MonthlyBoardAudienceTest extends TestCase
     public function test_current_range_has_monthly_statuses_and_only_counts_outstanding_debt(string $type): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-11-10 12:00:00'));
+        $this->grantPaidFeatures($this->apartment);
         Due::where('apartment_id', $this->apartment->id)->delete();
         $this->due($this->owner, $type, '2026-03', 500, 100);
         $this->due($this->owner, $type, '2026-04', 1000, 1000);
@@ -420,6 +421,7 @@ class MonthlyBoardAudienceTest extends TestCase
     public function test_range_validation_cross_year_empty_months_and_legacy_links(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-11-10 12:00:00'));
+        $this->grantPaidFeatures($this->apartment);
         $screen = $this->screen(['view_mode' => 'current', 'month' => '2025-12', 'month_end' => '2026-02']);
         $this->assertSame(['2025-12', '2026-01', '2026-02'], $screen->viewData('reportMonths'));
         $this->assertSame('—', $screen->viewData('monthlyData')[$this->tenant->id]['2026-01']['status']);
@@ -435,6 +437,7 @@ class MonthlyBoardAudienceTest extends TestCase
     public function test_range_residents_include_both_tenants_when_the_occupant_changes(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-11-10 12:00:00'));
+        $this->grantPaidFeatures($this->apartment);
         $this->tenant->update(['account_end_date' => '2026-05-31']);
         $this->secondTenant->update(['account_opening_date' => '2026-06-01']);
         foreach ([[$this->tenant, '2026-04-01', '2026-05-31'], [$this->secondTenant, '2026-06-01', null]] as [$account, $start, $end]) {

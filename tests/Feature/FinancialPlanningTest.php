@@ -574,7 +574,7 @@ class FinancialPlanningTest extends TestCase
         $plan = AssessmentPlan::firstOrFail();
         $this->assertSame(['2026-10'], $plan->skipped_periods);
         $this->assertSame(2, Due::count());
-        $this->assertSame(0, Due::where('period', '>', '2026-09')->count());
+        $this->assertSame(0, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '>', '2026-09')->count());
         $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
         $this->assertSame(2, Due::count());
         app(AssessmentPlanGenerator::class)->generateEligibleInstallments($plan, true);
@@ -582,7 +582,7 @@ class FinancialPlanningTest extends TestCase
         $this->travelTo(\Carbon\Carbon::parse('2026-11-05 12:00:00'));
         $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
         $this->assertSame(4, Due::count());
-        $this->assertSame(0, Due::where('period', '2026-10')->count());
+        $this->assertSame(0, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '2026-10')->count());
         $this->travelBack();
     }
 
@@ -600,9 +600,9 @@ class FinancialPlanningTest extends TestCase
         $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $updated->viewData('token')])->assertRedirect();
         $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
         $this->assertSame(2, Due::count());
-        $this->assertSame(2, Due::where('period', '2026-10')->count());
-        $this->assertSame(0, Due::where('period', '<', '2026-10')->count());
-        $this->assertSame(0, Due::where('period', '>', '2026-10')->count());
+        $this->assertSame(2, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '2026-10')->count());
+        $this->assertSame(0, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '<', '2026-10')->count());
+        $this->assertSame(0, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '>', '2026-10')->count());
         $this->travelBack();
     }
 
@@ -969,7 +969,7 @@ class FinancialPlanningTest extends TestCase
         $this->assertSame('on_schedule', $plan->generation_mode);
         $this->assertTrue($plan->auto_generate);
         $this->assertSame(0, app(\App\Http\Controllers\DuePlanController::class)->createDuesForPeriod($plan, '2026-11'));
-        $this->assertSame(0, Due::where('period', '>', '2026-10')->count());
+        $this->assertSame(0, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '>', '2026-10')->count());
         $this->travelBack();
     }
 
@@ -1157,7 +1157,7 @@ class FinancialPlanningTest extends TestCase
         $plan->refresh()->update(['skipped_periods' => ['2026-10']]);
         $this->travelTo(\Carbon\Carbon::parse('2026-11-01 12:00:00'));
         $this->artisan('dues:auto-generate')->assertExitCode(0);
-        $this->assertSame(2, Due::where('period', '2026-11')->count());
+        $this->assertSame(2, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '2026-11')->count());
         $this->assertTrue($plan->fresh()->skipsPeriod('2026-10'));
         $this->travelBack();
     }
@@ -1215,7 +1215,7 @@ class FinancialPlanningTest extends TestCase
         $this->travelTo(\Carbon\Carbon::parse('2026-11-01 12:00:00'));
         $this->artisan('financial-plans:auto-generate')->assertExitCode(0);
         $this->assertSame(1, Due::where('account_id', $tenant->id)->count());
-        $this->assertDatabaseHas('dues', ['account_id' => $units[0]->owner_account_id, 'period' => '2026-11']);
+        $this->assertDatabaseHas('dues', ['account_id' => $units[0]->owner_account_id, 'created_at_manual' => '2026-11-01 00:00:00']);
         $this->assertSame(['aidat'], Due::where('apartment_id', $apartment->id)->distinct()->pluck('due_type')->map(fn ($type) => $type->value)->all());
         $this->travelBack();
     }
@@ -1306,7 +1306,7 @@ class FinancialPlanningTest extends TestCase
             'current_month_action' => 'skip',
         ])->assertRedirect();
         $this->assertSame(18, Due::count());
-        $this->assertSame(0, Due::where('period', '>=', '2026-10')->count());
+        $this->assertSame(0, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '>=', '2026-10')->count());
         $this->travelBack();
     }
 

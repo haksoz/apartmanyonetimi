@@ -103,7 +103,7 @@ class DuePageTest extends TestCase
             'account_id' => $account->id,
             'unit_id' => $unit->id,
             'due_type' => \App\Enums\DueType::Aidat,
-            'period' => '2026-01',
+            'created_at_manual' => '2026-01-01', 'period' => '2026-01',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => now()->addMonth()->format('Y-m-d'),
@@ -115,7 +115,7 @@ class DuePageTest extends TestCase
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
             ->get(route('dues.index', [
-                'period' => '2026-01',
+                'created_at_manual' => '2026-01-01', 'period' => '2026-01',
                 'status' => 'unpaid',
                 'source' => 'import',
                 'unit_id' => (string) $unit->id,
@@ -171,7 +171,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-01',
+            'created_at_manual' => '2026-01-01', 'period' => '2026-01',
             'amount' => 500,
             'remaining_amount' => 0,
             'due_date' => '2026-01-31',
@@ -184,7 +184,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-02',
+            'created_at_manual' => '2026-02-01', 'period' => '2026-02',
             'amount' => 500,
             'remaining_amount' => 200,
             'due_date' => '2026-02-28',
@@ -197,7 +197,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2025-01',
+            'created_at_manual' => '2025-01-01', 'period' => '2025-01',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => now()->subMonth()->format('Y-m-d'),
@@ -210,7 +210,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-12',
+            'created_at_manual' => '2026-12-01', 'period' => '2026-12',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => now()->addMonth()->format('Y-m-d'),
@@ -287,14 +287,14 @@ class DuePageTest extends TestCase
         Due::create([
             'apartment_id' => $firstApartment->id,
             'account_id' => $firstAccount->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 100,
             'status' => 'unpaid',
         ]);
         Due::create([
             'apartment_id' => $secondApartment->id,
             'account_id' => $secondAccount->id,
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06',
             'amount' => 200,
             'status' => 'unpaid',
         ]);
@@ -336,7 +336,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_EXPENSES,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'period' => '2026-05',
+                'created_at_manual' => '2026-05-01', 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $dueCategory->id,
@@ -379,7 +379,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'period' => '2026-05',
+                'created_at_manual' => '2026-05-01', 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'due_type' => \App\Enums\DueType::Aidat->value,
                 'category_id' => $category->id,
@@ -410,7 +410,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'period' => '2026-05',
+                'created_at_manual' => '2026-05-01', 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'due_type' => \App\Enums\DueType::Aidat->value,
                 'category_id' => $category->id,
@@ -470,7 +470,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'account_id' => $account->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => '2026-05-31',
@@ -555,7 +555,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'account_id' => $tenantAccount->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => '2026-05-31',
@@ -585,7 +585,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'account_id' => $tenantAccount->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 0,
             'due_date' => '2026-05-31',
@@ -613,7 +613,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'account_id' => $tenantAccount->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => '2026-05-31',
@@ -668,7 +668,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'account_id' => $tenantAccount->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 0,
             'due_date' => '2026-05-31',
@@ -703,7 +703,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unitOne->id,
             'account_id' => $tenantAccount->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => '2026-05-31',
@@ -737,7 +737,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'account_id' => $inactiveTenant->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => '2026-05-31',
@@ -766,7 +766,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'account_id' => $inactiveTenant->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => '2026-05-31',
@@ -799,7 +799,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'account_id' => $inactiveTenant->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => '2026-05-31',
@@ -828,7 +828,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'account_id' => $inactiveTenant->id,
             'category_id' => $category->id,
-            'period' => '2026-05',
+            'created_at_manual' => '2026-05-01', 'period' => '2026-05',
             'amount' => 500,
             'remaining_amount' => 500,
             'due_date' => '2026-05-31',
@@ -883,7 +883,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'period' => '2026-05',
+                'created_at_manual' => '2026-05-01', 'period' => '2026-05',
                 'due_date' => '2026-05-31',
                 'due_type' => \App\Enums\DueType::Aidat->value,
                 'category_id' => $category->id,
@@ -984,7 +984,7 @@ class DuePageTest extends TestCase
             ->post(route('due-plans.generate-month', $plan), ['period' => '2026-06'])
             ->assertRedirect(route('dues.index'));
 
-        $batch = DueBatch::query()->where('due_plan_id', $plan->id)->where('period', '2026-06')->first();
+        $batch = DueBatch::query()->where('due_plan_id', $plan->id)->forMonth('2026-06')->first();
         $this->assertNotNull($batch);
         $this->assertIsArray($batch->distribution_snapshot);
         $this->assertCount(4, $batch->distribution_snapshot);
@@ -1095,7 +1095,7 @@ class DuePageTest extends TestCase
             'unit_id' => $units[1]->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06',
             'amount' => 250,
             'remaining_amount' => 250,
             'due_date' => '2026-06-01',
@@ -1110,7 +1110,7 @@ class DuePageTest extends TestCase
             'category_id' => $category->id,
             'source_type' => 'manual',
             'distribution_type' => 'equal',
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06',
             'source_amount' => 1000,
         ]);
         Due::where('account_id', $accounts[1]->id)->update(['due_batch_id' => $batch->id]);
@@ -1131,7 +1131,7 @@ class DuePageTest extends TestCase
         $this->assertDatabaseCount('dues', 1);
         $this->assertDatabaseHas('dues', [
             'account_id' => $accounts[1]->id,
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01 00:00:00',
         ]);
     }
 
@@ -1258,7 +1258,7 @@ class DuePageTest extends TestCase
         for ($i = 2; $i <= 4; $i++) {
             $this->assertDatabaseHas('dues', [
                 'account_id' => $accounts[$i]->id,
-                'period' => $period,
+                'created_at_manual' => $period.'-01', 'period' => $period,
                 'due_type' => \App\Enums\DueType::Aidat,
                 'category_id' => $category->id,
             ]);
@@ -1287,7 +1287,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06',
             'amount' => 250,
             'remaining_amount' => 250,
             'due_date' => '2026-06-01',
@@ -1300,7 +1300,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
-                'period' => '2026-06',
+                'created_at_manual' => '2026-06-01', 'period' => '2026-06',
                 'due_date' => '2026-06-01',
                 'due_type' => \App\Enums\DueType::Aidat->value,
                 'category_id' => $category->id,
@@ -1336,7 +1336,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit1->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06',
             'amount' => 250,
             'remaining_amount' => 250,
             'due_date' => '2026-06-01',
@@ -1349,7 +1349,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit2->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06',
             'amount' => 250,
             'remaining_amount' => 250,
             'due_date' => '2026-06-01',
@@ -1364,7 +1364,7 @@ class DuePageTest extends TestCase
                 'unit_id' => $unit2->id,
                 'due_type' => \App\Enums\DueType::Aidat->value,
                 'category_id' => $category->id,
-                'period' => '2026-06',
+                'created_at_manual' => '2026-06-01', 'period' => '2026-06',
                 'due_date' => '2026-06-01',
                 'amount' => 250,
             ])
@@ -1449,7 +1449,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06',
             'amount' => 250,
             'remaining_amount' => 250,
             'due_date' => '2026-06-01',
@@ -1462,7 +1462,7 @@ class DuePageTest extends TestCase
             'unit_id' => $unit->id,
             'due_type' => \App\Enums\DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06',
             'amount' => 250,
             'remaining_amount' => 250,
             'due_date' => '2026-06-01',
@@ -1526,7 +1526,7 @@ class DuePageTest extends TestCase
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
         $data = ['source_type' => DueBatch::SOURCE_INDIVIDUAL,
             'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL, 'due_type' => 'malik_payi', 'category_id' => $category->id, 'individual_amount' => 100,
-            'period' => '2026-07', 'due_date' => '2026-07-31'];
+            'created_at_manual' => '2026-07-01', 'period' => '2026-07', 'due_date' => '2026-07-31'];
         $this->post(route('dues.store'), $data + ['account_id' => $tenant->id])
             ->assertSessionHasErrors('account_id');
         $this->assertDatabaseCount('due_batches', 0);
@@ -1579,7 +1579,7 @@ class DuePageTest extends TestCase
             $this->post(route('dues.store'), [
                 'source_type' => $source, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
                 'due_type' => 'malik_payi',
-                'category_id' => $category->id, 'period' => '2026-07', 'due_date' => '2026-07-31',
+                'category_id' => $category->id, 'created_at_manual' => '2026-07-01', 'period' => '2026-07', 'due_date' => '2026-07-31',
                 'source_amount' => 100, 'fixed_amount' => 100,
             ])->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
             $batch = DueBatch::latest('id')->firstOrFail();
@@ -1597,7 +1597,7 @@ class DuePageTest extends TestCase
             $this->post(route('dues.store'), [
                 'source_type' => $source, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
                 'due_type' => 'aidat', 'category_id' => $apartment->default_aidat_category_id,
-                'period' => $period, 'due_date' => $period.'-28', 'source_amount' => 100, 'fixed_amount' => 100,
+                'created_at_manual' => $period.'-01', 'period' => $period, 'due_date' => $period.'-28', 'source_amount' => 100, 'fixed_amount' => 100,
             ])->assertSessionHasNoErrors()->assertRedirect(route('dues.index'));
             $batch = DueBatch::latest('id')->firstOrFail();
             $this->assertSame('aidat', $batch->due_type->value);
@@ -1638,7 +1638,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'period' => '2026-07',
+                'created_at_manual' => '2026-07-01', 'period' => '2026-07',
                 'due_date' => '2026-07-31',
                 'due_type' => \App\Enums\DueType::Aidat->value,
                 'category_id' => $cezaCategory->id,
@@ -1659,7 +1659,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'period' => '2026-08',
+                'created_at_manual' => '2026-08-01', 'period' => '2026-08',
                 'due_date' => '2026-08-31',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $faizCategory->id,
@@ -1679,7 +1679,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'period' => '2026-09',
+                'created_at_manual' => '2026-09-01', 'period' => '2026-09',
                 'due_date' => '2026-09-30',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $allCategory->id,
@@ -1699,7 +1699,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'period' => '2026-10',
+                'created_at_manual' => '2026-10-01', 'period' => '2026-10',
                 'due_date' => '2026-10-31',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $incomeCategory->id,
@@ -1720,7 +1720,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'period' => '2026-11',
+                'created_at_manual' => '2026-11-01', 'period' => '2026-11',
                 'due_date' => '2026-11-30',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $expenseCategory->id,
@@ -1736,7 +1736,7 @@ class DuePageTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => DueBatch::SOURCE_INDIVIDUAL,
                 'distribution_type' => DueBatch::DISTRIBUTION_INDIVIDUAL,
-                'period' => '2026-12',
+                'created_at_manual' => '2026-12-01', 'period' => '2026-12',
                 'due_date' => '2026-12-31',
                 'due_type' => \App\Enums\DueType::MalikPayi->value,
                 'category_id' => $aidatCategory->id,

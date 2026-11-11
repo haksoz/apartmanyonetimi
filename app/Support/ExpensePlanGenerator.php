@@ -94,7 +94,6 @@ class ExpensePlanGenerator
                     'due_date' => $locked->due_days !== null
                         ? $expenseDate->copy()->addDays($locked->due_days)->toDateString()
                         : null,
-                    'period_month' => $periodDate->toDateString(),
                     'is_paid' => false,
                 ]);
 

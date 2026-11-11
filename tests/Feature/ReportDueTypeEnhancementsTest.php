@@ -57,7 +57,7 @@ class ReportDueTypeEnhancementsTest extends TestCase
         $this->due('aidat', 100, 100);
         $this->due('malik_payi', 300, 300);
         Due::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->resident->id,
-            'unit_id' => $this->resident->unit_id, 'due_type' => 'malik_payi', 'period' => null,
+            'unit_id' => $this->resident->unit_id, 'due_type' => 'malik_payi', 'created_at_manual' => '2026-02-01',
             'due_date' => '2026-02-10', 'amount' => 50, 'remaining_amount' => 50, 'status' => 'unpaid']);
 
         $overdue = $this->get(route('reports.overdue', ['due_type' => 'aidat']))->assertOk();

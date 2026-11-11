@@ -58,19 +58,14 @@
                     @endif
                 </div>
 
-                <div>
-                    <label for="period_month" class="mb-2 block text-sm font-medium text-slate-600">Dönem</label>
-                    <input id="period_month" name="period_month" type="month" value="{{ old('period_month', $expense->period_month?->format('Y-m')) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('period_month')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </div>
-
-                @include('expenses._relation-field')
 
                 <div class="md:col-span-2">
                     <label for="description" class="mb-2 block text-sm font-medium text-slate-600">Açıklama</label>
                     <input id="description" name="description" value="{{ old('description', $expense->description) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none" placeholder="Fatura no, dönem veya kısa açıklama">
                     @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
+
+                @include('expenses._relation-field')
             </div>
         </div>
 
@@ -158,7 +153,6 @@
         (() => {
             const expenseDateInput = document.getElementById('expense_date');
             const dueDateInput = document.getElementById('due_date');
-            const periodInput = document.getElementById('period_month');
             const categorySelect = document.getElementById('category_id');
             const descriptionInput = document.getElementById('description');
             let isDueDateManuallySet = !!dueDateInput?.value;
@@ -174,19 +168,7 @@
                 '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
             };
 
-            const syncPeriodFromDate = () => {
-                const dateVal = expenseDateInput?.value;
-                if (dateVal) {
-                    periodInput.value = dateVal.substring(0, 7);
-                }
-            };
 
-            const syncPeriodFromDueDate = () => {
-                const dateVal = dueDateInput?.value;
-                if (dateVal && isDueDateManuallySet) {
-                    periodInput.value = dateVal.substring(0, 7);
-                }
-            };
 
             const syncDueDate = () => {
                 const dateVal = expenseDateInput?.value;
@@ -202,7 +184,7 @@
 
             const updateDescription = () => {
                 if (descriptionInput.value && descriptionInput.dataset.userEdited) return;
-                const period = periodInput.value;
+                const period = expenseDateInput?.value?.substring(0, 7);
                 const categoryOption = categorySelect.options[categorySelect.selectedIndex];
                 const categoryName = categoryOption ? categoryOption.text : '';
 
@@ -214,14 +196,12 @@
             };
 
             expenseDateInput?.addEventListener('change', () => {
-                syncPeriodFromDate();
                 syncDueDate();
                 updateDescription();
             });
 
             dueDateInput?.addEventListener('input', () => {
                 isDueDateManuallySet = dueDateInput.value !== '';
-                syncPeriodFromDueDate();
                 updateDescription();
             });
 
@@ -234,7 +214,6 @@
             });
 
             // Init
-            syncPeriodFromDate();
             syncDueDate();
 
             document.querySelectorAll('.delete-document-btn').forEach(button => {

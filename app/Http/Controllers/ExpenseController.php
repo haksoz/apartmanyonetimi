@@ -70,7 +70,7 @@ class ExpenseController extends Controller
 
         $sortDirection = $request->query('sort_direction', 'desc');
 
-        $validSortColumns = ['expense_date', 'period_month', 'category', 'account_id', 'amount', 'is_paid'];
+        $validSortColumns = ['expense_date', 'category', 'account_id', 'amount', 'is_paid'];
 
 
 
@@ -124,7 +124,7 @@ class ExpenseController extends Controller
                 $start = \Carbon\Carbon::parse($filterPeriod . '-01')->startOfMonth();
                 $end   = \Carbon\Carbon::parse($filterPeriod . '-01')->endOfMonth();
 
-                $q->whereBetween('period_month', [$start->toDateString(), $end->toDateString()]);
+                $q->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()]);
             })
 
             ->when($filterStartDate || $filterEndDate, function ($q) use ($filterStartDate, $filterEndDate) {
@@ -344,7 +344,6 @@ class ExpenseController extends Controller
 
             'due_date' => ['nullable', 'date'],
 
-            'period_month' => ['required', 'date_format:Y-m'],
 
             'is_paid' => ['nullable', 'boolean'],
 
@@ -443,7 +442,6 @@ class ExpenseController extends Controller
 
                 'due_date' => $validated['due_date'] ?? null,
 
-                'period_month' => $validated['period_month'].'-01',
 
                 'is_paid' => $isPaid,
 
@@ -661,7 +659,6 @@ class ExpenseController extends Controller
 
                 'due_date' => $validated['due_date'] ?? null,
 
-                'period_month' => $validated['period_month'].'-01',
 
                 'is_paid' => $request->boolean('is_paid'),
 
@@ -1076,7 +1073,6 @@ class ExpenseController extends Controller
 
             'due_date' => ['nullable', 'date'],
 
-            'period_month' => ['required', 'date_format:Y-m'],
 
             'is_paid' => ['nullable', 'boolean'],
 

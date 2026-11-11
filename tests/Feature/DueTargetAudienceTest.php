@@ -45,9 +45,9 @@ class DueTargetAudienceTest extends TestCase
                 'source_type' => 'fixed', 'distribution_type' => 'equal', 'fixed_amount' => 100,
                 'due_type' => $type,
                 'category_id' => $type === 'aidat' ? $category->id : $ownerCategory->id,
-                'period' => $period, 'due_date' => $period.'-10',
+                'created_at_manual' => $period.'-01', 'period' => $period, 'due_date' => $period.'-10',
             ])->assertSessionHasNoErrors()->assertRedirect();
-            $due = Due::where('period', $period)->sole();
+            $due = Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), $period)->sole();
             $this->assertSame($type, $due->due_type->value);
             $this->assertSame($accountId, $due->account_id);
         }
@@ -65,7 +65,7 @@ class DueTargetAudienceTest extends TestCase
         $this->post(route('dues.store'), [
             'source_type' => 'individual', 'distribution_type' => 'individual', 'individual_amount' => 100,
             'account_id' => $owner->id,
-            'due_type' => $type, 'category_id' => $category->id, 'period' => '2026-02', 'due_date' => '2026-02-10',
+            'due_type' => $type, 'category_id' => $category->id, 'created_at_manual' => '2026-02-01', 'period' => '2026-02', 'due_date' => '2026-02-10',
         ])->assertSessionHasNoErrors()->assertRedirect();
         $due = Due::sole();
         $this->assertSame($type, $due->due_type->value);
@@ -150,10 +150,11 @@ class DueTargetAudienceTest extends TestCase
             $payload = ['source_type' => 'individual', 'distribution_type' => 'individual',
                 'account_id' => $owner->id, 'individual_amount' => 100, 'due_type' => 'aidat',
                 'category_id' => $category->id, 'period' => '2026-0'.($index + 1), 'due_date' => '2026-02-10'];
+            $payload['created_at_manual'] = $payload['period'].'-01';
             // Unsupported client fields must not override the authoritative type.
             if ($scope !== null) $payload['target_audience'] = $scope;
             $this->post(route('dues.store'), $payload)->assertSessionHasNoErrors()->assertRedirect();
-            $this->assertSame('aidat', Due::where('period', $payload['period'])->sole()->due_type->value);
+            $this->assertSame('aidat', Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), $payload['period'])->sole()->due_type->value);
         }
     }
 
@@ -168,7 +169,7 @@ class DueTargetAudienceTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('account_id');
         $payload = ['source_type' => 'individual', 'distribution_type' => 'individual',
             'account_id' => $tenant->id, 'individual_amount' => 100,
-            'due_type' => 'malik_payi', 'category_id' => $malikCategory->id, 'period' => '2026-02', 'due_date' => '2026-02-10'];
+            'due_type' => 'malik_payi', 'category_id' => $malikCategory->id, 'created_at_manual' => '2026-02-01', 'period' => '2026-02', 'due_date' => '2026-02-10'];
         $this->postJson(route('dues.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('account_id');
         foreach (['dues', 'due_batches', 'account_transactions'] as $table) $this->assertDatabaseCount($table, 0);
         $tenant->tenantAssignments()->create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'move_in_date' => '2026-01-01']);
@@ -189,7 +190,7 @@ class DueTargetAudienceTest extends TestCase
             'account_id' => $tenant->id, 'move_in_date' => '2026-01-01']);
         $this->post(route('dues.store'), ['source_type' => 'individual', 'distribution_type' => 'individual',
             'account_id' => $owner->id, 'individual_amount' => 100, 'due_type' => 'aidat',
-            'category_id' => $category->id, 'period' => '2026-02', 'due_date' => '2026-02-10'])
+            'category_id' => $category->id, 'created_at_manual' => '2026-02-01', 'period' => '2026-02', 'due_date' => '2026-02-10'])
             ->assertSessionHasErrors('account_id');
         $this->assertDatabaseCount('dues', 0);
         $this->assertDatabaseCount('due_batches', 0);
@@ -206,7 +207,7 @@ class DueTargetAudienceTest extends TestCase
     {
         $this->patch(route('dues.update', $due), [
             'account_id' => $owner->id, 'category_id' => $category->id, 'due_type' => $due->due_type?->value ?? 'aidat',
-            'period' => $due->period, 'due_date' => '2026-02-10', 'amount' => 120,
+            'created_at_manual' => $due->record_date->toDateString(), 'due_date' => '2026-02-10', 'amount' => 120,
             ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertEquals(120, $due->fresh()->amount);
     }
@@ -218,7 +219,7 @@ class DueTargetAudienceTest extends TestCase
             'type' => 'tenant', 'name' => 'Tenant', 'is_active' => true]);
         $due = Due::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'account_id' => $owner->id, 'category_id' => $category->id, 'due_type' => 'aidat',
-            'period' => '2026-02', 'due_date' => '2026-02-10', 'amount' => 100,
+            'created_at_manual' => '2026-02-01', 'period' => '2026-02', 'due_date' => '2026-02-10', 'amount' => 100,
             'remaining_amount' => 100, 'status' => 'unpaid']);
         $this->editDue($due, $owner, $category);
         $this->assertSame('aidat', $due->fresh()->due_type->value);

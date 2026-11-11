@@ -160,11 +160,10 @@
                 <div id="batch-date-fields" class="grid gap-4 md:grid-cols-2">
                     <div>
                         <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
-                        <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
+                        <input id="created_at_manual" name="created_at_manual" type="date" required value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
                         @error('created_at_manual')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
                     </div>
 
-                    <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
 
                     <div>
                         <label for="due_date" class="mb-2 block text-sm font-medium text-slate-600">Son Ödeme Tarihi</label>
@@ -643,7 +642,6 @@
             };
             const topicSelect = document.getElementById('category_id');
             const categoryField = document.getElementById('category-field');
-            const periodInput = document.getElementById('period');
             const createdAtInput = document.getElementById('created_at_manual');
             const descriptionInput = document.getElementById('description');
 
@@ -653,13 +651,6 @@
                 '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
             };
 
-            const syncPeriodFromDate = () => {
-                const dateVal = createdAtInput?.value;
-                if (dateVal) {
-                    periodInput.value = dateVal.substring(0, 7);
-                    updateDescription();
-                }
-            };
 
             const syncDueDateFromCreatedAt = () => {
                 const dateVal = createdAtInput?.value;
@@ -674,7 +665,7 @@
             };
 
             const updateDescription = () => {
-                const period = periodInput.value;
+                const period = createdAtInput?.value?.substring(0, 7);
                 const typeName = dueTypeLabels[selectedDueType()] || '';
 
                 if (period && typeName) {
@@ -685,7 +676,7 @@
             };
 
             createdAtInput?.addEventListener('change', () => {
-                syncPeriodFromDate();
+                updateDescription();
                 syncDueDateFromCreatedAt();
             });
             dueDateInput?.addEventListener('input', () => {
@@ -709,12 +700,12 @@
                 syncTargetAudience();
                 updateDescription();
             }));
-            periodInput?.addEventListener('change', updateDescription);
+            createdAtInput?.addEventListener('change', updateDescription);
 
             // Init
             syncTargetAudience();
             syncCategoryField();
-            syncPeriodFromDate();
+            updateDescription();
             if (!dueDateInput.value) {
                 syncDueDateFromCreatedAt();
             }

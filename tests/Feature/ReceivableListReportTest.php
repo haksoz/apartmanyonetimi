@@ -22,7 +22,8 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
             $table->id();
             foreach (['apartment_id', 'account_id', 'unit_id', 'category_id'] as $column) $table->unsignedBigInteger($column)->nullable();
             foreach (['amount', 'remaining_amount'] as $column) $table->decimal($column, 15, 2);
-            foreach (['due_type', 'reference_number', 'period', 'status', 'description'] as $column) $table->string($column)->nullable();
+            foreach (['due_type', 'reference_number', 'status', 'description'] as $column) $table->string($column)->nullable();
+            $table->date('created_at_manual')->nullable();
             $table->date('due_date')->nullable();
             $table->timestamps();
             $table->softDeletes();
@@ -47,14 +48,34 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
         return app(ReportController::class)->receivableList(app(CurrentApartment::class), $request);
     }
 
-    #[TestWith(['owner', 0, 1000])]
-    #[TestWith(['owner', 400, 600])]
+    public function test_default_all_lists_only_accounts_owed_by_the_apartment(): void
+    {
+        $ids = [];
+        foreach (['owner', 'tenant', 'supplier'] as $type) {
+            $creditor = $this->account($type, 'Creditor '.$type);
+            $this->entry($creditor, 'credit', 500);
+            $this->entry($creditor, 'debit', 200);
+            $ids[] = $creditor->id;
+            $debtor = $this->account($type, 'Debtor '.$type);
+            $this->entry($debtor, 'debit', 100);
+        }
+        $request = Request::create('/reports/receivable-list', 'GET');
+        $this->app->instance('request', $request);
+        $data = app(ReportController::class)->receivableList(app(CurrentApartment::class), $request)->getData();
+        $this->assertSame('all', $data['filterAccountType']);
+        $this->assertEqualsCanonicalizing($ids, $data['accounts']->pluck('id')->all());
+        $this->assertEquals(900, $data['accounts']->sum('total_receivable'));
+        $this->assertEqualsCanonicalizing($ids, $this->screen('all')->getData()['accounts']->pluck('id')->all());
+    }
+
+    #[TestWith(['owner', 0, 0])]
+    #[TestWith(['owner', 400, 0])]
     #[TestWith(['owner', 1000, 0])]
-    #[TestWith(['owner', 1200, 0])]
-    #[TestWith(['tenant', 0, 1000])]
-    #[TestWith(['tenant', 400, 600])]
+    #[TestWith(['owner', 1200, 200])]
+    #[TestWith(['tenant', 0, 0])]
+    #[TestWith(['tenant', 400, 0])]
     #[TestWith(['tenant', 1000, 0])]
-    #[TestWith(['tenant', 1200, 0])]
+    #[TestWith(['tenant', 1200, 200])]
     public function test_resident_report_matches_existing_ledger_with_real_allocations(string $type, int $received, int $expected): void
     {
         $account = $this->account($type);
@@ -75,9 +96,8 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
         $row = $this->screen($type)->getData()['accounts']->firstWhere('id', $account->id);
         if ($expected) {
             $this->assertNotNull($row);
-            $this->assertEquals(max(0, -$ledger), $row->total_receivable);
+            $this->assertEquals(max(0, $ledger), $row->total_receivable);
             $this->assertEquals($expected, $row->total_receivable);
-            $this->assertEquals($received, $row->total_payments);
         } else {
             $this->assertNull($row);
         }
@@ -104,7 +124,7 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
     {
         foreach (['owner', 'tenant', 'supplier'] as $type) {
             $account = $this->account($type, $type.' ledger');
-            $direction = $type === 'supplier' ? 'credit' : 'debit';
+            $direction = 'credit';
             $opposite = $direction === 'credit' ? 'debit' : 'credit';
             $this->entry($account, $direction, 1000.01, 'Açılış bakiyesi');
             $this->entry($account, $opposite, 400, 'Direct adjustment');
@@ -121,14 +141,13 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
             $this->assertSame([$account->id], $rows->pluck('id')->values()->all());
             $this->assertSame(600.01, $rows->first()->total_receivable);
             $this->assertEquals(abs($account->ledger_balance), $rows->first()->total_receivable);
-            $this->assertSame(0.0, $rows->first()->total_payments);
         }
     }
 
     public function test_unallocated_payment_does_not_change_report_when_allocation_is_added(): void
     {
         $account = $this->account('owner');
-        $this->entry($account, 'debit', 1000);
+        $this->entry($account, 'debit', 200);
         $this->entry($account, 'credit', 400);
         $payment = Payment::create(['apartment_id' => $this->apartment->id, 'account_id' => $account->id,
             'amount' => 400, 'unallocated_amount' => 400, 'payment_date' => '2026-10-01']);
@@ -136,9 +155,9 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
             'due_type' => 'aidat', 'amount' => 1000, 'remaining_amount' => 1000]);
         $before = $this->screen('owner')->getData()['accounts']->first()->total_receivable;
         $payment->allocateToDue($due, 400);
-        $this->assertEquals(600, $before);
+        $this->assertEquals(200, $before);
         $this->assertEquals($before, $this->screen('owner')->getData()['accounts']->first()->total_receivable);
-        $this->assertEquals(-600, $account->ledger_balance);
+        $this->assertEquals(200, $account->ledger_balance);
     }
 
     #[TestWith(['owner'])]
@@ -147,23 +166,24 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
     public function test_screen_pdf_and_excel_use_identical_accounts_and_values(string $type): void
     {
         $positive = $this->account($type, 'Positive '. $type);
-        $direction = $type === 'supplier' ? 'credit' : 'debit';
+        $direction = 'credit';
         $this->entry($positive, $direction, 1634.56);
         $payment = Payment::create(['apartment_id' => $this->apartment->id, 'account_id' => $positive->id,
             'amount' => 400, 'unallocated_amount' => 400, 'payment_date' => '2026-10-01']);
         $payment->transactions()->create(['apartment_id' => $this->apartment->id, 'account_id' => $positive->id,
-            'type' => $type === 'supplier' ? 'debit' : 'credit', 'amount' => 400, 'transaction_date' => '2026-10-01']);
+            'type' => 'debit', 'amount' => 400, 'transaction_date' => '2026-10-01']);
         $this->account($type, 'Omitted zero account');
         $screen = $this->screen($type);
         $this->assertSame('reports.receivable-list', $screen->name());
         $data = $screen->getData();
-        $expected = $data['accounts']->mapWithKeys(fn ($a) => [$a->name => [$a->total_payments, $a->total_receivable]])->all();
+        $expected = $data['accounts']->mapWithKeys(fn ($a) => [$a->name => $a->total_receivable])->all();
         // Render the actual screen body without the unrelated application navigation/membership queries.
         $body = file_get_contents(resource_path('views/reports/receivable-list.blade.php'));
         $body = str_replace(["@extends('layouts.app')", "@section('content')", '@endsection'], '', $body);
         \Illuminate\View\Component::flushCache();
         $html = Blade::render($body, $data, deleteCachedView: true);
         $this->assertStringContainsString('1.234,56', $html);
+        $this->assertStringNotContainsString('Toplam Ödeme', $html);
         $this->assertStringNotContainsString('Omitted zero account', $html);
         $request = Request::create('/reports/receivable-list/export/excel', 'GET', ['account_type' => $type]);
         $response = app(ReportController::class)->receivableListExport(app(CurrentApartment::class), $request, 'excel');
@@ -181,9 +201,7 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
             $sheet = $book->getActiveSheet();
             $actual = [];
             for ($row = 4; $row <= $sheet->getHighestRow(); $row++) {
-                $actual[$sheet->getCell('A'.$row)->getValue()] = [
-                    $sheet->getCell('D'.$row)->getValue(), $sheet->getCell('E'.$row)->getValue(),
-                ];
+                $actual[$sheet->getCell('B'.$row)->getValue()] = $sheet->getCell('D'.$row)->getValue();
             }
             $this->assertEquals($expected, $actual);
             $book->disconnectWorksheets();
@@ -201,9 +219,10 @@ class ReceivableListReportTest extends ExpenseFullPaymentTest
         });
         Pdf::shouldReceive('view')->once()->withArgs(function ($view, $pdfData) use ($expected) {
             $this->assertSame('reports.receivable-list-pdf', $view);
-            $this->assertEquals($expected, $pdfData['accounts']->mapWithKeys(fn ($a) => [$a->name => [$a->total_payments, $a->total_receivable]])->all());
+            $this->assertEquals($expected, $pdfData['accounts']->mapWithKeys(fn ($a) => [$a->name => $a->total_receivable])->all());
             $html = view($view, $pdfData)->render();
             $this->assertStringContainsString('1.234,56', $html);
+        $this->assertStringNotContainsString('Toplam Ödeme', $html);
             $this->assertStringNotContainsString('Omitted zero account', $html);
             return true;
         })->andReturn($builder);

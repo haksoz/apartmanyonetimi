@@ -104,7 +104,7 @@ class CategoryController extends Controller
             return $category;
         }
 
-        $isDefaultAidatCategory = $category->isDefaultAidatCategory();
+        $isDefaultAidatCategory = $category->isLocked();
 
         return view('categories.edit', compact('category', 'isDefaultAidatCategory'));
     }
@@ -117,8 +117,8 @@ class CategoryController extends Controller
             return $category;
         }
 
-        if ($category->isDefaultAidatCategory()) {
-            return redirect()->route('categories.index')->with('error', 'Genel Aidat kategorisinin adı, aktifliği ve kullanım yetkileri değiştirilemez.');
+        if ($category->isLocked()) {
+            return redirect()->route('categories.index')->with('error', $category->name.' kategorisinin adı, aktifliği ve kullanım yetkileri değiştirilemez.');
         }
 
         $validated = $this->validateCategory($request, $category->apartment_id, $category->id);
@@ -140,8 +140,8 @@ class CategoryController extends Controller
             return $category;
         }
 
-        if ($category->isDefaultAidatCategory()) {
-            return redirect()->route('categories.index')->with('error', 'Genel Aidat kategorisi silinemez.');
+        if ($category->isLocked()) {
+            return redirect()->route('categories.index')->with('error', $category->name.' kategorisi silinemez.');
         }
 
         if ($reason = $this->relatedRecordReason($category)) {

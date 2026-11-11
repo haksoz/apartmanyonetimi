@@ -155,6 +155,45 @@ class CategoryUsagePermissionTest extends TestCase
         $category->update(['name' => 'Doğrudan Değişiklik']);
     }
 
+    public function test_demirbas_category_is_locked_in_ui_controller_and_model(): void
+    {
+        $apartment = $this->apartment();
+        $user = $apartment->user;
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        Category::createDefaultsFor($apartment->id);
+        $category = Category::where('apartment_id', $apartment->id)->where('name', 'Demirbaş')->firstOrFail();
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->get(route('categories.edit', $category))
+            ->assertOk()
+            ->assertSee('disabled', false)
+            ->assertDontSee('Kategori silinsin mi?');
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->put(route('categories.update', $category), [
+                'name' => 'Değiştirildi',
+                'is_active' => false,
+                'allow_expense' => true,
+            ])
+            ->assertRedirect(route('categories.index'));
+
+        $category->refresh();
+        $this->assertSame('Demirbaş', $category->name);
+        $this->assertTrue($category->is_active);
+        $this->assertSame(['Kat Maliki Payı', 'Gider'], $category->usage_labels);
+
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+            ->actingAs($user)
+            ->delete(route('categories.destroy', $category))
+            ->assertRedirect(route('categories.index'));
+        $this->assertNull($category->fresh()->deleted_at);
+
+        $this->expectException(LogicException::class);
+        $category->update(['name' => 'Doğrudan Değişiklik']);
+    }
+
     public function test_missing_default_aidat_reference_does_not_fall_back_to_category_name(): void
     {
         $apartment = $this->apartment();

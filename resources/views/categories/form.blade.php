@@ -1,4 +1,4 @@
-@php($locked = $category?->exists && ($isDefaultAidatCategory ?? false))
+@php($locked = $category?->exists && $category->isLocked())
 <form method="POST" action="{{ $action }}" class="max-w-2xl rounded-2xl bg-white p-6 shadow-sm">
     @csrf
     @if ($method !== 'POST')

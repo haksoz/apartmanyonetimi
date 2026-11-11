@@ -776,7 +776,7 @@
                                         data-amount="{{ $expense->amount }}">
                                 </td>
 
-                                <td class="col-start-2 row-start-1 text-xs text-slate-500 md:px-5 md:py-4 md:text-sm md:text-slate-700">{{ $expense->expense_date?->format('d.m.Y') ?? ($expense->period_month?->format('d.m.Y') ?? '-') }}</td>
+                                <td class="col-start-2 row-start-1 text-xs text-slate-500 md:px-5 md:py-4 md:text-sm md:text-slate-700">{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</td>
 
                                 <td class="col-start-2 row-start-2 min-w-0 break-words text-sm text-slate-700 md:px-5 md:py-4">{{ $expense->description ?: $expense->category }}</td>
 

@@ -40,7 +40,7 @@ class DuePlanController extends Controller
 
         $request->validate(['plan_id' => ['nullable', 'integer', 'min:1']]);
         $plan = $request->boolean('new') ? new DuePlan() : DuePlan::query()
-            ->with(['batches' => fn ($q) => $q->withCount('dues')->orderBy('period')])
+            ->with(['batches' => fn ($q) => $q->withCount('dues')->orderBy('assessment_date')])
             ->where('apartment_id', $apartment->id)
             ->where('plan_year', $selectedYear)
             ->when($request->filled('plan_id'), fn ($query) => $query->whereKey($request->integer('plan_id')))
@@ -505,9 +505,10 @@ class DuePlanController extends Controller
         $sourceAmount = $reconciliation['source_amount'];
 
         DB::transaction(function () use ($duePlan, $period, $periodDate, $dueDate, $sourceAmount, $batchDescription, $snapshot, $unitAccounts, $category) {
-            $batch = DueBatch::query()->firstOrCreate(
-                ['due_plan_id' => $duePlan->id, 'period' => $period],
+            $batch = DueBatch::query()->forMonth($period)->firstOrCreate(
+                ['due_plan_id' => $duePlan->id],
                 [
+                    'assessment_date' => $periodDate->toDateString(),
                     'apartment_id' => $duePlan->apartment_id,
                     'due_type' => $duePlan->due_type,
                     'category_id' => $category->id,
@@ -537,7 +538,6 @@ class DuePlanController extends Controller
                     'account_id' => $item['account']->id,
                     'due_type' => $duePlan->due_type,
                     'category_id' => $category->id,
-                    'period' => $period,
                     'amount' => $amount,
                     'remaining_amount' => $amount,
                     'due_date' => $dueDate,

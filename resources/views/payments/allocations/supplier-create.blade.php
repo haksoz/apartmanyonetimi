@@ -82,7 +82,7 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($expenses as $index => $expense)
                         <tr data-imported="{{ $expense->is_imported ? '1' : '0' }}">
-                            <td class="px-5 py-4 text-slate-700">{{ $expense->expense_date?->format('d.m.Y') ?? ($expense->period_month?->format('d.m.Y') ?? '-') }}</td>
+                            <td class="px-5 py-4 text-slate-700">{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</td>
                             <td class="px-5 py-4 text-slate-700">
                                 {{ $expense->description ?: $expense->category }}
                                 @if ($expense->is_imported)

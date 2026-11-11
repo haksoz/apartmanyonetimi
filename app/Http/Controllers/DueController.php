@@ -98,14 +98,7 @@ class DueController extends Controller
                     $q->whereRaw("{$column} <= ?", [$filterEndDate]);
                 }
             })
-            ->when($filterPeriod, fn ($q) => $q->where(function ($periodQuery) use ($filterPeriod) {
-                $periodQuery->where('period', $filterPeriod)
-                    ->orWhere(function ($withoutPeriod) use ($filterPeriod) {
-                        $withoutPeriod->whereNull('period')
-                            ->whereYear('due_date', substr($filterPeriod, 0, 4))
-                            ->whereMonth('due_date', substr($filterPeriod, 5, 2));
-                    });
-            }))
+            ->when($filterPeriod, fn ($q) => $q->forMonth($filterPeriod))
             ->when($filterDueType, fn ($q) => $q->where('due_type', $filterDueType))
             ->when($filterPlan, fn ($q) => $q->whereHas('batch', fn ($b) => $b->where($planType === 'aidat' ? 'due_plan_id' : 'assessment_plan_id', $planId)))
             ->when($filterStatus,  fn ($q) => $this->applyStatusFilter($q, $filterStatus))
@@ -222,8 +215,8 @@ class DueController extends Controller
             return $apartment;
         }
         abort_unless($this->isOwnerOf($apartment), 403);
-        $input = $request->validate(['period' => ['required', 'date_format:Y-m']]);
-        $period = \Carbon\Carbon::createFromFormat('!Y-m', $input['period']);
+        $input = $request->validate(['created_at_manual' => ['required', 'date']]);
+        $period = \Carbon\Carbon::parse($input['created_at_manual'])->startOfMonth();
         $result = [];
         foreach (Account::where('apartment_id', $apartment->id)->where('is_active', true)
             ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])->get() as $account) {
@@ -343,14 +336,13 @@ class DueController extends Controller
         $validated = $request->validate([
             'source_type' => ['required', Rule::in([DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_INDIVIDUAL, DueBatch::SOURCE_FIXED])],
             'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL, DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT])],
-            'period' => ['nullable', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'due_type' => ['required', Rule::in($request->input('source_type') === DueBatch::SOURCE_INDIVIDUAL
                 ? DueType::values()
                 : array_column(DueType::batchOptions(), 'value'))],
             'category_id' => $this->categoryRules($request, $apartment->id),
             'description' => ['nullable', 'string', 'max:255'],
-            'created_at_manual' => ['nullable', 'date'],
+            'created_at_manual' => ['required', 'date'],
             'source_period' => ['required_if:source_type,'.DueBatch::SOURCE_EXPENSES, 'nullable', 'date_format:Y-m'],
             'selected_expense_ids' => ['nullable', 'string'],
             'source_amount' => ['required_if:source_type,'.DueBatch::SOURCE_MANUAL, 'nullable', 'numeric', 'min:0.01'],
@@ -383,9 +375,7 @@ class DueController extends Controller
             abort(403, 'Metrekare ve pay çarpanı dağıtımı ücretli plandadır.');
         }
 
-        if (empty($validated['period'])) {
-            $validated['period'] = \Carbon\Carbon::parse($validated['created_at_manual'] ?? now())->format('Y-m');
-        }
+        $validated['period'] = \Carbon\Carbon::parse($validated['created_at_manual'])->format('Y-m');
 
         if ($validated['source_type'] === DueBatch::SOURCE_FIXED && $validated['distribution_type'] !== DueBatch::DISTRIBUTION_EQUAL) {
             $validated['distribution_type'] = DueBatch::DISTRIBUTION_EQUAL;
@@ -428,7 +418,7 @@ class DueController extends Controller
                 'category_id' => $validated['category_id'] ?? null,
                 'source_type' => $validated['source_type'],
                 'distribution_type' => $validated['distribution_type'],
-                'period' => $validated['period'],
+                'assessment_date' => $validated['created_at_manual'],
                 'source_period' => isset($validated['source_period']) ? $validated['source_period'].'-01' : null,
                 'category_filter_ids' => $selectedExpenseIds,
                 'source_amount' => $sourceAmount,
@@ -613,12 +603,13 @@ class DueController extends Controller
             'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('apartment_id', $due->apartment_id)],
             'due_type' => ['sometimes', 'required', Rule::in([$due->due_type->value])],
             'category_id' => $this->categoryRules($request, $due->apartment_id, $due),
-            'period' => ['required', 'date_format:Y-m'],
             'due_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'created_at_manual' => ['nullable', 'date'],
+            'created_at_manual' => ['required', 'date'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $validated['period'] = \Carbon\Carbon::parse($validated['created_at_manual'])->format('Y-m');
 
         // Daire bilgisi, seçilen hesabın dairesinden otomatik belirlenir
         if (isset($validated['account_id'])) {
@@ -661,7 +652,7 @@ class DueController extends Controller
             if ($aidatCategory && $due->category_id === $aidatCategory->id) {
                 $targetAccountId = $validated['account_id'] ?? $due->account_id;
                 if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $targetAccountId, $validated['period'], $due->id)) {
-                    return back()->withErrors(['period' => 'Bu hesap için seçilen dönemde zaten Aidat borcu bulunuyor.'])->withInput();
+                    return back()->withErrors(['created_at_manual' => 'Bu hesap için seçilen dönemde zaten Aidat borcu bulunuyor.'])->withInput();
                 }
             }
         }
@@ -683,14 +674,14 @@ class DueController extends Controller
 
         DB::transaction(function () use ($due, $validated) {
             // Due'u güncelle
-            $due->update($validated);
+            $due->update(collect($validated)->except('period')->all());
 
             // İlgili account_transaction'ı güncelle
             $transaction = $due->transactions()->first();
             if ($transaction) {
                 $transaction->update([
                     'amount' => $validated['amount'],
-                    'transaction_date' => $validated['due_date'],
+                    'transaction_date' => $validated['created_at_manual'],
                     'description' => $validated['description'] ?? $due->category?->name.' borçlandırması',
                 ]);
             }
@@ -1001,7 +992,7 @@ class DueController extends Controller
         // Otherwise sum all expenses for the period
         return (float) Expense::query()
             ->where('apartment_id', $apartmentId)
-            ->whereDate('period_month', $validated['source_period'].'-01')
+            ->whereYear('expense_date', substr($validated['source_period'], 0, 4))->whereMonth('expense_date', substr($validated['source_period'], 5, 2))
             ->sum('amount');
     }
 
@@ -1027,7 +1018,6 @@ class DueController extends Controller
             'account_id' => $account->id,
             'due_type' => $batch->due_type,
             'category_id' => $batch->category_id,
-            'period' => $validated['period'],
             'amount' => $amount,
             'remaining_amount' => $amount,
             'due_date' => $validated['due_date'],
@@ -1080,7 +1070,7 @@ class DueController extends Controller
             ->firstOrFail();
 
         app(DueTargeting::class)->assertAccount($targetAccount, $due->due_type,
-            \Carbon\Carbon::parse($due->period ? $due->period.'-01' : $due->due_date->format('Y-m-01')));
+            $due->record_date->copy()->startOfMonth());
 
         $apartment = Apartment::query()->findOrFail($due->apartment_id);
         // Aidat + Aidat tekillik kontrolü: devir hedef hesabında aynı dönemde Aidat borcu varsa engelle
@@ -1103,7 +1093,7 @@ class DueController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages(['target_account_id' => 'Ödemesi veya ödeme tahsisi bulunan borç aktarılamaz.']);
             }
             app(DueTargeting::class)->assertAccount($targetAccount, $locked->due_type,
-                \Carbon\Carbon::parse($locked->period ? $locked->period.'-01' : $locked->due_date->format('Y-m-01')));
+                $locked->record_date->copy()->startOfMonth());
             $due->update([
                 'account_id'  => $targetAccount->id,
                 'unit_id'     => $targetAccount->unit_id,
@@ -1135,7 +1125,7 @@ class DueController extends Controller
                   ->orWhereHas('unit',  fn ($u) => $u->where('unit_no', 'like', '%'.$request->query('search').'%'))
                   ->orWhere('description', 'like', '%'.$request->query('search').'%');
             }))
-            ->when($request->query('period'),       fn ($q) => $q->where('period', $request->query('period')))
+            ->when($request->query('period'),       fn ($q) => $q->forMonth($request->query('period')))
             ->when($request->query('status'),       fn ($q) => $this->applyStatusFilter($q, $request->query('status')))
             ->when($request->query('batch_id'),     fn ($q) => $q->where('due_batch_id', $request->query('batch_id')))
             ->when($request->query('unit_id'),      fn ($q) => $q->where('unit_id', $request->query('unit_id')))

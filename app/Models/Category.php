@@ -42,18 +42,23 @@ class Category extends Model
     protected static function booted(): void
     {
         static::updating(function (Category $category) {
-            if ($category->isDefaultAidatCategory() && $category->isDirty([
+            if ($category->isLocked() && $category->isDirty([
                 'name', 'is_active', ...array_keys(self::USAGE_PERMISSIONS),
             ])) {
-                throw new LogicException('Genel Aidat kategorisinin adı, aktifliği ve kullanım yetkileri değiştirilemez.');
+                throw new LogicException($category->getOriginal('name').' kategorisinin adı, aktifliği ve kullanım yetkileri değiştirilemez.');
             }
         });
 
         static::deleting(function (Category $category) {
-            if ($category->isDefaultAidatCategory()) {
-                throw new LogicException('Genel Aidat kategorisi silinemez.');
+            if ($category->isLocked()) {
+                throw new LogicException($category->getOriginal('name').' kategorisi silinemez.');
             }
         });
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->exists && ($this->getOriginal('name') === 'Demirbaş' || $this->isDefaultAidatCategory());
     }
 
     public function isDefaultAidatCategory(): bool

@@ -138,7 +138,7 @@ class AccountTransactionDirectionTest extends TestCase
             ->post(route('dues.store'), [
                 'source_type' => 'manual',
                 'distribution_type' => 'equal',
-                'period' => '2026-06',
+                'created_at_manual' => '2026-06-01', 'period' => '2026-06',
                 'due_date' => '2026-06-30',
                 'due_type' => DueType::Aidat->value,
                 'category_id' => $category->id,
@@ -234,7 +234,7 @@ class AccountTransactionDirectionTest extends TestCase
             'account_id' => $account->id,
             'due_type' => DueType::Aidat,
             'category_id' => $category->id,
-            'period' => '2026-06',
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06',
             'amount' => 1000,
             'remaining_amount' => 1000,
             'due_date' => '2026-06-30',

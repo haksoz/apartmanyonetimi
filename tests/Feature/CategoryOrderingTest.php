@@ -19,7 +19,7 @@ class CategoryOrderingTest extends TestCase
         $before = $categories->keyBy('id')->map->getAttributes()->all();
         $ids = $categories->pluck('id')->reverse()->values()->all();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
-        $this->get(route('categories.index'))->assertOk()->assertSee('Sıralamayı düzenle');
+        $this->get(route('categories.index'))->assertOk()->assertSee('data-category-list', false)->assertSee('Sıralamayı Kaydet')->assertDontSee('<details', false);
         $this->post(route('categories.reorder'), ['category_ids' => $ids])
             ->assertSessionHasNoErrors()->assertRedirect(route('categories.index'));
         $this->assertSame($ids, Category::where('apartment_id', $apartment->id)->orderedForDisplay()->pluck('id')->all());

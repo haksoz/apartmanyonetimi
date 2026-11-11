@@ -37,13 +37,13 @@ class DueTypeTargetingTest extends TestCase
     {
         return ['source_type' => 'individual', 'distribution_type' => 'individual', 'account_id' => $account->id,
             'due_type' => $type, 'category_id' => $category->id, 'individual_amount' => 100,
-            'period' => '2026-06', 'due_date' => '2026-06-20'];
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06', 'due_date' => '2026-06-20'];
     }
 
     private function due(Account $account, Category $category, string $type = 'aidat'): Due
     {
         return Due::create(['apartment_id' => $account->apartment_id, 'account_id' => $account->id, 'unit_id' => $account->unit_id,
-            'due_type' => $type, 'category_id' => $category->id, 'period' => '2026-06', 'due_date' => '2026-06-20',
+            'due_type' => $type, 'category_id' => $category->id, 'created_at_manual' => '2026-06-01', 'period' => '2026-06', 'due_date' => '2026-06-20',
             'amount' => 100, 'remaining_amount' => 100, 'status' => 'unpaid']);
     }
 
@@ -81,7 +81,7 @@ class DueTypeTargetingTest extends TestCase
     public function test_interface_eligibility_uses_the_same_server_rule_and_period(): void
     {
         [$apartment, $unit, $owner, $tenant] = $this->fixture();
-        $response = $this->getJson(route('dues.account-eligibility', ['period' => '2026-06']))->assertOk();
+        $response = $this->getJson(route('dues.account-eligibility', ['created_at_manual' => '2026-06-01']))->assertOk();
         $this->assertNotEmpty($response->json("accounts.{$owner->id}.aidat"));
         $this->assertNull($response->json("accounts.{$tenant->id}.aidat"));
         $this->assertNotEmpty($response->json("accounts.{$tenant->id}.malik_payi"));
@@ -90,7 +90,7 @@ class DueTypeTargetingTest extends TestCase
             ->assertSee('Hesap uygunluğu kontrol edilemedi.')
             ->assertSee('loadEligibility', false)
             ->assertDontSee('name="target_audience"', false);
-        $this->getJson(route('dues.account-eligibility', ['period' => '2025-12']))->assertOk()
+        $this->getJson(route('dues.account-eligibility', ['created_at_manual' => '2025-12-01']))->assertOk()
             ->assertJsonPath("accounts.{$owner->id}.aidat", null);
     }
 
@@ -104,7 +104,7 @@ class DueTypeTargetingTest extends TestCase
         $snapshot = fn () => collect($tables)->mapWithKeys(fn ($table) => [$table => DB::table($table)->orderBy('id')->get()->toJson()])->all();
         $before = $snapshot();
         $this->patchJson(route('dues.update', $due), ['due_type' => 'malik_payi', 'category_id' => $category->id,
-            'period' => '2026-06', 'due_date' => '2026-06-20', 'amount' => 200])->assertUnprocessable()->assertJsonValidationErrors('due_type');
+            'created_at_manual' => '2026-06-01', 'period' => '2026-06', 'due_date' => '2026-06-20', 'amount' => 200])->assertUnprocessable()->assertJsonValidationErrors('due_type');
         $this->assertSame($before, $snapshot());
         $this->get(route('dues.edit', $due))->assertOk()->assertDontSee('<select id="due_type"', false)->assertSee('Kaydedilmiş borcun türü değiştirilemez.');
         try {
@@ -150,10 +150,10 @@ class DueTypeTargetingTest extends TestCase
             'name' => 'Aidat', 'plan_year' => 2026, 'amount_type' => 'monthly', 'monthly_amount' => 100,
             'distribution_type' => 'equal', 'due_day' => 10, 'generate_day' => 1, 'is_active' => true]);
         app(DuePlanController::class)->createDuesForPeriod($plan, '2026-06');
-        $this->assertSame($tenant->id, Due::where('period', '2026-06')->sole()->account_id);
+        $this->assertSame($tenant->id, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '2026-06')->sole()->account_id);
         $assignment->update(['move_out_date' => '2026-06-30']);
         app(DuePlanController::class)->createDuesForPeriod($plan, '2026-07');
-        $this->assertSame($owner->id, Due::where('period', '2026-07')->sole()->account_id);
+        $this->assertSame($owner->id, Due::where(\Illuminate\Support\Facades\DB::raw('SUBSTR(COALESCE(created_at_manual, created_at), 1, 7)'), '2026-07')->sole()->account_id);
         $this->assertSame(['aidat'], Due::distinct()->pluck('due_type')->map(fn ($type) => $type->value)->all());
     }
 }

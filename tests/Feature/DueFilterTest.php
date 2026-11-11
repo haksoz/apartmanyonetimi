@@ -72,7 +72,7 @@ class DueFilterTest extends TestCase
         $batchDue = Due::create([...$dueData, 'due_type' => 'aidat', 'due_batch_id' => $batch->id]);
         $manualDue = Due::create([...$dueData, 'due_type' => 'malik_payi']);
         $individualDue = Due::create([...$dueData, 'due_type' => 'malik_payi', 'due_batch_id' => $individualBatch->id]);
-        $importedDue = Due::create([...$dueData, 'due_type' => 'aidat', 'period' => null,
+        $importedDue = Due::create([...$dueData, 'due_type' => 'aidat', 'period' => null, 'created_at_manual' => '2026-01-01',
             'due_date' => '2026-01-05', 'is_imported' => true]);
         $unusedPlan = DuePlan::create([
             'apartment_id' => $apartment->id, 'name' => 'Sonuçsuz Plan', 'plan_year' => 2025,

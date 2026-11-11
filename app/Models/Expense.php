@@ -41,12 +41,21 @@ class Expense extends Model
         'remaining_amount' => 'decimal:2',
         'expense_date' => 'date',
         'due_date' => 'date',
-        'period_month' => 'date',
         'is_paid' => 'boolean',
         'is_imported' => 'boolean',
     ];
 
     protected $attributes = ['expense_relation' => 'unassigned'];
+
+    public function getPeriodMonthAttribute(): ?\Carbon\Carbon
+    {
+        return $this->expense_date?->copy()->startOfMonth();
+    }
+
+    public function setPeriodMonthAttribute($value): void
+    {
+        // Legacy callers may still send this field. The expense date is authoritative.
+    }
 
     public function scopeForRelation($query, string $relation)
     {

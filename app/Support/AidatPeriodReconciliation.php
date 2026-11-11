@@ -34,7 +34,7 @@ class AidatPeriodReconciliation
         $targetAccounts = $this->targetAccounts($plan, $periodDate);
         $completedAccountIds = Due::query()
             ->where('apartment_id', $plan->apartment_id)
-            ->where('period', $period)
+            ->forMonth($period)
             ->where('due_type', DueType::Aidat->value)
             ->where('category_id', $category?->id)
             ->whereHas('batch', fn ($query) => $query->where('due_plan_id', $plan->id ?? 0))
@@ -94,7 +94,7 @@ class AidatPeriodReconciliation
         $query = Due::query()
             ->where('apartment_id', $apartment->id)
             ->where('account_id', $accountId)
-            ->where('period', $period)
+            ->forMonth($period)
             ->where('due_type', DueType::Aidat->value)
             ->where('category_id', $category->id);
 

@@ -258,7 +258,6 @@ class ExpensePageTest extends TestCase
             'apartment_id' => $apartment->id,
             'account_id' => $account->id,
             'category' => 'Elektrik',
-            'period_month' => '2026-05-01 00:00:00',
             'amount' => 1250.75,
             'is_paid' => false,
         ]);
@@ -405,7 +404,6 @@ class ExpensePageTest extends TestCase
             'id' => $expense->id,
             'category_id' => $category->id,
             'category' => 'Asansör',
-            'period_month' => '2026-04-01 00:00:00',
             'amount' => 750,
             'description' => 'Bakım faturası',
             'is_paid' => true,

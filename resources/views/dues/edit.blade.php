@@ -35,7 +35,6 @@
     <form method="POST" action="{{ route('dues.update', $due) }}" class="space-y-4">
         @csrf
         @method('PATCH')
-        <input type="hidden" id="period" name="period" value="{{ old('period', $due->period) }}">
 
         {{-- Main Fields --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
@@ -73,7 +72,7 @@
 
                 <div>
                     <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
-                    <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', ($due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->toDateString() : $due->created_at->toDateString())) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <input id="created_at_manual" name="created_at_manual" type="date" required value="{{ old('created_at_manual', ($due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->toDateString() : $due->created_at->toDateString())) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                     @error('created_at_manual')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
@@ -113,7 +112,6 @@
             const topicSelect = document.getElementById('category_id');
             const categoryField = document.getElementById('category-field');
             const originalDueType = @json($due->due_type?->value);
-            const periodInput = document.getElementById('period');
             const createdAtInput = document.getElementById('created_at_manual');
 
             const syncCategoryField = () => {
@@ -129,18 +127,10 @@
 
             typeSelect?.addEventListener('change', syncCategoryField);
 
-            const syncPeriodFromCreatedAt = () => {
-                const dateVal = createdAtInput?.value;
-                if (dateVal) {
-                    periodInput.value = dateVal.substring(0, 7);
-                }
-            };
 
-            createdAtInput?.addEventListener('change', syncPeriodFromCreatedAt);
 
             // Init
             syncCategoryField();
-            syncPeriodFromCreatedAt();
         })();
     </script>
 @endsection

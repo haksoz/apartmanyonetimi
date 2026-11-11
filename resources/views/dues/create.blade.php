@@ -35,7 +35,6 @@
         @csrf
         <input type="hidden" name="source_type" value="individual">
         <input type="hidden" name="distribution_type" value="individual">
-        <input type="hidden" id="period" name="period" value="{{ old('period', now()->format('Y-m')) }}">
 
         {{-- Borçlandırma bilgileri --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
@@ -96,7 +95,7 @@
                 <div class="grid gap-5 md:col-span-2 md:grid-cols-2">
                     <div>
                         <label for="created_at_manual" class="mb-2 block text-sm font-medium text-slate-600">Oluşturulma Tarihi</label>
-                        <input id="created_at_manual" name="created_at_manual" type="date" value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                        <input id="created_at_manual" name="created_at_manual" type="date" required value="{{ old('created_at_manual', now()->toDateString()) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         @error('created_at_manual')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                     </div>
 
@@ -167,7 +166,6 @@
             };
             const topicSelect = document.getElementById('category_id');
             const categoryField = document.getElementById('category-field');
-            const periodInput = document.getElementById('period');
             const createdAtInput = document.getElementById('created_at_manual');
             const dueDateInput = document.getElementById('due_date');
             const descriptionInput = document.getElementById('description');
@@ -180,7 +178,7 @@
                 syncAccountOptions();
                 try {
                     const url = new URL(@json(route('dues.account-eligibility')));
-                    url.searchParams.set('period', periodInput.value);
+                    url.searchParams.set('created_at_manual', createdAtInput.value);
                     const response = await fetch(url, { headers: { Accept: 'application/json' } });
                     if (!response.ok) throw new Error('eligibility');
                     const data = await response.json();
@@ -203,12 +201,6 @@
                 '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
             };
 
-            const syncPeriodFromCreatedAt = () => {
-                const dateVal = createdAtInput?.value;
-                if (dateVal) {
-                    periodInput.value = dateVal.substring(0, 7);
-                }
-            };
 
             const syncDueDate = () => {
                 const dateVal = createdAtInput?.value;
@@ -224,7 +216,7 @@
 
             const updateDescription = () => {
                 if (descriptionInput.value && descriptionInput.dataset.userEdited) return;
-                const period = periodInput.value;
+                const period = createdAtInput?.value?.substring(0, 7);
                 const typeName = dueTypeLabels[selectedDueType()] || '';
                 const topicOption = topicSelect?.options[topicSelect.selectedIndex];
                 const topicName = topicOption?.value ? topicOption.text : '';
@@ -265,7 +257,6 @@
                 updateDescription();
             });
             createdAtInput?.addEventListener('change', () => {
-                syncPeriodFromCreatedAt();
                 loadEligibility();
                 syncDueDate();
                 descriptionInput.dataset.userEdited = '';
@@ -279,7 +270,6 @@
             // Init
             syncAccountOptions();
             syncCategoryField();
-            syncPeriodFromCreatedAt();
             loadEligibility();
             syncDueDate();
             if (!descriptionInput.value) {

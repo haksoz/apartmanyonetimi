@@ -10,7 +10,7 @@
                 <span class="text-slate-600">Alacak Listesi</span>
             </div>
             <h1 class="text-2xl font-bold text-slate-950">Alacak Listesi</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }}</p>
+            <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }} — Yönetimden alacağı olan hesaplar; tedarikçi alacakları ve malik/kiracı fazla ödemeleri.</p>
         </div>
         <div class="flex flex-wrap justify-end gap-2">
             <a href="{{ route('reports.receivable-list.export', array_merge(['type'=>'excel'], request()->query())) }}"
@@ -32,12 +32,13 @@
         <div>
             <label class="block text-xs text-slate-500 mb-1">Hesap Türü</label>
             <select name="account_type" class="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <option value="all" @selected($filterAccountType === 'all')>Tümü</option>
                 <option value="supplier" @selected($filterAccountType === 'supplier')>Tedarikçi</option>
                 <option value="owner"    @selected($filterAccountType === 'owner')>Kat Maliki</option>
                 <option value="tenant"   @selected($filterAccountType === 'tenant')>Kiracı</option>
             </select>
         </div>
-        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Filtrele</button>
+        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Görüntüle</button>
     </form>
     @endif
 
@@ -46,30 +47,28 @@
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                     <tr>
-                        <th class="px-4 py-3 text-left font-semibold">Hesap Adı</th>
                         <th class="px-4 py-3 text-left font-semibold">Daire</th>
+                        <th class="px-4 py-3 text-left font-semibold">Hesap Adı</th>
                         <th class="px-4 py-3 text-left font-semibold">Tür</th>
-                        <th class="px-4 py-3 text-right font-semibold">Toplam Ödeme</th>
                         <th class="px-4 py-3 text-right font-semibold">Alacak</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($accounts as $account)
                         <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3 font-medium text-slate-800">{{ $account->name }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $account->unit?->unit_no ?? '-' }}</td>
+                            <td class="px-4 py-3 font-medium text-slate-800">{{ $account->name }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $account->type_label }}</td>
-                            <td class="px-4 py-3 text-right text-slate-700">{{ number_format($account->total_payments, 2, ',', '.') }} ₺</td>
                             <td class="px-4 py-3 text-right font-semibold text-blue-600">{{ number_format($account->total_receivable, 2, ',', '.') }} ₺</td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Alacak kaydı bulunamadı.</td></tr>
+                        <tr><td colspan="4" class="px-4 py-8 text-center text-slate-400">Alacak kaydı bulunamadı.</td></tr>
                     @endforelse
                 </tbody>
                 @if($accounts->count())
                 <tfoot class="bg-slate-50 border-t-2 border-slate-200">
                     <tr>
-                        <td colspan="4" class="px-4 py-3 font-bold text-slate-700">TOPLAM ALACAK</td>
+                        <td colspan="3" class="px-4 py-3 font-bold text-slate-700">TOPLAM ALACAK</td>
                         <td class="px-4 py-3 text-right font-bold text-blue-600">{{ number_format($accounts->sum('total_receivable'), 2, ',', '.') }} ₺</td>
                     </tr>
                 </tfoot>

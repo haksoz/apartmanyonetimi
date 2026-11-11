@@ -9,6 +9,24 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DueBatch extends Model
 {
+    public function getPeriodAttribute(): ?string
+    {
+        return $this->assessment_date?->format('Y-m');
+    }
+
+    public function setPeriodAttribute($value): void
+    {
+        if (empty($this->attributes['assessment_date']) && $value) {
+            $this->assessment_date = \Carbon\Carbon::parse($value)->startOfMonth();
+        }
+    }
+
+    public function scopeForMonth($query, string $month)
+    {
+        $date = \Carbon\Carbon::createFromFormat('!Y-m', $month);
+        return $query->whereDate('assessment_date', '>=', $date->toDateString())
+            ->whereDate('assessment_date', '<=', $date->copy()->endOfMonth()->toDateString());
+    }
     public const SOURCE_EXPENSES = 'expenses';
 
     public const SOURCE_MANUAL = 'manual';
@@ -35,6 +53,7 @@ class DueBatch extends Model
         'source_type',
         'distribution_type',
         'period',
+        'assessment_date',
         'source_period',
         'category_filter_ids',
         'source_amount',
@@ -44,6 +63,7 @@ class DueBatch extends Model
     ];
 
     protected $casts = [
+        'assessment_date' => 'date',
         'source_period' => 'date',
         'category_filter_ids' => 'array',
         'source_amount' => 'decimal:2',

@@ -28,7 +28,7 @@ class ExpenseReportPeriodTest extends TestCase
         foreach (['2026-08' => 800, '2026-09' => 900, '2026-10' => 1000, '2026-11' => 1100] as $period => $amount) {
             Expense::create(['apartment_id' => $this->apartment->id, 'description' => $period.' gideri',
                 'category' => 'Bakım', 'amount' => $amount, 'remaining_amount' => $amount,
-                'period_month' => $period.'-01', 'expense_date' => '2026-11-05']);
+                'expense_date' => $period.'-05']);
         }
     }
 
@@ -107,9 +107,9 @@ class ExpenseReportPeriodTest extends TestCase
             ->assertSee('Görüntüle')->assertSee('month_end=2026-10', false)
             ->assertDontSee('type="date"', false)->assertDontSee('show_categories', false)->assertDontSee('Gider Kategorileri');
         $this->assertEquals(300, $screen->viewData('totalIncome'));
-        $this->assertEquals(0, $screen->viewData('totalExpense'));
-        $this->assertEquals(50, $screen->viewData('openingBalance'));
-        $this->assertEquals(350, $screen->viewData('closingBalance'));
+        $this->assertEquals(1900, $screen->viewData('totalExpense'));
+        $this->assertEquals(-750, $screen->viewData('openingBalance'));
+        $this->assertEquals(-2350, $screen->viewData('closingBalance'));
         $this->assertSame(['Eylül 2026', 'Ekim 2026'], $screen->viewData('rows')->pluck('month')->all());
         $pdf = view('reports.income-expense-pdf', $screen->original->getData())->render();
         $this->assertStringContainsString('31.10.2026', $pdf);

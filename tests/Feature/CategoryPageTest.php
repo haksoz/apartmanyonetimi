@@ -175,7 +175,7 @@ class CategoryPageTest extends TestCase
         $apartment->members()->attach($user->id, ['role' => 'owner']);
         $category = Category::create([
             'apartment_id' => $apartment->id,
-            'name' => 'Demirbaş',
+            'name' => 'Ceza',
             'type' => Category::TYPE_ALL,
             'is_active' => true,
             'is_system' => true,
@@ -184,7 +184,7 @@ class CategoryPageTest extends TestCase
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
             ->put(route('categories.update', $category), [
-                'name' => 'Demirbaş Güncel',
+                'name' => 'Ceza Güncel',
                 'type' => Category::TYPE_EXPENSE,
                 'is_active' => false,
                 'allow_malik_payi' => true,
@@ -193,7 +193,7 @@ class CategoryPageTest extends TestCase
             ->assertRedirect(route('categories.index'));
 
         $category->refresh();
-        $this->assertSame('Demirbaş Güncel', $category->name);
+        $this->assertSame('Ceza Güncel', $category->name);
         $this->assertSame(Category::TYPE_ALL, $category->type);
         $this->assertFalse($category->is_active);
         $this->assertTrue($category->allow_malik_payi);

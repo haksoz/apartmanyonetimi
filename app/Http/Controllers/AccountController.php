@@ -1796,7 +1796,6 @@ class AccountController extends Controller
                             'paid_amount'      => 0,
                             'remaining_amount' => $t['credit'],
                             'expense_date'     => $t['date'],
-                            'period_month'     => $t['date'],
                             'is_paid'          => false,
                             'is_imported'      => true,
                         ]);
@@ -2090,7 +2089,7 @@ class AccountController extends Controller
             $result[]  = [
                 'id'               => $expense->id,
                 'description'      => $expense->description ?: ($expense->category ?: 'Gider'),
-                'expense_date'     => $expense->expense_date?->format('d.m.Y') ?? ($expense->period_month?->format('d.m.Y') ?? '-'),
+                'expense_date'     => $expense->expense_date?->format('d.m.Y') ?? '-',
                 'remaining_amount' => round((float) $expense->remaining_amount, 2),
                 'suggested_amount' => $suggested > 0 ? $suggested : 0,
                 'is_imported'      => (bool) $expense->is_imported,

@@ -132,7 +132,7 @@ class DuePlan extends Model
     public function isGeneratedForPeriod(string $period): bool
     {
         return $this->batches()
-            ->where('period', $period)
+            ->forMonth($period)
             ->whereHas('dues')
             ->exists();
     }
