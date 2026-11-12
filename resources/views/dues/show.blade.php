@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('content_spacing', 'py-3 sm:py-4')
+
 
 
 @section('content')
@@ -9,80 +11,59 @@
     @endphp
 
     {{-- Header --}}
-    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+    <div class="mb-3 flex flex-row items-center justify-between gap-2 min-w-0 sm:gap-3">
         <div class="min-w-0 flex-1">
             <h1 class="text-2xl font-bold text-slate-950">
-                <a href="{{ route('dues.index') }}" class="hover:text-slate-600">Aidat</a>
+                Aidat
             </h1>
-            @if ($due->account)
-                <div class="mt-1">
-                    <a href="{{ route('accounts.show', $due->account) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600 hover:text-emerald-600 hover:bg-slate-100">
-                        {{ $due->account->name }}
-                        @if ($due->account->unit)
-                            - Daire {{ str_pad($due->account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                        @endif
-                    </a>
-                </div>
-            @endif
         </div>
 
-        <div class="flex items-center justify-end gap-2 shrink-0">
-            <div class="hidden lg:flex flex-wrap items-center gap-2">
+        <div class="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
+            <div class="flex items-center gap-1 sm:gap-2">
                 @if ($due->status !== 'paid')
-                    <a href="{{ route('dues.payment.create', $due) }}" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Tahsil Et</a>
+                    <button type="button" data-due-id="{{ $due->id }}" data-amount="{{ $due->remaining_amount }}" data-description="{{ $dueTitle }}" data-account="{{ $due->account?->name }}" data-unit="{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}" onclick="openDuePaymentModal(Number(this.dataset.dueId), Number(this.dataset.amount), this.dataset.description, this.dataset.account, this.dataset.unit)" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl bg-emerald-600 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-white hover:bg-emerald-700">Tahsil Et</button>
                 @endif
 
                 @if (! in_array($due->status, ['paid', 'partial']) && $transferableAccounts->isNotEmpty())
                     <button type="button" onclick="document.getElementById('transfer-due-modal').classList.remove('hidden')"
-                            class="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">Borç Aktar</button>
+                            class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl bg-orange-500 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-white hover:bg-orange-600">Borç Aktar</button>
                 @endif
 
-                <a href="{{ route('dues.edit', $due) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+                <div class="hidden sm:flex items-center gap-2">
+                <a href="{{ route('dues.edit', $due) }}" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl border border-slate-300 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
 
                 @if ($due->allocations->isNotEmpty())
-                    <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                    <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl border border-red-200 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
                 @else
                     <form method="POST" action="{{ route('dues.destroy', $due) }}" onsubmit="return confirm('Aidat kaydı silinsin mi?')">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                        <button type="submit" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl border border-red-200 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
                     </form>
                 @endif
+                </div>
+
+                <details class="relative sm:hidden">
+                    <summary class="inline-flex h-11 w-16 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-300 px-1 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">İşlemler</summary>
+                    <div class="absolute right-0 top-full z-20 mt-2 flex w-40 flex-col gap-2 rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200">
+                <a href="{{ route('dues.edit', $due) }}" class="flex w-full items-center justify-start text-left rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+
+                @if ($due->allocations->isNotEmpty())
+                    <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="flex w-full items-center justify-start text-left rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                @else
+                    <form method="POST" action="{{ route('dues.destroy', $due) }}" onsubmit="return confirm('Aidat kaydı silinsin mi?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="flex w-full items-center justify-start text-left rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                    </form>
+                @endif
+                    </div>
+                </details>
             </div>
 
-            <details class="lg:hidden relative group">
-                <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                    İşlem
-                </summary>
-                <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
-                    @if ($due->status !== 'paid')
-                        <a href="{{ route('dues.payment.create', $due) }}" class="block w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-left hover:bg-emerald-700">Tahsil Et</a>
-                    @endif
 
-                    @if (! in_array($due->status, ['paid', 'partial']) && $transferableAccounts->isNotEmpty())
-                        <button type="button" onclick="document.getElementById('transfer-due-modal').classList.remove('hidden')"
-                                class="block w-full rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white text-left hover:bg-orange-600">Borç Aktar</button>
-                    @endif
 
-                    <a href="{{ route('dues.edit', $due) }}" class="block w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-left hover:bg-slate-50">Düzenle</a>
-
-                    @if ($due->allocations->isNotEmpty())
-                        <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
-                    @else
-                        <form method="POST" action="{{ route('dues.destroy', $due) }}" onsubmit="return confirm('Aidat kaydı silinsin mi?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
-                        </form>
-                    @endif
-
-                </div>
-            </details>
-
-            <button type="button" onclick="history.back()" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+            <button type="button" onclick="history.back()" class="inline-flex h-11 w-16 shrink-0 items-center justify-center sm:h-auto sm:w-auto gap-1 whitespace-nowrap rounded-xl border border-slate-300 px-1 py-2 sm:gap-2 sm:py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
                 </svg>
@@ -113,18 +94,18 @@
                 <div class="text-xl font-bold text-slate-900">{{ $dueTitle }}</div>
             </div>
 
-            <div class="mb-5 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:gap-3 sm:overflow-visible sm:border-0 sm:bg-transparent sm:grid-cols-3">
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4 sm:block">
-                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-slate-600">Tutar</div>
-                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold text-slate-900 tabular-nums sm:mt-2">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
+            <div class="mb-5 grid grid-cols-3 gap-2 py-4 text-center sm:gap-3 sm:py-0 sm:text-left">
+                <div class="min-w-0 sm:rounded-xl sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4">
+                    <div class="text-sm text-slate-500 sm:font-medium sm:text-slate-600">Tutar</div>
+                    <div class="text-base font-semibold sm:text-2xl sm:font-bold text-slate-900 tabular-nums sm:mt-2">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
                 </div>
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:border-emerald-200 sm:bg-emerald-50 sm:p-4 sm:block">
-                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-emerald-700">Ödenen</div>
-                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold text-emerald-700 tabular-nums sm:mt-2">{{ number_format($paidAmount, 2, ',', '.') }} TL</div>
+                <div class="min-w-0 sm:rounded-xl sm:border sm:border-emerald-200 sm:bg-emerald-50 sm:p-4">
+                    <div class="text-sm text-slate-500 sm:font-medium sm:text-emerald-700">Ödenen</div>
+                    <div class="text-base font-semibold sm:text-2xl sm:font-bold text-emerald-700 tabular-nums sm:mt-2">{{ number_format($paidAmount, 2, ',', '.') }} TL</div>
                 </div>
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:p-4 sm:block {{ $due->remaining_amount > 0 ? 'sm:border-amber-200 sm:bg-amber-50' : 'sm:border-slate-200 sm:bg-slate-50' }}">
-                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-slate-600">Kalan</div>
-                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold {{ $due->remaining_amount > 0 ? 'text-amber-700' : 'text-slate-900' }} tabular-nums sm:mt-2">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                <div class="min-w-0 sm:rounded-xl sm:border sm:p-4 {{ $due->remaining_amount > 0 ? 'sm:border-amber-200 sm:bg-amber-50' : 'sm:border-slate-200 sm:bg-slate-50' }}">
+                    <div class="text-sm text-slate-500 sm:font-medium sm:text-slate-600">Kalan</div>
+                    <div class="text-base font-bold sm:text-2xl {{ $due->remaining_amount > 0 ? 'text-amber-700' : 'text-slate-900' }} tabular-nums sm:mt-2">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
                 </div>
             </div>
 
@@ -457,5 +438,7 @@
 
     @endif
 
+    @include('dues._payment_modal', ['cashBoxes' => $cashBoxes])
+    @include('dues._payment_modal_script')
 @endsection
 

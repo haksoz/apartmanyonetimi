@@ -49,6 +49,22 @@
             <div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 text-sm">
 
+                {{-- Açılış tarihi --}}
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                    <div class="text-xs text-slate-500">
+                        @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Girişi
+                        @else Hesap Açılışı
+                        @endif
+                    </div>
+                    <div class="text-xs text-slate-500">
+                        @if ($account->type === App\Models\Account::TYPE_TENANT && $account->active_tenant_assignment)
+                            {{ $account->active_tenant_assignment->move_in_date->format('d.m.Y') }}
+                        @else
+                            {{ $account->account_opening_date ? $account->account_opening_date->format('d.m.Y') : '—' }}
+                        @endif
+                    </div>
+                </div>
+
                 {{-- Daire bilgileri --}}
                 @if ($account->unit)
                     @php
@@ -67,6 +83,13 @@
                     @endif
                 @endif
 
+                @if ($account->type === App\Models\Account::TYPE_SUPPLIER && $account->defaultCategory)
+                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
+                    <div class="text-xs text-slate-500">Kategori</div>
+                    <div class="text-xs text-slate-500">{{ $account->defaultCategory->name }}</div>
+                </div>
+                @endif
+
                 {{-- Telefon --}}
                 @if ($account->phone)
                 <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
@@ -82,22 +105,6 @@
                     <div class="text-xs text-slate-500">{{ $account->email }}</div>
                 </div>
                 @endif
-
-                {{-- Açılış tarihi --}}
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                    <div class="text-xs text-slate-500">
-                        @if ($account->type === App\Models\Account::TYPE_TENANT) Kiracı Girişi
-                        @else Hesap Açılışı
-                        @endif
-                    </div>
-                    <div class="text-xs text-slate-500">
-                        @if ($account->type === App\Models\Account::TYPE_TENANT && $account->active_tenant_assignment)
-                            {{ $account->active_tenant_assignment->move_in_date->format('d.m.Y') }}
-                        @else
-                            {{ $account->account_opening_date ? $account->account_opening_date->format('d.m.Y') : '—' }}
-                        @endif
-                    </div>
-                </div>
 
                 {{-- Kapanış tarihi --}}
                 @if ($account->account_end_date)
@@ -119,19 +126,19 @@
     </div>
 
     {{-- Alt: Borç / Alacak / Bakiye --}}
-        <div class="grid grid-cols-3 gap-2 px-3 py-3 text-center text-xs md:gap-0 md:p-0 md:text-left md:divide-x divide-slate-100">
+        <div class="grid grid-cols-3 gap-2 px-3 py-4 text-center text-sm md:gap-0 md:p-0 md:text-left md:divide-x divide-slate-100">
             <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
                 <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Borç</div>
-                <div class="font-medium md:text-xl md:font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
+                <div class="text-base font-semibold md:text-xl md:font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
             </div>
             <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
                 <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Alacak</div>
-                <div class="font-medium md:text-xl md:font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
+                <div class="text-base font-semibold md:text-xl md:font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
             </div>
             <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
                 <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Bakiye</div>
                 @php $balance = $account->ledger_balance; @endphp
-                <div class="md:text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
+                <div class="text-base md:text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
                     {{ number_format(abs($balance), 2, ',', '.') }} TL
                     <span class="text-xs font-normal">{{ $balance < 0 ? '(B)' : ($balance > 0 ? '(A)' : '') }}</span>
                 </div>

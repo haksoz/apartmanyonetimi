@@ -591,7 +591,13 @@ class ExpenseController extends Controller
             'expensePlan',
         ]);
 
-        return view('expenses.show', compact('expense'));
+        $cashBoxes = CashBox::query()
+            ->where('apartment_id', $expense->apartment_id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('expenses.show', compact('expense', 'cashBoxes'));
 
     }
 

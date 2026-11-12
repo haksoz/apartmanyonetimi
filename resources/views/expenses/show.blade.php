@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('content_spacing', 'py-3 sm:py-4')
 
 
 @section('content')
@@ -36,69 +37,54 @@
 
 
     {{-- Header --}}
-    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+    <div class="mb-3 flex flex-row items-center justify-between gap-2 min-w-0 sm:gap-3">
         <div class="min-w-0 flex-1">
             <h1 class="text-2xl font-bold text-slate-950">
-                <a href="{{ route('expenses.index') }}" class="hover:text-slate-600">Gider</a>
+                Gider
             </h1>
-            @if ($expense->account)
-                <div class="mt-1">
-                    <a href="{{ route('accounts.show', $expense->account) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600 hover:text-emerald-600 hover:bg-slate-100">
-                        {{ $expense->account->name }}
-                        @if ($expense->account->unit)
-                            - Daire {{ str_pad($expense->account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
-                        @endif
-                    </a>
-                </div>
-            @endif
         </div>
 
-        <div class="flex items-center justify-end gap-2 shrink-0">
-            <div class="hidden lg:flex flex-wrap items-center gap-2">
+        <div class="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
+            <div class="flex items-center gap-1 sm:gap-2">
                 @unless ($expense->is_paid)
-                    <a href="{{ route('expenses.payment.create', $expense) }}" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Ödeme Ekle</a>
+                    <button type="button" data-expense-id="{{ $expense->id }}" data-amount="{{ $expense->remaining_amount ?? $expense->amount }}" data-description="{{ $expenseTitle }}" data-category="{{ $expenseCategory }}" data-supplier="{{ $expense->account?->name }}" onclick="openExpensePaymentModal(Number(this.dataset.expenseId), Number(this.dataset.amount), this.dataset.description, this.dataset.category, this.dataset.supplier)" class="inline-flex h-11 w-24 items-center justify-center whitespace-nowrap text-center sm:h-auto sm:w-auto rounded-xl bg-emerald-600 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-white hover:bg-emerald-700">Öde</button>
                 @endunless
 
-                <a href="{{ route('expenses.edit', $expense) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+                <div class="hidden sm:flex items-center gap-2">
+                <a href="{{ route('expenses.edit', $expense) }}" class="inline-flex h-11 w-14 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl border border-slate-300 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
 
                 @if ($expense->paymentAllocations->isNotEmpty())
-                    <button type="button" onclick="document.getElementById('delete-expense-modal').classList.remove('hidden')" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                    <button type="button" onclick="document.getElementById('delete-expense-modal').classList.remove('hidden')" class="inline-flex h-11 w-14 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl border border-red-200 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
                 @else
                     <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Gider kaydı silinsin mi?')">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                        <button type="submit" class="inline-flex h-11 w-14 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl border border-red-200 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
                     </form>
                 @endif
+                </div>
+
+                <details class="relative sm:hidden">
+                    <summary class="inline-flex h-11 w-14 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-300 px-1 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">İşlemler</summary>
+                    <div class="absolute right-0 top-full z-20 mt-2 flex w-40 flex-col gap-2 rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200">
+                <a href="{{ route('expenses.edit', $expense) }}" class="flex w-full items-center justify-start text-left rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+
+                @if ($expense->paymentAllocations->isNotEmpty())
+                    <button type="button" onclick="document.getElementById('delete-expense-modal').classList.remove('hidden')" class="flex w-full items-center justify-start text-left rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                @else
+                    <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Gider kaydı silinsin mi?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="flex w-full items-center justify-start text-left rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
+                    </form>
+                @endif
+                    </div>
+                </details>
             </div>
 
-            <details class="lg:hidden relative group">
-                <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                    İşlem
-                </summary>
-                <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
-                    @unless ($expense->is_paid)
-                        <a href="{{ route('expenses.payment.create', $expense) }}" class="block w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white text-left hover:bg-emerald-700">Ödeme Ekle</a>
-                    @endunless
 
-                    <a href="{{ route('expenses.edit', $expense) }}" class="block w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-left hover:bg-slate-50">Düzenle</a>
 
-                    @if ($expense->paymentAllocations->isNotEmpty())
-                        <button type="button" onclick="document.getElementById('delete-expense-modal').classList.remove('hidden')" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
-                    @else
-                        <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Gider kaydı silinsin mi?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="block w-full rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 text-left hover:bg-red-50">Sil</button>
-                        </form>
-                    @endif
-                </div>
-            </details>
-
-            <button type="button" onclick="history.back()" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+            <button type="button" onclick="history.back()" class="inline-flex h-11 w-14 shrink-0 items-center justify-center sm:h-auto sm:w-auto gap-1 whitespace-nowrap rounded-xl border border-slate-300 px-1 py-2 sm:gap-2 sm:py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
                 </svg>
@@ -119,18 +105,18 @@
             </div>
 
             @php $remaining = $expense->remaining_amount ?? $expense->amount; @endphp
-            <div class="mb-5 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:gap-3 sm:overflow-visible sm:border-0 sm:bg-transparent sm:grid-cols-3">
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4 sm:block">
-                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-slate-600">Tutar</div>
-                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold text-slate-900 tabular-nums sm:mt-2">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
+            <div class="mb-5 grid grid-cols-3 gap-2 py-4 text-center sm:gap-3 sm:py-0 sm:text-left">
+                <div class="min-w-0 sm:rounded-xl sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4">
+                    <div class="text-sm text-slate-500 sm:font-medium sm:text-slate-600">Tutar</div>
+                    <div class="text-base font-semibold sm:text-2xl sm:font-bold text-slate-900 tabular-nums sm:mt-2">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
                 </div>
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:border-emerald-200 sm:bg-emerald-50 sm:p-4 sm:block">
-                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-emerald-700">Ödenen</div>
-                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold text-emerald-700 tabular-nums sm:mt-2">{{ number_format($expense->paid_amount ?? 0, 2, ',', '.') }} TL</div>
+                <div class="min-w-0 sm:rounded-xl sm:border sm:border-emerald-200 sm:bg-emerald-50 sm:p-4">
+                    <div class="text-sm text-slate-500 sm:font-medium sm:text-emerald-700">Ödenen</div>
+                    <div class="text-base font-semibold sm:text-2xl sm:font-bold text-emerald-700 tabular-nums sm:mt-2">{{ number_format($expense->paid_amount ?? 0, 2, ',', '.') }} TL</div>
                 </div>
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:p-4 sm:block {{ $remaining > 0 ? 'sm:border-amber-200 sm:bg-amber-50' : 'sm:border-slate-200 sm:bg-slate-50' }}">
-                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-slate-600">Kalan</div>
-                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold {{ $remaining > 0 ? 'text-amber-700' : 'text-slate-900' }} tabular-nums sm:mt-2">{{ number_format($remaining, 2, ',', '.') }} TL</div>
+                <div class="min-w-0 sm:rounded-xl sm:border sm:p-4 {{ $remaining > 0 ? 'sm:border-amber-200 sm:bg-amber-50' : 'sm:border-slate-200 sm:bg-slate-50' }}">
+                    <div class="text-sm text-slate-500 sm:font-medium sm:text-slate-600">Kalan</div>
+                    <div class="text-base font-bold sm:text-2xl {{ $remaining > 0 ? 'text-amber-700' : 'text-slate-900' }} tabular-nums sm:mt-2">{{ number_format($remaining, 2, ',', '.') }} TL</div>
                 </div>
             </div>
 
@@ -432,5 +418,7 @@
         </script>
     @endif
 
+    @include('expenses._payment_modal', ['cashBoxes' => $cashBoxes])
+    @include('expenses._payment_modal_script')
 @endsection
 

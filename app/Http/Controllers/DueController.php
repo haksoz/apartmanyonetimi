@@ -567,7 +567,13 @@ class DueController extends Controller
                 ->get(['id', 'name', 'type'])
             : collect();
 
-        return view('dues.show', compact('due', 'transferableAccounts'));
+        $cashBoxes = CashBox::query()
+            ->where('apartment_id', $due->apartment_id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('dues.show', compact('due', 'transferableAccounts', 'cashBoxes'));
     }
 
     public function edit(CurrentApartment $currentApartment, Due $due)

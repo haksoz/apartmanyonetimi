@@ -3,6 +3,9 @@
         <h1 class="text-2xl font-bold text-slate-950">
             <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>
             <span class="font-normal text-slate-400"> / </span>
+            @if ($pageTitle ?? null)
+                {{ $pageTitle }}
+            @else
             <a href="{{ route('accounts.show', $account) }}" class="hover:text-slate-600">
                 @if ($account->unit)
                     Daire {{ str_pad($account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
@@ -10,6 +13,7 @@
                     {{ $account->name }}
                 @endif
             </a>
+            @endif
             @if (!$account->is_active)
                 <span class="ml-2 align-middle inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
             @endif

@@ -1,13 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    @include('accounts._page_heading', ['account' => $account, 'active' => 'edit'])
-
-    {{-- Başlık Kartı --}}
-    <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-4">
-        <h1 class="text-2xl font-bold text-slate-950">Hesabı Düzenle</h1>
-        <p class="mt-1 text-sm text-slate-500">{{ $account->name }} hesabını güncelleyin.</p>
-    </div>
+    @include('accounts._page_heading', ['account' => $account, 'active' => 'edit', 'pageTitle' => 'Hesabı Düzenle'])
 
     @include('accounts.form', [
         'action' => route('accounts.update', $account),

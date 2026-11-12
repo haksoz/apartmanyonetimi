@@ -328,6 +328,7 @@ class AccountController extends Controller
 
         $account = Account::query()
             ->with([
+                'defaultCategory',
                 'unit',
                 'user',
                 'portalOffers' => fn ($query) => $query->where('status', 'pending'),
