@@ -511,7 +511,6 @@ class DuePlanController extends Controller
                     'assessment_date' => $periodDate->toDateString(),
                     'apartment_id' => $duePlan->apartment_id,
                     'due_type' => $duePlan->due_type,
-                    'category_id' => $category->id,
                     'source_type' => DueBatch::SOURCE_MANUAL,
                     'distribution_type' => $duePlan->distribution_type,
                     'source_amount' => $sourceAmount,
@@ -522,7 +521,6 @@ class DuePlanController extends Controller
             );
 
             $batch->update([
-                'category_id' => $category->id,
                 'source_amount' => $sourceAmount,
                 'description' => $batchDescription,
                 'distribution_snapshot' => $snapshot,

@@ -53,7 +53,7 @@
                     <select id="category_id" name="category_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Kategori seçin</option>
                         @foreach ($categories as $category)
-                            <option value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
+                            <option data-expense-relation="{{ $category->suggested_expense_relation->value ?? 'unassigned' }}" value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
                         @endforeach
                     </select>
                     @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -172,7 +172,7 @@
                     const option = [...categorySelect.options].find(o => o.value === defaultCatId);
                     if (option && !categorySelect.value) {
                         categorySelect.value = defaultCatId;
-                        updateDescription();
+                        categorySelect.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                 }
             };
@@ -282,7 +282,7 @@
                         <select name="default_category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                             <option value="">Kategori seçin</option>
                             @foreach ($categories as $category)
-                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                <option data-expense-relation="{{ $category->suggested_expense_relation->value ?? 'unassigned' }}" value="{{ $category->id }}">{{ $category->name }}</option>
                             @endforeach
                         </select>
                     </div>

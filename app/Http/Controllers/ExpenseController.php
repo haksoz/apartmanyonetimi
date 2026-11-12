@@ -428,7 +428,7 @@ class ExpenseController extends Controller
 
                 'category' => $category->name,
 
-                'expense_relation' => $validated['expense_relation'] ?? 'unassigned',
+                'expense_relation' => $validated['expense_relation'] ?? $category->suggested_expense_relation->value ?? 'unassigned',
 
                 'description' => $validated['description'] ?? null,
 
@@ -504,8 +504,6 @@ class ExpenseController extends Controller
                     'expense_id' => $expense->id,
 
                     'payment_id' => $payment->id,
-
-                    'category_id' => $category->id,
 
                     'type' => 'expense',
 
@@ -837,8 +835,6 @@ class ExpenseController extends Controller
                 'expense_id' => $expense->id,
 
                 'payment_id' => $payment->id,
-
-                'category_id' => $expense->category_id,
 
                 'type' => 'expense',
 

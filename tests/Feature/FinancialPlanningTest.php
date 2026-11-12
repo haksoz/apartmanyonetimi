@@ -709,7 +709,7 @@ class FinancialPlanningTest extends TestCase
                 $this->assertSame($type, $due->due_type);
                 $this->assertSame($resolvedCategory, $due->category_id);
                 $this->assertSame($type, $due->batch->due_type);
-                $this->assertSame($resolvedCategory, $due->batch->category_id);
+                $this->assertArrayNotHasKey('category_id', $due->batch->getAttributes());
             }
             $this->get(route('assessment-plans.show', $plan))->assertOk()->assertSee($type->label());
         }

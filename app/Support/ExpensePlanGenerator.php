@@ -85,6 +85,7 @@ class ExpensePlanGenerator
                     'plan_occurrence_key' => $key,
                     'account_id' => $locked->account_id,
                     'category_id' => $locked->category_id,
+                    'expense_relation' => $category?->suggested_expense_relation->value ?? 'unassigned',
                     'category' => $category?->name,
                     'description' => $description,
                     'amount' => $locked->amount,

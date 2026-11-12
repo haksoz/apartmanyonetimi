@@ -17,7 +17,6 @@ class CashTransaction extends Model
         'account_id',
         'expense_id',
         'payment_id',
-        'category_id',
         'type',
         'description',
         'amount',
@@ -44,11 +43,6 @@ class CashTransaction extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
-    }
-
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(Category::class);
     }
 
     public function expense(): BelongsTo

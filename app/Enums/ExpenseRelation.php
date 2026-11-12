@@ -12,8 +12,8 @@ enum ExpenseRelation: string
     {
         return match ($this) {
             self::Unassigned => 'Henüz Belirlenmedi',
-            self::Aidat => 'Aidat Kapsamında',
-            self::MalikPayi => 'Kat Maliki Payı Kapsamında',
+            self::Aidat => 'İşletme Gideri',
+            self::MalikPayi => 'Kat Maliki Gideri',
         };
     }
 

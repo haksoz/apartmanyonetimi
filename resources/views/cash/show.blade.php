@@ -40,10 +40,7 @@
                 <dt class="text-slate-500">İşlem Tarihi</dt>
                 <dd class="mt-1 font-semibold text-slate-950">{{ $transaction->transaction_date->format('d.m.Y') }}</dd>
             </div>
-            <div>
-                <dt class="text-slate-500">Kategori</dt>
-                <dd class="mt-1 font-semibold text-slate-950">{{ $transaction->category?->name ?? '-' }}</dd>
-            </div>
+
             <div>
                 <dt class="text-slate-500">Kasa</dt>
                 <dd class="mt-1 font-semibold text-slate-950">{{ $transaction->cashBox?->name ?? '-' }}</dd>

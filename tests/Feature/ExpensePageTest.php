@@ -120,13 +120,10 @@ class ExpensePageTest extends TestCase
             ->assertSee('Giderler')
             ->assertSee(route('expenses.index'), false)
             ->assertSee('ABC Elektrik')
-            ->assertSee('text-lg font-semibold text-slate-800', false)
-            ->assertSee('Tutar, ödeme durumu ve doküman bilgileri.')
             ->assertSee('text-sm text-slate-500', false)
             ->assertDontSee('Asansör bakımı (Bakım)', false)
             ->assertSee('text-xl font-bold text-slate-900', false)
-            ->assertSee('text-sm text-slate-400', false)
-            ->assertSee('Detaylar')
+            ->assertDontSee('<span>Detaylar</span>', false)
             ->assertSeeInOrder(['Hesap / Tedarikçi', '>Kategori<', 'Gider Tarihi'], false)
             ->assertSee('Kaynak')
             ->assertSee('Manuel')
@@ -489,7 +486,6 @@ class ExpensePageTest extends TestCase
             'apartment_id' => $apartment->id,
             'cash_box_id' => $cashBox->id,
             'account_id' => $account->id,
-            'category_id' => $category->id,
             'type' => 'expense',
             'description' => 'Elektrik gider ödemesi',
             'amount' => 1250,

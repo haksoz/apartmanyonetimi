@@ -20,7 +20,7 @@ class CashBoxController extends Controller
         }
 
         $allTransactions = CashTransaction::query()
-            ->with(['account', 'category', 'expense'])
+            ->with(['account', 'expense'])
             ->where('cash_box_id', $cashBox->id)
             ->orderBy('transaction_date')
             ->orderBy('id')
@@ -46,7 +46,7 @@ class CashBoxController extends Controller
 
         // Sayfalama için ters sırada paginate
         $transactions = CashTransaction::query()
-            ->with(['account', 'category', 'expense'])
+            ->with(['account', 'expense'])
             ->where('cash_box_id', $cashBox->id)
             ->orderByDesc('transaction_date')
             ->orderByDesc('id')
@@ -110,7 +110,6 @@ class CashBoxController extends Controller
         $openingTransaction = $cashBox->transactions()
             ->where('description', 'Açılış bakiyesi')
             ->whereNull('account_id')
-            ->whereNull('category_id')
             ->whereNull('payment_id')
             ->whereNull('expense_id')
             ->orderBy('id')

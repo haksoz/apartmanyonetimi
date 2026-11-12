@@ -415,7 +415,6 @@ class DueController extends Controller
             $batch = DueBatch::create([
                 'apartment_id' => $apartment->id,
                 'due_type' => $validated['due_type'],
-                'category_id' => $validated['category_id'] ?? null,
                 'source_type' => $validated['source_type'],
                 'distribution_type' => $validated['distribution_type'],
                 'assessment_date' => $validated['created_at_manual'],
@@ -785,7 +784,6 @@ class DueController extends Controller
                 'apartment_id' => $due->apartment_id,
                 'cash_box_id' => $validated['cash_box_id'],
                 'account_id' => $due->account_id,
-                'category_id' => $due->category_id,
                 'type' => 'income',
                 'description' => $validated['description'] ?? 'Aidat Tahsilatı',
                 'amount' => $validated['amount'],
@@ -873,7 +871,6 @@ class DueController extends Controller
                 'apartment_id'     => $apartment->id,
                 'cash_box_id'      => $validated['cash_box_id'],
                 'account_id'       => $account->id,
-                'category_id'      => null,
                 'type'             => 'income',
                 'description'      => $description,
                 'amount'           => $totalAmount,
@@ -1005,7 +1002,7 @@ class DueController extends Controller
             ? $this->aidatReconciliation->categoryFor($apartment)
             : null;
 
-        if ($aidatCategory && $batch->category_id === $aidatCategory->id) {
+        if ($aidatCategory && (int) ($validated['category_id'] ?? 0) === (int) $aidatCategory->id) {
             if ($this->aidatReconciliation->hasExistingAidatDue($apartment, $account->id, $validated['period'])) {
                 return;
             }
@@ -1017,7 +1014,7 @@ class DueController extends Controller
             'unit_id' => $unit?->id ?? $account->unit_id,
             'account_id' => $account->id,
             'due_type' => $batch->due_type,
-            'category_id' => $batch->category_id,
+            'category_id' => $validated['category_id'] ?? null,
             'amount' => $amount,
             'remaining_amount' => $amount,
             'due_date' => $validated['due_date'],

@@ -208,7 +208,6 @@ class AssessmentPlanGenerator
                 'assessment_plan_id' => $plan->id,
                 'assessment_installment_id' => $installment->id,
                 'due_type' => $plan->due_type,
-                'category_id' => $plan->category_id,
                 'source_type' => DueBatch::SOURCE_MANUAL,
                 'distribution_type' => $plan->distribution_type,
                 'assessment_date' => $periodDate->toDateString(),

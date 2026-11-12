@@ -29,11 +29,28 @@
                 @endforeach
             </select>
         </div>
+        <div>
+            <label for="ledger-category" class="mb-1 block text-xs text-slate-500">Kategori</label>
+            <select name="category_id" id="ledger-category" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
+                <option value="">Tümü</option>
+                @foreach($categories as $category)
+                    <option value="{{ $category->id }}" @selected($categoryId === $category->id)>{{ $category->name }}</option>
+                @endforeach
+            </select>
+            @error('category_id')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+        </div>
+        <div class="min-w-0 w-full sm:w-auto sm:flex-1">
+            <label for="ledger-search" class="mb-1 block text-xs text-slate-500">Ara</label>
+            <input type="search" id="ledger-search" name="search" value="{{ $search }}" maxlength="200" placeholder="Açıklama, hesap adı, referans veya belge no" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
+            @error('search')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+        </div>
         <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">Görüntüle</button>
-        @if($kind !== 'all' || $filter !== 'all')
+        @if($kind !== 'all' || $filter !== 'all' || $search !== '' || $categoryId)
             <a href="{{ route('ledger.index') }}" class="px-3 py-2.5 text-sm text-slate-600">Temizle</a>
         @endif
     </form>
+
+    <p class="mb-4 text-sm text-slate-500">{{ $transactions->total() }} hareket bulundu. Tahsilat ve ödemelerde kategori, tahsis edilen gider veya borcun kategorisidir.</p>
 
     {{-- Desktop Table View --}}
     <div class="hidden md:block overflow-x-auto rounded-2xl bg-white shadow-sm">
@@ -86,6 +103,7 @@
                             @else
                                 {{ $relatedLabel }}
                             @endif
+                            @include('ledger._cash-links')
                             @if($isPayment && $related->unallocated_amount > 0)
                                 <a href="{{ $transaction->account?->type === \App\Models\Account::TYPE_SUPPLIER ? route('payments.supplier-allocations.create', $related) : route('payments.allocations.create', $related) }}" class="mt-2 block text-xs font-semibold text-emerald-700 hover:underline">Tahsis Et</a>
                             @endif
@@ -168,6 +186,8 @@
                         </div>
                     @endif
                 </div>
+
+                @include('ledger._cash-links')
 
                 {{-- Amount Section --}}
                 <div class="bg-slate-50 rounded-lg p-3">

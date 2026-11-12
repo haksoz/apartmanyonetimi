@@ -2291,7 +2291,6 @@ class AccountController extends Controller
                 'cash_box_id'      => $validated['cash_box_id'],
                 'account_id'       => $account->id,
                 'payment_id'       => $payment->id,
-                'category_id'      => null,
                 'type'             => 'expense',
                 'description'      => $paymentDescription,
                 'amount'           => $totalAmount,

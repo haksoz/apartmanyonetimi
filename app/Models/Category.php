@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use LogicException;
+use App\Enums\ExpenseRelation;
 
 class Category extends Model
 {
     use SoftDeletes;
+
+    public const OPERATING_EXPENSE_CATEGORIES = [
+        'Ortak Elektrik', 'Ortak Su', 'Ortak Temizlik', 'Ortak Asansör', 'Yönetim Giderleri',
+    ];
 
     public const TYPE_ALL = 'all';
     public const TYPE_INCOME = 'income';
@@ -27,12 +32,14 @@ class Category extends Model
         'type',
         'is_active',
         'is_system',
+        'expense_relations',
         'allow_aidat', 'allow_malik_payi', 'allow_expense',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_system' => 'boolean',
+        'expense_relations' => 'array',
         'sort_order' => 'integer',
         'allow_aidat' => 'boolean',
         'allow_malik_payi' => 'boolean',
@@ -41,7 +48,23 @@ class Category extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (Category $category) {
+            $category->expense_relations = ! $category->allow_expense ? []
+                : (in_array($category->name, self::OPERATING_EXPENSE_CATEGORIES, true)
+                    ? ['aidat'] : ($category->expense_relations ?? []));
+        });
         static::updating(function (Category $category) {
+            if (! $category->allow_expense) {
+                $category->expense_relations = [];
+            }
+            if ($category->isExpenseRelationLocked() && $category->isDirty('expense_relations')) {
+                throw new LogicException('Bu kategorinin gider ilişkisi İşletme Gideri olarak sabittir.');
+            }
+            if ($category->isDemirbasCategory() && $category->isDirty([
+                'name', 'is_active', 'type', 'is_system', 'apartment_id', 'allow_malik_payi', 'allow_expense',
+            ])) {
+                throw new LogicException('Demirbaş kategorisinde yalnızca Aidat kullanım yetkisi ve gider ilişkileri değiştirilebilir.');
+            }
             if ($category->isLocked() && $category->isDirty([
                 'name', 'is_active', ...array_keys(self::USAGE_PERMISSIONS),
             ])) {
@@ -50,15 +73,38 @@ class Category extends Model
         });
 
         static::deleting(function (Category $category) {
-            if ($category->isLocked()) {
+            if ($category->isLocked() || $category->isDemirbasCategory()) {
                 throw new LogicException($category->getOriginal('name').' kategorisi silinemez.');
             }
         });
     }
 
+    public function getSuggestedExpenseRelationAttribute(): ExpenseRelation
+    {
+        $values = $this->expense_relations ?? [];
+        return count($values) === 1 ? ExpenseRelation::from($values[0]) : ExpenseRelation::Unassigned;
+    }
+
+    public function isExpenseRelationLocked(): bool
+    {
+        return $this->exists && in_array($this->getOriginal('name'), self::OPERATING_EXPENSE_CATEGORIES, true);
+    }
+
+    public function isCommonExpenseCategory(): bool
+    {
+        return $this->exists && in_array($this->getOriginal('name'), [
+            'Ortak Elektrik', 'Ortak Su', 'Ortak Temizlik', 'Ortak Asansör', 'Yönetim Giderleri', 'Bakım Onarım', 'Diğer',
+        ], true);
+    }
+
+    public function isDemirbasCategory(): bool
+    {
+        return $this->exists && $this->getOriginal('name') === 'Demirbaş';
+    }
+
     public function isLocked(): bool
     {
-        return $this->exists && ($this->getOriginal('name') === 'Demirbaş' || $this->isDefaultAidatCategory());
+        return $this->isDefaultAidatCategory() || $this->isCommonExpenseCategory();
     }
 
     public function isDefaultAidatCategory(): bool
@@ -82,11 +128,6 @@ class Category extends Model
     public function dues(): HasMany
     {
         return $this->hasMany(Due::class);
-    }
-
-    public function cashTransactions(): HasMany
-    {
-        return $this->hasMany(CashTransaction::class);
     }
 
     public function getTypeLabelAttribute(): string

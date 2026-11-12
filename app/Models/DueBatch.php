@@ -49,7 +49,6 @@ class DueBatch extends Model
         'assessment_plan_id',
         'assessment_installment_id',
         'due_type',
-        'category_id',
         'source_type',
         'distribution_type',
         'period',
@@ -74,11 +73,6 @@ class DueBatch extends Model
     public function apartment(): BelongsTo
     {
         return $this->belongsTo(Apartment::class);
-    }
-
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(Category::class);
     }
 
     public function getDueTypeLabelAttribute(): string

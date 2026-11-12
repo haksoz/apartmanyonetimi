@@ -45,14 +45,45 @@ class ExpenseRelationTest extends TestCase
             'amount' => 600, 'description' => 'İlişkili gider', 'expense_date' => '2026-09-15', 'period_month' => '2026-09'], $overrides);
     }
 
+    public function test_category_default_is_used_for_new_expenses_and_explicit_selection_wins(): void
+    {
+        $this->category->update(['expense_relations' => ['aidat']]);
+        $this->get(route('expenses.create'))->assertOk()->assertSee('data-expense-relation="aidat"', false);
+        $this->post(route('expenses.store'), $this->payload())->assertSessionHasNoErrors();
+        $expense = Expense::latest('id')->firstOrFail();
+        $this->assertSame(ExpenseRelation::Aidat, $expense->expense_relation);
+        $this->post(route('expenses.store'), $this->payload(['expense_relation' => 'malik_payi']))->assertSessionHasNoErrors();
+        $this->assertSame(ExpenseRelation::MalikPayi, Expense::latest('id')->firstOrFail()->expense_relation);
+        $this->category->update(['expense_relations' => []]);
+        $this->assertSame(ExpenseRelation::Aidat, $expense->fresh()->expense_relation);
+        $this->get(route('expenses.edit', $expense))->assertOk()->assertSee('const preserveInitial = true;', false);
+    }
+
+    public function test_category_with_both_relations_does_not_arbitrarily_choose_for_expense(): void
+    {
+        $this->category->update(['expense_relations' => ['aidat', 'malik_payi']]);
+        $this->post(route('expenses.store'), $this->payload())->assertSessionHasNoErrors();
+        $this->assertSame(ExpenseRelation::Unassigned, Expense::latest('id')->firstOrFail()->expense_relation);
+        foreach (['aidat', 'malik_payi'] as $value) {
+            $this->post(route('expenses.store'), $this->payload(['expense_relation' => $value]))->assertSessionHasNoErrors();
+            $this->assertSame($value, Expense::latest('id')->firstOrFail()->expense_relation->value);
+        }
+    }
+
     #[TestWith(['unassigned'])]
     #[TestWith(['aidat'])]
     #[TestWith(['malik_payi'])]
     public function test_creation_stores_relation_without_creating_dues(string $relation): void
     {
         $this->get(route('expenses.create'))->assertOk()
-            ->assertSeeInOrder(['for="amount"', 'for="expense_relation"', 'for="description"'], false)
-            ->assertSee('Otomatik borçlandırma oluşturmaz.');
+            ->assertSeeInOrder(['for="amount"', 'for="description"', 'id="expense_relation"'], false)
+            ->assertSee('Ayrıntılı rapor alabilmek için gider ilişkisini oluşturun.')
+            ->assertSee('İşletme Gideri')
+            ->assertSee('Apartmanın günlük işleyişi, kullanımı ve düzenli giderleri.')
+            ->assertSee('Kat Maliki Gideri')
+            ->assertSee('Kat maliklerinin karşılaması öngörülen giderler.')
+            ->assertSee('type="radio" name="expense_relation"', false)
+            ->assertDontSee('<select id="expense_relation"', false);
         $this->post(route('expenses.store'), $this->payload(['expense_relation' => $relation]))->assertRedirect();
         $expense = Expense::sole();
         $this->assertSame($relation, $expense->expense_relation->value);
@@ -159,7 +190,7 @@ class ExpenseRelationTest extends TestCase
                 file_put_contents($path, $bytes);
                 $book = IOFactory::load($path);
                 $sheet = $book->getActiveSheet();
-                $this->assertSame('Gider İlişkisi: Aidat Kapsamında', $sheet->getCell('A3')->getValue());
+                $this->assertSame('Gider İlişkisi: İşletme Gideri', $sheet->getCell('A3')->getValue());
                 if ($report === 'income-expense') {
                     $this->assertEquals(300, $sheet->getCell('B5')->getValue());
                     $this->assertEquals(400, $sheet->getCell('C5')->getValue());

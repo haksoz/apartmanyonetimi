@@ -94,7 +94,7 @@
                         <tr>
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Tarih</th>
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
-                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Hesap / Kategori</th>
+                            <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Hesap</th>
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Gelir</th>
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Gider</th>
                             <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Bakiye</th>
@@ -113,9 +113,7 @@
                             </td>
                             <td class="px-5 py-4 text-slate-500 text-xs">
                                 @if ($t->account) {{ $t->account->name }} @endif
-                                @if ($t->account && $t->category) · @endif
-                                @if ($t->category) {{ $t->category->name }} @endif
-                                @if (!$t->account && !$t->category) - @endif
+                                @if (!$t->account) - @endif
                             </td>
                             <td class="px-5 py-4 text-right font-semibold text-emerald-600 tabular-nums">
                                 {{ $t->type === 'income' ? number_format($t->amount, 2, ',', '.') . ' TL' : '-' }}
@@ -153,9 +151,7 @@
                     </div>
                     <div class="mt-2 text-xs text-slate-500">
                         @if ($t->account) {{ $t->account->name }} @endif
-                        @if ($t->account && $t->category) · @endif
-                        @if ($t->category) {{ $t->category->name }} @endif
-                        @if (!$t->account && !$t->category) - @endif
+                        @if (!$t->account) - @endif
                     </div>
                     <div class="mt-3 grid grid-cols-3 gap-2 text-sm">
                         <div>

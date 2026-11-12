@@ -44,6 +44,55 @@ class LedgerPageTest extends TestCase
         return $payment;
     }
 
+    public function test_allocated_expense_category_and_cash_search_find_only_linked_payments(): void
+    {
+        $category = \App\Models\Category::create(['apartment_id' => $this->apartment->id, 'name' => 'Asansör', 'allow_expense' => true]);
+        $payment = $this->payment($this->supplier);
+        $otherPayment = $this->payment($this->supplier, false);
+        $cash = $payment->cashTransactions()->create(['apartment_id' => $this->apartment->id,
+            'type' => 'expense', 'amount' => 500,
+            'transaction_date' => '2026-11-10', 'description' => 'Telefon hattı']);
+        $expense = Expense::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->supplier->id,
+            'category_id' => $category->id, 'description' => 'Telefon hattı', 'amount' => 500,
+            'remaining_amount' => 500, 'expense_date' => '2026-11-10']);
+        $payment->allocations()->create(['expense_id' => $expense->id, 'amount' => 250]);
+        foreach ([['category_id' => $category->id], ['search' => 'Telefon hattı']] as $filter) {
+            $response = $this->get(route('ledger.index', ['kind' => 'payments', ...$filter]))->assertOk();
+            $this->assertSame([$payment->id], $response->viewData('transactions')->pluck('transactionable_id')->all());
+            $response->assertSee(route('cash.show', $cash), false);
+        }
+        $cash->delete();
+        $this->assertSame(1, $this->get(route('ledger.index', ['category_id' => $category->id]))->assertOk()->viewData('transactions')->total());
+        $expense->update(['category_id' => null]);
+        $this->assertSame(0, $this->get(route('ledger.index', ['category_id' => $category->id]))->assertOk()->viewData('transactions')->total());
+        $foreign = \App\Models\Apartment::create(['user_id' => $this->apartment->user_id, 'name' => 'Other', 'unit_count' => 1]);
+        $foreignCategory = \App\Models\Category::create(['apartment_id' => $foreign->id, 'name' => 'Foreign']);
+        $this->getJson(route('ledger.index', ['category_id' => $foreignCategory->id]))->assertUnprocessable();
+    }
+
+    public function test_search_matches_posted_and_unposted_payments_and_keeps_filters_and_scope(): void
+    {
+        $posted = $this->payment($this->supplier);
+        $unposted = $this->payment($this->supplier, false);
+        $receipt = $this->payment($this->tenant);
+        $posted->update(['description' => 'Asansör bakım', 'reference_number' => 'ARA-XYZ']);
+        $unposted->update(['description' => 'Asansör telefon']);
+        $receipt->update(['description' => 'Asansör tahsilatı']);
+        $other = Apartment::create(['user_id' => $this->apartment->user_id, 'name' => 'Other', 'unit_count' => 1]);
+        Payment::create(['apartment_id' => $other->id, 'amount' => 9000, 'unallocated_amount' => 9000,
+            'payment_date' => '2026-11-11', 'description' => 'Asansör yabancı']);
+        foreach (['Asansör', 'Tedarikçi'] as $term) {
+            $rows = $this->get(route('ledger.index', ['kind' => 'payments', 'search' => $term]))->assertOk()->viewData('transactions');
+            $this->assertEqualsCanonicalizing([$posted->id, $unposted->id], $rows->pluck('transactionable_id')->all());
+        }
+        foreach (['ARA-XYZ', (string) $posted->id] as $term) {
+            $rows = $this->get(route('ledger.index', ['kind' => 'payments', 'search' => $term]))->assertOk()->viewData('transactions');
+            $this->assertSame([$posted->id], $rows->pluck('transactionable_id')->all());
+        }
+        $this->assertSame(0, $this->get(route('ledger.index', ['search' => '%']))->assertOk()->viewData('transactions')->total());
+        $this->getJson(route('ledger.index', ['search' => str_repeat('x', 201)]))->assertUnprocessable();
+    }
+
     public function test_unified_list_preserves_payment_details_and_does_not_duplicate_posted_payments(): void
     {
         $receipt = $this->payment($this->tenant);
@@ -110,13 +159,14 @@ class LedgerPageTest extends TestCase
         $this->get(route('payments.index', ['filter' => 'orphan', 'page' => 2]))
             ->assertRedirect(route('ledger.index', ['filter' => 'orphan', 'page' => 2]));
         for ($index = 0; $index < 27; $index++) $this->payment($this->tenant, $index % 2 === 0);
-        $first = $this->get(route('ledger.index', ['kind' => 'receipts', 'filter' => 'unallocated']))->assertOk()->viewData('transactions');
-        $second = $this->get(route('ledger.index', ['kind' => 'receipts', 'filter' => 'unallocated', 'page' => 2]))->assertOk()->viewData('transactions');
+        $first = $this->get(route('ledger.index', ['kind' => 'receipts', 'filter' => 'unallocated', 'search' => 'Örnek']))->assertOk()->viewData('transactions');
+        $second = $this->get(route('ledger.index', ['kind' => 'receipts', 'filter' => 'unallocated', 'search' => 'Örnek', 'page' => 2]))->assertOk()->viewData('transactions');
         $this->assertSame(27, $first->total());
         $this->assertCount(25, $first);
         $this->assertCount(2, $second);
         $this->assertEmpty(array_intersect($first->pluck('id')->all(), $second->pluck('id')->all()));
         $this->assertStringContainsString('filter=unallocated', $first->nextPageUrl());
+        $this->assertStringContainsString('search=', $first->nextPageUrl());
         $this->getJson(route('ledger.index', ['kind' => 'invalid']))->assertUnprocessable();
     }
 

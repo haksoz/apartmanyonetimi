@@ -25,16 +25,7 @@
             @error('type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
 
-        <div>
-            <label for="category_id" class="mb-2 block text-sm font-semibold text-slate-700">Kategori</label>
-            <select id="category_id" name="category_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                <option value="">Kategori seçin</option>
-                @foreach ($categories as $category)
-                    <option value="{{ $category->id }}" @selected((string) old('category_id', $transaction?->category_id) === (string) $category->id)>{{ $category->name }} ({{ $category->type_label }})</option>
-                @endforeach
-            </select>
-            @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-        </div>
+
 
         <div>
             <label for="description" class="mb-2 block text-sm font-semibold text-slate-700">Kasa Tanımı / Açıklama</label>

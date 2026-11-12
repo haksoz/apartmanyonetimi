@@ -155,43 +155,68 @@ class CategoryUsagePermissionTest extends TestCase
         $category->update(['name' => 'Doğrudan Değişiklik']);
     }
 
-    public function test_demirbas_category_is_locked_in_ui_controller_and_model(): void
+    #[\PHPUnit\Framework\Attributes\TestWith(['Ortak Elektrik'])]
+    #[\PHPUnit\Framework\Attributes\TestWith(['Ortak Su'])]
+    #[\PHPUnit\Framework\Attributes\TestWith(['Ortak Temizlik'])]
+    #[\PHPUnit\Framework\Attributes\TestWith(['Ortak Asansör'])]
+    #[\PHPUnit\Framework\Attributes\TestWith(['Yönetim Giderleri'])]
+    #[\PHPUnit\Framework\Attributes\TestWith(['Bakım Onarım'])]
+    #[\PHPUnit\Framework\Attributes\TestWith(['Diğer'])]
+    public function test_common_expense_categories_are_fully_locked_with_visible_permissions(string $name): void
+    {
+        $apartment = $this->apartment();
+        $user = $apartment->user;
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => $name,
+            'is_active' => true, 'allow_aidat' => true, 'allow_expense' => true, 'allow_malik_payi' => false]);
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $html = $this->get(route('categories.edit', $category))->assertOk()->getContent();
+        foreach (['name', 'is_active', 'allow_aidat', 'allow_expense', 'allow_malik_payi'] as $field) {
+            $this->assertMatchesRegularExpression('/<input[^>]*name="'.$field.'"[^>]*disabled/', $html);
+        }
+        $this->put(route('categories.update', $category), ['name' => 'Başka ad', 'is_active' => false,
+            'allow_aidat' => false, 'allow_expense' => false, 'allow_malik_payi' => true])->assertSessionHas('error');
+        $category->refresh();
+        $this->assertSame($name, $category->name);
+        $this->assertTrue($category->is_active);
+        $this->assertTrue($category->allow_aidat);
+        $this->assertTrue($category->allow_expense);
+        $this->assertFalse($category->allow_malik_payi);
+        $this->delete(route('categories.destroy', $category))->assertSessionHas('error');
+        $this->assertNotSoftDeleted($category);
+        $this->expectException(LogicException::class);
+        $category->update(['is_active' => false]);
+    }
+
+    public function test_demirbas_only_allows_aidat_permission_changes(): void
     {
         $apartment = $this->apartment();
         $user = $apartment->user;
         $apartment->members()->attach($user->id, ['role' => 'owner']);
         Category::createDefaultsFor($apartment->id);
         $category = Category::where('apartment_id', $apartment->id)->where('name', 'Demirbaş')->firstOrFail();
-
-        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->actingAs($user)
-            ->get(route('categories.edit', $category))
-            ->assertOk()
-            ->assertSee('disabled', false)
-            ->assertDontSee('Kategori silinsin mi?');
-
-        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->actingAs($user)
-            ->put(route('categories.update', $category), [
-                'name' => 'Değiştirildi',
-                'is_active' => false,
-                'allow_expense' => true,
-            ])
-            ->assertRedirect(route('categories.index'));
-
-        $category->refresh();
-        $this->assertSame('Demirbaş', $category->name);
-        $this->assertTrue($category->is_active);
-        $this->assertSame(['Kat Maliki Payı', 'Gider'], $category->usage_labels);
-
-        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->actingAs($user)
-            ->delete(route('categories.destroy', $category))
-            ->assertRedirect(route('categories.index'));
-        $this->assertNull($category->fresh()->deleted_at);
-
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $html = $this->get(route('categories.edit', $category))->assertOk()->assertSee('Kategori Güncelle')->getContent();
+        foreach (['name', 'is_active', 'allow_malik_payi', 'allow_expense'] as $field) {
+            $this->assertMatchesRegularExpression('/<input[^>]*name="'.$field.'"[^>]*disabled/', $html);
+        }
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]*name="allow_aidat"[^>]*disabled/', $html);
+        foreach ([true, false] as $allowed) {
+            $this->put(route('categories.update', $category), [
+                'name' => 'Değiştirildi', 'is_active' => false, 'allow_aidat' => $allowed,
+                'allow_malik_payi' => false, 'allow_expense' => false,
+            ])->assertSessionHasNoErrors();
+            $category->refresh();
+            $this->assertSame('Demirbaş', $category->name);
+            $this->assertTrue($category->is_active);
+            $this->assertTrue($category->allow_malik_payi);
+            $this->assertTrue($category->allow_expense);
+            $this->assertSame($allowed, $category->allow_aidat);
+        }
+        $this->delete(route('categories.destroy', $category))->assertSessionHas('error');
+        $this->assertNotSoftDeleted($category);
         $this->expectException(LogicException::class);
-        $category->update(['name' => 'Doğrudan Değişiklik']);
+        $category->update(['name' => 'Doğrudan değişiklik']);
     }
 
     public function test_missing_default_aidat_reference_does_not_fall_back_to_category_name(): void

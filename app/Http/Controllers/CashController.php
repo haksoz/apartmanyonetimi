@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
-use App\Models\Category;
 use App\Models\Payment;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
@@ -38,7 +37,7 @@ class CashController extends Controller
 
         if ($selectedCashBox) {
             $transactions = CashTransaction::query()
-                ->with(['account', 'cashBox', 'category'])
+                ->with(['account', 'cashBox'])
                 ->where('apartment_id', $apartmentId)
                 ->where('cash_box_id', $selectedCashBox->id)
                 ->latest('transaction_date')
@@ -85,9 +84,8 @@ class CashController extends Controller
             ->orderBy('name')
             ->get();
 
-        $categories = $this->categories($apartment->id);
 
-        return view('cash.create', compact('apartment', 'accounts', 'cashBoxes', 'categories'));
+        return view('cash.create', compact('apartment', 'accounts', 'cashBoxes'));
     }
 
     public function store(Request $request, CurrentApartment $currentApartment)
@@ -104,7 +102,6 @@ class CashController extends Controller
             'apartment_id' => $apartment->id,
             'cash_box_id' => $validated['cash_box_id'],
             'account_id' => $validated['account_id'] ?? null,
-            'category_id' => $validated['category_id'],
             'type' => $validated['type'],
             'description' => $validated['description'],
             'amount' => $validated['amount'],
@@ -144,9 +141,8 @@ class CashController extends Controller
             ->where(fn ($query) => $query->where('is_active', true)->orWhere('id', $transaction->cash_box_id))
             ->orderBy('name')
             ->get();
-        $categories = $this->categories($transaction->apartment_id, $transaction->category_id);
 
-        return view('cash.edit', compact('transaction', 'accounts', 'cashBoxes', 'categories'));
+        return view('cash.edit', compact('transaction', 'accounts', 'cashBoxes'));
     }
 
     public function update(Request $request, string $id, CurrentApartment $currentApartment)
@@ -174,7 +170,6 @@ class CashController extends Controller
             $transaction->update([
                 'account_id' => $validated['account_id'] ?? null,
                 'cash_box_id' => $validated['cash_box_id'],
-                'category_id' => $validated['category_id'],
                 'type' => $validated['type'],
                 'description' => $validated['description'],
                 'amount' => $validated['amount'],
@@ -247,7 +242,7 @@ class CashController extends Controller
         }
 
         return CashTransaction::query()
-            ->with(['account', 'cashBox', 'category', 'expense', 'payment'])
+            ->with(['account', 'cashBox', 'expense', 'payment'])
             ->where('apartment_id', $apartment->id)
             ->findOrFail($id);
     }
@@ -266,13 +261,6 @@ class CashController extends Controller
                 'integer',
                 Rule::exists('accounts', 'id')->where('apartment_id', $apartmentId),
             ],
-            'category_id' => [
-                'required',
-                'integer',
-                Rule::exists('categories', 'id')
-                    ->where('apartment_id', $apartmentId)
-                    ->where('is_active', true),
-            ],
             'description' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'transaction_date' => ['required', 'date'],
@@ -280,12 +268,4 @@ class CashController extends Controller
         ]);
     }
 
-    private function categories(int $apartmentId, ?int $selectedId = null)
-    {
-        return Category::query()
-            ->where('apartment_id', $apartmentId)
-            ->where(fn ($query) => $query->where('is_active', true)->orWhere('id', $selectedId))
-            ->orderedForDisplay()
-            ->get();
-    }
 }

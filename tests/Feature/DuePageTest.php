@@ -351,7 +351,6 @@ class DuePageTest extends TestCase
 
         $this->assertDatabaseHas('due_batches', [
             'apartment_id' => $apartment->id,
-            'category_id' => $dueCategory->id,
             'source_type' => DueBatch::SOURCE_EXPENSES,
             'source_amount' => 1500,
         ]);
@@ -526,15 +525,12 @@ class DuePageTest extends TestCase
             ->assertSee('Aidatlar')
             ->assertSee(route('dues.index'), false)
             ->assertSee('Tekin İdigü')
-            ->assertSee('text-lg font-semibold text-slate-800', false)
-            ->assertSee('Tutar, tahsilat durumu ve borç bilgileri.')
             ->assertSee('Mayıs aidatı')
             ->assertSee('text-xl font-bold text-slate-900', false)
-            ->assertSee('text-sm text-slate-400', false)
-            ->assertSee('Detaylar')
+            ->assertDontSee('<span>Detaylar</span>', false)
             ->assertSee('Borç Türü')
-            ->assertSee('font-semibold text-slate-900">Aidat</div>', false)
-            ->assertSee('<details class="group" open>', false)
+            ->assertSee('(Kiracı Öncelikli)')
+            ->assertDontSee('<details class="group" open>', false)
             ->assertSee('Daire 01')
             ->assertSee('history.back()', false)
             ->assertDontSee('Aidat Detayı')

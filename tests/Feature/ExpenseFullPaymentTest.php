@@ -82,13 +82,13 @@ class ExpenseFullPaymentTest extends TestCase
         $tables = [
             'apartments' => ['user_id', 'code', 'name'],
             'accounts' => ['apartment_id', 'unit_id', 'type', 'name', 'is_active'],
-            'categories' => ['apartment_id', 'name', 'type', 'is_active', 'allow_expense'],
+            'categories' => ['apartment_id', 'name', 'type', 'is_active', 'allow_expense', 'expense_relations'],
             'cash_boxes' => ['apartment_id', 'name', 'is_active'],
             'expenses' => ['apartment_id', 'expense_plan_id', 'plan_occurrence_key', 'account_id', 'category_id', 'expense_relation', 'category', 'description', 'amount', 'paid_amount', 'remaining_amount', 'expense_date', 'due_date', 'period_month', 'is_paid', 'is_imported', 'reference_number'],
             'payments' => ['apartment_id', 'account_id', 'amount', 'unallocated_amount', 'payment_date', 'method', 'description', 'is_imported', 'reference_number'],
             'payment_allocations' => ['payment_id', 'expense_id', 'due_id', 'amount'],
             'account_transactions' => ['apartment_id', 'account_id', 'transactionable_type', 'transactionable_id', 'type', 'description', 'amount', 'transaction_date', 'is_imported'],
-            'cash_transactions' => ['apartment_id', 'cash_box_id', 'account_id', 'expense_id', 'payment_id', 'category_id', 'type', 'description', 'amount', 'transaction_date', 'is_active', 'reference_number'],
+            'cash_transactions' => ['apartment_id', 'cash_box_id', 'account_id', 'expense_id', 'payment_id', 'type', 'description', 'amount', 'transaction_date', 'is_active', 'reference_number'],
             'expense_plans' => ['apartment_id', 'name', 'description', 'description_suffix', 'category_id', 'account_id', 'amount', 'start_date', 'end_date', 'generate_day', 'generation_mode', 'due_days', 'is_active', 'skipped_periods'],
             'units' => ['apartment_id', 'unit_no'],
             'expense_documents' => ['expense_id'],
@@ -168,11 +168,15 @@ class ExpenseFullPaymentTest extends TestCase
 
     public function test_plan_creation_and_first_full_payment(): void
     {
+        $this->category->update(['expense_relations' => ['aidat']]);
         $plan = ExpensePlan::create(['apartment_id' => $this->apartment->id, 'account_id' => $this->supplier->id,
             'category_id' => $this->category->id, 'name' => 'Test plan', 'amount' => 1000,
             'start_date' => '2026-10-01', 'end_date' => '2026-10-31', 'generate_day' => 1, 'is_active' => true]);
         $this->assertSame(1, app(ExpensePlanGenerator::class)->generateForPeriod($plan, '2026-10'));
         $expense = Expense::firstOrFail();
+        $this->assertSame(\App\Enums\ExpenseRelation::Aidat, $expense->expense_relation);
+        $this->category->update(['expense_relations' => ['malik_payi']]);
+        $this->assertSame(\App\Enums\ExpenseRelation::Aidat, $expense->fresh()->expense_relation);
         $this->assertSame('0.00', $expense->paid_amount);
         $this->assertSame('1000.00', $expense->remaining_amount);
         $this->post(route('expenses.payment.store', $expense), $this->payload())->assertRedirect()->assertSessionHasNoErrors();

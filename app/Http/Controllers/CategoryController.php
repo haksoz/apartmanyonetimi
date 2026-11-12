@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
-use App\Models\CashTransaction;
 use App\Models\Category;
 use App\Models\Due;
-use App\Models\DueBatch;
 use App\Models\DuePlan;
 use App\Models\ExpensePlan;
 use App\Models\AssessmentPlan;
@@ -61,6 +59,10 @@ class CategoryController extends Controller
             }
         });
 
+        if ($request->expectsJson()) {
+            return response()->json(['saved' => true]);
+        }
+
         return redirect()->route('categories.index')->with('status', 'Kategori sıralaması kaydedildi.');
     }
 
@@ -89,6 +91,7 @@ class CategoryController extends Controller
             'apartment_id' => $apartment->id,
             'name' => $validated['name'],
             'type' => Category::TYPE_ALL,
+            'expense_relations' => $validated['expense_relations'] ?? [],
             'is_active' => $request->boolean('is_active', true),
             ...$this->permissions($request),
         ]);
@@ -117,13 +120,25 @@ class CategoryController extends Controller
             return $category;
         }
 
+        $relationInput = $this->validateExpenseRelations($request);
         if ($category->isLocked()) {
+            if ($category->allow_expense && ! $category->isExpenseRelationLocked() && array_key_exists('expense_relations', $relationInput)) {
+                $category->update(['expense_relations' => $relationInput['expense_relations']]);
+                return redirect()->route('categories.index')->with('status', 'Kategori güncellendi.');
+            }
             return redirect()->route('categories.index')->with('error', $category->name.' kategorisinin adı, aktifliği ve kullanım yetkileri değiştirilemez.');
+        }
+
+        if ($category->isDemirbasCategory()) {
+            $request->validate(['allow_aidat' => ['nullable', 'boolean']]);
+            $category->update(['allow_aidat' => $request->boolean('allow_aidat'), ...$relationInput]);
+            return redirect()->route('categories.index')->with('status', 'Kategori güncellendi.');
         }
 
         $validated = $this->validateCategory($request, $category->apartment_id, $category->id);
 
         $category->update([
+            ...$relationInput,
             'name' => $validated['name'],
             'is_active' => $request->boolean('is_active'),
             ...$this->permissions($request),
@@ -140,7 +155,7 @@ class CategoryController extends Controller
             return $category;
         }
 
-        if ($category->isLocked()) {
+        if ($category->isLocked() || $category->isDemirbasCategory()) {
             return redirect()->route('categories.index')->with('error', $category->name.' kategorisi silinemez.');
         }
 
@@ -185,9 +200,7 @@ class CategoryController extends Controller
     {
         $links = [
             'gider' => Expense::where('category_id', $category->id)->exists(),
-            'kasa hareketi' => CashTransaction::where('category_id', $category->id)->exists(),
             'borç' => Due::where('category_id', $category->id)->exists(),
-            'borçlandırma' => DueBatch::where('category_id', $category->id)->exists(),
             'aidat planı' => DuePlan::where('category_id', $category->id)->exists(),
             'gider planı' => ExpensePlan::where('category_id', $category->id)->exists(),
             'ek borçlandırma planı' => AssessmentPlan::where('category_id', $category->id)->exists(),
@@ -205,6 +218,7 @@ class CategoryController extends Controller
 
     private function validateCategory(Request $request, int $apartmentId, ?int $categoryId = null): array
     {
+        $this->validateExpenseRelations($request);
         return $request->validate([
             'name' => [
                 'required',
@@ -215,7 +229,20 @@ class CategoryController extends Controller
                     ->ignore($categoryId),
             ],
             'is_active' => ['nullable', 'boolean'],
+            'expense_relations' => ['sometimes', 'array', 'list', 'max:2'],
+            'expense_relations.*' => ['required', 'distinct', Rule::in(['aidat', 'malik_payi'])],
             ...collect(array_keys(Category::USAGE_PERMISSIONS))->mapWithKeys(fn ($key) => [$key => ['nullable', 'boolean']])->all(),
+        ]);
+    }
+
+    private function validateExpenseRelations(Request $request): array
+    {
+        if ($request->has('expense_relations_present') && ! $request->has('expense_relations')) {
+            $request->merge(['expense_relations' => []]);
+        }
+        return $request->validate([
+            'expense_relations' => ['sometimes', 'array', 'list', 'max:2'],
+            'expense_relations.*' => ['required', 'distinct', Rule::in(['aidat', 'malik_payi'])],
         ]);
     }
 

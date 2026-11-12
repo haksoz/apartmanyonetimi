@@ -22,6 +22,8 @@ class CategoryOrderingTest extends TestCase
         $this->get(route('categories.index'))->assertOk()->assertSee('data-category-list', false)->assertSee('Sıralamayı Kaydet')->assertDontSee('<details', false);
         $this->post(route('categories.reorder'), ['category_ids' => $ids])
             ->assertSessionHasNoErrors()->assertRedirect(route('categories.index'));
+        $this->postJson(route('categories.reorder'), ['category_ids' => $ids])->assertOk()->assertJsonPath('saved', true);
+        $this->get(route('categories.index'))->assertViewHas('categories', fn ($items) => $items->pluck('id')->all() === $ids);
         $this->assertSame($ids, Category::where('apartment_id', $apartment->id)->orderedForDisplay()->pluck('id')->all());
         $this->assertSame($ids, app(DueCategorySelection::class)->options($apartment->id)->pluck('id')->all());
         $this->grantPaidFeatures($apartment);
@@ -30,6 +32,20 @@ class CategoryOrderingTest extends TestCase
             $this->get(route($route))->assertOk()
                 ->assertViewHas('categories', fn ($options) => $options->pluck('id')->all() === $expenseIds);
         }
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') {
+            \Illuminate\Support\Facades\DB::connection()->getPdo()->sqliteCreateFunction(
+                'DATE_FORMAT', fn ($date, $format) => $date ? substr($date, 0, 7) : null, 2,
+            );
+        }
+        foreach (['dues.create', 'dues.batch.create'] as $route) {
+            $this->get(route($route))->assertOk()
+                ->assertViewHas('categories', fn ($options) => $options->pluck('id')->all() === $ids);
+        }
+        $this->get(route('dues.batch.create'))->assertOk()
+            ->assertViewHas('expenseCategories', fn ($options) => $options->pluck('id')->all() === $expenseIds);
+        $ownerShareIds = $categories->reverse()->filter(fn ($category) => $category->allow_malik_payi)->pluck('id')->values()->all();
+        $this->get(route('assessment-plans.create'))->assertOk()
+            ->assertViewHas('categories', fn ($options) => $options->pluck('id')->all() === $ownerShareIds);
         foreach ($categories as $category) {
             $after = $category->fresh()->getAttributes();
             unset($after['sort_order'], $after['updated_at']);

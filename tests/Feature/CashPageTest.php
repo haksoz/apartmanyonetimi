@@ -30,7 +30,7 @@ class CashPageTest extends TestCase
             ->actingAs($user)
             ->get(route('cash.index'))
             ->assertStatus(200)
-            ->assertSee('Henüz kasa hareketi yok.');
+            ->assertSee('Henüz kasa tanımı yok.');
     }
 
     public function test_cash_box_show_uses_the_shared_heading(): void
@@ -104,7 +104,7 @@ class CashPageTest extends TestCase
             ->actingAs($user)
             ->get(route('cash.index'))
             ->assertStatus(200)
-            ->assertSee('İkinci apartman geliri')
+            ->assertViewHas('income', fn ($value) => (float) $value === 200.0)
             ->assertSee('200,00 TL')
             ->assertSee('50,00 TL')
             ->assertSee('150,00 TL')
@@ -212,7 +212,6 @@ class CashPageTest extends TestCase
                 'type' => 'expense',
                 'cash_box_id' => $cashBox->id,
                 'account_id' => $account->id,
-                'category_id' => $category->id,
                 'description' => 'Elektrik ödemesi',
                 'amount' => 250,
                 'transaction_date' => '2026-05-04',
@@ -224,7 +223,6 @@ class CashPageTest extends TestCase
             'apartment_id' => $apartment->id,
             'cash_box_id' => $cashBox->id,
             'account_id' => $account->id,
-            'category_id' => $category->id,
             'type' => 'expense',
             'description' => 'Elektrik ödemesi',
             'amount' => 250,
@@ -253,7 +251,6 @@ class CashPageTest extends TestCase
         $transaction = CashTransaction::create([
             'apartment_id' => $apartment->id,
             'cash_box_id' => $cashBox->id,
-            'category_id' => $category->id,
             'type' => 'income',
             'description' => 'Eski açıklama',
             'amount' => 100,
@@ -266,7 +263,6 @@ class CashPageTest extends TestCase
             ->put(route('cash.update', $transaction), [
                 'type' => 'income',
                 'cash_box_id' => $cashBox->id,
-                'category_id' => $category->id,
                 'description' => 'Yeni açıklama',
                 'amount' => 150,
                 'transaction_date' => '2026-05-05',
@@ -276,7 +272,6 @@ class CashPageTest extends TestCase
         $this->assertDatabaseHas('cash_transactions', [
             'id' => $transaction->id,
             'cash_box_id' => $cashBox->id,
-            'category_id' => $category->id,
             'description' => 'Yeni açıklama',
             'amount' => 150,
             'is_active' => false,
@@ -380,7 +375,7 @@ class CashPageTest extends TestCase
         $this->assertSame('1500.75', $transaction->amount);
         $this->assertSame('2026-10-01', $transaction->transaction_date->format('Y-m-d'));
         $this->assertNull($transaction->account_id);
-        $this->assertNull($transaction->category_id);
+        $this->assertArrayNotHasKey('category_id', $transaction->getAttributes());
         $this->assertSame(1, CashTransaction::where('cash_box_id', $cashBox->id)->count());
     }
 
