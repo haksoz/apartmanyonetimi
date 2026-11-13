@@ -127,7 +127,7 @@ class AccountPageTest extends TestCase
             ->assertStatus(200)
             ->assertSee('1. Daire')
             ->assertSee('Daire 01')
-            ->assertDontSee('1. Daire (Resident)', false)
+            ->assertSee('1. Daire (Resident)', false)
             ->assertSee('Resident')
             ->assertDontSee('Detaylar')
             ->assertDontSee('Hesap Türü')
@@ -1125,7 +1125,7 @@ class AccountPageTest extends TestCase
                 ->actingAs($user)
                 ->get($url)
                 ->assertOk()
-                ->assertSee($url === route('accounts.edit', $account) ? 'Hesabı Düzenle' : 'Daire 01')
+                ->assertSee('Daire 01')
                 ->assertSee('Salih Sayan (Kat Maliki)', false)
                 ->assertSee(route('accounts.show', $account), false);
         }

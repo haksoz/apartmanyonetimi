@@ -7,7 +7,10 @@
     @php $activeTenantAssignment = $account?->activeTenantAssignment; @endphp
 
     {{-- Hesap Türü, Daire & Kişisel Bilgiler --}}
-    <div class="rounded-2xl bg-white p-6 shadow-sm">
+    <div class="rounded-2xl bg-white p-4 shadow-sm md:p-6">
+        @if ($formTitle ?? null)
+            <h2 class="mb-5 text-2xl font-bold text-slate-950">{{ $formTitle }}</h2>
+        @endif
         <div class="grid gap-5 md:grid-cols-2">
             <div>
                 <label for="type" class="mb-2 block text-sm font-medium text-slate-600">Hesap Türü</label>
@@ -84,7 +87,7 @@
     </div>
 
     {{-- Hesap Bilgileri --}}
-    <div class="rounded-2xl bg-white p-6 shadow-sm">
+    <div class="rounded-2xl bg-white p-4 shadow-sm md:p-6">
         <h3 class="text-sm font-semibold text-slate-700 mb-4">Hesap Bilgileri</h3>
         <div class="grid gap-5 md:grid-cols-2">
             <div data-account-opening-date-field>

@@ -45,6 +45,63 @@ class ExpenseRelationTest extends TestCase
             'amount' => 600, 'description' => 'İlişkili gider', 'expense_date' => '2026-09-15', 'period_month' => '2026-09'], $overrides);
     }
 
+    public function test_expense_status_filter_accepts_multiple_statuses_and_legacy_single_values(): void
+    {
+        $ids = [];
+        foreach (['paid', 'overdue', 'pending'] as $status) {
+            $this->post(route('expenses.store'), $this->payload())->assertSessionHasNoErrors();
+            $expense = Expense::latest('id')->firstOrFail();
+            $expense->update(['is_paid' => $status === 'paid',
+                'due_date' => $status === 'overdue' ? now()->subDay() : null]);
+            $ids[$status] = $expense->id;
+        }
+
+        $this->get(route('expenses.index', ['status' => ['paid', 'pending']]))->assertOk()
+            ->assertViewHas('expenses', fn ($expenses) => $expenses->pluck('id')->sort()->values()->all()
+                === [$ids['paid'], $ids['pending']])
+            ->assertSee('expense-status-dialog', false);
+        $this->get(route('expenses.index', ['status' => 'overdue']))->assertOk()
+            ->assertViewHas('expenses', fn ($expenses) => $expenses->pluck('id')->all() === [$ids['overdue']]);
+        $this->get(route('expenses.index'))->assertOk()
+            ->assertViewHas('expenses', fn ($expenses) => $expenses->total() === 3);
+    }
+
+    #[TestWith([0, 180, false])]
+    #[TestWith([100, 80, false])]
+    #[TestWith([180, 0, true])]
+    public function test_amount_edit_recalculates_balance_without_changing_payments(int $paid, int $remaining, bool $isPaid): void
+    {
+        $this->post(route('expenses.store'), $this->payload(['amount' => 300]))->assertSessionHasNoErrors();
+        $expense = Expense::latest('id')->firstOrFail();
+        $expense->update(['paid_amount' => $paid, 'remaining_amount' => 300 - $paid]);
+
+        $this->put(route('expenses.update', $expense), $this->payload(['amount' => 180]))
+            ->assertSessionHasNoErrors()->assertRedirect(route('expenses.show', $expense));
+
+        $expense->refresh();
+        $this->assertEquals(180, $expense->amount);
+        $this->assertEquals($paid, $expense->paid_amount);
+        $this->assertEquals($remaining, $expense->remaining_amount);
+        $this->assertSame($isPaid, $expense->is_paid);
+        $this->assertEquals(180, $expense->transactions()->where('type', 'credit')->sole()->amount);
+        $this->get(route('expenses.show', $expense))->assertOk()
+            ->assertSeeInOrder(['Tutar', '180,00 TL', 'Ödenen', number_format($paid, 2, ',', '.').' TL',
+                'Kalan', number_format($remaining, 2, ',', '.').' TL']);
+    }
+
+    public function test_amount_cannot_be_reduced_below_existing_payments(): void
+    {
+        $this->post(route('expenses.store'), $this->payload(['amount' => 300]))->assertSessionHasNoErrors();
+        $expense = Expense::latest('id')->firstOrFail();
+        $expense->update(['paid_amount' => 200, 'remaining_amount' => 100]);
+
+        $this->put(route('expenses.update', $expense), $this->payload(['amount' => 180]))
+            ->assertSessionHasErrors('amount');
+
+        $this->assertEquals(300, $expense->fresh()->amount);
+        $this->assertEquals(300, $expense->transactions()->where('type', 'credit')->sole()->amount);
+    }
+
     public function test_category_default_is_used_for_new_expenses_and_explicit_selection_wins(): void
     {
         $this->category->update(['expense_relations' => ['aidat']]);

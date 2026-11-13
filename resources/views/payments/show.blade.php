@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('content_spacing', 'py-3 sm:py-4')
+
 
 
 @section('content')
@@ -22,17 +24,17 @@
 
     {{-- Header --}}
 
-    <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+    <div class="mb-3 flex flex-row items-center justify-between gap-2 min-w-0 sm:gap-3">
 
         <div class="min-w-0 flex-1">
 
-            <h1 class="text-xl font-bold text-slate-950 lg:text-2xl">
+            <h1 class="text-2xl font-bold text-slate-950">
                 <a href="{{ route('ledger.index') }}" class="hover:text-slate-600">{{ $label }}</a>
             </h1>
 
             @if ($payment->account)
                 <div class="mt-1">
-                    <a href="{{ route('accounts.show', $payment->account) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600 hover:text-emerald-600 hover:bg-slate-100">
+                    <a href="{{ route('accounts.show', $payment->account) }}" class="text-base font-semibold text-slate-800 hover:text-emerald-600">
                         {{ $payment->account->name }}
                         @if ($payment->account->unit)
                             - Daire {{ str_pad($payment->account->unit->unit_no, 2, '0', STR_PAD_LEFT) }}
@@ -77,13 +79,13 @@
 
         {{-- Mobil işlemler menüsü --}}
         <details class="lg:hidden relative group">
-            <summary class="cursor-pointer list-none rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 flex items-center justify-end gap-2 focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <summary class="inline-flex h-12 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
+                İşlemler
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
-                İşlem
             </summary>
-            <div class="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-slate-100 flex flex-col gap-2 z-20">
+            <div class="absolute right-0 top-full z-20 mt-2 flex w-44 flex-col gap-2 rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200">
 
                 @if ($payment->unallocated_amount > 0)
 
@@ -114,7 +116,7 @@
             </div>
         </details>
 
-            <button type="button" onclick="history.back()" class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+            <button type="button" onclick="history.back()" class="inline-flex h-11 w-14 shrink-0 items-center justify-center sm:h-auto sm:w-auto gap-1 whitespace-nowrap rounded-xl border border-slate-300 px-1 py-2 sm:gap-2 sm:py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
                 </svg>

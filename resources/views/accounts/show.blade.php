@@ -24,6 +24,7 @@
                     <span class="ml-2 align-middle inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">Pasif</span>
                 @endif
             </h1>
+            <p class="mt-1 text-base font-semibold text-slate-800">{{ $account->name }} ({{ $account->type_label }})</p>
         </div>
 
         {{-- Hesap Sekmeleri --}}
@@ -41,11 +42,6 @@
     <div class="rounded-2xl bg-white shadow-sm mb-6 overflow-hidden">
         {{-- Üst: Bilgiler --}}
         <div class="p-4 md:p-6 border-b border-slate-100">
-            <div class="mb-4">
-                <div class="text-xl font-bold text-slate-900">{{ $account->name }}</div>
-                <p class="mt-0.5 text-sm text-slate-400">{{ $account->type_label }}</p>
-            </div>
-
             <div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 text-sm">
 

@@ -50,22 +50,17 @@ class DueController extends Controller
         if (! in_array($sortDirection, ['asc', 'desc'])) {
             $sortDirection = 'desc';
         }
-
-        $filterStartDate = $request->query('start_date');
-        $filterEndDate   = $request->query('end_date');
         $filterPeriod    = $request->query('period');
         $filterStatus  = $request->query('status');
         $filterSource  = $request->query('source');
         $filterBatchId = $request->query('batch_id');
         $filterSearch  = $request->query('search');
         $filterUnitId  = $request->query('unit_id');
-        $filterAccountType = $request->query('account_type');
         $request->validate([
             'due_type' => ['nullable', Rule::in(DueType::values())],
             'plan' => ['nullable', 'regex:/^(aidat|assessment):[1-9][0-9]*$/'],
             'source' => ['nullable', Rule::in(['plan', 'assessment', 'batch', 'manual', 'import'])],
             'status' => ['nullable', Rule::in(['open', 'unpaid', 'partial', 'paid', 'overdue'])],
-            'account_type' => ['nullable', Rule::in([Account::TYPE_OWNER, Account::TYPE_TENANT])],
         ]);
         $filterDueType = $request->query('due_type');
         $filterPlan = $request->query('plan');
@@ -88,23 +83,12 @@ class DueController extends Controller
             ->when($filterSearch, function ($q) use ($filterSearch) {
                 \App\Support\DueSearch::apply($q, (string) $filterSearch);
             })
-            ->when($filterStartDate || $filterEndDate, function ($q) use ($filterStartDate, $filterEndDate) {
-                $column = 'COALESCE(DATE(created_at_manual), DATE(created_at))';
-                if ($filterStartDate && $filterEndDate) {
-                    $q->whereRaw("{$column} BETWEEN ? AND ?", [$filterStartDate, $filterEndDate]);
-                } elseif ($filterStartDate) {
-                    $q->whereRaw("{$column} >= ?", [$filterStartDate]);
-                } elseif ($filterEndDate) {
-                    $q->whereRaw("{$column} <= ?", [$filterEndDate]);
-                }
-            })
             ->when($filterPeriod, fn ($q) => $q->forMonth($filterPeriod))
             ->when($filterDueType, fn ($q) => $q->where('due_type', $filterDueType))
             ->when($filterPlan, fn ($q) => $q->whereHas('batch', fn ($b) => $b->where($planType === 'aidat' ? 'due_plan_id' : 'assessment_plan_id', $planId)))
             ->when($filterStatus,  fn ($q) => $this->applyStatusFilter($q, $filterStatus))
             ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))
             ->when($filterUnitId,  fn ($q) => $q->where('unit_id', $filterUnitId))
-            ->when($filterAccountType, fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $filterAccountType)))
             ->when($filterSource === 'plan',   fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('due_plan_id')))
             ->when($filterSource === 'assessment', fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('assessment_plan_id')))
             ->when($filterSource === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b
@@ -121,7 +105,10 @@ class DueController extends Controller
         if ($sortBy === 'unit_id') {
             $dues->orderByRaw('unit_id IS NULL, unit_id ' . $sortDirection);
         } elseif ($sortBy === 'created_at') {
-            $dues->orderByRaw('COALESCE(created_at_manual, created_at) ' . $sortDirection);
+            $dues->orderByRaw('DATE(COALESCE(created_at_manual, created_at)) ' . $sortDirection)
+                ->orderByRaw('unit_id IS NULL')
+                ->orderByRaw('(SELECT CAST(units.unit_no AS UNSIGNED) FROM units WHERE units.id = dues.unit_id) ASC')
+                ->orderBy('dues.id');
         } else {
             $dues->orderBy($sortBy, $sortDirection);
         }
@@ -158,7 +145,7 @@ class DueController extends Controller
         }
         $selectedPlan = $planOptions->firstWhere('value', $filterPlan);
         $dueTypeOptions = DueType::options();
-        $filters = compact('filterStartDate', 'filterEndDate', 'filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterAccountType', 'filterDueType', 'filterPlan', 'showImported');
+        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterDueType', 'filterPlan', 'showImported');
 
         $hasImported = Due::query()
             ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
@@ -1132,7 +1119,6 @@ class DueController extends Controller
             ->when($request->query('status'),       fn ($q) => $this->applyStatusFilter($q, $request->query('status')))
             ->when($request->query('batch_id'),     fn ($q) => $q->where('due_batch_id', $request->query('batch_id')))
             ->when($request->query('unit_id'),      fn ($q) => $q->where('unit_id', $request->query('unit_id')))
-            ->when($request->query('account_type'), fn ($q) => $q->whereHas('account', fn ($a) => $a->where('type', $request->query('account_type'))))
             ->when($request->query('source') === 'plan',   fn ($q) => $q->whereHas('batch', fn ($b) => $b->whereNotNull('due_plan_id')))
             ->when($request->query('source') === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b
                 ->whereNull('due_plan_id')->whereNull('assessment_plan_id')
@@ -1147,7 +1133,10 @@ class DueController extends Controller
         if ($sortBy === 'unit_id') {
             $dues->orderByRaw('unit_id IS NULL, unit_id '.$sortDirection);
         } elseif ($sortBy === 'created_at') {
-            $dues->orderByRaw('COALESCE(created_at_manual, created_at) '.$sortDirection);
+            $dues->orderByRaw('DATE(COALESCE(created_at_manual, created_at)) '.$sortDirection)
+                ->orderByRaw('unit_id IS NULL')
+                ->orderByRaw('(SELECT CAST(units.unit_no AS UNSIGNED) FROM units WHERE units.id = dues.unit_id) ASC')
+                ->orderBy('dues.id');
         } else {
             $dues->orderBy($sortBy, $sortDirection);
         }

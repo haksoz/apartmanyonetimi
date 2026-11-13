@@ -37,6 +37,29 @@ class DuePageTest extends TestCase
             ->assertSee('Henüz aidat kaydı yok.');
     }
 
+    public function test_same_day_dues_are_sorted_by_numeric_unit_number(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Sıralama', 'unit_count' => 3]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $ids = [];
+        foreach ([10, 2, 1] as $number) {
+            $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => (string) $number]);
+            $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+                'type' => Account::TYPE_OWNER, 'name' => 'Daire '.$number]);
+            $due = Due::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'account_id' => $account->id,
+                'due_type' => \App\Enums\DueType::Aidat, 'amount' => 100, 'remaining_amount' => 100,
+                'status' => 'unpaid', 'created_at_manual' => null]);
+            $due->forceFill(['created_at' => '2026-01-01 '.sprintf('%02d', $number).':00:00'])->save();
+            $ids[$number] = $due->id;
+        }
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        foreach (['asc', 'desc'] as $direction) {
+            $this->get(route('dues.index', ['sort_by' => 'created_at', 'sort_direction' => $direction]))
+                ->assertOk()->assertViewHas('dues', fn ($dues) => $dues->pluck('id')->all() === [$ids[1], $ids[2], $ids[10]]);
+        }
+    }
+
     public function test_selected_account_due_create_uses_the_statement_heading(): void
     {
         $user = User::factory()->create();
@@ -128,7 +151,7 @@ class DuePageTest extends TestCase
             ->assertSee('Ocak 2026 aidatı')
             ->assertSee('name="show_imported" value="1"', false)
             ->assertSee('name="unit_id" value="' . $unit->id . '"', false)
-            ->assertSee('name="account_type" value="owner"', false)
+            ->assertDontSee('name="account_type"', false)
             ->assertSee('name="sort_by" value="amount"', false)
             ->assertSee('name="sort_direction" value="asc"', false);
 
@@ -144,6 +167,29 @@ class DuePageTest extends TestCase
             ->get(route('dues.index', ['search' => 'Ahmet Yılmaz', 'show_imported' => '1']))
             ->assertStatus(200)
             ->assertSee('Ocak 2026 aidatı');
+    }
+
+    public function test_show_imported_switch_includes_imported_dues_only_when_enabled(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Devir Testi', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER, 'name' => 'Test Hesabı']);
+        foreach ([false, true] as $imported) {
+            Due::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'account_id' => $account->id,
+                'due_type' => \App\Enums\DueType::Aidat, 'created_at_manual' => '2026-01-01',
+                'amount' => 100, 'remaining_amount' => 100, 'status' => 'unpaid', 'is_imported' => $imported]);
+        }
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        foreach ([[] , ['show_imported' => '1'], ['show_imported' => '0'], []] as $query) {
+            $enabled = ($query['show_imported'] ?? '0') === '1';
+            $this->get(route('dues.index', $query))->assertOk()
+                ->assertViewHas('showImported', $enabled)
+                ->assertViewHas('dues', fn ($dues) => $dues->total() === ($enabled ? 2 : 1)
+                    && ($enabled || $dues->every(fn ($due) => ! $due->is_imported)));
+        }
     }
 
     public function test_status_filter_matches_computed_status(): void

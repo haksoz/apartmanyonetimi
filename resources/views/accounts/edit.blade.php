@@ -1,7 +1,9 @@
 @extends('layouts.app')
 
+@section('content_spacing', 'py-3 sm:py-8')
+
 @section('content')
-    @include('accounts._page_heading', ['account' => $account, 'active' => 'edit', 'pageTitle' => 'Hesabı Düzenle'])
+    @include('accounts._page_heading', ['account' => $account, 'active' => 'edit'])
 
     @include('accounts.form', [
         'action' => route('accounts.update', $account),
@@ -9,6 +11,7 @@
         'account' => $account,
         'units' => $units,
         'buttonText' => 'Hesabı Güncelle',
+        'formTitle' => 'Hesap Düzenle',
     ])
 
     {{-- Tehlikeli İşlemler --}}

@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('content_spacing', 'py-3 sm:py-8')
+
 @section('content')
     @php
         $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
@@ -18,7 +20,7 @@
         </div>
     @endif
 
-    <form id="payment-create-form" method="POST" action="{{ route('payments.store') }}" class="rounded-2xl bg-white p-6 shadow-sm">
+    <form id="payment-create-form" method="POST" action="{{ route('payments.store') }}" class="rounded-2xl bg-white p-4 shadow-sm md:p-6">
         @csrf
 
         <h1 class="text-2xl font-bold text-slate-950">Ödeme Al / Tahsilat Ekle</h1>

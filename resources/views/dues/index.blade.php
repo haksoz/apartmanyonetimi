@@ -33,12 +33,6 @@
             @if ($filters['filterBatchId'])
                 <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
             @endif
-            @if ($filters['filterStartDate'])
-                <input type="hidden" name="start_date" value="{{ $filters['filterStartDate'] }}">
-            @endif
-            @if ($filters['filterEndDate'])
-                <input type="hidden" name="end_date" value="{{ $filters['filterEndDate'] }}">
-            @endif
             @if ($filters['filterPeriod'])
                 <input type="hidden" name="period" value="{{ $filters['filterPeriod'] }}">
             @endif
@@ -50,9 +44,6 @@
             @endif
             @if ($filters['filterUnitId'])
                 <input type="hidden" name="unit_id" value="{{ $filters['filterUnitId'] }}">
-            @endif
-            @if ($filters['filterAccountType'])
-                <input type="hidden" name="account_type" value="{{ $filters['filterAccountType'] }}">
             @endif
             @if ($showImported)
                 <input type="hidden" name="show_imported" value="1">
@@ -78,12 +69,10 @@
             if ($filters['filterDueType']) $activeFilterCount++;
             if ($filters['filterPlan']) $activeFilterCount++;
             if ($filters['filterBatchId']) $activeFilterCount++;
-            if ($filters['filterStartDate'] || $filters['filterEndDate']) $activeFilterCount++;
             if ($filters['filterPeriod']) $activeFilterCount++;
             if ($filters['filterStatus']) $activeFilterCount++;
             if ($filters['filterSource']) $activeFilterCount++;
             if ($filters['filterUnitId']) $activeFilterCount++;
-            if ($filters['filterAccountType']) $activeFilterCount++;
             if ($showImported) $activeFilterCount++;
         @endphp
 
@@ -101,7 +90,6 @@
 
     @php
         $statusLabels = ['open' => 'Tüm Açık Borçlar', 'unpaid' => 'Vadesi Gelmemiş', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
-        $accountTypeLabels = ['owner' => 'Kat Maliki', 'tenant' => 'Kiracı'];
         $sourceLabels = ['plan' => 'Aidat Planı', 'assessment' => 'Taksitli Borç Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel', 'import' => 'İçe Aktarma'];
     @endphp
 
@@ -126,15 +114,6 @@
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif
-            @if ($filters['filterStartDate'] || $filters['filterEndDate'])
-                <a href="{{ route('dues.index', request()->except(['start_date', 'end_date'])) }}"
-                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ $filters['filterStartDate'] ? \Carbon\Carbon::parse($filters['filterStartDate'])->format('d.m.Y') : '...' }}
-                    -
-                    {{ $filters['filterEndDate'] ? \Carbon\Carbon::parse($filters['filterEndDate'])->format('d.m.Y') : '...' }}
-                    <span class="text-slate-500">&times;</span>
-                </a>
-            @endif
             @if ($filters['filterPeriod'])
                 <a href="{{ route('dues.index', request()->except('period')) }}"
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
@@ -154,13 +133,6 @@
                 <a href="{{ route('dues.index', request()->except('unit_id')) }}"
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
                     Daire {{ $activeUnit ? str_pad($activeUnit->unit_no, 2, '0', STR_PAD_LEFT) : $filters['filterUnitId'] }}
-                    <span class="text-slate-500">&times;</span>
-                </a>
-            @endif
-            @if ($filters['filterAccountType'])
-                <a href="{{ route('dues.index', request()->except('account_type')) }}"
-                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ $accountTypeLabels[$filters['filterAccountType']] ?? $filters['filterAccountType'] }}
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif
@@ -224,21 +196,11 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Başlangıç Tarihi</label>
-                        <input type="date" name="start_date" value="{{ $filters['filterStartDate'] }}"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Bitiş Tarihi</label>
-                        <input type="date" name="end_date" value="{{ $filters['filterEndDate'] }}"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Dönem</label>
-                        <input type="month" name="period" value="{{ $filters['filterPeriod'] }}"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
+                        <label id="dues-period-label" class="block text-sm font-medium text-slate-700 mb-1.5">Tarih/Dönem</label>
+                        <input type="hidden" id="dues-period" name="period" value="{{ $filters['filterPeriod'] }}">
+                        <button type="button" id="dues-period-open" aria-haspopup="dialog" aria-labelledby="dues-period-label dues-period-text" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-left text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
+                            <span id="dues-period-text">{{ $filters['filterPeriod'] ? \Carbon\Carbon::parse($filters['filterPeriod'].'-01')->locale('tr')->translatedFormat('F Y') : 'Tüm Dönemler' }}</span>
+                        </button>
                     </div>
 
                     <div>
@@ -260,15 +222,6 @@
                             @foreach ($units as $unit)
                                 <option value="{{ $unit->id }}" {{ $filters['filterUnitId'] == $unit->id ? 'selected' : '' }}>Daire {{ str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT) }}</option>
                             @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Hesap Türü</label>
-                        <select name="account_type" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
-                            <option value="">Tüm Hesaplar</option>
-                            <option value="owner" {{ $filters['filterAccountType'] === 'owner' ? 'selected' : '' }}>Kat Maliki</option>
-                            <option value="tenant" {{ $filters['filterAccountType'] === 'tenant' ? 'selected' : '' }}>Kiracı</option>
                         </select>
                     </div>
 
@@ -297,10 +250,8 @@
                     @if ($hasImported)
                         <label class="flex items-center justify-between cursor-pointer select-none">
                             <span class="text-sm font-medium text-slate-700">Devir Öncesini Göster</span>
-                            <input type="checkbox" name="show_imported" value="1" class="peer sr-only" {{ $showImported ? 'checked' : '' }}>
-                            <span class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full bg-slate-200 transition-colors peer-checked:bg-slate-950 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-slate-300">
-                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1 peer-checked:translate-x-6"></span>
-                            </span>
+                            <input type="checkbox" name="show_imported" value="1" role="switch" class="peer sr-only" {{ $showImported ? 'checked' : '' }}>
+                            <span aria-hidden="true" class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full bg-slate-200 transition-colors peer-checked:bg-slate-950 peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-slate-300 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5"></span>
                         </label>
                     @endif
                 </div>
@@ -379,9 +330,9 @@
                                         default => ''
                                     };
                                 @endphp
-                                <div class="text-xs text-slate-500 mt-1">
-                                    @if ($title){{ $title }} @endif{{ $due->account->name }}
-                                    @if ($due->unit) - Daire {{ str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) }}@endif
+                                <div class="text-sm font-semibold text-slate-900 mt-1">
+                                    @if ($due->unit)<span class="whitespace-nowrap">Daire {{ str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</span> - @endif{{ $due->account->name }}
+                                    @if ($title)<span class="font-normal text-slate-500">({{ $title }})</span>@endif
                                 </div>
                             @endif
                         </td>
@@ -458,14 +409,17 @@
             <div class="rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
                 {{-- Parça 1: Bilgiler --}}
                 <a href="{{ route('dues.show', $due) }}" class="block">
-                    @if ($due->description)
-                        <div class="text-base font-bold text-slate-900">{{ $due->description }}</div>
-                    @endif
-                    <div class="text-xs text-slate-600 mt-1">
-                        <span>{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
-                        <span class="mx-1 text-slate-400">•</span>
-                        <span>{{ $due->unit ? 'No '.str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}</span>
-                        <span class="mx-1 text-slate-400">•</span>
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1 text-base font-bold text-slate-900 break-words">{{ $due->description }}</div>
+                        <span class="shrink-0 pt-0.5 text-xs text-slate-500 tabular-nums" aria-label="Oluşturulma tarihi">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
+                    </div>
+                    <div class="text-sm font-semibold text-slate-900 mt-1 break-words">
+                        @if ($due->unit)
+                            <span class="whitespace-nowrap">Daire {{ str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) }}</span>
+                        @endif
+                        @if ($due->unit && $due->account)
+                            <span class="mx-1 font-normal text-slate-400">·</span>
+                        @endif
                         <span>{{ $due->account?->name }}</span>
                     </div>
                     @if ($due->due_date)
@@ -533,6 +487,7 @@
     @endif
 
     @include('dues._payment_modal', ['cashBoxes' => $cashBoxes])
+    @include('components.period-picker', ['periodPickerId' => 'dues'])
 
     <script>
         var selectedIds = new Set();
@@ -610,7 +565,7 @@
         function resetFilters() {
             var form = document.getElementById('filter-form');
             form.querySelectorAll('select').forEach(function (el) { el.value = ''; });
-            form.querySelectorAll('input[type="date"], input[type="month"]').forEach(function (el) { el.value = ''; });
+            document.getElementById('dues-period').value = '';
             var cb = form.querySelector('input[name="show_imported"]');
             if (cb) cb.checked = false;
             form.submit();
@@ -635,7 +590,7 @@
         })();
 
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeFilterModal();
+            if (e.key === 'Escape' && !document.getElementById('dues-period-dialog').open) closeFilterModal();
         });
 
         // Tekli aidat tahsilatı popup

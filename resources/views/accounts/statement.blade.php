@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('content_spacing', 'py-3 sm:py-8')
+
 @section('content')
     @include('accounts._page_heading', ['account' => $account, 'active' => 'statement'])
 

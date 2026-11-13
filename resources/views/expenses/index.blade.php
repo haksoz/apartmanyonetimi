@@ -18,18 +18,12 @@
     <div class="mb-4 flex flex-row items-center justify-between gap-3">
         {{-- Arama --}}
         <form method="GET" action="{{ route('expenses.index') }}" class="flex gap-2 flex-1 min-w-0">
-            @if ($filters['filterStartDate'])
-                <input type="hidden" name="start_date" value="{{ $filters['filterStartDate'] }}">
-            @endif
-            @if ($filters['filterEndDate'])
-                <input type="hidden" name="end_date" value="{{ $filters['filterEndDate'] }}">
-            @endif
             @if ($filters['filterPeriod'])
                 <input type="hidden" name="period" value="{{ $filters['filterPeriod'] }}">
             @endif
-            @if ($filters['filterStatus'])
-                <input type="hidden" name="status" value="{{ $filters['filterStatus'] }}">
-            @endif
+            @foreach ($filters['filterStatus'] as $status)
+                <input type="hidden" name="status[]" value="{{ $status }}">
+            @endforeach
             @if ($filters['filterCategory'])
                 <input type="hidden" name="category" value="{{ $filters['filterCategory'] }}">
             @endif
@@ -54,7 +48,6 @@
 
         @php
             $activeFilterCount = 0;
-            if ($filters['filterStartDate'] || $filters['filterEndDate']) $activeFilterCount++;
             if ($filters['filterPeriod']) $activeFilterCount++;
             if ($filters['filterStatus']) $activeFilterCount++;
             if ($filters['filterCategory']) $activeFilterCount++;
@@ -81,15 +74,6 @@
     @if ($activeFilterCount > 0)
         <div class="mb-4 flex flex-wrap items-center gap-2">
             <span class="text-xs font-medium text-slate-500">Aktif filtreler:</span>
-            @if ($filters['filterStartDate'] || $filters['filterEndDate'])
-                <a href="{{ route('expenses.index', request()->except(['start_date', 'end_date'])) }}"
-                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ $filters['filterStartDate'] ? \Carbon\Carbon::parse($filters['filterStartDate'])->format('d.m.Y') : '...' }}
-                    -
-                    {{ $filters['filterEndDate'] ? \Carbon\Carbon::parse($filters['filterEndDate'])->format('d.m.Y') : '...' }}
-                    <span class="text-slate-500">&times;</span>
-                </a>
-            @endif
             @if ($filters['filterPeriod'])
                 <a href="{{ route('expenses.index', request()->except('period')) }}"
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
@@ -100,7 +84,7 @@
             @if ($filters['filterStatus'])
                 <a href="{{ route('expenses.index', request()->except('status')) }}"
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ $statusLabels[$filters['filterStatus']] ?? $filters['filterStatus'] }}
+                    {{ implode(', ', array_map(fn ($status) => $statusLabels[$status], $filters['filterStatus'])) }}
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif
@@ -151,31 +135,25 @@
 
                 <div class="flex-1 space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Başlangıç Tarihi</label>
-                        <input type="date" name="start_date" value="{{ $filters['filterStartDate'] }}"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
+                        <label id="expense-period-label" class="block text-sm font-medium text-slate-700 mb-1.5">Tarih/Dönem</label>
+                        <input type="hidden" id="expense-period" name="period" value="{{ $filters['filterPeriod'] }}">
+                        <button type="button" id="expense-period-open" aria-haspopup="dialog" aria-labelledby="expense-period-label expense-period-text"
+                            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-left text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
+                            <span id="expense-period-text">{{ $filters['filterPeriod'] ? \Carbon\Carbon::parse($filters['filterPeriod'].'-01')->locale('tr')->translatedFormat('F Y') : 'Tüm Dönemler' }}</span>
+                        </button>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Bitiş Tarihi</label>
-                        <input type="date" name="end_date" value="{{ $filters['filterEndDate'] }}"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Dönem</label>
-                        <input type="month" name="period" value="{{ $filters['filterPeriod'] }}"
-                            class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Durum</label>
-                        <select name="status" class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white sm:py-2 sm:text-sm">
-                            <option value="">Tüm Durumlar</option>
-                            <option value="paid"    @selected($filters['filterStatus'] === 'paid')>Ödendi</option>
-                            <option value="overdue" @selected($filters['filterStatus'] === 'overdue')>Ödenmedi</option>
-                            <option value="pending" @selected($filters['filterStatus'] === 'pending')>Bekliyor</option>
-                        </select>
+                        <label id="expense-status-label" class="block text-sm font-medium text-slate-700 mb-1.5">Durum</label>
+                        <div id="expense-status-inputs">
+                            @foreach ($filters['filterStatus'] as $status)
+                                <input type="hidden" name="status[]" value="{{ $status }}">
+                            @endforeach
+                        </div>
+                        <button type="button" id="expense-status-open" aria-haspopup="dialog" aria-labelledby="expense-status-label expense-status-text"
+                            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-left text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
+                            <span id="expense-status-text">{{ $filters['filterStatus'] ? implode(', ', array_map(fn ($status) => $statusLabels[$status], $filters['filterStatus'])) : 'Tüm Durumlar' }}</span>
+                        </button>
                     </div>
 
                     <div>
@@ -191,10 +169,8 @@
                     @if ($hasImported)
                         <label class="flex items-center justify-between cursor-pointer select-none">
                             <span class="text-sm font-medium text-slate-700">Devir Öncesini Göster</span>
-                            <input type="checkbox" name="show_imported" value="1" class="peer sr-only" {{ $showImported ? 'checked' : '' }}>
-                            <span class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full bg-slate-200 transition-colors peer-checked:bg-slate-950 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-slate-300">
-                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1 peer-checked:translate-x-6"></span>
-                            </span>
+                            <input type="checkbox" name="show_imported" value="1" role="switch" class="peer sr-only" {{ $showImported ? 'checked' : '' }}>
+                            <span aria-hidden="true" class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full bg-slate-200 transition-colors peer-checked:bg-slate-950 peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-slate-300 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5"></span>
                         </label>
                     @endif
                 </div>
@@ -222,16 +198,11 @@
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50 text-left">
                 <tr>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <a href="{{ route('expenses.index', ['sort_by' => 'expense_date', 'sort_direction' => $sortBy === 'expense_date' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 hover:text-slate-700">Tarih @if ($sortBy === 'expense_date')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
                     </th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Açıklama</th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <a href="{{ route('expenses.index', ['sort_by' => 'expense_date', 'sort_direction' => $sortBy === 'expense_date' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 hover:text-slate-700">Dönem @if ($sortBy === 'expense_date')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <a href="{{ route('expenses.index', ['sort_by' => 'category', 'sort_direction' => $sortBy === 'category' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 hover:text-slate-700">Kategori @if ($sortBy === 'category')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
-                    </th>
+                    <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Son Ödeme</th>
                     <th class="px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">
                         <a href="{{ route('expenses.index', ['sort_by' => 'amount', 'sort_direction' => $sortBy === 'amount' && $sortDirection === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-end gap-1 hover:text-slate-700">Tutar @if ($sortBy === 'amount')<span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif</a>
                     </th>
@@ -249,9 +220,10 @@
                                    'July' => 'Temmuz', 'August' => 'Ağustos', 'September' => 'Eylül', 'October' => 'Ekim', 'November' => 'Kasım', 'December' => 'Aralık'];
                         $periodText = $expense->period_month ? $expense->period_month->format('F Y') : null;
                         if ($periodText) { foreach ($months as $en => $tr) { $periodText = str_replace($en, $tr, $periodText); } }
+                        $isOverdue = ! $expense->is_paid && $expense->due_date && $expense->due_date->isPast();
+                        $remaining = $expense->remaining_amount ?? $expense->amount;
                     @endphp
                     <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('expenses.show', $expense) }}'">
-                        <td class="px-5 py-4 font-semibold text-slate-900 tabular-nums">{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</td>
                         <td class="px-5 py-4">
                             <div class="text-slate-900 font-medium">
                                 {{ $expense->description ?? '-' }}
@@ -263,22 +235,38 @@
                                 <div class="text-xs text-slate-500 mt-1">{{ $expense->account->name }}</div>
                             @endif
                         </td>
-                        <td class="px-5 py-4 text-slate-700 tabular-nums">{{ $periodText ?? '-' }}</td>
-                        <td class="px-5 py-4 text-slate-700">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</td>
-                        <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
-                        <td class="px-5 py-4 text-right tabular-nums {{ $expense->is_paid ? 'text-slate-400' : 'text-amber-600 font-semibold' }}">
-                            {{ $expense->is_paid ? '—' : number_format($expense->remaining_amount ?? $expense->amount, 2, ',', '.') . ' TL' }}
+                        <td class="px-5 py-4">
+                            <div class="text-slate-700 tabular-nums">{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</div>
+                            <div class="mt-1 text-xs text-slate-500">{{ $periodText ?? '-' }}</div>
                         </td>
                         <td class="px-5 py-4">
-                            @php
-                                $statusColor = $expense->payment_status_color;
-                                $statusColorBg = $statusColor === 'emerald' ? 'bg-emerald-50' : ($statusColor === 'red' ? 'bg-red-50' : 'bg-amber-50');
-                                $statusColorText = $statusColor === 'emerald' ? 'text-emerald-700' : ($statusColor === 'red' ? 'text-red-700' : 'text-amber-700');
-                                $statusColorDot = $statusColor === 'emerald' ? 'bg-emerald-500' : ($statusColor === 'red' ? 'bg-red-500' : 'bg-amber-500');
-                            @endphp
-                            <span class="inline-flex items-center gap-1.5 rounded-full {{ $statusColorBg }} px-2.5 py-1 text-xs font-semibold {{ $statusColorText }}">
-                                <span class="h-1.5 w-1.5 rounded-full {{ $statusColorDot }}"></span>{{ $expense->payment_status_label }}
-                            </span>
+                            @if ($expense->due_date)
+                                <div class="tabular-nums {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-700' }}">{{ $expense->due_date->format('d.m.Y') }}</div>
+                            @else
+                                <span class="text-slate-400">-</span>
+                            @endif
+                            <div class="mt-1 text-xs text-slate-500">{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</div>
+                        </td>
+                        <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($expense->amount, 2, ',', '.') }} TL</td>
+                        <td class="px-5 py-4 text-right tabular-nums">
+                            @if ($expense->is_paid || $remaining == 0)
+                                <span class="text-emerald-600 font-semibold">—</span>
+                            @elseif ($remaining != $expense->amount)
+                                <span class="text-amber-600 font-semibold">{{ number_format($remaining, 2, ',', '.') }} TL</span>
+                            @else
+                                <span class="text-slate-700 font-semibold">{{ number_format($remaining, 2, ',', '.') }} TL</span>
+                            @endif
+                        </td>
+                        <td class="px-5 py-4">
+                            @if ($isOverdue)
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Gecikti</span>
+                            @elseif ($expense->is_paid)
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Ödendi</span>
+                            @elseif (($expense->paid_amount ?? 0) > 0)
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Kısmi</span>
+                            @else
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Bekliyor</span>
+                            @endif
                         </td>
                         <td class="px-5 py-4 text-right whitespace-nowrap" onclick="event.stopPropagation()">
                             <div class="flex items-center justify-end gap-2">
@@ -293,7 +281,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="px-5 py-12 text-center text-slate-400">Henüz gider kaydı yok.</td></tr>
+                    <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400">Henüz gider kaydı yok.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -302,21 +290,25 @@
     {{-- Mobile Card View --}}
     <div class="md:hidden space-y-3">
         @forelse ($expenses as $expense)
+            @php
+                $isOverdue = ! $expense->is_paid && $expense->due_date && $expense->due_date->isPast();
+                $remaining = $expense->remaining_amount ?? $expense->amount;
+                $expenseCategory = $expense->categoryRelation?->name ?? $expense->category;
+                $statusColor = $isOverdue ? 'red' : ($expense->is_paid ? 'emerald' : (($expense->paid_amount ?? 0) > 0 ? 'amber' : 'slate'));
+                $statusLabel = $isOverdue ? 'Gecikmiş' : ($expense->is_paid ? 'Ödendi' : (($expense->paid_amount ?? 0) > 0 ? 'Kısmi' : 'Bekliyor'));
+            @endphp
             <div class="rounded-xl bg-white p-3 shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors">
                 {{-- Parça 1: Bilgiler --}}
                 <a href="{{ route('expenses.show', $expense) }}" class="block">
-                    @if ($expense->description)
-                        <div class="text-base font-bold text-slate-900">{{ $expense->description }}</div>
-                    @endif
-                    <div class="text-xs text-slate-600 mt-1">
-                        <span>{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</span>
-                        <span class="mx-1 text-slate-400">•</span>
-                        <span>{{ $expense->categoryRelation?->name ?? $expense->category ?? '—' }}</span>
-                        @if ($expense->account)
-                            <span class="mx-1 text-slate-400">•</span>
-                            <span>{{ $expense->account->name }}</span>
-                        @endif
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1 text-base font-bold text-slate-900 break-words">{{ $expense->description }}</div>
+                        <span class="shrink-0 pt-0.5 text-xs text-slate-500 tabular-nums" aria-label="Gider tarihi">{{ $expense->expense_date?->format('d.m.Y') ?? '-' }}</span>
                     </div>
+                    @if ($expense->due_date)
+                        <div class="text-xs mt-1 {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-slate-500' }}">Son Ödeme: {{ $expense->due_date->format('d.m.Y') }}{{ $expenseCategory ? ' · '.$expenseCategory : '' }}</div>
+                    @elseif ($expenseCategory)
+                        <div class="text-xs text-slate-500 mt-1">{{ $expenseCategory }}</div>
+                    @endif
                     @if ($expense->is_imported)
                         <div class="mt-1.5">
                             <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
@@ -329,19 +321,18 @@
                     <div class="flex items-center gap-2">
                         <a href="{{ route('expenses.show', $expense) }}" class="block">
                             <div class="font-bold text-slate-900">{{ number_format($expense->amount, 2, ',', '.') }} TL</div>
-                            @if (!$expense->is_paid)
-                                <div class="text-xs text-amber-600 font-semibold">Kalan: {{ number_format($expense->remaining_amount ?? $expense->amount, 2, ',', '.') }} TL</div>
+                            @if ($remaining > 0 && $remaining != $expense->amount)
+                                <div class="text-xs text-amber-600 font-semibold">Kalan: {{ number_format($remaining, 2, ',', '.') }} TL</div>
                             @endif
                         </a>
                         @php
-                            $statusColor = $expense->payment_status_color;
-                            $statusColorBg = $statusColor === 'emerald' ? 'bg-emerald-50' : ($statusColor === 'red' ? 'bg-red-50' : 'bg-amber-50');
-                            $statusColorText = $statusColor === 'emerald' ? 'text-emerald-700' : ($statusColor === 'red' ? 'text-red-700' : 'text-amber-700');
-                            $statusColorDot = $statusColor === 'emerald' ? 'bg-emerald-600' : ($statusColor === 'red' ? 'bg-red-600' : 'bg-amber-600');
+                            $statusColorBg = match ($statusColor) { 'emerald' => 'bg-emerald-50', 'red' => 'bg-red-50', 'amber' => 'bg-amber-50', default => 'bg-slate-100' };
+                            $statusColorText = match ($statusColor) { 'emerald' => 'text-emerald-700', 'red' => 'text-red-700', 'amber' => 'text-amber-700', default => 'text-slate-700' };
+                            $statusColorDot = match ($statusColor) { 'emerald' => 'bg-emerald-600', 'red' => 'bg-red-600', 'amber' => 'bg-amber-600', default => 'bg-slate-500' };
                         @endphp
                         <span class="inline-flex items-center gap-1.5 rounded-md {{ $statusColorBg }} px-2 py-1 text-xs font-semibold {{ $statusColorText }}">
                             <span class="h-1.5 w-1.5 rounded-full {{ $statusColorDot }}"></span>
-                            {{ $expense->payment_status_label }}
+                            {{ $statusLabel }}
                         </span>
                     </div>
                     @if (!$expense->is_paid)
@@ -368,6 +359,8 @@
     @endif
 
     @include('expenses._payment_modal', ['cashBoxes' => $cashBoxes])
+    @include('components.period-picker', ['periodPickerId' => 'expense'])
+    @include('expenses._status-picker')
 
     <script>
         function openFilterModal() {
@@ -381,14 +374,15 @@
         function resetFilters() {
             var form = document.getElementById('filter-form');
             form.querySelectorAll('select').forEach(function (el) { el.value = ''; });
-            form.querySelectorAll('input[type="date"], input[type="month"]').forEach(function (el) { el.value = ''; });
+            document.getElementById('expense-period').value = '';
+            document.getElementById('expense-status-inputs').replaceChildren();
             var cb = form.querySelector('input[name="show_imported"]');
             if (cb) cb.checked = false;
             form.submit();
         }
 
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeFilterModal();
+            if (e.key === 'Escape' && !document.getElementById('expense-period-dialog').open && !document.getElementById('expense-status-dialog').open) closeFilterModal();
         });
 
     </script>

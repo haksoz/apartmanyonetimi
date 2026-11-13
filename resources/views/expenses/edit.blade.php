@@ -1,15 +1,19 @@
 @extends('layouts.app')
 
+@section('content_spacing', 'py-3 sm:py-4')
+
 @section('content')
     {{-- Header --}}
-    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
+    <div class="mb-3 flex flex-row items-center justify-between gap-2 min-w-0 sm:gap-3">
+        <div class="min-w-0 flex-1">
             <h1 class="text-2xl font-bold text-slate-950">Gider Düzenle</h1>
-            <p class="mt-1 text-sm text-slate-500">Hesap, kategori, tutar ve tarih bilgilerini güncelleyin.</p>
         </div>
-        <div class="flex gap-2">
-            <a href="{{ route('expenses.show', $expense) }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Detaya Dön</a>
-        </div>
+        <a href="{{ route('expenses.show', $expense) }}" class="inline-flex h-11 w-14 shrink-0 items-center justify-center sm:h-auto sm:w-auto gap-1 whitespace-nowrap rounded-xl border border-slate-300 px-1 py-2 sm:gap-2 sm:py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+            </svg>
+            Geri
+        </a>
     </div>
 
     @if ($expense->is_paid)

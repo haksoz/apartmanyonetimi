@@ -1,4 +1,4 @@
-<div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
+<div class="mb-2 flex items-center justify-between gap-2 min-w-0 sm:mb-6 sm:gap-3">
     <div class="min-w-0 flex-1">
         <h1 class="text-2xl font-bold text-slate-950">
             <a href="{{ route('accounts.index') }}" class="hover:text-slate-600">Hesaplar</a>

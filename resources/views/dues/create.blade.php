@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('content_spacing', 'py-3 sm:py-8')
+
 @section('content')
     @php
         $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
@@ -37,7 +39,7 @@
         <input type="hidden" name="distribution_type" value="individual">
 
         {{-- Borçlandırma bilgileri --}}
-        <div class="rounded-2xl bg-white p-6 shadow-sm">
+        <div class="rounded-2xl bg-white p-4 shadow-sm md:p-6">
             @if ($selectedAccount)
                 <h1 data-individual-heading class="text-2xl font-bold text-slate-950">{{ $individualTitle }}</h1>
                 <p class="mt-1 text-sm text-slate-500">Tek hesaba birebir borçlandırma oluşturun.</p>

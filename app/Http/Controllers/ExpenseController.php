@@ -88,9 +88,8 @@ class ExpenseController extends Controller
 
 
 
-        $filterStartDate = $request->query('start_date');
-        $filterEndDate   = $request->query('end_date');
-        $filterStatus   = $request->query('status');
+        $filterStatus = array_values(array_intersect(['paid', 'overdue', 'pending'],
+            (array) $request->query('status', [])));
         $filterCategory = $request->query('category');
         $filterPeriod   = $request->query('period');
 
@@ -127,23 +126,20 @@ class ExpenseController extends Controller
                 $q->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()]);
             })
 
-            ->when($filterStartDate || $filterEndDate, function ($q) use ($filterStartDate, $filterEndDate) {
-                $column = 'DATE(expense_date)';
-                if ($filterStartDate && $filterEndDate) {
-                    $q->whereRaw("{$column} BETWEEN ? AND ?", [$filterStartDate, $filterEndDate]);
-                } elseif ($filterStartDate) {
-                    $q->whereRaw("{$column} >= ?", [$filterStartDate]);
-                } elseif ($filterEndDate) {
-                    $q->whereRaw("{$column} <= ?", [$filterEndDate]);
+            ->when($filterStatus, fn ($q) => $q->where(function ($statuses) use ($filterStatus) {
+                foreach ($filterStatus as $status) {
+                    $statuses->orWhere(function ($query) use ($status) {
+                        if ($status === 'paid') {
+                            $query->where('is_paid', true);
+                        } elseif ($status === 'overdue') {
+                            $query->where('is_paid', false)->where('due_date', '<', now());
+                        } else {
+                            $query->where('is_paid', false)->where(function ($dates) {
+                                $dates->whereNull('due_date')->orWhere('due_date', '>=', now());
+                            });
+                        }
+                    });
                 }
-            })
-
-            ->when($filterStatus === 'paid',    fn ($q) => $q->where('is_paid', true))
-
-            ->when($filterStatus === 'overdue', fn ($q) => $q->where('is_paid', false)->where('due_date', '<', now()))
-
-            ->when($filterStatus === 'pending', fn ($q) => $q->where('is_paid', false)->where(function ($q) {
-                $q->whereNull('due_date')->orWhere('due_date', '>=', now());
             }))
 
             ->when($filterCategory, fn ($q) => $q->where('category_id', $filterCategory))
@@ -173,7 +169,7 @@ class ExpenseController extends Controller
                 ->get()
             : collect();
 
-        $filters = compact('filterStartDate', 'filterEndDate', 'filterPeriod', 'filterStatus', 'filterCategory', 'filterSearch');
+        $filters = compact('filterPeriod', 'filterStatus', 'filterCategory', 'filterSearch');
 
         // Check if there are any imported expenses for this apartment
         $hasImported = Expense::where('apartment_id', $apartment->id)
@@ -645,6 +641,18 @@ class ExpenseController extends Controller
 
         DB::transaction(function () use ($expense, $validated, $request, $newAccountId) {
 
+            ExpensePaymentGuard::lockSupplier($expense->account_id, $expense->apartment_id);
+            $expense = Expense::whereKey($expense->id)->lockForUpdate()->firstOrFail();
+            $paidCents = ExpensePaymentGuard::cents($expense->paid_amount
+                ?? ($expense->is_paid ? $expense->amount : $expense->paymentAllocations()->sum('amount')));
+            $amountCents = ExpensePaymentGuard::cents($validated['amount']);
+
+            if ($amountCents < $paidCents) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount' => 'Gider tutarı ödenen tutardan az olamaz. Önce ilgili ödeme tahsisini geri alın.',
+                ]);
+            }
+
             $expense->update([
 
                 'account_id' => $newAccountId,
@@ -659,12 +667,16 @@ class ExpenseController extends Controller
 
                 'amount' => $validated['amount'],
 
+                'paid_amount' => $paidCents / 100,
+
+                'remaining_amount' => ($amountCents - $paidCents) / 100,
+
                 'expense_date' => $validated['expense_date'],
 
                 'due_date' => $validated['due_date'] ?? null,
 
 
-                'is_paid' => $request->boolean('is_paid'),
+                'is_paid' => $request->boolean('is_paid') || $amountCents === $paidCents,
 
             ]);
 
