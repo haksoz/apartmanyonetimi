@@ -1,6 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $sourceLabels = ['fixed' => 'Sabit Tutar', 'manual' => 'Tutardan Hesapla', 'expenses' => 'Giderden Hesapla'];
+        $requestedSource = request()->query('source_type');
+        $initialSource = is_string($requestedSource) && isset($sourceLabels[$requestedSource]) ? $requestedSource : 'fixed';
+        $selectedSource = old('source_type', $initialSource);
+        $compactSource = is_string($requestedSource) && isset($sourceLabels[$requestedSource]);
+    @endphp
     <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
         <div class="min-w-0 flex-1">
             <h1 class="text-2xl font-bold text-slate-950">
@@ -24,9 +31,15 @@
         @csrf
 
         {{-- Source Selection - Side by Side with Icons --}}
-        <div class="flex flex-col gap-3 md:flex-row">
+        @if ($compactSource)
+            <div id="batch-method-summary" class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 md:hidden">
+                <span id="batch-selected-method" class="text-sm font-semibold text-slate-800">{{ $sourceLabels[$selectedSource] ?? $sourceLabels[$initialSource] }}</span>
+                <button type="button" onclick="document.getElementById('batch-source-options').classList.remove('hidden'); document.getElementById('batch-method-summary').classList.add('hidden')" class="text-sm font-semibold text-emerald-700">Değiştir</button>
+            </div>
+        @endif
+        <div id="batch-source-options" class="{{ $compactSource ? 'hidden md:flex' : 'flex' }} flex-col gap-3 md:flex-row">
             <label class="cursor-pointer flex-1">
-                <input type="radio" name="source_type" value="fixed" class="peer sr-only" @checked(old('source_type', 'fixed') === 'fixed')>
+                <input type="radio" name="source_type" value="fixed" class="peer sr-only" @checked(old('source_type', $initialSource) === 'fixed')>
                 <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 hover:bg-slate-50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
@@ -42,7 +55,7 @@
                 </div>
             </label>
             <label class="cursor-pointer flex-1">
-                <input type="radio" name="source_type" value="manual" class="peer sr-only" @checked(old('source_type') === 'manual')>
+                <input type="radio" name="source_type" value="manual" class="peer sr-only" @checked(old('source_type', $initialSource) === 'manual')>
                 <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 hover:bg-slate-50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
@@ -58,7 +71,7 @@
                 </div>
             </label>
             <label class="cursor-pointer flex-1">
-                <input type="radio" name="source_type" value="expenses" class="peer sr-only" @checked(old('source_type') === 'expenses')>
+                <input type="radio" name="source_type" value="expenses" class="peer sr-only" @checked(old('source_type', $initialSource) === 'expenses')>
                 <div class="rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-disabled:opacity-50 hover:bg-slate-50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center peer-checked:bg-emerald-100">
@@ -77,12 +90,12 @@
         @error('source_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
 
         {{-- Dynamic Source Fields --}}
-        <div id="expenses-details-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type', 'fixed') !== 'expenses') hidden @endif">
+        <div id="expenses-details-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type', $initialSource) !== 'expenses') hidden @endif">
             <div id="expenses-type-slot"></div>
             <div id="expenses-dates-slot"></div>
         </div>
 
-        <div id="expenses-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', 'fixed') !== 'expenses') hidden @endif">
+        <div id="expenses-fields" class="rounded-2xl bg-white p-5 shadow-sm @if(old('source_type', $initialSource) !== 'expenses') hidden @endif">
             <h3 class="text-sm font-semibold text-slate-700 mb-4">Gider Dönemi Seçimi</h3>
 
             {{-- Period Selection --}}
@@ -124,7 +137,7 @@
             <input type="hidden" name="selected_expense_ids" id="selected_expense_ids" value="">
         </div>
 
-        <div id="fixed-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type', 'fixed') !== 'fixed') hidden @endif">
+        <div id="fixed-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type', $initialSource) !== 'fixed') hidden @endif">
             <div id="fixed-type-slot">
                 <div id="batch-type-fields" class="grid gap-4">
                     <fieldset id="due_type">
@@ -174,7 +187,7 @@
             </div>
         </div>
 
-        <div id="manual-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type') !== 'manual') hidden @endif">
+        <div id="manual-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type', $initialSource) !== 'manual') hidden @endif">
             <div id="manual-type-slot"></div>
 
             <div id="manual-dates-slot"></div>
@@ -187,14 +200,14 @@
                 <div id="calc-summary" class="text-sm font-medium text-red-600 hidden"></div>
             </div>
 
-            <div id="fixed-amount-field" class="mb-4 md:w-1/2 @if(old('source_type', 'fixed') !== 'fixed') hidden @endif">
+            <div id="fixed-amount-field" class="mb-4 md:w-1/2 @if(old('source_type', $initialSource) !== 'fixed') hidden @endif">
                 <label for="fixed_amount" class="mb-2 block text-sm font-medium text-slate-600">Daire Başına Tutar</label>
                 <input id="fixed_amount" name="fixed_amount" type="number" min="0.01" step="0.01" value="{{ old('fixed_amount') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold" placeholder="0,00">
                 <p class="mt-1.5 text-xs text-slate-400">Her daire bu tutarla borçlandırılır. Toplam = tutar &times; daire sayısı.</p>
                 @error('fixed_amount')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
-            <div id="manual-amount-field" class="mb-4 md:w-1/2 @if(old('source_type', 'fixed') !== 'manual') hidden @endif">
+            <div id="manual-amount-field" class="mb-4 md:w-1/2 @if(old('source_type', $initialSource) !== 'manual') hidden @endif">
                 <label for="source_amount" class="mb-2 block text-sm font-medium text-slate-600">Dağıtılacak Toplam Tutar</label>
                 <input id="source_amount" name="source_amount" type="number" min="0.01" step="0.01" value="{{ old('source_amount') }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none text-lg font-semibold" placeholder="0,00">
                 @error('source_amount')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -601,6 +614,18 @@
             };
 
             sourceRadios.forEach(radio => radio.addEventListener('change', toggleFields));
+            const methodSummary = document.getElementById('batch-method-summary');
+            const methodLabels = @json($sourceLabels);
+            if (methodSummary) {
+                sourceRadios.forEach(radio => radio.addEventListener('click', () => {
+                    document.getElementById('batch-selected-method').textContent = methodLabels[radio.value];
+                    document.getElementById('batch-source-options').classList.add('hidden');
+                    methodSummary.classList.remove('hidden');
+                    if (window.matchMedia('(max-width: 767px)').matches) {
+                        methodSummary.querySelector('button').focus({ preventScroll: true });
+                    }
+                }));
+            }
             sourceAmount.addEventListener('input', updateCalculation);
             fixedAmount?.addEventListener('input', updateCalculation);
             const handleDistChange = () => {

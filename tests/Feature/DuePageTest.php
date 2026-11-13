@@ -1617,6 +1617,13 @@ class DuePageTest extends TestCase
             ->assertDontSee('<select id="due_type"', false)
             ->assertDontSee('type="radio" name="target_audience"', false);
 
+        foreach (['fixed' => 'Sabit Tutar', 'manual' => 'Tutardan Hesapla', 'expenses' => 'Giderden Hesapla'] as $source => $label) {
+            $this->get(route('dues.batch.create', ['source_type' => $source]))->assertOk()
+                ->assertSee('id="batch-source-options" class="hidden md:flex', false)
+                ->assertSee('name="source_type" value="'.$source.'" class="peer sr-only" checked', false)
+                ->assertSee($label);
+        }
+
         foreach ([DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_FIXED] as $source) {
             $this->post(route('dues.store'), [
                 'source_type' => $source, 'distribution_type' => DueBatch::DISTRIBUTION_EQUAL,
