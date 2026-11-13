@@ -33,6 +33,12 @@
                 $showTransfer = in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && ($account->dues->isNotEmpty() || $importedDues->isNotEmpty()) && $transferableAccounts->isNotEmpty();
             @endphp
             @include('accounts._tabs', ['account' => $account, 'active' => 'overview', 'withOverview' => false, 'showTransfer' => $showTransfer, 'compactHeader' => true])
+            <button type="button" onclick="history.back()" class="inline-flex h-11 w-14 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-slate-300 px-1 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm">
+                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
+                </svg>
+                Geri
+            </button>
         </div>
     </div>
 
@@ -42,6 +48,26 @@
     <div class="rounded-2xl bg-white shadow-sm mb-6 overflow-hidden">
         {{-- Üst: Bilgiler --}}
         <div class="p-4 md:p-6 border-b border-slate-100">
+    {{-- Borç / Alacak / Bakiye özeti --}}
+        @php $balance = $account->ledger_balance; @endphp
+        <div class="mb-5 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 text-center ring-1 ring-inset ring-slate-200/60 sm:gap-3 sm:rounded-none sm:bg-transparent sm:p-0 sm:text-left sm:ring-0">
+            <div class="min-w-0 rounded-xl bg-white px-1 py-3 shadow-sm sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4 sm:shadow-none">
+                <div class="text-xs font-medium text-slate-500 sm:text-sm sm:text-slate-600">Borç</div>
+                <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight text-red-600 tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
+            </div>
+            <div class="min-w-0 rounded-xl bg-emerald-50 px-1 py-3 sm:border sm:border-emerald-200 sm:p-4">
+                <div class="text-xs font-medium text-emerald-700 sm:text-sm">Alacak</div>
+                <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight text-emerald-700 tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
+            </div>
+            <div class="min-w-0 rounded-xl px-1 py-3 sm:border sm:p-4 {{ $balance < 0 ? 'bg-red-50 sm:border-red-200' : ($balance > 0 ? 'bg-emerald-50 sm:border-emerald-200' : 'bg-white sm:border-slate-200 sm:bg-slate-50') }}">
+                <div class="text-xs font-medium text-slate-500 sm:text-sm sm:text-slate-600">Bakiye</div>
+                <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight tabular-nums sm:mt-2 sm:text-2xl {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-700' : 'text-slate-900') }}">
+                    {{ number_format(abs($balance), 2, ',', '.') }} TL
+                    <span class="text-[0.65rem] font-normal sm:text-xs">{{ $balance < 0 ? '(B)' : ($balance > 0 ? '(A)' : '') }}</span>
+                </div>
+            </div>
+        </div>
+
             <div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 text-sm">
 
@@ -121,28 +147,7 @@
         </div>
     </div>
 
-    {{-- Alt: Borç / Alacak / Bakiye --}}
-        <div class="grid grid-cols-3 gap-2 px-3 py-4 text-center text-sm md:gap-0 md:p-0 md:text-left md:divide-x divide-slate-100">
-            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
-                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Borç</div>
-                <div class="text-base font-semibold md:text-xl md:font-bold text-red-600 tabular-nums">{{ number_format($account->ledger_debit, 2, ',', '.') }} TL</div>
-            </div>
-            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
-                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Alacak</div>
-                <div class="text-base font-semibold md:text-xl md:font-bold text-emerald-600 tabular-nums">{{ number_format($account->ledger_credit, 2, ',', '.') }} TL</div>
-            </div>
-            <div class="min-w-0 md:p-5 md:flex md:items-center md:justify-between md:gap-1">
-                <div class="text-slate-500 md:text-xs md:font-semibold md:uppercase md:tracking-wide md:text-slate-400">Bakiye</div>
-                @php $balance = $account->ledger_balance; @endphp
-                <div class="text-base md:text-xl font-bold tabular-nums {{ $balance < 0 ? 'text-red-600' : ($balance > 0 ? 'text-emerald-600' : 'text-slate-400') }}">
-                    {{ number_format(abs($balance), 2, ',', '.') }} TL
-                    <span class="text-xs font-normal">{{ $balance < 0 ? '(B)' : ($balance > 0 ? '(A)' : '') }}</span>
-                </div>
-            </div>
-        </div>
     </div>
-
-
 
     @if (!in_array($account->type, [App\Models\Account::TYPE_SUPPLIER]))
 

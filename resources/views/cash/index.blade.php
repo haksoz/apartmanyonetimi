@@ -13,19 +13,21 @@
     </div>
 
     {{-- Summary Cards --}}
-    <div class="mb-6 grid grid-cols-3 gap-2 rounded-2xl bg-white py-4 px-3 shadow-sm md:gap-4 md:bg-transparent md:p-0 md:shadow-none">
-        <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Toplam Gelir</div>
-            <div class="mt-1 text-sm font-bold text-emerald-600 tabular-nums md:mt-2 md:text-xl">{{ number_format($income, 2, ',', '.') }} TL</div>
+    <div class="mb-6 md:rounded-2xl md:bg-white md:p-6 md:shadow-sm">
+    <div class="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 text-center ring-1 ring-inset ring-slate-200/60 sm:gap-3 sm:rounded-none sm:bg-transparent sm:p-0 sm:text-left sm:ring-0">
+        <div class="min-w-0 rounded-xl bg-emerald-50 px-1 py-3 sm:border sm:border-emerald-200 sm:p-4">
+            <div class="text-xs font-medium text-emerald-700 sm:text-sm">Toplam Gelir</div>
+            <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight text-emerald-700 tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($income, 2, ',', '.') }} TL</div>
         </div>
-        <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Toplam Gider</div>
-            <div class="mt-1 text-sm font-bold text-red-600 tabular-nums md:mt-2 md:text-xl">{{ number_format($expense, 2, ',', '.') }} TL</div>
+        <div class="min-w-0 rounded-xl bg-white px-1 py-3 shadow-sm sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4 sm:shadow-none">
+            <div class="text-xs font-medium text-slate-500 sm:text-sm sm:text-slate-600">Toplam Gider</div>
+            <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight text-red-600 tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($expense, 2, ',', '.') }} TL</div>
         </div>
-        <div class="text-center md:rounded-2xl md:bg-white md:p-5 md:shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Toplam Bakiye</div>
-            <div class="mt-1 text-sm font-bold tabular-nums md:mt-2 md:text-xl {{ $balance >= 0 ? 'text-slate-900' : 'text-red-600' }}">{{ number_format($balance, 2, ',', '.') }} TL</div>
+        <div class="min-w-0 rounded-xl px-1 py-3 sm:border sm:p-4 {{ $balance < 0 ? 'bg-red-50 sm:border-red-200' : 'bg-white sm:border-slate-200 sm:bg-slate-50' }}">
+            <div class="text-xs font-medium text-slate-500 sm:text-sm sm:text-slate-600">Toplam Bakiye</div>
+            <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight tabular-nums sm:mt-2 sm:text-2xl {{ $balance >= 0 ? 'text-slate-900' : 'text-red-600' }}">{{ number_format($balance, 2, ',', '.') }} TL</div>
         </div>
+    </div>
     </div>
 
     <div class="mb-6 rounded-2xl bg-white py-6 px-3 md:p-6 shadow-sm">
