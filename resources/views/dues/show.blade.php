@@ -24,29 +24,19 @@
                     <button type="button" data-due-id="{{ $due->id }}" data-amount="{{ $due->remaining_amount }}" data-description="{{ $dueTitle }}" data-account="{{ $due->account?->name }}" data-unit="{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}" onclick="openDuePaymentModal(Number(this.dataset.dueId), Number(this.dataset.amount), this.dataset.description, this.dataset.account, this.dataset.unit)" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl bg-emerald-600 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-white hover:bg-emerald-700">Tahsil Et</button>
                 @endif
 
-                @if (! in_array($due->status, ['paid', 'partial']) && $transferableAccounts->isNotEmpty())
-                    <button type="button" onclick="document.getElementById('transfer-due-modal').classList.remove('hidden')"
-                            class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl bg-orange-500 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-white hover:bg-orange-600">Borç Aktar</button>
-                @endif
 
-                <div class="hidden sm:flex items-center gap-2">
-                <a href="{{ route('dues.edit', $due) }}" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl border border-slate-300 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
 
-                @if ($due->allocations->isNotEmpty())
-                    <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl border border-red-200 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
-                @else
-                    <form method="POST" action="{{ route('dues.destroy', $due) }}" onsubmit="return confirm('Aidat kaydı silinsin mi?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl border border-red-200 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
-                    </form>
-                @endif
-                </div>
-
-                <details class="relative sm:hidden">
-                    <summary class="inline-flex h-11 w-16 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-300 px-1 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">İşlemler</summary>
+                <details class="group relative">
+                    <summary class="inline-flex h-12 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
+                        İşlemler
+                        <svg class="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </summary>
                     <div class="absolute right-0 top-full z-20 mt-2 flex w-40 flex-col gap-2 rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200">
                 <a href="{{ route('dues.edit', $due) }}" class="flex w-full items-center justify-start text-left rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
+
+                @if (! in_array($due->status, ['paid', 'partial']) && $transferableAccounts->isNotEmpty())
+                    <button type="button" onclick="this.closest('details').open = false; document.getElementById('transfer-due-modal').classList.remove('hidden')" class="flex w-full items-center justify-start rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-left text-sm font-semibold text-sky-700 hover:bg-sky-100">Borç Aktar</button>
+                @endif
 
                 @if ($due->allocations->isNotEmpty())
                     <button type="button" onclick="document.getElementById('delete-due-modal').classList.remove('hidden')" class="flex w-full items-center justify-start text-left rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
@@ -94,18 +84,18 @@
                 <div class="text-xl font-bold text-slate-900">{{ $dueTitle }}</div>
             </div>
 
-            <div class="mb-5 grid grid-cols-3 gap-2 py-4 text-center sm:gap-3 sm:py-0 sm:text-left">
-                <div class="min-w-0 sm:rounded-xl sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4">
-                    <div class="text-sm text-slate-500 sm:font-medium sm:text-slate-600">Tutar</div>
-                    <div class="text-base font-semibold sm:text-2xl sm:font-bold text-slate-900 tabular-nums sm:mt-2">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
+            <div class="mb-5 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 text-center ring-1 ring-inset ring-slate-200/60 sm:gap-3 sm:rounded-none sm:bg-transparent sm:p-0 sm:text-left sm:ring-0">
+                <div class="min-w-0 rounded-xl bg-white px-1 py-3 shadow-sm sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4 sm:shadow-none">
+                    <div class="text-xs font-medium text-slate-500 sm:text-sm sm:text-slate-600">Tutar</div>
+                    <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight text-slate-900 tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($due->amount, 2, ',', '.') }} TL</div>
                 </div>
-                <div class="min-w-0 sm:rounded-xl sm:border sm:border-emerald-200 sm:bg-emerald-50 sm:p-4">
-                    <div class="text-sm text-slate-500 sm:font-medium sm:text-emerald-700">Ödenen</div>
-                    <div class="text-base font-semibold sm:text-2xl sm:font-bold text-emerald-700 tabular-nums sm:mt-2">{{ number_format($paidAmount, 2, ',', '.') }} TL</div>
+                <div class="min-w-0 rounded-xl bg-emerald-50 px-1 py-3 sm:border sm:border-emerald-200 sm:p-4">
+                    <div class="text-xs font-medium text-emerald-700 sm:text-sm">Ödenen</div>
+                    <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight text-emerald-700 tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($paidAmount, 2, ',', '.') }} TL</div>
                 </div>
-                <div class="min-w-0 sm:rounded-xl sm:border sm:p-4 {{ $due->remaining_amount > 0 ? 'sm:border-amber-200 sm:bg-amber-50' : 'sm:border-slate-200 sm:bg-slate-50' }}">
-                    <div class="text-sm text-slate-500 sm:font-medium sm:text-slate-600">Kalan</div>
-                    <div class="text-base font-bold sm:text-2xl {{ $due->remaining_amount > 0 ? 'text-amber-700' : 'text-slate-900' }} tabular-nums sm:mt-2">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                <div class="min-w-0 rounded-xl px-1 py-3 sm:border sm:p-4 {{ $due->remaining_amount > 0 ? 'bg-amber-50 sm:border-amber-200' : 'bg-white sm:border-slate-200 sm:bg-slate-50' }}">
+                    <div class="text-xs font-medium text-slate-500 sm:text-sm sm:text-slate-600">Kalan</div>
+                    <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight {{ $due->remaining_amount > 0 ? 'text-amber-700' : 'text-slate-900' }} tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
                 </div>
             </div>
 

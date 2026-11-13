@@ -140,18 +140,18 @@
                 <div class="text-xl font-bold text-slate-900">{{ $payment->description ?: '-' }}</div>
             </div>
 
-            <div class="mb-5 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:gap-3 sm:overflow-visible sm:border-0 sm:bg-transparent sm:grid-cols-3">
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4 sm:block">
-                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-slate-600">Tutar</div>
-                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold text-slate-900 tabular-nums sm:mt-2">{{ number_format($payment->amount, 2, ',', '.') }} TL</div>
+            <div class="mb-5 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 text-center ring-1 ring-inset ring-slate-200/60 sm:gap-3 sm:rounded-none sm:bg-transparent sm:p-0 sm:text-left sm:ring-0">
+                <div class="min-w-0 rounded-xl bg-white px-1 py-3 shadow-sm sm:border sm:border-slate-200 sm:bg-slate-50 sm:p-4 sm:shadow-none">
+                    <div class="text-xs font-medium text-slate-500 sm:text-sm sm:text-slate-600">Tutar</div>
+                    <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight text-slate-900 tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($payment->amount, 2, ',', '.') }} TL</div>
                 </div>
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:border-emerald-200 sm:bg-emerald-50 sm:p-4 sm:block">
-                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-emerald-700">Bağlanan</div>
-                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold text-emerald-700 tabular-nums sm:mt-2">{{ number_format($payment->allocated_amount, 2, ',', '.') }} TL</div>
+                <div class="min-w-0 rounded-xl bg-emerald-50 px-1 py-3 sm:border sm:border-emerald-200 sm:p-4">
+                    <div class="text-xs font-medium text-emerald-700 sm:text-sm">Bağlanan</div>
+                    <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight text-emerald-700 tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($payment->allocated_amount, 2, ',', '.') }} TL</div>
                 </div>
-                <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 sm:rounded-xl sm:border sm:p-4 sm:block {{ $payment->unallocated_amount > 0 ? 'sm:border-amber-200 sm:bg-amber-50' : 'sm:border-slate-200 sm:bg-slate-50' }}">
-                    <div class="text-xs text-slate-500 sm:text-sm sm:font-medium sm:text-slate-600">Kalan Bakiye</div>
-                    <div class="text-sm font-semibold sm:text-2xl sm:font-bold {{ $payment->unallocated_amount > 0 ? 'text-amber-700' : 'text-slate-900' }} tabular-nums sm:mt-2">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
+                <div class="min-w-0 rounded-xl px-1 py-3 sm:border sm:p-4 {{ $payment->unallocated_amount > 0 ? 'bg-amber-50 sm:border-amber-200' : 'bg-white sm:border-slate-200 sm:bg-slate-50' }}">
+                    <div class="text-xs font-medium text-slate-500 sm:text-sm sm:text-slate-600">Kalan Bakiye</div>
+                    <div class="mt-1 whitespace-nowrap text-[clamp(0.65rem,3.5vw,1rem)] font-bold leading-tight {{ $payment->unallocated_amount > 0 ? 'text-amber-700' : 'text-slate-900' }} tabular-nums sm:mt-2 sm:text-2xl">{{ number_format($payment->unallocated_amount, 2, ',', '.') }} TL</div>
                 </div>
             </div>
 
