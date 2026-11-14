@@ -15,6 +15,73 @@ class SubscriberPanelTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_new_manager_with_creation_room_gets_the_first_apartment_prompt(): void
+    {
+        $user = User::factory()->withApartmentQuota(1)->create();
+
+        $this->actingAs($user)->get(route('subscriber.dashboard'))
+            ->assertOk()
+            ->assertSee('id="first-apartment-dialog"', false)
+            ->assertSee('İlk apartmanınızı oluşturun')
+            ->assertSee(route('subscriber.apartments.create'), false);
+    }
+
+    public function test_user_with_explicit_creation_room_also_gets_the_prompt(): void
+    {
+        $user = User::factory()->withApartmentQuota(1)->create(['role' => 'user']);
+
+        $this->actingAs($user)->get(route('subscriber.dashboard'))
+            ->assertOk()
+            ->assertSee('id="first-apartment-dialog"', false);
+    }
+
+    public function test_manager_without_a_defined_limit_gets_the_prompt(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('subscriber.dashboard'))
+            ->assertOk()
+            ->assertSee('id="first-apartment-dialog"', false);
+    }
+
+    public function test_resident_with_creation_room_is_not_prompted_to_create_an_apartment(): void
+    {
+        $user = User::factory()->withApartmentQuota(1)->create(['role' => 'user']);
+        $this->residence($user, 'Mevcut Daire', '1');
+
+        $this->actingAs($user)->get(route('subscriber.dashboard'))
+            ->assertOk()
+            ->assertSee('Dairelerim')
+            ->assertDontSee('id="first-apartment-dialog"', false);
+    }
+
+    public function test_first_apartment_prompt_requires_creation_permission(): void
+    {
+        foreach ([
+            User::factory()->withApartmentQuota(0)->create(),
+            User::factory()->create(['role' => 'user']),
+        ] as $user) {
+            $this->actingAs($user)->get(route('subscriber.dashboard'))
+                ->assertOk()
+                ->assertDontSee('id="first-apartment-dialog"', false)
+                ->assertDontSee('Yeni Apartman Oluştur');
+        }
+    }
+
+    public function test_existing_managed_apartment_does_not_get_the_first_apartment_prompt(): void
+    {
+        $user = User::factory()->withApartmentQuota(2)->create();
+        $apartment = Apartment::factory()->forUser($user)->create([
+            'is_active' => true,
+            'setup_completed_at' => now(),
+        ]);
+        $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
+
+        $this->actingAs($user)->get(route('subscriber.dashboard'))
+            ->assertOk()
+            ->assertDontSee('id="first-apartment-dialog"', false);
+    }
+
     public function test_two_residences_are_cards_under_one_heading(): void
     {
         $member = User::factory()->create(['role' => 'user']);
@@ -32,6 +99,7 @@ class SubscriberPanelTest extends TestCase
             ->assertSee('Kat Maliki')
             ->assertDontSee('Yönettiğim apartman')
             ->assertDontSee('Yeni Apartman Oluştur')
+            ->assertDontSee('id="first-apartment-dialog"', false)
             ->assertDontSee('sidebar-text">Siparişlerim', false)
             ->assertSee('sidebar-text">Abone Paneli', false)
             ->assertSee('sidebar-text">Hesabım', false);

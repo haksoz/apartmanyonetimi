@@ -28,6 +28,8 @@ class Apartment extends Model
         'custom_yearly_price',
         'code',
         'setup_units_completed_at',
+        'account_opening_date',
+        'setup_manager_completed_at',
         'setup_completed_at',
     ];
 
@@ -57,6 +59,8 @@ class Apartment extends Model
         'custom_monthly_price' => 'decimal:2',
         'custom_yearly_price' => 'decimal:2',
         'setup_units_completed_at' => 'datetime',
+        'account_opening_date' => 'date',
+        'setup_manager_completed_at' => 'datetime',
         'setup_completed_at' => 'datetime',
     ];
 
@@ -156,6 +160,10 @@ class Apartment extends Model
     {
         if ($this->setup_completed_at !== null) {
             return null;
+        }
+
+        if ($this->setup_manager_completed_at === null) {
+            return 'manager';
         }
 
         if (! $this->cashBoxes()->exists()) {

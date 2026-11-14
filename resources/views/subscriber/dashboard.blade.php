@@ -35,6 +35,22 @@
         </section>
     @endif
 
+    @if ($apartments->isEmpty() && $showApartmentCreate && $canCreateApartment)
+        <dialog id="first-apartment-dialog" aria-labelledby="first-apartment-title" aria-describedby="first-apartment-description" class="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-2xl border-0 bg-white p-6 shadow-xl backdrop:bg-slate-950/50">
+            <h2 id="first-apartment-title" class="text-xl font-bold text-slate-950">İlk apartmanınızı oluşturun</h2>
+            <p id="first-apartment-description" class="mt-3 text-sm text-slate-600">Henüz yönettiğiniz bir apartman bulunmuyor. Apartman oluşturma hakkınız var; ilk apartmanınızı ekleyerek kuruluma başlayabilirsiniz.</p>
+            <div class="mt-6 flex flex-wrap justify-end gap-3">
+                <form method="dialog">
+                    <button type="submit" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Daha sonra</button>
+                </form>
+                <a href="{{ route('subscriber.apartments.create') }}" autofocus class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Apartman Oluştur</a>
+            </div>
+        </dialog>
+        <script>
+            document.getElementById('first-apartment-dialog').showModal();
+        </script>
+    @endif
+
     @if ($residenceAccounts->isNotEmpty())
         <section>
             <h2 class="text-lg font-bold text-slate-950">Dairelerim</h2>

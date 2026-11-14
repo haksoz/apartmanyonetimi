@@ -1,7 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.apartment-setup')
+
+@section('setup_width', '56rem')
 
 @section('wizard_steps')
-    @include('apartments.wizard._steps', ['activeStep' => 3])
+    @include('apartments.wizard._steps', ['activeStep' => 4])
 @endsection
 
 @section('content')
@@ -11,7 +13,7 @@
         <p class="mt-2 text-sm text-slate-500">Kat ve blok bilgileri daire özelliklerindedir; bunları daha sonra <a href="{{ route('units.index') }}" class="font-medium text-slate-800 underline">Daireler</a> sayfasından düzenleyebilirsiniz.</p>
     </div>
 
-    <form method="POST" action="{{ route('apartments.wizard.units.store', $apartment) }}" class="rounded-2xl bg-white p-6 shadow-sm">
+    <form id="setup-units-form" method="POST" action="{{ route('apartments.wizard.units.store', $apartment) }}" class="rounded-2xl bg-white p-3 shadow-sm sm:p-6">
         @csrf
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -38,12 +40,12 @@
             </table>
         </div>
 
-        <div class="mt-6 flex items-center justify-between">
-            <form method="POST" action="{{ route('apartments.wizard.units.skip', $apartment) }}" class="inline">
-                @csrf
-                <button type="submit" class="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Atla</button>
-            </form>
-            <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Kaydet ve Devam Et</button>
-        </div>
     </form>
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <form method="POST" action="{{ route('apartments.wizard.units.skip', $apartment) }}">
+            @csrf
+            <button type="submit" class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Atla</button>
+        </form>
+        <button type="submit" form="setup-units-form" class="rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Kaydet ve Devam Et</button>
+    </div>
 @endsection

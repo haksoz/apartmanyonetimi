@@ -123,7 +123,7 @@ class ApartmentWizardTest extends TestCase
             ->assertRedirect(route('apartments.wizard.units', $apartment));
     }
 
-    public function test_categories_step_lists_defaults_with_diger_last(): void
+    public function test_categories_step_lists_defaults_in_saved_order_before_unsorted_categories(): void
     {
         [$user, $apartment] = $this->createOwnerWithApartment();
         \App\Models\CashBox::create(['apartment_id' => $apartment->id, 'name' => 'Ana Kasa', 'is_active' => true]);
@@ -143,15 +143,13 @@ class ApartmentWizardTest extends TestCase
                 'Aidat',
                 'Demirbaş',
                 'Elektrik',
+                'Temizlik',
                 'Su',
                 'Asansör',
-                'Temizlik',
                 'Yönetim',
                 'Bakım',
-                'Ceza',
-                'Faiz',
-                'Yakıt',
                 'Diğer',
+                'Yakıt',
             ]);
     }
 

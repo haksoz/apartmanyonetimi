@@ -17,6 +17,7 @@ class ApartmentFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
+            'setup_manager_completed_at' => now(),
             'name' => fake()->company().' Apartmanı',
             'address' => fake()->address(),
             'unit_count' => fake()->numberBetween(1, 50),

@@ -354,6 +354,9 @@
                         </div>
                     @endif
 
+                    @if ($apartment->nextSetupStep())
+                        <p class="mt-4 text-sm font-semibold text-amber-700">Kurulum tamamlanmadı. Apartmanı Yönet ile kaldığınız adımdan devam edebilirsiniz.</p>
+                    @endif
                     <div class="mt-4 flex flex-wrap items-center gap-2">
                         <form method="POST" action="{{ route('subscriber.apartment.update') }}">
                             @csrf

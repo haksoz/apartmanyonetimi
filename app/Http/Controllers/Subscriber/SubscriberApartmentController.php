@@ -50,6 +50,10 @@ class SubscriberApartmentController extends Controller
 
         $apartment = $currentApartment->setFor($request->user(), (int) $validated['apartment_id']);
 
+        if ($nextStep = $apartment->nextSetupStep()) {
+            return redirect()->route('apartments.wizard.'.$nextStep, $apartment);
+        }
+
         return redirect()->route('dashboard')->with('status', $apartment->name.' seçildi.');
     }
 

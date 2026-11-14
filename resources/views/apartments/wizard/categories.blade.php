@@ -1,7 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.apartment-setup')
+
+@section('setup_width', '64rem')
 
 @section('wizard_steps')
-    @include('apartments.wizard._steps', ['activeStep' => 4])
+    @include('apartments.wizard._steps', ['activeStep' => 5])
 @endsection
 
 @section('content')
@@ -10,7 +12,7 @@
         <p class="mt-1 text-sm text-slate-500">Varsayılan kategoriler zaten oluşturuldu. İsterseniz yeni kategori ekleyebilir veya bu adımı atlayabilirsiniz.</p>
     </div>
 
-    <div class="mb-6 rounded-2xl bg-white p-6 shadow-sm">
+    <div class="mb-6 rounded-2xl bg-white p-4 shadow-sm sm:p-6">
         <h2 class="mb-4 text-lg font-semibold text-slate-900">Mevcut Kategoriler</h2>
         <ul class="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
             @foreach ($categories as $category)
@@ -27,7 +29,7 @@
         </ul>
     </div>
 
-    <form method="POST" action="{{ route('apartments.wizard.categories.store', $apartment) }}" class="mb-6 rounded-2xl bg-white p-6 shadow-sm">
+    <form method="POST" action="{{ route('apartments.wizard.categories.store', $apartment) }}" class="mb-6 rounded-2xl bg-white p-4 shadow-sm sm:p-6">
         @csrf
         <h2 class="mb-4 text-lg font-semibold text-slate-900">Yeni Kategori Ekle</h2>
         <div class="space-y-5">
@@ -56,7 +58,7 @@
         </div>
     </form>
 
-    <form method="POST" action="{{ route('apartments.wizard.finish', $apartment) }}" class="flex justify-end gap-3">
+    <form method="POST" action="{{ route('apartments.wizard.finish', $apartment) }}" class="flex flex-wrap justify-end gap-3">
         @csrf
         <button type="submit" name="action" value="skip" class="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Atla ve Bitir</button>
         <button type="submit" name="action" value="finish" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Kurulumu Tamamla</button>

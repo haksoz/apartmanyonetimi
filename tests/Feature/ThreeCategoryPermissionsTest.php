@@ -22,7 +22,11 @@ class ThreeCategoryPermissionsTest extends TestCase
         $this->assertSame(['aidat', 'malik_payi'], DueType::values());
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         foreach (['Masraf Yansıtma', 'Ceza', 'Faiz'] as $name) {
-            $category = Category::where('apartment_id', $apartment->id)->where('name', $name)->firstOrFail();
+            // Optional categories are added by users rather than the protected defaults.
+            $category = Category::create([
+                'apartment_id' => $apartment->id, 'name' => $name,
+                'allow_aidat' => true, 'allow_malik_payi' => true, 'allow_expense' => false,
+            ]);
             $this->assertSame(['Aidat', 'Kat Maliki Payı'], $category->usage_labels);
             $this->get(route('categories.edit', $category))->assertOk()
                 ->assertDontSee('name="allow_ceza"', false)

@@ -1,38 +1,30 @@
 @php
 $steps = [
     1 => 'Apartman Bilgileri',
-    2 => 'Kasa Oluşturma',
-    3 => 'Daire Bilgileri',
-    4 => 'Kategoriler',
+    2 => 'Yönetici Bilgileri',
+    3 => 'Kasa Oluşturma',
+    4 => 'Daire Bilgileri',
+    5 => 'Kategoriler',
 ];
 @endphp
 
-<ol class="mb-3 flex items-center justify-center gap-6 rounded-2xl bg-white p-3 shadow-sm md:mb-4 md:justify-start md:gap-8 md:p-4">
+<ol aria-label="Kurulum aşamaları" class="mb-3 flex items-center gap-2 rounded-2xl bg-white p-2 shadow-sm sm:gap-3 sm:p-3 md:mb-4">
     @foreach ($steps as $step => $label)
         @php
             $isActive = $step === $activeStep;
             $isCompleted = $step < $activeStep;
         @endphp
-        <li class="flex items-center gap-3 md:flex-none">
+        <li class="flex min-w-0 items-center gap-2" @if($isActive) aria-current="step" @endif aria-label="{{ $step }}. aşama{{ $isCompleted ? ', tamamlandı' : ($isActive ? ', mevcut aşama' : ', sonraki aşama') }}">
             <span @class([
-                'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
+                'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold sm:h-8 sm:w-8',
                 'bg-emerald-100 text-emerald-700' => $isCompleted,
                 'bg-slate-950 text-white' => $isActive,
                 'bg-slate-100 text-slate-500' => ! $isActive && ! $isCompleted,
             ])>
-                @if ($isCompleted)
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                @else
-                    {{ $step }}
-                @endif
+                {{ $step }}
             </span>
-            <span @class([
-                'hidden text-sm font-medium md:block',
-                'text-slate-950' => $isActive,
-                'text-slate-500' => ! $isActive,
-            ])>{{ $label }}</span>
-            @if (! $loop->last)
-                <span class="mx-2 hidden h-px w-8 bg-slate-200 md:block"></span>
+            @if ($isActive)
+                <span class="text-xs font-semibold leading-tight text-slate-950 sm:text-sm">{{ $label }}</span>
             @endif
         </li>
     @endforeach

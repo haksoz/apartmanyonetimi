@@ -123,22 +123,14 @@ class CategoryPageTest extends TestCase
         ]);
         $this->assertDatabaseHas('categories', [
             'apartment_id' => $apartment->id,
-            'name' => 'Elektrik',
+            'name' => 'Ortak Elektrik',
             'type' => Category::TYPE_EXPENSE,
             'is_system' => false,
         ]);
-        $this->assertDatabaseHas('categories', [
-            'apartment_id' => $apartment->id,
-            'name' => 'Ceza',
-            'type' => Category::TYPE_INCOME,
-            'is_system' => true,
-        ]);
-        $this->assertDatabaseHas('categories', [
-            'apartment_id' => $apartment->id,
-            'name' => 'Faiz',
-            'type' => Category::TYPE_INCOME,
-            'is_system' => true,
-        ]);
+        $this->assertSame(9, $apartment->categories()->count());
+        foreach (['Ceza', 'Faiz', 'Masraf Yansıtma'] as $name) {
+            $this->assertDatabaseMissing('categories', ['apartment_id' => $apartment->id, 'name' => $name]);
+        }
     }
     public function test_unused_system_category_can_be_deleted(): void
     {

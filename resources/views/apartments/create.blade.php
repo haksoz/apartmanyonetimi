@@ -1,9 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.apartment-setup')
+
+@section('setup_width', '44rem')
 
 @section('wizard_steps')
-    <div class="-mt-4">
         @include('apartments.wizard._steps', ['activeStep' => 1])
-    </div>
 @endsection
 
 @section('content')

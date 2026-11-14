@@ -20,13 +20,6 @@ class SubscriberDashboardController extends Controller
         $managedApartments = $places->grouped($user)['managed'];
         $currentApartmentModel = $currentApartment->getFor($user);
 
-        if ($currentApartmentModel
-            && $managedApartments->contains('id', $currentApartmentModel->id)
-            && ($nextStep = $currentApartmentModel->nextSetupStep())) {
-            return redirect()->route('apartments.wizard.'.$nextStep, $currentApartmentModel)
-                ->with('status', 'Lütfen apartman kurulumunu tamamlayın.');
-        }
-
         $overview->decorate($managedApartments, $user, $prices);
 
         $residenceAccounts = Account::query()
@@ -48,7 +41,7 @@ class SubscriberDashboardController extends Controller
         $apartmentCount = $apartmentLimit === null ? null : $quota->currentCount($user);
         $canCreateApartment = $quota->canCreate($user);
         $showApartmentCreate = $managedApartments->isNotEmpty()
-            || ($residenceAccounts->isEmpty() && $user->isSubscriber() && $canCreateApartment);
+            || ($residenceAccounts->isEmpty() && $canCreateApartment);
 
         return view('subscriber.dashboard', [
             'apartments' => $managedApartments,

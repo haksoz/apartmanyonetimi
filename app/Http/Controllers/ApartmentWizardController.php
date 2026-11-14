@@ -16,9 +16,53 @@ use Illuminate\View\View;
 
 class ApartmentWizardController extends Controller
 {
+    public function managerStep(Apartment $apartment): RedirectResponse|View
+    {
+        $this->authorizeApartment($apartment);
+        if ($apartment->isSetupCompleted() || $apartment->setup_manager_completed_at !== null) {
+            return redirect()->route($apartment->isSetupCompleted() ? 'dashboard' : 'apartments.wizard.'.$apartment->nextSetupStep(), $apartment);
+        }
+
+        return view('apartments.wizard.manager', [
+            'apartment' => $apartment,
+            'units' => $apartment->units()->orderBy('id')->get(),
+            'openingDate' => $apartment->account_opening_date?->toDateString()
+                ?? $apartment->accounts()->min('account_opening_date') ?? today()->toDateString(),
+        ]);
+    }
+
+    public function storeManager(Request $request, Apartment $apartment, \App\Support\SetupManagerAccount $setup): RedirectResponse
+    {
+        $this->authorizeApartment($apartment);
+        if ($apartment->isSetupCompleted() || $apartment->setup_manager_completed_at !== null) {
+            return redirect()->route($apartment->isSetupCompleted() ? 'dashboard' : 'apartments.wizard.'.$apartment->nextSetupStep(), $apartment);
+        }
+
+        $openingDate = $apartment->account_opening_date?->toDateString()
+            ?? $apartment->accounts()->min('account_opening_date') ?? today()->toDateString();
+        $hasUnit = $request->input('manager_type') !== 'external';
+        $validated = $request->validate([
+            'manager_type' => ['required', Rule::in(['external', 'tenant', 'owner'])],
+            'unit_id' => [Rule::excludeIf(! $hasUnit), 'required', 'integer', Rule::exists('units', 'id')->where('apartment_id', $apartment->id)],
+            'started_at' => [Rule::excludeIf(! $hasUnit), 'required', 'date_format:Y-m-d', 'after_or_equal:'.$openingDate],
+        ], [
+            'started_at.after_or_equal' => 'Başlangıç tarihi apartmanın hesap açılış tarihinden önce olamaz.',
+            'unit_id.exists' => 'Bu apartmana ait bir daire seçin.',
+        ]);
+
+        $setup->save($apartment, $request->user(), $validated);
+
+        return redirect()->route('apartments.wizard.cash-box', $apartment)
+            ->with('status', 'Yönetici bilgileriniz kaydedildi. Şimdi kasanızı oluşturun.');
+    }
+
     public function cashBoxStep(Apartment $apartment): RedirectResponse|View
     {
         $this->authorizeApartment($apartment);
+
+        if (! $apartment->isSetupCompleted() && $apartment->setup_manager_completed_at === null) {
+            return redirect()->route('apartments.wizard.manager', $apartment);
+        }
 
         if ($next = $this->redirectForCompletedSteps($apartment)) {
             return $next;
@@ -26,13 +70,17 @@ class ApartmentWizardController extends Controller
 
         return view('apartments.wizard.cash-box', [
             'apartment' => $apartment,
-            'activeStep' => 2,
+            'activeStep' => 3,
         ]);
     }
 
     public function storeCashBox(Request $request, Apartment $apartment): RedirectResponse
     {
         $this->authorizeApartment($apartment);
+
+        if (! $apartment->isSetupCompleted() && $apartment->setup_manager_completed_at === null) {
+            return redirect()->route('apartments.wizard.manager', $apartment);
+        }
 
         $hasAmount = abs((float) $request->input('opening_balance', 0)) >= 0.01;
         $validated = $request->validate([
@@ -85,6 +133,10 @@ class ApartmentWizardController extends Controller
     {
         $this->authorizeApartment($apartment);
 
+        if (! $apartment->isSetupCompleted() && $apartment->setup_manager_completed_at === null) {
+            return redirect()->route('apartments.wizard.manager', $apartment);
+        }
+
         if (! $apartment->cashBoxes()->exists()) {
             return redirect()->route('apartments.wizard.cash-box', $apartment);
         }
@@ -104,13 +156,17 @@ class ApartmentWizardController extends Controller
         return view('apartments.wizard.units', [
             'apartment' => $apartment,
             'units' => $units,
-            'activeStep' => 3,
+            'activeStep' => 4,
         ]);
     }
 
     public function storeUnits(Request $request, Apartment $apartment): RedirectResponse
     {
         $this->authorizeApartment($apartment);
+
+        if (! $apartment->isSetupCompleted() && $apartment->setup_manager_completed_at === null) {
+            return redirect()->route('apartments.wizard.manager', $apartment);
+        }
 
         if (! $apartment->cashBoxes()->exists()) {
             return redirect()->route('apartments.wizard.cash-box', $apartment);
@@ -140,6 +196,10 @@ class ApartmentWizardController extends Controller
     {
         $this->authorizeApartment($apartment);
 
+        if (! $apartment->isSetupCompleted() && $apartment->setup_manager_completed_at === null) {
+            return redirect()->route('apartments.wizard.manager', $apartment);
+        }
+
         if (! $apartment->cashBoxes()->exists()) {
             return redirect()->route('apartments.wizard.cash-box', $apartment);
         }
@@ -152,6 +212,10 @@ class ApartmentWizardController extends Controller
     public function categoriesStep(Apartment $apartment): RedirectResponse|View
     {
         $this->authorizeApartment($apartment);
+
+        if (! $apartment->isSetupCompleted() && $apartment->setup_manager_completed_at === null) {
+            return redirect()->route('apartments.wizard.manager', $apartment);
+        }
 
         if (! $apartment->cashBoxes()->exists()) {
             return redirect()->route('apartments.wizard.cash-box', $apartment);
@@ -170,13 +234,17 @@ class ApartmentWizardController extends Controller
         return view('apartments.wizard.categories', [
             'apartment' => $apartment,
             'categories' => $categories,
-            'activeStep' => 4,
+            'activeStep' => 5,
         ]);
     }
 
     public function storeCategory(Request $request, Apartment $apartment): RedirectResponse
     {
         $this->authorizeApartment($apartment);
+
+        if (! $apartment->isSetupCompleted() && $apartment->setup_manager_completed_at === null) {
+            return redirect()->route('apartments.wizard.manager', $apartment);
+        }
 
         if (! $apartment->cashBoxes()->exists()) {
             return redirect()->route('apartments.wizard.cash-box', $apartment);
@@ -220,6 +288,10 @@ class ApartmentWizardController extends Controller
     {
         $this->authorizeApartment($apartment);
 
+        if (! $apartment->isSetupCompleted() && $apartment->setup_manager_completed_at === null) {
+            return redirect()->route('apartments.wizard.manager', $apartment);
+        }
+
         if (! $apartment->cashBoxes()->exists()) {
             return redirect()->route('apartments.wizard.cash-box', $apartment);
         }
@@ -247,7 +319,7 @@ class ApartmentWizardController extends Controller
             return;
         }
 
-        $member = $apartment->members()->withPivot('role')->whereKey($user->id)->first();
+        $member = $apartment->members()->withPivot('role')->wherePivot('is_active', true)->whereKey($user->id)->first();
         abort_unless($member && $member->pivot->role === 'owner', 403);
     }
 

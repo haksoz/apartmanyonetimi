@@ -36,7 +36,7 @@ class ApartmentCreationTest extends TestCase
 
         $apartment = Apartment::where('name', 'Akbey Apartmanı')->firstOrFail();
 
-        $response->assertRedirect(route('apartments.wizard.cash-box', $apartment));
+        $response->assertRedirect(route('apartments.wizard.manager', $apartment));
 
         $this->assertSame($user->id, $apartment->user_id);
         $this->assertDatabaseHas('apartment_user', [

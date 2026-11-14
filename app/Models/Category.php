@@ -182,40 +182,38 @@ class Category extends Model
     public static function createDefaultsFor(int $apartmentId): void
     {
         $defaults = [
-            ['name' => 'Genel Aidat', 'type' => self::TYPE_INCOME, 'is_system' => true, 'allow_aidat' => true],
-            ['name' => 'Demirbaş', 'type' => self::TYPE_ALL, 'is_system' => true],
-            ['name' => 'Elektrik', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
-            ['name' => 'Su', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
-            ['name' => 'Asansör', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
-            ['name' => 'Temizlik', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
-            ['name' => 'Yönetim', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
-            ['name' => 'Bakım', 'type' => self::TYPE_EXPENSE, 'is_system' => false],
-            ['name' => 'Ceza', 'type' => self::TYPE_INCOME, 'is_system' => true],
-            ['name' => 'Faiz', 'type' => self::TYPE_INCOME, 'is_system' => true],
-            ['name' => 'Masraf Yansıtma', 'type' => self::TYPE_INCOME, 'is_system' => false],
-            ['name' => 'Diğer', 'type' => self::TYPE_ALL, 'is_system' => true],
+            // Snapshot of the protected categories agreed from Akbey (apartment 8).
+            // New apartments use this fixed template, never another apartment's live data.
+            ['name' => 'Genel Aidat', 'type' => self::TYPE_INCOME, 'is_system' => true, 'sort_order' => 1],
+            ['name' => 'Demirbaş', 'type' => self::TYPE_ALL, 'is_system' => true, 'sort_order' => 2],
+            ['name' => 'Ortak Elektrik', 'type' => self::TYPE_EXPENSE, 'is_system' => false, 'sort_order' => 3],
+            ['name' => 'Ortak Temizlik', 'type' => self::TYPE_EXPENSE, 'is_system' => false, 'sort_order' => 4],
+            ['name' => 'Ortak Su', 'type' => self::TYPE_EXPENSE, 'is_system' => false, 'sort_order' => 5],
+            ['name' => 'Ortak Asansör', 'type' => self::TYPE_EXPENSE, 'is_system' => false, 'sort_order' => 6],
+            ['name' => 'Yönetim Giderleri', 'type' => self::TYPE_EXPENSE, 'is_system' => false, 'sort_order' => 7],
+            ['name' => 'Bakım Onarım', 'type' => self::TYPE_EXPENSE, 'is_system' => false, 'sort_order' => 8],
+            ['name' => 'Diğer', 'type' => self::TYPE_ALL, 'is_system' => true, 'sort_order' => 18],
         ];
 
         foreach ($defaults as $default) {
-            $permissions = array_fill_keys(array_keys(self::USAGE_PERMISSIONS), false);
-            if ($default['type'] !== self::TYPE_INCOME) {
-                $permissions['allow_expense'] = true;
-            }
-            if ($default['type'] !== self::TYPE_EXPENSE) {
-                $permissions['allow_malik_payi'] = true;
-            }
-            if ($default['name'] === 'Genel Aidat') {
-                $permissions = [...array_fill_keys(array_keys(self::USAGE_PERMISSIONS), false), 'allow_aidat' => true];
-            } elseif (in_array($default['name'], ['Ceza', 'Faiz', 'Masraf Yansıtma'], true)) {
-                $permissions = [...array_fill_keys(array_keys(self::USAGE_PERMISSIONS), false), 'allow_aidat' => true, 'allow_malik_payi' => true];
-            }
+            $isAidat = $default['name'] === 'Genel Aidat';
+            $bothRelations = in_array($default['name'], ['Demirbaş', 'Bakım Onarım', 'Diğer'], true);
+            $permissions = [
+                'allow_aidat' => true,
+                'allow_malik_payi' => $bothRelations,
+                'allow_expense' => ! $isAidat,
+                'expense_relations' => $isAidat ? [] : ($bothRelations ? ['aidat', 'malik_payi'] : ['aidat']),
+            ];
             if ($default['name'] === 'Genel Aidat' && self::withTrashed()->where('apartment_id', $apartmentId)->whereIn('name', ['Genel Aidat', 'Aidat'])->exists()) {
                 continue;
             }
-            self::firstOrCreate(
+            $category = self::firstOrCreate(
                 ['apartment_id' => $apartmentId, 'name' => $default['name']],
                 ['type' => $default['type'], 'is_active' => true, 'is_system' => $default['is_system'], ...$permissions],
             );
+            if ($category->wasRecentlyCreated) {
+                $category->forceFill(['sort_order' => $default['sort_order']])->save();
+            }
         }
 
         $aidat = self::where('apartment_id', $apartmentId)->whereIn('name', ['Genel Aidat', 'Aidat'])

@@ -56,6 +56,7 @@ class SubscriberApartmentCreateController extends Controller
                 'province' => $validated['province'] ?? null,
                 'district' => $validated['district'] ?? null,
                 'unit_count' => $validated['unit_count'],
+                'account_opening_date' => $validated['account_opening_date'],
                 'billing_plan' => $decision['plan'],
             ]);
 
@@ -92,7 +93,7 @@ class SubscriberApartmentCreateController extends Controller
         $currentApartment->setFor($user, $apartment->id);
         app(LegalConsent::class)->recordResidentData($user, $apartment, $request);
 
-        return redirect()->route('apartments.wizard.cash-box', $apartment)
-            ->with('status', 'Apartman oluşturuldu. Şimdi kasanızı oluşturun.');
+        return redirect()->route('apartments.wizard.manager', $apartment)
+            ->with('status', 'Apartman oluşturuldu. Şimdi yönetici bilgilerinizi tamamlayın.');
     }
 }

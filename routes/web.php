@@ -122,6 +122,8 @@ Route::middleware('auth')->group(function () {
 
     // Apartment setup wizard
     Route::prefix('apartments/{apartment}/wizard')->name('apartments.wizard.')->middleware('building.panel')->group(function () {
+        Route::get('manager', [ApartmentWizardController::class, 'managerStep'])->name('manager');
+        Route::post('manager', [ApartmentWizardController::class, 'storeManager'])->name('manager.store');
         Route::get('cash-box', [ApartmentWizardController::class, 'cashBoxStep'])->name('cash-box');
         Route::post('cash-box', [ApartmentWizardController::class, 'storeCashBox'])->name('cash-box.store');
         Route::get('units', [ApartmentWizardController::class, 'unitsStep'])->name('units');
