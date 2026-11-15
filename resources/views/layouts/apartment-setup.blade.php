@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Apartman Kurulumu — AidatCep</title>
+    <title>@yield('setup_title', 'Apartman Kurulumu') — AidatCep</title>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif
@@ -23,8 +23,8 @@
                     <img src="{{ asset('images/logo.png') }}" alt="" class="h-8 w-auto">
                     <span class="text-xl font-bold"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span>
                 </div>
-                <h1 id="apartment-setup-title" tabindex="-1" class="text-lg font-bold text-slate-950">Apartman Kurulumu</h1>
-                <p id="apartment-setup-description" class="mt-1 text-xs text-slate-500">{{ $apartment->name ?? 'Yeni apartman' }} · Kaydettiğiniz adımlara daha sonra devam edebilirsiniz.</p>
+                <h1 id="apartment-setup-title" tabindex="-1" class="text-lg font-bold text-slate-950">@yield('setup_title', 'Apartman Kurulumu')</h1>
+                <p id="apartment-setup-description" class="mt-1 text-xs text-slate-500">@hasSection('setup_description') @yield('setup_description') @else {{ $apartment->name ?? 'Yeni apartman' }} · Kaydettiğiniz adımlara daha sonra devam edebilirsiniz. @endif</p>
             </div>
             <a id="apartment-setup-close" href="{{ route('subscriber.dashboard') }}" aria-label="Kurulumu kapat ve abone paneline dön" class="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Kapat</a>
         </header>

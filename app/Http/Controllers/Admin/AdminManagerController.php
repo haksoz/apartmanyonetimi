@@ -158,32 +158,9 @@ class AdminManagerController extends Controller
             $referenceCode = 'NKT-' . now()->format('Ymd-His') . '-' . strtoupper(Str::random(4));
         }
 
-        DB::transaction(function () use ($subscription, $manager, $paymentMethod, $referenceCode, $validated) {
-            if ($subscription->items()->doesntExist()) {
-                $this->closeLegacySubscriptions($manager, $subscription);
-            }
-
-            if ($subscription->items()->exists()) {
-                app(SubscriptionCheckout::class)->activate($subscription);
-            } else {
-                $expiresAt = $subscription->period === 'yearly' ? now()->addYear() : now()->addMonth();
-
-                $subscription->update([
-                    'status' => UserSubscription::STATUS_ACTIVE,
-                    'is_active' => true,
-                    'started_at' => now(),
-                    'expires_at' => $expiresAt,
-                ]);
-            }
-
-            $subscription->payments()->create([
-                'amount' => $subscription->price,
-                'payment_date' => now(),
-                'payment_method' => $paymentMethod,
-                'reference_code' => $referenceCode,
-                'notes' => $validated['notes'] ?? null,
-            ]);
-        });
+        app(\App\Support\FinalizeSubscriptionPayment::class)->manual(
+            $subscription, $paymentMethod, $referenceCode, $validated['notes'] ?? null,
+        );
 
         return back()->with('status', 'Ödeme onaylandı ve abonelik aktif edildi.');
     }
@@ -202,22 +179,9 @@ class AdminManagerController extends Controller
             'rejection_notes' => ['nullable', 'string'],
         ]);
 
-        $apartmentIds = $subscription->items()->pluck('apartment_id');
-
-        $subscription->items()->update([
-            'status' => SubscriptionItem::STATUS_CANCELLED,
-            'ended_at' => now(),
-        ]);
-
-        $subscription->update([
-            'status' => UserSubscription::STATUS_CANCELLED,
-            'cancelled_by' => UserSubscription::CANCELLED_BY_ADMIN,
-            'is_active' => false,
-            'ended_at' => now(),
-            'notes' => $validated['rejection_notes'] ?? $subscription->notes,
-        ]);
-
-        ApartmentCoverage::sync($apartmentIds);
+        app(\App\Support\CancelSubscriptionOrder::class)->cancel(
+            $subscription, UserSubscription::CANCELLED_BY_ADMIN, $validated['rejection_notes'] ?? null,
+        );
 
         return back()->with('status', 'Sipariş reddedildi.');
     }
@@ -257,17 +221,26 @@ class AdminManagerController extends Controller
             'cancellation_notes' => ['nullable', 'string'],
         ]);
 
-        $apartmentIds = $subscription->items()->pluck('apartment_id');
-
-        $subscription->update([
-            'is_active' => false,
-            'status' => UserSubscription::STATUS_CANCELLED,
-            'cancelled_by' => UserSubscription::CANCELLED_BY_ADMIN,
-            'ended_at' => now(),
-            'notes' => $validated['cancellation_notes'] ?? $subscription->notes,
-        ]);
-
-        ApartmentCoverage::sync($apartmentIds);
+        DB::transaction(function () use ($subscription, $validated) {
+            $subscription = \App\Support\SubscriptionOrderLock::acquire($subscription);
+            if ($subscription->isPending()) {
+                app(\App\Support\CancelSubscriptionOrder::class)->cancel(
+                    $subscription, UserSubscription::CANCELLED_BY_ADMIN, $validated['cancellation_notes'] ?? null,
+                );
+                return;
+            }
+            if ($subscription->paymentAttempts()->where(fn ($query) => $query->where('status', 'unknown')
+                ->orWhere(fn ($query) => $query->where('provider', 'paytr')->where('status', 'pending')))->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['subscription' => 'Ödeme sonucu kesinleşmeden abonelik sonlandırılamaz.']);
+            }
+            $apartmentIds = $subscription->items()->pluck('apartment_id');
+            $subscription->update([
+                'is_active' => false, 'status' => UserSubscription::STATUS_CANCELLED,
+                'cancelled_by' => UserSubscription::CANCELLED_BY_ADMIN, 'ended_at' => now(),
+                'notes' => $validated['cancellation_notes'] ?? $subscription->notes,
+            ]);
+            ApartmentCoverage::sync($apartmentIds);
+        });
 
         return back()->with('status', 'Abonelik sonlandırıldı.');
     }
@@ -335,17 +308,4 @@ class AdminManagerController extends Controller
             ->with('status', $name.' ve abonelik kaydı silindi.');
     }
 
-    private function closeLegacySubscriptions(User $manager, UserSubscription $except): void
-    {
-        UserSubscription::query()
-            ->where('user_id', $manager->id)
-            ->where('is_active', true)
-            ->whereKeyNot($except->id)
-            ->whereDoesntHave('items')
-            ->update([
-                'is_active' => false,
-                'status' => UserSubscription::STATUS_CANCELLED,
-                'ended_at' => now(),
-            ]);
-    }
 }

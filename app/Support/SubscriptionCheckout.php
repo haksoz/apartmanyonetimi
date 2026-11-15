@@ -20,6 +20,19 @@ class SubscriptionCheckout
 
     public function openPending(User $user, Collection $apartments, string $period, string $paymentMethod, BillingProfile $billingProfile, ?string $receiptPath = null, ?string $reference = null): UserSubscription
     {
+        return DB::transaction(function () use ($user, $apartments, $period, $paymentMethod, $billingProfile, $receiptPath, $reference) {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $lockedApartments = Apartment::whereIn('id', $apartments->pluck('id'))->orderBy('id')->lockForUpdate()->get();
+            if ($lockedApartments->count() !== $apartments->count()) {
+                throw ValidationException::withMessages(['apartment_ids' => 'Apartman listesi değişti. Tekrar deneyin.']);
+            }
+
+            return $this->createPending($user, $lockedApartments, $period, $paymentMethod, $billingProfile, $receiptPath, $reference);
+        });
+    }
+
+    private function createPending(User $user, Collection $apartments, string $period, string $paymentMethod, BillingProfile $billingProfile, ?string $receiptPath, ?string $reference): UserSubscription
+    {
         if ($apartments->isEmpty()) {
             throw ValidationException::withMessages([
                 'apartment_ids' => 'En az bir apartman seçin.',
@@ -149,6 +162,21 @@ class SubscriptionCheckout
     }
 
     public function activate(UserSubscription $subscription): void
+    {
+        DB::transaction(function () use ($subscription) {
+            $locked = SubscriptionOrderLock::acquire($subscription);
+            if ($locked->status === UserSubscription::STATUS_ACTIVE && ! $locked->trashed()) {
+                return;
+            }
+            if ($locked->trashed() || ! $locked->isPending()) {
+                throw ValidationException::withMessages(['subscription' => 'Yalnızca bekleyen sipariş aktifleştirilebilir.']);
+            }
+            $this->activateLocked($locked);
+        });
+        $subscription->refresh();
+    }
+
+    private function activateLocked(UserSubscription $subscription): void
     {
         $apartmentIds = $subscription->items()->pluck('apartment_id');
         $anchor = SubscriptionItem::query()

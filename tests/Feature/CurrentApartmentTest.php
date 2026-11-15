@@ -74,7 +74,7 @@ class CurrentApartmentTest extends TestCase
         $this->withSession([CurrentApartment::SESSION_KEY => $secondApartment->id])
             ->actingAs($user)
             ->get(route('dashboard'))
-            ->assertRedirect(route('apartments.wizard.cash-box', $secondApartment));
+            ->assertRedirect(route('apartments.wizard.manager', $secondApartment));
     }
 
     public function test_apartment_pages_redirect_to_subscriber_dashboard_without_selection(): void
@@ -120,7 +120,7 @@ class CurrentApartmentTest extends TestCase
             ->assertRedirect(route('subscriber.dashboard'));
     }
 
-    public function test_logout_and_login_returns_to_subscriber_dashboard(): void
+    public function test_logout_and_login_selects_the_only_completed_managed_apartment(): void
     {
         $user = User::factory()->create(['password' => 'password']);
         $apartment = Apartment::factory()->create(['user_id' => $user->id, 'setup_completed_at' => now()]);
@@ -132,8 +132,8 @@ class CurrentApartmentTest extends TestCase
         $this->assertNull(session(CurrentApartment::SESSION_KEY));
 
         $this->post(route('login'), ['email' => $user->email, 'password' => 'password'])
-            ->assertRedirect(route('subscriber.dashboard'));
+            ->assertRedirect(route('dashboard'));
         $this->get(route('subscriber.dashboard'))->assertOk()->assertSee($apartment->name);
-        $this->get(route('dashboard'))->assertRedirect(route('subscriber.dashboard'));
+        $this->assertSame($apartment->id, session(CurrentApartment::SESSION_KEY));
     }
 }

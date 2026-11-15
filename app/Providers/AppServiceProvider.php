@@ -34,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        View::composer('layouts.app', function ($view) {
+        View::composer(['layouts.app', 'layouts.checkout'], function ($view) {
             $availableApartments = collect();
             $currentApartment = null;
             $navIsOwner = false;

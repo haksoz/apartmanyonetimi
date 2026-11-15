@@ -25,11 +25,10 @@ class SingleApartmentOrderTest extends TestCase
             ->assertOk()
             ->assertSee('Sarıkayalar')
             ->assertSee('Dertli Deliler')
-            ->assertSee('Temel kullanım')
-            ->assertSee('Ücretli Pakete Geç')
-            ->assertSee('name="apartment_ids[]"', false)
-            ->assertSee('type="radio"', false)
-            ->assertSee('name="accept_sales"', false);
+            ->assertSee('Ücretliye Geç')
+            ->assertSee(route('subscriber.subscriptions.create', ['apartment_id' => $first->id]), false)
+            ->assertSee(route('subscriber.subscriptions.create', ['apartment_id' => $second->id]), false)
+            ->assertDontSee('name="apartment_ids[]"', false);
 
         $this->assertNotSame($first->id, $second->id);
     }
@@ -175,10 +174,11 @@ class SingleApartmentOrderTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('subscriber.subscriptions.create'))
+            ->assertRedirect(route('subscriber.subscriptions.receipt', $pending));
+        $this->get(route('subscriber.subscriptions.receipt', $pending))
             ->assertOk()
-            ->assertSee('Ödeme Bekleyen Siparişiniz Var')
             ->assertSee($pending->order_number)
-            ->assertDontSee('Siparişi İptal Et');
+            ->assertDontSee('Siparişi iptal et');
     }
 
     public function test_a_pending_order_blocks_another_order_until_the_customer_cancels_it(): void
@@ -197,20 +197,20 @@ class SingleApartmentOrderTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('subscriber.subscriptions.store'), $this->orderPayload($apartment))
-            ->assertSessionHasErrors('apartment_ids');
+            ->assertRedirect(route('subscriber.subscriptions.receipt', $pending));
 
         $this->actingAs($user)
             ->get(route('subscriber.subscriptions.create'))
+            ->assertRedirect(route('subscriber.subscriptions.receipt', $pending));
+        $this->get(route('subscriber.subscriptions.receipt', $pending))
             ->assertOk()
-            ->assertSee('Ödeme Bekleyen Siparişiniz Var')
             ->assertSee($pending->order_number)
-            ->assertSee('Ödemeye Devam Et')
-            ->assertSee('Siparişi İptal Et')
+            ->assertSee('Siparişi iptal et')
             ->assertDontSee('name="apartment_ids[]" value="'.$apartment->id.'"', false);
 
         $this->actingAs($user)
             ->post(route('subscriber.subscriptions.cancel', $pending))
-            ->assertRedirect(route('subscriber.subscriptions.create', ['type' => 'renew']));
+            ->assertRedirect(route('subscriber.subscriptions.create'));
 
         $pending->refresh();
         $activeItem->refresh();

@@ -92,14 +92,19 @@ class AdminOrderController extends Controller
             'purge_order_action' => ['nullable', 'string'],
         ]);
 
-        if ($order->payments()->exists()) {
-            throw ValidationException::withMessages([
-                'order' => 'Bu siparişe bağlı ödeme var. Önce ödemeyi silin.',
-            ]);
-        }
-
         $number = $order->order_number ?: 'Sipariş';
-        $order->delete();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
+            $order = \App\Support\SubscriptionOrderLock::acquire($order);
+            if ($order->payments()->exists() || $order->paymentAttempts()->where(fn ($query) => $query
+                ->whereIn('status', ['unknown', 'succeeded'])
+                ->orWhere(fn ($query) => $query->where('provider', 'paytr')->where('status', 'pending')))->exists()) {
+                throw ValidationException::withMessages(['order' => 'Ödeme veya sonucu belirsiz işlem kaydı olan sipariş silinemez.']);
+            }
+            $order->paymentAttempts()->where('status', 'pending')->update(['status' => 'cancelled']);
+            $order->items()->where('status', \App\Models\SubscriptionItem::STATUS_PENDING)
+                ->update(['status' => \App\Models\SubscriptionItem::STATUS_CANCELLED, 'ended_at' => now()]);
+            $order->delete();
+        });
 
         return redirect()
             ->route('admin.orders.index')
@@ -115,7 +120,14 @@ class AdminOrderController extends Controller
 
         abort_unless((int) $payment->subscription_id === (int) $order->id, 404);
 
-        $payment->delete();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($order, $payment) {
+            \App\Support\SubscriptionOrderLock::acquire($order);
+            $payment = SubscriptionPayment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            if ($payment->payment_attempt_id) {
+                throw ValidationException::withMessages(['order' => 'Ödeme denemesine bağlı tahsilat silinemez. İade veya düzeltme sürecini kullanın.']);
+            }
+            $payment->delete();
+        });
 
         return redirect()
             ->route('admin.orders.show', $order)

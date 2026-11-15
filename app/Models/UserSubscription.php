@@ -30,6 +30,8 @@ class UserSubscription extends Model
 
     protected $fillable = [
         'order_number',
+        'checkout_token',
+        'checkout_fingerprint',
         'user_id',
         'subscription_id',
         'package_id',
@@ -126,6 +128,11 @@ class UserSubscription extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(SubscriptionPayment::class, 'subscription_id');
+    }
+
+    public function paymentAttempts(): HasMany
+    {
+        return $this->hasMany(SubscriptionPaymentAttempt::class, 'subscription_id');
     }
 
     /**

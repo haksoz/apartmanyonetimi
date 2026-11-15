@@ -32,7 +32,7 @@ class LegalDocumentVersionTest extends TestCase
         [$ahmet, $apartment] = $this->apartmentFor('Ahmet');
 
         $this->actingAs($ahmet)
-            ->get(route('subscriber.dashboard'))
+            ->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]))
             ->assertOk()
             ->assertSee('MESAFELI-SURUM-1-METIN')
             ->assertSee('ONBILGI-SURUM-1-METIN');

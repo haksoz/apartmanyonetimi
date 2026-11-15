@@ -88,7 +88,7 @@ class PackageQuotaTest extends TestCase
             ]);
 
         $apartment = Apartment::where('name', 'Üçüncü Apartman')->firstOrFail();
-        $response->assertRedirect(route('apartments.wizard.cash-box', $apartment));
+        $response->assertRedirect(route('apartments.wizard.manager', $apartment));
 
         $this->assertDatabaseCount('apartments', 3);
     }

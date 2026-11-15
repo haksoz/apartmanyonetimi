@@ -232,7 +232,7 @@ class LegalPlaceholderTest extends TestCase
             ->assertDontSee('[Siparişte seçilen apartman]');
 
         $this->actingAs($ahmet)
-            ->get(route('subscriber.dashboard'))
+            ->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]))
             ->assertOk()
             ->assertSeeInOrder(['Alıcı / Tüketici:', 'A Apartmanı Yönetimi'])
             ->assertSeeInOrder(['Apartman:', 'A Apartmanı'])

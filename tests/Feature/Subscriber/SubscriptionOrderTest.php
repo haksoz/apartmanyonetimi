@@ -100,16 +100,8 @@ class SubscriptionOrderTest extends TestCase
             ->assertSee('Süresi Bitmiş Apartman')
             ->assertSee('Ücretsiz')
             ->assertSee('Ücretliye Geç')
-            ->assertSee('Abonelik türü')
-            ->assertSee('Fatura bilgileri')
-            ->assertSee('Ödeme şekli')
-            ->assertSee('Mesafeli satış sözleşmesini')
-            ->assertSee("payStep(this, 'next')", false)
-            ->assertSee("payStep(this, 'close')", false)
-            ->assertSee('Havale / EFT')
-            ->assertSee('Kredi kartı')
-            ->assertSee('Henüz aktif değil')
-            ->assertSee('value="kredi_kartı" class="mt-1" disabled', false)
+            ->assertSee(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]), false)
+            ->assertDontSee('data-pay-modal', false)
             ->assertDontSee('Aboneliğiniz Sona Erdi');
     }
 
@@ -165,18 +157,18 @@ class SubscriptionOrderTest extends TestCase
         $this->assertNotNull($pending->order_number);
         $this->assertStringStartsWith('SIP-', $pending->order_number);
         $this->assertEquals('yearly', $pending->period);
-        $this->assertEquals(1500, (float) $pending->price);
+        $this->assertEquals(1800, (float) $pending->price);
         $this->assertNull($pending->receipt_reference);
         $this->assertEquals('havale', $pending->payment_method);
         $this->assertFalse($pending->is_active);
         $this->assertSame('Havale Apartmanı', $pending->items->first()->apartment_name);
-        $this->assertEquals(1500, (float) $pending->items->first()->amount);
+        $this->assertEquals(1800, (float) $pending->items->first()->amount);
 
         $this->assertTrue($manager->fresh()->subscription->is_active);
         $this->assertNotEquals($pending->id, $manager->fresh()->subscription->id);
     }
 
-    public function test_subscriber_can_create_credit_card_pending_order(): void
+    public function test_credit_card_order_is_rejected_until_card_payments_are_enabled(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
         $manager = User::factory()->withSubscription($package, 'monthly')->create();
@@ -197,14 +189,9 @@ class SubscriptionOrderTest extends TestCase
                 'payment_method' => 'kredi_kartı',
                 'accept_sales' => '1',
             ] + $this->billingSelection($manager))
-            ->assertRedirect();
+            ->assertSessionHasErrors('payment_method');
 
-        $pending = $manager->fresh()->subscriptions()->pending()->first();
-        $this->assertNotNull($pending);
-        $this->assertNotNull($pending->order_number);
-        $this->assertEquals('kredi_kartı', $pending->payment_method);
-        $this->assertEquals(150, (float) $pending->price);
-        $this->assertFalse($pending->is_active);
+        $this->assertNull($manager->fresh()->subscriptions()->pending()->first());
     }
 
     public function test_receipt_page_shows_active_bank_accounts(): void

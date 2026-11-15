@@ -1,4 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.apartment-setup')
+
+@section('setup_title', 'Abonelik ve Ödeme')
+@section('setup_description', 'Siparişinizin ödeme ve onay durumunu buradan takip edebilirsiniz.')
+@section('setup_width', '56rem')
 
 @section('title', 'Sipariş')
 

@@ -84,13 +84,22 @@ class SubscriberSubscriptionController extends Controller
                 && ! ($apartment->monthly_quote['requires_quote'] ?? false);
         })->values();
 
-        $selectedApartmentId = $selectable->firstWhere('id', $request->integer('apartment_id'))?->id;
+        $requestedId = (int) old('apartment_ids.0', $request->integer('apartment_id'));
+        $candidate = $requestedId ? $apartments->firstWhere('id', $requestedId) : ($apartments->count() === 1 ? $apartments->first() : null);
+        if ($candidate?->offer['action'] === 'pending' && (int) $candidate->offer['order']->user_id === (int) auth()->id()) {
+            return redirect()->route('subscriber.subscriptions.receipt', $candidate->offer['order']);
+        }
+        $selectedApartmentId = $candidate ? $selectable->firstWhere('id', $candidate->id)?->id : null;
         $selectedBillingProfileId = old('billing_profile_id');
         if ($selectedBillingProfileId === null && old('billing_mode') !== 'new' && ($selectedApartmentId || $selectable->count() === 1)) {
             $selectedBillingProfileId = ($selectable->firstWhere('id', $selectedApartmentId) ?? $selectable->first())->suggested_billing_profile_id;
         }
 
-        return view('subscriber.subscriptions.create', compact('apartments', 'billingProfiles', 'selectedBillingProfileId', 'selectedApartmentId'));
+        $checkoutApartment = $apartments->firstWhere('id', $selectedApartmentId);
+        $quoteSignature = $checkoutApartment ? app(\App\Support\CheckoutQuote::class)->signature($request->user(), $checkoutApartment) : null;
+        $coverageEnd = $checkoutApartment ? app(\App\Support\SubscriberApartmentOverview::class)->coverageFor($checkoutApartment)['end'] : null;
+
+        return view('subscriber.subscriptions.create', compact('apartments', 'billingProfiles', 'selectedBillingProfileId', 'selectedApartmentId', 'checkoutApartment', 'quoteSignature', 'coverageEnd'));
     }
 
     public function store(Request $request, SubscriptionCheckout $checkout)
@@ -99,7 +108,13 @@ class SubscriberSubscriptionController extends Controller
             'apartment_ids' => ['required', 'array', 'min:1', 'max:1'],
             'apartment_ids.*' => ['integer'],
             'period' => ['required', Rule::in(['monthly', 'yearly'])],
-            'payment_method' => ['required', Rule::in(['havale', 'kredi_kartı'])],
+            'payment_method' => ['required', Rule::in(config('payments.card_enabled') ? ['havale', 'kredi_kartı'] : ['havale'])],
+            'checkout_token' => ['required_if:payment_method,kredi_kartı', 'nullable', 'uuid'],
+            'quote_signature' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'size:64'],
+            'payer_name' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:60'],
+            'payer_email' => ['required_if:payment_method,kredi_kartı', 'nullable', 'email', 'max:100', 'regex:/^[\x00-\x7F]+$/'],
+            'payer_phone' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:20'],
+            'payer_address' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:400'],
             'reference_code' => ['nullable', 'string', 'max:255'],
             'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'accept_sales' => ['accepted'],
@@ -118,6 +133,7 @@ class SubscriberSubscriptionController extends Controller
             'billing_address' => ['nullable', 'string', 'max:1000', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && in_array($request->input('billing_party_type'), [BillingProfile::TYPE_INDIVIDUAL, BillingProfile::TYPE_CORPORATE], true))],
             'billing_postal_code' => ['nullable', 'string', 'max:32'],
         ], [
+            'payment_method.in' => 'Kredi kartı ödemesi henüz aktif değil. Havale / EFT ile devam edebilirsiniz.',
             'apartment_ids.max' => 'Bir siparişte yalnızca bir apartman olabilir.',
             'accept_sales.accepted' => 'Ücretli abonelik için mesafeli satış sözleşmesini ve ön bilgilendirme formunu kabul edin.',
             'billing_mode.required' => 'Fatura profilini seçin veya yeni bir profil oluşturun.',
@@ -155,30 +171,64 @@ class SubscriberSubscriptionController extends Controller
             ]);
         }
 
+        $fingerprintData = \Illuminate\Support\Arr::except($validated, ['checkout_token', 'quote_signature', 'receipt']);
+        $fingerprintData['receipt_hash'] = $request->hasFile('receipt') ? hash_file('sha256', $request->file('receipt')->getRealPath()) : null;
+        $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_THROW_ON_ERROR));
         $receiptPath = null;
-        if ($request->hasFile('receipt')) {
-            $receiptPath = $request->file('receipt')->store("receipts/{$user->id}", 'public');
+        try {
+            $subscription = DB::transaction(function () use ($checkout, $request, $user, $apartments, $validated, $fingerprint, &$receiptPath) {
+                User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $token = $validated['checkout_token'] ?? null;
+                if ($token && ($replay = UserSubscription::withTrashed()->where('checkout_token', $token)->first())) {
+                    if ((int) $replay->user_id !== $user->id || $replay->checkout_fingerprint !== $fingerprint || $replay->trashed()) {
+                        throw ValidationException::withMessages(['checkout_token' => 'Bu işlem anahtarı farklı veya silinmiş bir siparişe ait. Sayfayı yenileyin.']);
+                    }
+                    return $replay;
+                }
+
+                $locked = $this->ownedApartments($user)->whereIn('id', $apartments->pluck('id'))->orderBy('id')->lockForUpdate()->get();
+                if ($locked->count() !== 1) {
+                    throw ValidationException::withMessages(['apartment_ids' => 'Apartman yönetim yetkiniz değişti.']);
+                }
+                $apartment = $locked->first();
+                $pending = $apartment->subscriptionItems()->where('status', SubscriptionItem::STATUS_PENDING)
+                    ->whereHas('subscription', fn ($query) => $query->where('status', UserSubscription::STATUS_PENDING))
+                    ->with('subscription')->first();
+                if ($pending) {
+                    if ((int) $pending->subscription->user_id !== $user->id) {
+                        throw ValidationException::withMessages(['apartment_ids' => 'Bu apartman için başka bir kullanıcının bekleyen siparişi bulunuyor.']);
+                    }
+                    return $pending->subscription;
+                }
+                if (filled($validated['quote_signature'] ?? null) && ! hash_equals(
+                    app(\App\Support\CheckoutQuote::class)->signature($user, $apartment), $validated['quote_signature']
+                )) {
+                    throw ValidationException::withMessages(['quote_signature' => 'Fiyat, vergi veya sözleşme bilgisi değişti. Güncel tutarı ve sözleşmeleri yeniden kontrol edip onaylayın.']);
+                }
+                $billingProfile = $this->billingProfileFor($user, $validated);
+                if ($request->hasFile('receipt')) {
+                    $receiptPath = $request->file('receipt')->store("receipts/{$user->id}", 'public');
+                }
+                $order = $checkout->openPending($user, $locked, $validated['period'], $validated['payment_method'], $billingProfile, $receiptPath, $validated['reference_code'] ?? null);
+                $order->update(['checkout_token' => $token, 'checkout_fingerprint' => $fingerprint]);
+                app(LegalConsent::class)->recordSale($user, $order, $request);
+                $attempt = app(\App\Support\SubscriptionPaymentAttempts::class)->open($order);
+                if ($validated['payment_method'] === 'kredi_kartı') {
+                    $attempt->update(['payer_snapshot' => \Illuminate\Support\Arr::only($validated, ['payer_name', 'payer_email', 'payer_phone', 'payer_address'])]);
+                }
+
+                return $order;
+            });
+        } catch (\Throwable $exception) {
+            if ($receiptPath) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($receiptPath);
+            }
+            throw $exception;
         }
 
-        $subscription = DB::transaction(function () use ($checkout, $user, $apartments, $validated, $receiptPath) {
-            $billingProfile = $this->billingProfileFor($user, $validated);
-
-            return $checkout->openPending(
-                $user,
-                $apartments,
-                $validated['period'],
-                $validated['payment_method'],
-                $billingProfile,
-                $receiptPath,
-                $validated['reference_code'] ?? null,
-            );
-        });
-
-        app(LegalConsent::class)->recordSale($user, $subscription, $request);
-
-        $message = $validated['payment_method'] === 'havale'
+        $message = ! $subscription->wasRecentlyCreated ? 'Mevcut siparişinizi görüntülüyorsunuz.' : ($validated['payment_method'] === 'havale'
             ? 'Siparişiniz alındı. Havale/EFT ödemesi için banka bilgilerini görüntüleyebilirsiniz.'
-            : 'Siparişiniz alındı. Kredi kartı ödeme altyapısı entegre edildiğinde buradan ödemenizi tamamlayabileceksiniz.';
+            : 'Siparişiniz alındı. Kredi kartı ödeme altyapısı entegre edildiğinde buradan ödemenizi tamamlayabileceksiniz.');
 
         return redirect()->route('subscriber.subscriptions.receipt', $subscription)
             ->with('status', $message);
@@ -198,6 +248,13 @@ class SubscriberSubscriptionController extends Controller
     {
         $this->authorizeSubscription($subscription);
 
+        return DB::transaction(function () use ($request, $subscription) {
+            return $this->savePaymentInfo($request, \App\Support\SubscriptionOrderLock::acquire($subscription));
+        });
+    }
+
+    private function savePaymentInfo(Request $request, UserSubscription $subscription)
+    {
         try {
             if (! $subscription->isPending()) {
                 throw ValidationException::withMessages([
@@ -252,36 +309,10 @@ class SubscriberSubscriptionController extends Controller
     {
         $this->authorizeSubscription($subscription);
 
-        if (! $subscription->isPending()) {
-            throw ValidationException::withMessages([
-                'subscription' => 'Yalnızca ödeme bekleyen sipariş iptal edilebilir.',
-            ]);
-        }
-
-        if ($subscription->hasPaymentProof()) {
-            throw ValidationException::withMessages([
-                'subscription' => 'Ödeme bilgisi gönderildiği için sipariş iptal edilemez.',
-            ]);
-        }
-
-        $apartmentIds = $subscription->items()->pluck('apartment_id');
-
-        $subscription->items()->update([
-            'status' => SubscriptionItem::STATUS_CANCELLED,
-            'ended_at' => now(),
-        ]);
-
-        $subscription->update([
-            'status' => UserSubscription::STATUS_CANCELLED,
-            'cancelled_by' => UserSubscription::CANCELLED_BY_CUSTOMER,
-            'is_active' => false,
-            'ended_at' => now(),
-        ]);
-
-        ApartmentCoverage::sync($apartmentIds);
+        app(\App\Support\CancelSubscriptionOrder::class)->cancel($subscription, UserSubscription::CANCELLED_BY_CUSTOMER);
 
         return redirect()
-            ->route('subscriber.subscriptions.create', ['type' => 'renew'])
+            ->route('subscriber.subscriptions.create')
             ->with('status', 'Sipariş iptal edildi. Apartman için yeniden sipariş oluşturabilirsiniz.');
     }
 
