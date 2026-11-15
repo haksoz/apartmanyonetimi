@@ -45,11 +45,21 @@
                     const next = node.getAttribute('data-pay-next');
                     const billingError = modal.querySelector('[data-pay-billing-error]');
                     if (next === 'payment' && ! payStepReady(modal)) {
+                        billingError.textContent = 'Devam etmek için fatura alanlarını doldurun.';
                         reveal(billingError, true);
                         return false;
                     }
                     reveal(billingError, false);
-                    if (next === 'payment') payLegalFill(modal);
+                    if (next === 'payment') {
+                        if (modal.dataset.billingSaving) return false;
+                        const picker = modal.querySelector('[data-billing-picker]');
+                        const mode = picker.querySelector('input[type="hidden"][name="billing_mode"], input[name="billing_mode"]:checked');
+                        if (mode?.value === 'new') {
+                            paySaveBilling(modal, picker, node);
+                            return false;
+                        }
+                    }
+                    if (next === 'billing' || next === 'payment') payLegalFill(modal);
                     show(next);
                     return false;
                 }
@@ -87,6 +97,62 @@
                     return false;
                 }
                 return false;
+            }
+            async function paySaveBilling(modal, picker, button) {
+                modal.dataset.billingSaving = '1';
+                button.disabled = true;
+                const originalText = button.textContent;
+                button.textContent = 'Kaydediliyor…';
+                const error = modal.querySelector('[data-pay-billing-error]');
+                try {
+                    const form = modal.closest('form');
+                    const payload = {};
+                    new FormData(form).forEach(function (value, key) {
+                        if (key.startsWith('billing_') && key !== 'billing_mode' && key !== 'billing_profile_id') {
+                            payload[key.slice(8)] = value;
+                        }
+                    });
+                    const response = await fetch(picker.dataset.profileSaveUrl, {
+                        method: 'POST', credentials: 'same-origin',
+                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value},
+                        body: JSON.stringify(payload),
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(response.status === 422 ? Object.values(result.errors || {}).flat().join(' ') : 'Fatura profili kaydedilemedi. Lütfen tekrar deneyin.');
+                    }
+                    const profile = result.profile;
+                    let select = picker.querySelector('[name="billing_profile_id"]');
+                    if (!select) {
+                        select = document.createElement('select');
+                        select.name = 'billing_profile_id';
+                        select.className = 'mt-3 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm';
+                        picker.appendChild(select);
+                        const notice = picker.querySelector('p');
+                        if (notice) notice.textContent = 'Fatura profiliniz kaydedildi. Sonraki siparişlerde de kullanabilirsiniz.';
+                    }
+                    const option = new Option(profile.label + ' · ' + profile.legal_name, profile.id, true, true);
+                    Object.entries(profile).forEach(function ([key, value]) {
+                        option.setAttribute('data-billing-' + key.replaceAll('_', '-'), value ?? '');
+                    });
+                    select.add(option);
+                    select.value = profile.id;
+                    const hiddenMode = picker.querySelector('input[type="hidden"][name="billing_mode"]');
+                    const existingMode = picker.querySelector('input[name="billing_mode"][value="existing"]');
+                    if (hiddenMode) hiddenMode.value = 'existing';
+                    if (existingMode) existingMode.checked = true;
+                    (existingMode || hiddenMode).dispatchEvent(new Event('change'));
+                    delete modal.dataset.billingSaving;
+                    payStep(button, 'next');
+                } catch (failure) {
+                    error.textContent = failure.message || 'Fatura profili kaydedilemedi. Lütfen tekrar deneyin.';
+                    error.hidden = false;
+                    error.classList.remove('hidden');
+                } finally {
+                    delete modal.dataset.billingSaving;
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
             }
             function payLegalText(value) {
                 return value && String(value).trim() !== '' ? String(value).trim() : 'Belirtilmedi';
@@ -145,10 +211,12 @@
                 const method = methodInput ? methodInput.value : 'havale';
                 const price = period === 'yearly' ? modal.getAttribute('data-price-yearly') : modal.getAttribute('data-price-monthly');
                 const billing = payLegalBilling(modal);
-                const periodLabel = modal.querySelector('[data-checkout-period]');
-                const totalLabel = modal.querySelector('[data-checkout-total]');
-                if (periodLabel) periodLabel.textContent = period === 'yearly' ? 'Yıllık (12 ay)' : 'Aylık';
-                if (totalLabel) totalLabel.textContent = payLegalMoney(price);
+                modal.querySelectorAll('[data-checkout-period]').forEach(function (label) {
+                    label.textContent = period === 'yearly' ? 'Yıllık (12 ay)' : 'Aylık';
+                });
+                modal.querySelectorAll('[data-checkout-total]').forEach(function (label) {
+                    label.textContent = payLegalMoney(price);
+                });
                 const values = {
                     apartment_name: payLegalText(modal.getAttribute('data-apartment-name')),
                     unit_count: payLegalText(modal.getAttribute('data-unit-count')),

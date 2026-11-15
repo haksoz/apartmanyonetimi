@@ -22,6 +22,55 @@ class UnifiedCheckoutTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_saved_profile_type_cannot_be_changed_but_same_type_can_be_edited(): void
+    {
+        [$user] = $this->customer();
+        $profile = $user->billingProfiles()->firstOrFail();
+        $profile->update(['party_type' => 'individual', 'legal_name' => 'Ad Soyad', 'identity_number' => '12345678901', 'address' => 'Adres']);
+        $url = route('subscriber.billing-profiles.update', $profile);
+        $attributes = ['label' => $profile->label, 'party_type' => 'corporate', 'legal_name' => 'Şirket', 'identity_number' => '1234567890', 'tax_office' => 'Vergi dairesi', 'address' => 'Yeni adres'];
+        $this->put($url, $attributes)->assertSessionHasErrors('party_type');
+        $this->assertSame('individual', $profile->fresh()->party_type);
+        $this->assertSame('Ad Soyad', $profile->fresh()->legal_name);
+        $attributes['party_type'] = 'individual';
+        $attributes['legal_name'] = 'Yeni Ad Soyad';
+        $this->put($url, $attributes)->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame('Yeni Ad Soyad', $profile->fresh()->legal_name);
+        $this->get(route('subscriber.billing-profiles.edit', $profile))->assertOk()->assertSee('Fatura türü değiştirilemez.');
+        $profile->update(['party_type' => 'corporate']);
+        $this->put($url, $attributes)->assertSessionHasErrors('party_type');
+        $this->assertSame('corporate', $profile->fresh()->party_type);
+    }
+
+    public function test_billing_profile_is_saved_without_order_and_retry_reuses_only_own_profile(): void
+    {
+        [$user] = $this->customer();
+        $user->billingProfiles()->delete();
+        $attributes = ['label' => 'Ev', 'party_type' => 'individual', 'legal_name' => 'Test Kullanıcı', 'identity_number' => '12345678901', 'address' => 'Fatura adresi'];
+        $url = route('subscriber.billing-profiles.store');
+        $id = $this->postJson($url, $attributes)->assertOk()->json('profile.id');
+        $this->postJson($url, $attributes)->assertOk()->assertJsonPath('profile.id', $id);
+        $this->assertDatabaseCount('billing_profiles', 1);
+        $this->assertDatabaseCount('user_subscriptions', 0);
+        $this->assertDatabaseCount('legal_acceptances', 0);
+        $this->assertDatabaseCount('subscription_payment_attempts', 0);
+        [$other] = $this->customer();
+        $other->billingProfiles()->delete();
+        $otherId = $this->postJson($url, $attributes)->assertOk()->json('profile.id');
+        $this->assertNotEquals($id, $otherId);
+        $this->assertDatabaseCount('billing_profiles', 2);
+    }
+
+    public function test_invalid_billing_profile_is_not_saved_before_payment_step(): void
+    {
+        [$user] = $this->customer();
+        $user->billingProfiles()->delete();
+        $this->postJson(route('subscriber.billing-profiles.store'), ['label' => 'Ev', 'party_type' => 'individual'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['legal_name', 'identity_number', 'address']);
+        $this->assertDatabaseCount('billing_profiles', 0);
+        $this->assertDatabaseCount('user_subscriptions', 0);
+    }
+
     private function customer(): array
     {
         $user = User::factory()->create();

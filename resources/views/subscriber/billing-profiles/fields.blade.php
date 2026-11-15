@@ -2,7 +2,7 @@
     $value = function (string $key) use ($profile) {
         return old($key, $profile->{$key});
     };
-    $party = $value('party_type') ?: \App\Models\BillingProfile::TYPE_INDIVIDUAL;
+    $party = $profile->exists ? $profile->party_type : ($value('party_type') ?: \App\Models\BillingProfile::TYPE_INDIVIDUAL);
 @endphp
 
 <div class="grid gap-3" data-profile-party>
@@ -12,8 +12,11 @@
         @error('label') <span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span> @enderror
     </label>
     <label class="text-sm font-medium text-slate-700">
-        Tür
-        <select name="party_type" data-billing-party required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">
+        Fatura Türü
+        @if ($profile->exists)
+            <input type="hidden" name="party_type" value="{{ $party }}">
+        @endif
+        <select @if (! $profile->exists) name="party_type" @endif data-billing-party required @disabled($profile->exists) class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal disabled:bg-slate-100 disabled:text-slate-600">
             @foreach (\App\Models\BillingProfile::selectablePartyTypes() as $type => $label)
                 <option value="{{ $type }}" @selected($party === $type)>{{ $label }}</option>
             @endforeach
@@ -21,10 +24,13 @@
                 <option value="other" selected>Diğer</option>
             @endif
         </select>
+        @if ($profile->exists)
+            <span class="mt-1 block text-xs font-normal text-slate-500">Fatura türü değiştirilemez. Farklı bir tür için <a href="{{ route('subscriber.billing-profiles.create') }}" class="font-semibold text-emerald-700 underline">yeni profil oluşturun</a>.</span>
+        @endif
         @error('party_type') <span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span> @enderror
     </label>
     <label data-party-field="individual" @class(['text-sm font-medium text-slate-700', 'hidden' => $party !== 'individual']) @if ($party !== 'individual') hidden @endif>
-        Fatura ad soyad
+        Fatura İçin Ad Soyad
         <input name="legal_name" value="{{ $value('legal_name') }}" placeholder="Faturada görünecek ad ve soyad" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">
         @error('legal_name') <span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span> @enderror
     </label>
@@ -32,15 +38,15 @@
         Şirket adı
         <input data-corporate-name value="{{ $value('legal_name') }}" placeholder="Faturada görünecek şirket unvanı" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">
     </label>
-    <label data-party-field="both" @class(['text-sm font-medium text-slate-700', 'hidden' => ! in_array($party, ['individual', 'corporate'], true)]) @if (! in_array($party, ['individual', 'corporate'], true)) hidden @endif>
-        Fatura adresi
-        <textarea name="address" rows="2" placeholder="Faturada görünecek açık adres" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">{{ $value('address') }}</textarea>
-        @error('address') <span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span> @enderror
-    </label>
     <label data-party-field="individual" @class(['text-sm font-medium text-slate-700', 'hidden' => $party !== 'individual']) @if ($party !== 'individual') hidden @endif>
         Kimlik no
         <input name="identity_number" value="{{ $value('identity_number') }}" placeholder="T.C. kimlik numarası" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">
         @error('identity_number') <span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span> @enderror
+    </label>
+    <label data-party-field="both" @class(['text-sm font-medium text-slate-700', 'hidden' => ! in_array($party, ['individual', 'corporate'], true)]) @if (! in_array($party, ['individual', 'corporate'], true)) hidden @endif>
+        Fatura adresi
+        <textarea name="address" rows="2" placeholder="Faturada görünecek açık adres" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">{{ $value('address') }}</textarea>
+        @error('address') <span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span> @enderror
     </label>
     <label data-party-field="corporate" @class(['text-sm font-medium text-slate-700', 'hidden' => $party !== 'corporate']) @if ($party !== 'corporate') hidden @endif>
         Vergi dairesi

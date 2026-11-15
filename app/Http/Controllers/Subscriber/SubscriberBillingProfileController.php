@@ -29,9 +29,25 @@ class SubscriberBillingProfileController extends Controller
 
     public function store(Request $request)
     {
-        auth()->user()->billingProfiles()->create($this->attributes($request) + [
-            'is_active' => true,
-        ]);
+        $attributes = $this->attributes($request);
+        $profile = \Illuminate\Support\Facades\DB::transaction(function () use ($attributes, $request) {
+            $user = \App\Models\User::query()->lockForUpdate()->findOrFail(auth()->id());
+            if ($request->expectsJson()) {
+                $query = $user->billingProfiles()->where('is_active', true);
+                foreach ($attributes as $key => $value) {
+                    $query->where($key, $value);
+                }
+                if ($existing = $query->first()) {
+                    return $existing;
+                }
+            }
+
+            return $user->billingProfiles()->create($attributes + ['is_active' => true]);
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json(['profile' => $profile->only(array_merge(['id'], array_keys(BillingProfile::rules())))]);
+        }
 
         return redirect()
             ->route('subscriber.billing-profiles.index')
@@ -50,6 +66,12 @@ class SubscriberBillingProfileController extends Controller
     public function update(Request $request, BillingProfile $billingProfile)
     {
         $this->owned($billingProfile);
+
+        if ($request->input('party_type') !== $billingProfile->party_type) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'party_type' => 'Kayıtlı profilin fatura türü değiştirilemez. Farklı bir fatura türü için yeni profil oluşturun.',
+            ]);
+        }
         $billingProfile->update($this->attributes($request));
 
         return redirect()

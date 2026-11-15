@@ -9,6 +9,7 @@ Tarih: 15 Kasım 2026.
 - Eski `?type=renew` adresi de aynı akışı açar. İşlem türü URL parametresinden değil, apartmanın abonelik durumundan hesaplanır.
 - Apartman kartları artık gizli satın alma formları ve sözleşme metinleri taşımaz. Popup `checkout-modal`, davranışlar `checkout-script` içinde ortaktır.
 - Adımlar: abonelik/dönem, fatura, sipariş özeti ve ödeme yöntemi/onay. Form son onaydan önce sipariş açmaz.
+- Fatura adımında yeni bilgiler girilmişse Devam ile mevcut fatura profili endpoint'ine JSON isteği gönderilir. Başarılı kayıttan sonra üçüncü adıma kayıtlı profil seçimiyle geçilir. Sipariş tamamlanmasa da profil kullanıcıya ait olarak saklanır; aynı içerikle yinelenen istek aktif profili tekrar kullanır. Doğrulama veya bağlantı hatasında fatura adımında kalınır.
 - Bekleyen kendi siparişi varsa sonuç/ödeme popup'ına gidilir; başka kullanıcının bekleyen siparişi varsa özel bilgilere erişim verilmez.
 - Havale/EFT banka bilgileri ve ödeme/onay durumu, aynı markalı popup düzeninde gösterilir.
 - Kart ödemesi `config/payments.php` altında kapalıdır. Ekran ve sunucu aynı ayarı kullanır. PayTR client/callback tamamlanmadan açılmamalıdır.

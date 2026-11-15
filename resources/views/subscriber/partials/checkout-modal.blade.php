@@ -25,8 +25,7 @@
                                         ]) @if ($payStep !== 'plan') hidden @endif>
                                             <div class="min-h-0 flex-1 overflow-y-auto p-6">
                                                 @include('subscriber.partials.pay-steps', ['active' => 1])
-                                                <h3 id="{{ $payModalId }}-title" class="text-lg font-bold text-slate-900">Abonelik ve Dönem</h3>
-                                                <p class="mt-2 text-sm text-slate-600">{{ $apartment->name }} için dönemi seçin.</p>
+                                                <h3 id="{{ $payModalId }}-title" class="text-lg font-bold text-slate-900">{{ $apartment->name }} için dönemi seçin.</h3>
                                                 <p class="mt-2 text-sm font-semibold text-emerald-700">{{ match ($apartment->offer['action']) { 'renew' => 'Yenile', 'restart' => 'Yeniden Başlat', default => 'Ücretliye Geç' } }}</p>
                                                 @if ($apartment->offer['record'])<p class="mt-1 font-mono text-xs text-slate-500">{{ $apartment->offer['record']->subscription_no }}</p>@endif
                                                 @if ($apartment->offer['period'])
@@ -66,13 +65,15 @@
                                         ]) @if ($payStep !== 'billing') hidden @endif>
                                             <div class="min-h-0 flex-1 overflow-y-auto p-6">
                                                 @include('subscriber.partials.pay-steps', ['active' => 2])
-                                                <h3 class="text-lg font-bold text-slate-900">Fatura bilgileri</h3>
+                                                <h3 class="text-lg font-bold text-slate-900">{{ $apartment->name }}</h3>
+                                                <p class="mt-1 text-sm font-medium text-emerald-700">Seçiminiz: <span data-checkout-period>{{ old('period', 'monthly') === 'yearly' ? 'Yıllık (12 ay)' : 'Aylık' }}</span> abonelik · <span data-checkout-total>{{ number_format(old('period', 'monthly') === 'yearly' ? ($yearly['amount'] ?? 0) : ($monthly['amount'] ?? 0), 2, ',', '.') }} ₺</span> (KDV dahil)</p>
                                                 @include('subscriber.partials.billing-profile-picker', [
                                                     'profiles' => $billingProfiles,
                                                     'selectedId' => $billingMode === 'new' ? null : $selectedBillingProfileId,
                                                     'mode' => $billingMode,
                                                     'embedded' => true,
                                                 ])
+                                                <p class="mt-3 text-xs text-slate-500">Yeni fatura bilgileriniz, Devam dediğinizde sonraki işlemleriniz için kaydedilir. Bu adımda sipariş oluşturulmaz.</p>
                                                 <p data-pay-billing-error class="mt-2 hidden text-sm text-red-600" hidden>Devam etmek için fatura alanlarını doldurun.</p>
                                             </div>
                                             <div class="flex shrink-0 justify-between gap-3 border-t border-slate-200 px-6 py-4">
