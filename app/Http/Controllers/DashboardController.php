@@ -193,7 +193,10 @@ class DashboardController extends Controller
             }
         }
 
+        $dashboardSubscription = app(\App\Support\DashboardSubscription::class)->forApartment($apartment, $user);
+
         return view('dashboard', compact(
+            'dashboardSubscription',
             'apartment',
             'totalUnits', 'totalAccounts',
             'dueUnpaid', 'duePaid', 'duePartial', 'dueOverdue',

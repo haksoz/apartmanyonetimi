@@ -27,6 +27,18 @@ class AccountEntry
                 ->with('status', UserApartmentQuota::CONTACT_MESSAGE);
         }
 
+        $managed = $user->apartments()->where('apartments.is_active', true)
+            ->wherePivot('role', 'owner')->wherePivot('is_active', true)->get();
+
+        if ($managed->count() === 1) {
+            $apartment = $managed->first();
+            if ($apartment->isSetupCompleted()) {
+                app(CurrentApartment::class)->setFor($user, $apartment->id);
+
+                return redirect()->route('dashboard');
+            }
+        }
+
         return redirect()->route('subscriber.dashboard');
     }
 }

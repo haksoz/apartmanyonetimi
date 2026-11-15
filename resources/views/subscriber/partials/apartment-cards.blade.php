@@ -323,22 +323,12 @@
                     @if ($active)
                         <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
                             <p class="text-xs font-semibold text-emerald-800">AidatCep Ücretli Kullanım avantajları açık.</p>
-                            <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-emerald-900">
-                                <li>Aidatların otomatik oluşturulması</li>
-                                <li>Giderin dairelere dağıtılması</li>
-                                <li>Metrekare ve paya göre dağıtım</li>
-                                <li>Gider belgesi yükleme ve rapor dışa aktarma</li>
-                            </ul>
+                            @include('partials.paid-usage-benefits')
                         </div>
                     @elseif (! $pending && ! $quoteScale && ! $needsQuote && isset($monthly['amount'], $yearly['amount']) && $monthly['amount'] !== null && $yearly['amount'] !== null)
                         <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
                             <p class="text-xs font-semibold text-emerald-800">AidatCep Ücretli Kullanım avantajlarından yararlanın.</p>
-                            <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-emerald-900">
-                                <li>Aidatların otomatik oluşturulması</li>
-                                <li>Giderin dairelere dağıtılması</li>
-                                <li>Metrekare ve paya göre dağıtım</li>
-                                <li>Gider belgesi yükleme ve rapor dışa aktarma</li>
-                            </ul>
+                            @include('partials.paid-usage-benefits')
                             <div class="mt-2 grid grid-cols-2 gap-2">
                                 <div class="rounded-lg bg-white px-2 py-1 text-center">
                                     <p class="text-xs text-slate-500">Aylık</p>

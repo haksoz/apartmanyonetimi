@@ -40,6 +40,6 @@ class ApartmentSwitchController extends Controller
                 ->with('status', $apartment->name.' seçildi. Kurulumu tamamlayın.');
         }
 
-        return redirect()->route('dashboard')->with('status', $apartment->name.' seçildi.');
+        return redirect()->route('dashboard');
     }
 }

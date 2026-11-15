@@ -10,6 +10,19 @@ use Illuminate\Support\Collection;
 
 class SubscriberApartmentOverview
 {
+    public function coverageFor(Apartment $apartment): array
+    {
+        $items = $apartment->subscriptionItems()->with('subscription.user')->orderByDesc('id')->get();
+        $active = $this->activeItem($items);
+
+        return [
+            'active' => $active,
+            'pending' => $this->pendingItem($items),
+            'expired' => $this->expiredItem($items),
+            'end' => $this->paidCoverageEnd($items, $active),
+        ];
+    }
+
     public function decorate(Collection $apartments, User $user, PriceQuote $prices): Collection
     {
         $coverage = SubscriptionItem::query()

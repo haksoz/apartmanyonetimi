@@ -54,7 +54,7 @@ class SubscriberApartmentController extends Controller
             return redirect()->route('apartments.wizard.'.$nextStep, $apartment);
         }
 
-        return redirect()->route('dashboard')->with('status', $apartment->name.' seçildi.');
+        return redirect()->route('dashboard');
     }
 
     public function triggerAidatGeneration(Request $request, Apartment $apartment, AidatPeriodReconciliation $aidatReconciliation, DuePlanController $duePlanController)

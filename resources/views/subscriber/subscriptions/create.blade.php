@@ -72,7 +72,7 @@
                         <div class="rounded-xl border border-slate-200 p-4">
                             <label class="flex items-start gap-3">
                                 @if ($selectable)
-                                    <input type="radio" name="apartment_ids[]" value="{{ $apartment->id }}" data-billing-profile="{{ $apartment->suggested_billing_profile_id }}" class="mt-1" @checked((int) old('apartment_ids.0') === $apartment->id)>
+                                    <input type="radio" name="apartment_ids[]" value="{{ $apartment->id }}" data-billing-profile="{{ $apartment->suggested_billing_profile_id }}" class="mt-1" @checked((int) old('apartment_ids.0', $selectedApartmentId) === $apartment->id)>
                                 @endif
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center justify-between gap-2">

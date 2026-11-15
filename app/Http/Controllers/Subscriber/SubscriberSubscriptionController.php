@@ -35,7 +35,7 @@ class SubscriberSubscriptionController extends Controller
         return view('subscriber.subscriptions.index', compact('subscriptions'));
     }
 
-    public function create(PriceQuote $prices)
+    public function create(Request $request, PriceQuote $prices)
     {
         $apartments = $this->ownedApartments(auth()->user())->get();
         $ids = $apartments->pluck('id');
@@ -84,12 +84,13 @@ class SubscriberSubscriptionController extends Controller
                 && ! ($apartment->monthly_quote['requires_quote'] ?? false);
         })->values();
 
+        $selectedApartmentId = $selectable->firstWhere('id', $request->integer('apartment_id'))?->id;
         $selectedBillingProfileId = old('billing_profile_id');
-        if ($selectedBillingProfileId === null && old('billing_mode') !== 'new' && $selectable->count() === 1) {
-            $selectedBillingProfileId = $selectable->first()->suggested_billing_profile_id;
+        if ($selectedBillingProfileId === null && old('billing_mode') !== 'new' && ($selectedApartmentId || $selectable->count() === 1)) {
+            $selectedBillingProfileId = ($selectable->firstWhere('id', $selectedApartmentId) ?? $selectable->first())->suggested_billing_profile_id;
         }
 
-        return view('subscriber.subscriptions.create', compact('apartments', 'billingProfiles', 'selectedBillingProfileId'));
+        return view('subscriber.subscriptions.create', compact('apartments', 'billingProfiles', 'selectedBillingProfileId', 'selectedApartmentId'));
     }
 
     public function store(Request $request, SubscriptionCheckout $checkout)

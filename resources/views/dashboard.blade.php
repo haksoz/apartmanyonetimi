@@ -20,18 +20,32 @@
         </div>
     @endif
 
-    <div class="mb-6">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Özet</p>
-        <h1 class="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">{{ $apartment->name }}</h1>
-        <p class="mt-1 text-sm text-slate-500">
-            Hoş geldiniz, {{ auth()->user()->name }}.
-            @if ($managesOtherApartments)
-                Yönettiğiniz diğer apartmanlar için
-                <a href="{{ route('subscriber.dashboard', ['reset' => 1]) }}" class="font-semibold text-slate-800 underline">Abone Paneli</a>
-                üzerinden işlem yapabilirsiniz.
-            @endif
-        </p>
+    <div class="mb-5">
+        <div class="min-w-0">
+            <h1 class="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">{{ $apartment->name }}</h1>
+            <p class="mt-1 text-sm text-slate-500">
+                Hoş geldiniz, {{ auth()->user()->name }}.
+                @if ($managesOtherApartments)
+                    Yönettiğiniz diğer apartmanlar için
+                    <a href="{{ route('subscriber.dashboard', ['reset' => 1]) }}" class="font-semibold text-slate-800 underline">Abone Paneli</a>
+                    üzerinden işlem yapabilirsiniz.
+                @endif
+            </p>
+            @include('partials.dashboard-subscription', ['summary' => $dashboardSubscription])
+        </div>
     </div>
+
+    @if ($dashboardSubscription['state'] === 'free' && ! $dashboardSubscription['pending'])
+        <section aria-label="Ücretli kullanım avantajları" class="mb-5 rounded-2xl border border-emerald-100 bg-white p-4 sm:p-5">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="min-w-0 flex-1">
+                    <h2 class="text-sm font-semibold text-emerald-800">AidatCep Ücretli Kullanım avantajlarından yararlanın.</h2>
+                    @include('partials.paid-usage-benefits', ['benefitsClass' => 'mt-2 grid list-disc gap-x-6 gap-y-1 pl-4 text-xs text-slate-600 sm:grid-cols-2'])
+                </div>
+                <a href="{{ $dashboardSubscription['purchase_url'] }}" class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Ücretli Kullanıma Geç</a>
+            </div>
+        </section>
+    @endif
 
     {{-- Hızlı Erişim Butonları --}}
     @php
