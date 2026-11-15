@@ -87,6 +87,7 @@ class SubscriberSubscriptionController extends Controller
         $requestedId = (int) old('apartment_ids.0', $request->integer('apartment_id'));
         $candidate = $requestedId ? $apartments->firstWhere('id', $requestedId) : ($apartments->count() === 1 ? $apartments->first() : null);
         if ($candidate?->offer['action'] === 'pending' && (int) $candidate->offer['order']->user_id === (int) auth()->id()) {
+            session(['subscription_return.'.$candidate->offer['order']->id => $request->input('from') === 'dashboard' ? 'dashboard' : 'subscriber']);
             return redirect()->route('subscriber.subscriptions.receipt', $candidate->offer['order']);
         }
         $selectedApartmentId = $candidate ? $selectable->firstWhere('id', $candidate->id)?->id : null;
@@ -108,7 +109,7 @@ class SubscriberSubscriptionController extends Controller
             'apartment_ids' => ['required', 'array', 'min:1', 'max:1'],
             'apartment_ids.*' => ['integer'],
             'period' => ['required', Rule::in(['monthly', 'yearly'])],
-            'payment_method' => ['required', Rule::in(config('payments.card_enabled') ? ['havale', 'kredi_kartı'] : ['havale'])],
+            'payment_method' => ['required', Rule::in(app(\App\Support\Paytr\Access::class)->canStart(auth()->user()) ? ['havale', 'kredi_kartı'] : ['havale'])],
             'checkout_token' => ['required_if:payment_method,kredi_kartı', 'nullable', 'uuid'],
             'quote_signature' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'size:64'],
             'payer_name' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:60'],
@@ -228,7 +229,18 @@ class SubscriberSubscriptionController extends Controller
 
         $message = ! $subscription->wasRecentlyCreated ? 'Mevcut siparişinizi görüntülüyorsunuz.' : ($validated['payment_method'] === 'havale'
             ? 'Siparişiniz alındı. Havale/EFT ödemesi için banka bilgilerini görüntüleyebilirsiniz.'
-            : 'Siparişiniz alındı. Kredi kartı ödeme altyapısı entegre edildiğinde buradan ödemenizi tamamlayabileceksiniz.');
+            : 'Siparişiniz alındı. Güvenli kart ödeme ekranına geçebilirsiniz.');
+
+        session(['subscription_return.'.$subscription->id => $request->input('checkout_return') === 'dashboard' ? 'dashboard' : 'subscriber']);
+        if ($subscription->payment_method === 'kredi_kartı' && $subscription->isPending()) {
+            try {
+                app(\App\Support\Paytr\StartIframe::class)->start($subscription, (string) $request->ip());
+
+                return redirect()->route('subscriber.subscriptions.card', $subscription);
+            } catch (ValidationException $exception) {
+                return redirect()->route('subscriber.subscriptions.receipt', $subscription)->withErrors($exception->errors());
+            }
+        }
 
         return redirect()->route('subscriber.subscriptions.receipt', $subscription)
             ->with('status', $message);
@@ -239,9 +251,11 @@ class SubscriberSubscriptionController extends Controller
         $this->authorizeSubscription($subscription);
 
         $subscription->load(['items.apartment', 'items.apartmentSubscription', 'package', 'legalAcceptances.legalDocumentVersion']);
+        $cardPaymentState = $subscription->payment_method === 'kredi_kartı'
+            ? app(\App\Support\Paytr\PaymentState::class)->forOrder($subscription) : null;
         $accounts = BankAccount::active()->ordered()->get();
 
-        return view('subscriber.subscriptions.receipt', compact('subscription', 'accounts'));
+        return view('subscriber.subscriptions.receipt', compact('subscription', 'accounts', 'cardPaymentState'));
     }
 
     public function paymentInfo(Request $request, UserSubscription $subscription)

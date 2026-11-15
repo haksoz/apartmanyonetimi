@@ -230,6 +230,7 @@ class AdminManagerController extends Controller
                 return;
             }
             if ($subscription->paymentAttempts()->where(fn ($query) => $query->where('status', 'unknown')
+                ->orWhere('review_required', true)
                 ->orWhere(fn ($query) => $query->where('provider', 'paytr')->where('status', 'pending')))->exists()) {
                 throw \Illuminate\Validation\ValidationException::withMessages(['subscription' => 'Ödeme sonucu kesinleşmeden abonelik sonlandırılamaz.']);
             }

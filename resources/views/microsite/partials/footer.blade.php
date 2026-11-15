@@ -28,7 +28,9 @@
             <a href="{{ route('pricing') }}" class="block text-slate-400 hover:text-slate-200">Fiyatlandırma</a>
             <a href="{{ route('faq') }}" class="block text-slate-400 hover:text-slate-200">Sık Sorulan Sorular</a>
             <a href="{{ route('login') }}" class="block text-slate-400 hover:text-slate-200">Giriş Yap</a>
+            @if (config('registration.enabled'))
             <a href="{{ route('register') }}" class="block text-slate-400 hover:text-slate-200">Ücretsiz Başla</a>
+            @endif
         </div>
     </div>
     <p class="max-w-6xl mx-auto mt-8 text-xs text-slate-500">&copy; {{ date('Y') }} AidatCep — Kapital Online markasıdır.</p>

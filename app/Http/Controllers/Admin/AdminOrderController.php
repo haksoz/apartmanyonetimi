@@ -80,6 +80,8 @@ class AdminOrderController extends Controller
             'items.apartmentSubscription',
             'payments',
             'legalAcceptances.legalDocumentVersion',
+            'paymentAttempts' => fn ($query) => $query->orderByDesc('id'),
+            'paymentAttempts.notifications' => fn ($query) => $query->latest('updated_at')->latest('id')->limit(1),
         ]);
 
         return view('admin.orders.show', compact('order'));
@@ -97,6 +99,7 @@ class AdminOrderController extends Controller
             $order = \App\Support\SubscriptionOrderLock::acquire($order);
             if ($order->payments()->exists() || $order->paymentAttempts()->where(fn ($query) => $query
                 ->whereIn('status', ['unknown', 'succeeded'])
+                ->orWhere('review_required', true)
                 ->orWhere(fn ($query) => $query->where('provider', 'paytr')->where('status', 'pending')))->exists()) {
                 throw ValidationException::withMessages(['order' => 'Ödeme veya sonucu belirsiz işlem kaydı olan sipariş silinemez.']);
             }

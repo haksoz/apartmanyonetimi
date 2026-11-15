@@ -1,11 +1,15 @@
+@php
+    $cardEnabled = app(\App\Support\Paytr\Access::class)->canStart(auth()->user());
+@endphp
                             <form novalidate method="POST" action="{{ route('subscriber.subscriptions.store') }}" onsubmit="return payStep(this.querySelector('[data-pay-modal]'), 'submit')">
                                 @csrf
+                                <input type="hidden" name="checkout_return" value="{{ $checkoutReturn }}">
                                 <input type="hidden" name="checkout_token" value="{{ old('checkout_token', (string) \Illuminate\Support\Str::uuid()) }}">
                                 <input type="hidden" name="quote_signature" value="{{ $quoteSignature }}">
                                 <input type="hidden" name="apartment_ids[]" value="{{ $apartment->id }}">
 
 
-                                <div id="{{ $payModalId }}" data-pay-modal data-pay-step="{{ $payStep }}" data-checkout-close-url="{{ route('subscriber.dashboard') }}" data-apartment-name="{{ $apartment->name }}" data-unit-count="{{ $apartment->unit_count }}" data-price-monthly="{{ $monthly['amount'] ?? '' }}" data-price-yearly="{{ $yearly['amount'] ?? '' }}" @class([
+                                <div id="{{ $payModalId }}" data-pay-modal data-pay-step="{{ $payStep }}" data-checkout-close-url="{{ $checkoutCloseUrl }}" data-apartment-name="{{ $apartment->name }}" data-unit-count="{{ $apartment->unit_count }}" data-price-monthly="{{ $monthly['amount'] ?? '' }}" data-price-yearly="{{ $yearly['amount'] ?? '' }}" @class([
                                     'fixed inset-0 z-50 items-center justify-center bg-black/50 p-4',
                                     'flex' => true,
                                     'hidden' => false,
@@ -109,15 +113,17 @@
                                                             <span class="mt-0.5 block text-slate-500">Banka bilgileri bir sonraki adımda gösterilir.</span>
                                                         </span>
                                                     </label>
-                                                    <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-400">
-                                                        <input type="radio" name="payment_method" value="kredi_kartı" class="mt-1" @disabled(! config('payments.card_enabled'))>
+                                                    @if (! config('paytr.test_accounts_only') || $cardEnabled)
+                                                    <label @class(['flex items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm', 'bg-slate-50 text-slate-400' => ! $cardEnabled, 'text-slate-800' => $cardEnabled])>
+                                                        <input type="radio" name="payment_method" value="kredi_kartı" class="mt-1" @disabled(! $cardEnabled) @checked($cardEnabled && old('payment_method') === 'kredi_kartı')>
                                                         <span>
                                                             <span class="font-semibold">Kredi kartı</span>
-                                                            <span class="mt-0.5 block">Yakında PayTR ile kullanılabilecek</span>
+                                                            <span class="mt-0.5 block">{{ $cardEnabled ? 'PayTR güvenli ödeme ekranı · Tek çekim' : 'Yakında PayTR ile kullanılabilecek' }}</span>
                                                         </span>
                                                     </label>
+                                                    @endif
                                                 </fieldset>
-                                                @if (config('payments.card_enabled'))
+                                                @if ($cardEnabled)
                                                     <fieldset class="mt-4 space-y-3">
                                                         <legend class="text-sm font-semibold">Kart ödemesi için ödeyen kişi bilgileri</legend>
                                                         @foreach (['payer_name' => ['Ad soyad', auth()->user()->name, 60], 'payer_email' => ['E-posta', auth()->user()->email, 100], 'payer_phone' => ['Telefon', auth()->user()->phone, 20], 'payer_address' => ['Adres', '', 400]] as $field => [$label, $default, $limit])

@@ -26,6 +26,7 @@ use App\Http\Controllers\Subscriber\SubscriberApartmentCreateController;
 use App\Http\Controllers\Subscriber\SubscriberBillingProfileController;
 use App\Http\Controllers\Subscriber\SubscriberDashboardController;
 use App\Http\Controllers\Subscriber\SubscriberSubscriptionController;
+use App\Http\Controllers\Subscriber\SubscriberCardPaymentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InviteController;
 use App\Http\Controllers\MembershipConsentController;
@@ -396,6 +397,10 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth'])->group(fu
         Route::get('create', [SubscriberSubscriptionController::class, 'create'])->name('create');
         Route::post('/', [SubscriberSubscriptionController::class, 'store'])->name('store');
         Route::get('{subscription}/receipt', [SubscriberSubscriptionController::class, 'receipt'])->name('receipt');
+        Route::post('{subscription}/card', [SubscriberCardPaymentController::class, 'start'])->middleware('throttle:10,1')->name('card.start');
+        Route::get('{subscription}/card', [SubscriberCardPaymentController::class, 'show'])->name('card');
+        Route::get('{subscription}/card-result', [SubscriberCardPaymentController::class, 'result'])->name('card-result');
+        Route::get('{subscription}/card-status', [SubscriberCardPaymentController::class, 'status'])->middleware('throttle:30,1')->name('card-status');
         Route::post('{subscription}/cancel', [SubscriberSubscriptionController::class, 'cancel'])->name('cancel');
         Route::post('{subscription}/payment-info', [SubscriberSubscriptionController::class, 'paymentInfo'])->name('payment-info');
     });

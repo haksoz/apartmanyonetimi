@@ -56,6 +56,9 @@ class AuthController extends Controller
 
     public function showRegister($package = null)
     {
+        if (! config('registration.enabled')) {
+            return response()->view('auth.registration-closed', [], 403);
+        }
         if (! session()->has('register_challenge')) {
             $this->refreshHumanChallenge();
         }
@@ -70,6 +73,9 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+        if (! config('registration.enabled')) {
+            return response()->view('auth.registration-closed', [], 403);
+        }
         $email = trim((string) $request->input('email'));
 
         if ($email !== '') {

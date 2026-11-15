@@ -10,7 +10,9 @@
             <a href="{{ route('pricing') }}" class="text-sm font-semibold text-slate-600 hover:text-slate-900">Fiyatlandırma</a>
             <a href="{{ route('faq') }}" class="text-sm font-semibold text-slate-600 hover:text-slate-900">Sık Sorulan Sorular</a>
             <a href="{{ route('login') }}" class="text-sm font-semibold text-slate-700 hover:text-slate-900">Giriş Yap</a>
+            @if (config('registration.enabled'))
             <a href="{{ route('register') }}" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Ücretsiz Başla</a>
+            @endif
         </nav>
         <details class="md:hidden relative">
             <summary class="list-none cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
@@ -20,7 +22,9 @@
                 <a href="{{ route('pricing') }}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Fiyatlandırma</a>
                 <a href="{{ route('faq') }}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sık Sorulan Sorular</a>
                 <a href="{{ route('login') }}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Giriş Yap</a>
+                @if (config('registration.enabled'))
                 <a href="{{ route('register') }}" class="mt-1 block rounded-lg bg-emerald-700 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-800">Ücretsiz Başla</a>
+                @endif
             </nav>
         </details>
     </div>

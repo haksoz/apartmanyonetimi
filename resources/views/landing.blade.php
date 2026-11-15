@@ -17,7 +17,9 @@
                 Aidat, tahsilat, gider, kasa ve hesap takibini apartman yöneticisi olarak tek ekrandan yürütün.
             </p>
             <div class="mt-8 flex flex-col sm:flex-row gap-3">
+                @if (config('registration.enabled'))
                 <a href="{{ route('register') }}" class="inline-flex justify-center rounded-xl bg-emerald-700 px-6 py-3.5 text-base font-bold text-white hover:bg-emerald-800">Ücretsiz Başla</a>
+                @endif
                 <a href="{{ route('login') }}" class="inline-flex justify-center rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-base font-semibold text-slate-700 hover:bg-slate-50">Giriş Yap</a>
             </div>
             <p class="mt-5 text-sm text-slate-600 leading-relaxed">
@@ -129,7 +131,9 @@
             <h2 class="text-3xl font-extrabold">Ücretsiz hesabınızı oluşturun</h2>
             <p class="mt-3 text-slate-300">Apartmanınızı ekleyin ve temel özellikleri kullanmaya başlayın.</p>
             <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                @if (config('registration.enabled'))
                 <a href="{{ route('register') }}" class="inline-flex justify-center rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white hover:bg-emerald-500">Ücretsiz Başla</a>
+                @endif
                 <a href="{{ route('faq') }}" class="inline-flex justify-center rounded-xl border border-slate-600 px-6 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-900">Sık Sorulan Sorular</a>
             </div>
         </div>

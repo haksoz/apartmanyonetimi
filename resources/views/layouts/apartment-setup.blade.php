@@ -26,7 +26,7 @@
                 <h1 id="apartment-setup-title" tabindex="-1" class="text-lg font-bold text-slate-950">@yield('setup_title', 'Apartman Kurulumu')</h1>
                 <p id="apartment-setup-description" class="mt-1 text-xs text-slate-500">@hasSection('setup_description') @yield('setup_description') @else {{ $apartment->name ?? 'Yeni apartman' }} · Kaydettiğiniz adımlara daha sonra devam edebilirsiniz. @endif</p>
             </div>
-            <a id="apartment-setup-close" href="{{ route('subscriber.dashboard') }}" aria-label="Kurulumu kapat ve abone paneline dön" class="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Kapat</a>
+            <a id="apartment-setup-close" href="@yield('setup_close_url', route('subscriber.dashboard'))" aria-label="Pencereyi kapat" class="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Kapat</a>
         </header>
         <main class="p-4 sm:p-6">
             @yield('wizard_steps')

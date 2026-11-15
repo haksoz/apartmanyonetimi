@@ -558,7 +558,7 @@ class SubscriptionOrderTest extends TestCase
         $this->actingAs($manager)
             ->get(route('subscriber.subscriptions.receipt', $subscription))
             ->assertOk()
-            ->assertSee('Kredi kartı ödemesi henüz aktif değil.')
+            ->assertSee('Kartla ödeme şu anda kapalı.')
             ->assertDontSee('Ödeme bilgisi gir')
             ->assertDontSee('Siparişi iptal et')
             ->assertDontSee('name="receipt"', false)

@@ -193,6 +193,36 @@
         </div>
     </details>
 
+    @if ($order->paymentAttempts->where('provider', 'paytr')->isNotEmpty())
+        <details class="mt-3 rounded-xl border border-slate-200 bg-white" @if ($order->paymentAttempts->contains('review_required', true)) open @endif>
+            <summary class="cursor-pointer px-6 py-4 text-sm font-semibold text-slate-900">PayTR ödeme işlemleri</summary>
+            <div class="space-y-3 border-t border-slate-100 p-6">
+                @foreach ($order->paymentAttempts->where('provider', 'paytr') as $attempt)
+                    @php($notification = $attempt->notifications->first())
+                    <article class="rounded-xl border border-slate-200 p-4 text-sm">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="font-semibold">{{ $attempt->is_test ? 'Test işlemi' : 'Canlı işlem' }} · {{ match ($attempt->status) { 'succeeded' => 'Başarılı', 'failed' => 'Başarısız', 'cancelled' => 'İptal', 'unknown' => 'Sonuç belirsiz', default => 'Sonuç bekleniyor' } }}</span>
+                            <span>{{ number_format($attempt->amount_minor / 100, 2, ',', '.') }} ₺</span>
+                        </div>
+                        <p class="mt-2 break-all font-mono text-xs text-slate-500">{{ $attempt->merchant_oid }}</p>
+                        @if ($attempt->review_required)
+                            <p class="mt-2 font-semibold text-amber-700">Ödeme incelemesi gerekiyor. Yeni ödeme ve manuel onay/iptal işlemleri durduruldu.</p>
+                        @endif
+                        @if ($notification)
+                            <dl class="mt-2 space-y-1 text-xs text-slate-600">
+                                <div><dt class="inline">Son kayıtlı sonuç:</dt> <dd class="inline">{{ $notification->provider_status === 'success' ? 'Başarılı bildirimi' : 'Başarısız bildirimi' }} · {{ $notification->updated_at->format('d.m.Y H:i') }}</dd></div>
+                                <div><dt class="inline">Bildirilen tutar:</dt> <dd class="inline">{{ number_format($notification->total_amount_minor / 100, 2, ',', '.') }} {{ $notification->reported_currency ?? '—' }}</dd></div>
+                                @if ($notification->reason)<div><dt class="inline">İnceleme kodu:</dt> <dd class="inline font-mono">{{ $notification->reason }}</dd></div>@endif
+                            </dl>
+                        @else
+                            <p class="mt-2 text-xs text-slate-500">Henüz doğrulanmış ödeme bildirimi alınmadı.</p>
+                        @endif
+                    </article>
+                @endforeach
+            </div>
+        </details>
+    @endif
+
     <details class="mt-3 rounded-xl border border-slate-200 bg-white">
         <summary class="cursor-pointer px-6 py-4 text-sm font-semibold text-slate-900">Tahsilatlar</summary>
         <div class="border-t border-slate-100 px-6 pb-6">

@@ -17,6 +17,9 @@ class SubscriptionPaymentAttempts
             if ($order->trashed() || ! $order->isPending()) {
                 throw ValidationException::withMessages(['subscription' => 'Bu sipariş için ödeme başlatılamaz.']);
             }
+            if ($order->paymentAttempts()->where('review_required', true)->exists()) {
+                throw ValidationException::withMessages(['subscription' => 'Ödeme incelemesi tamamlanmadan yeni deneme başlatılamaz.']);
+            }
             $existing = $order->paymentAttempts()->whereIn('status', ['pending', 'unknown', 'succeeded'])->lockForUpdate()->first();
             if ($existing) {
                 return $existing;
@@ -27,7 +30,7 @@ class SubscriptionPaymentAttempts
                 'merchant_oid' => 'AC'.strtoupper(Str::random(30)),
                 'amount_minor' => PaymentAmount::minor($order->price),
                 'currency' => 'TRY',
-                'is_test' => $order->payment_method === 'kredi_kartı',
+                'is_test' => $order->payment_method === 'kredi_kartı' && (bool) config('paytr.test_mode'),
                 'status' => 'pending',
             ]);
         });

@@ -22,6 +22,20 @@ class UnifiedCheckoutTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_account_restriction_hides_card_option_and_blocks_forged_checkout(): void
+    {
+        [$user, $apartment, $payload] = $this->customer();
+        config(['payments.card_enabled' => true, 'paytr.test_accounts_only' => true, 'paytr.allow_test_settlement' => true,
+            'paytr.test_account_emails' => ['aidatcep01@ko.com.tr']]);
+        $url = route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]);
+        $this->get($url)->assertOk()->assertDontSee('value="kredi_kartı"', false);
+        $payload['payment_method'] = 'kredi_kartı';
+        $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasErrors('payment_method');
+        $this->assertDatabaseCount('user_subscriptions', 0);
+        $user->update(['email' => 'aidatcep01@ko.com.tr']);
+        $this->get($url)->assertOk()->assertSee('value="kredi_kartı"', false);
+    }
+
     public function test_saved_profile_type_cannot_be_changed_but_same_type_can_be_edited(): void
     {
         [$user] = $this->customer();
@@ -99,6 +113,10 @@ class UnifiedCheckoutTest extends TestCase
             ->assertSee('Siparişi Onayla')->assertDontSee('id="sidebar"', false);
         $this->get(route('subscriber.subscriptions.create', ['type' => 'renew']))
             ->assertOk()->assertSee('id="subscription-checkout"', false);
+        $this->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id, 'from' => 'dashboard']))
+            ->assertOk()->assertSee('data-checkout-close-url="'.route('dashboard').'"', false);
+        $this->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id, 'from' => 'https://example.com']))
+            ->assertOk()->assertSee('data-checkout-close-url="'.route('subscriber.dashboard').'"', false);
         $this->assertDatabaseCount('user_subscriptions', 0);
         $this->assertDatabaseCount('subscription_payment_attempts', 0);
     }

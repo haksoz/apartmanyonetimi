@@ -35,9 +35,11 @@
             <button type="submit" class="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">Giriş Yap</button>
         </form>
 
+        @if (config('registration.enabled'))
         <p class="mt-6 text-center text-sm text-slate-500">
             Hesabınız yok mu?
             <a href="{{ route('register') }}" class="font-semibold text-slate-950">Üye olun</a>
         </p>
+        @endif
     </div>
 @endsection

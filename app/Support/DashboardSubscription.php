@@ -27,7 +27,7 @@ class DashboardSubscription
             'pending' => $pending !== null,
             'pending_url' => $pending && (int) $pending->user_id === $user->id
                 ? route('subscriber.subscriptions.receipt', $pending) : null,
-            'purchase_url' => route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]),
+            'purchase_url' => route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id, 'from' => 'dashboard']),
             'details_url' => route('subscriber.apartments.show', $apartment),
         ];
     }

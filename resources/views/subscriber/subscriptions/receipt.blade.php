@@ -3,6 +3,7 @@
 @section('setup_title', 'Abonelik ve Ödeme')
 @section('setup_description', 'Siparişinizin ödeme ve onay durumunu buradan takip edebilirsiniz.')
 @section('setup_width', '56rem')
+@section('setup_close_url', route(session('subscription_return.'.$subscription->id) === 'dashboard' ? 'dashboard' : 'subscriber.dashboard'))
 
 @section('title', 'Sipariş')
 
@@ -127,7 +128,17 @@
         </dl>
 
         @if ($isCard && $isPending && ! $hasProof)
-            <p class="border-t border-slate-200 px-4 py-4 text-sm text-slate-600 sm:px-6">Kredi kartı ödemesi henüz aktif değil.</p>
+            <div class="border-t border-slate-200 px-4 py-4 text-sm text-slate-600 sm:px-6">
+                <p>{{ config('payments.card_enabled') ? $cardPaymentState['message'] : 'Kartla ödeme şu anda kapalı. Mevcut ödeme işleminizin sonucunu buradan takip edebilirsiniz.' }}</p>
+                @if ($cardPaymentState['can_start'])
+                    <form method="POST" action="{{ route('subscriber.subscriptions.card.start', $subscription) }}" class="mt-3">
+                        @csrf
+                        <button class="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white">Kartla ödemeye devam et</button>
+                    </form>
+                @else
+                    <a href="{{ route('subscriber.subscriptions.card-result', $subscription) }}" class="mt-3 inline-block font-semibold text-emerald-700 underline">Ödeme durumunu görüntüle</a>
+                @endif
+            </div>
         @endif
 
         @if ($isPending && $hasProof)

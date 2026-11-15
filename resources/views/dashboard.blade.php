@@ -35,14 +35,14 @@
         </div>
     </div>
 
-    @if ($dashboardSubscription['state'] === 'free' && ! $dashboardSubscription['pending'])
+    @if (in_array($dashboardSubscription['state'], ['free', 'expired'], true) && ! $dashboardSubscription['pending'])
         <section aria-label="Ücretli kullanım avantajları" class="mb-5 rounded-2xl border border-emerald-100 bg-white p-4 sm:p-5">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div class="min-w-0 flex-1">
                     <h2 class="text-sm font-semibold text-emerald-800">AidatCep Ücretli Kullanım avantajlarından yararlanın.</h2>
                     @include('partials.paid-usage-benefits', ['benefitsClass' => 'mt-2 grid list-disc gap-x-6 gap-y-1 pl-4 text-xs text-slate-600 sm:grid-cols-2'])
                 </div>
-                <a href="{{ $dashboardSubscription['purchase_url'] }}" class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Ücretli Kullanıma Geç</a>
+                <a href="{{ $dashboardSubscription['purchase_url'] }}" class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">{{ $dashboardSubscription['state'] === 'expired' ? 'Ücretli kullanımı yenile' : 'Ücretli Kullanıma Geç' }}</a>
             </div>
         </section>
     @endif

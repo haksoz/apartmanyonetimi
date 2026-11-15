@@ -198,10 +198,16 @@ class DashboardSubscriptionTest extends TestCase
             ->assertSee('Metrekare ve paya göre dağıtım')
             ->assertSee('Gider belgesi yükleme ve rapor dışa aktarma')
             ->assertSee('Ücretli Kullanıma Geç')
-            ->assertSee(route('subscriber.subscriptions.create', ['apartment_id' => $free->id]), false);
+            ->assertSee(e(route('subscriber.subscriptions.create', ['apartment_id' => $free->id, 'from' => 'dashboard'])), false);
         $expired = $this->apartment($user);
         $this->paid($user, $expired, -1);
-        $this->dashboard($user, $expired)->assertSee('Ücretli kullanım süreniz doldu')->assertSee('Ücretli kullanımı yenile');
+        $this->dashboard($user, $expired)->assertSee('Ücretli kullanım süreniz doldu')->assertSee('Ücretli kullanımı yenile')
+            ->assertSee('AidatCep Ücretsiz Kullanım')->assertSee('Aktif')
+            ->assertSee('AidatCep Ücretli Kullanım avantajlarından yararlanın.')
+            ->assertSee('Aidatların otomatik oluşturulması')
+            ->assertSee('Giderin dairelere dağıtılması')
+            ->assertSee('Metrekare ve paya göre dağıtım')
+            ->assertSee('Gider belgesi yükleme ve rapor dışa aktarma');
     }
 
     public function test_unlimited_paid_period_has_no_countdown(): void

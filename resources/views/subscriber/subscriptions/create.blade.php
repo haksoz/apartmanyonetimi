@@ -1,6 +1,10 @@
 @extends('layouts.checkout')
 
 @section('content')
+    @php
+        $checkoutReturn = old('checkout_return', request('from')) === 'dashboard' ? 'dashboard' : 'subscriber';
+        $checkoutCloseUrl = route($checkoutReturn === 'dashboard' ? 'dashboard' : 'subscriber.dashboard');
+    @endphp
     @include('subscriber.partials.checkout-script')
     @if ($checkoutApartment)
         @php
@@ -26,7 +30,7 @@
             <main role="dialog" aria-modal="true" aria-labelledby="checkout-picker-title" class="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
                 <div class="mb-4 flex items-center justify-between gap-3">
                     <div class="flex items-center gap-2"><img src="{{ asset('images/logo.png') }}" alt="" class="h-8 w-auto"><span class="text-xl font-bold"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span></div>
-                    <a href="{{ route('subscriber.dashboard') }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Kapat</a>
+                    <a href="{{ $checkoutCloseUrl }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Kapat</a>
                 </div>
                 <h1 id="checkout-picker-title" class="text-lg font-bold">Abonelik ve Ödeme</h1>
                 <p class="mt-1 text-sm text-slate-500">İşlem yapmak istediğiniz apartmanı seçin. Her sipariş tek apartman içindir.</p>
@@ -46,7 +50,7 @@
                             @elseif ($apartment->unit_count > 100 || $apartment->monthly_quote['requires_quote'])
                                 <p class="mt-1 text-sm text-slate-500">{{ \App\Support\ApartmentCommercial::QUOTE_MESSAGE }}</p>
                             @elseif ($apartment->offer['record'])
-                                <a href="{{ route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]) }}" class="mt-2 inline-block rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">{{ $apartment->offer['action'] === 'upgrade' ? 'Ücretliye Geç' : 'Yenile' }}</a>
+                                <a href="{{ route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id, 'from' => $checkoutReturn]) }}" class="mt-2 inline-block rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">{{ $apartment->offer['action'] === 'upgrade' ? 'Ücretliye Geç' : 'Yenile' }}</a>
                             @else
                                 <p class="mt-1 text-sm text-slate-500">Apartmanın abonelik kurulumu tamamlanmalıdır.</p>
                             @endif

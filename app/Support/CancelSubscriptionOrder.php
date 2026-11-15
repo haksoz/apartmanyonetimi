@@ -20,7 +20,7 @@ class CancelSubscriptionOrder
                 throw ValidationException::withMessages(['subscription' => 'Ödeme bilgisi gönderildiği için sipariş iptal edilemez.']);
             }
             $attempts = $order->paymentAttempts()->lockForUpdate()->get();
-            if ($attempts->contains(fn ($attempt) => $attempt->status === 'unknown' || $attempt->status === 'succeeded'
+            if ($attempts->contains(fn ($attempt) => $attempt->review_required || $attempt->status === 'unknown' || $attempt->status === 'succeeded'
                 || ($attempt->provider === 'paytr' && $attempt->status === 'pending'))) {
                 throw ValidationException::withMessages(['subscription' => 'Ödemenin sonucu kesinleşmeden sipariş iptal edilemez.']);
             }
