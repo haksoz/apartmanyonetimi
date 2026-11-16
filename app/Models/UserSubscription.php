@@ -27,8 +27,10 @@ class UserSubscription extends Model
     public const CANCELLED_BY_CUSTOMER = 'customer';
 
     public const CANCELLED_BY_ADMIN = 'admin';
+    public const CANCELLED_BY_SYSTEM = 'system';
 
     protected $fillable = [
+        'checkout_abandoned_at',
         'order_number',
         'checkout_token',
         'checkout_fingerprint',
@@ -72,6 +74,7 @@ class UserSubscription extends Model
     ];
 
     protected $casts = [
+        'checkout_abandoned_at' => 'datetime',
         'price' => 'decimal:2',
         'net_amount' => 'decimal:2',
         'tax_rate' => 'decimal:2',

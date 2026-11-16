@@ -24,6 +24,7 @@
                 <option value="pending" @selected($status === 'pending')>Bekliyor</option>
                 <option value="active" @selected($status === 'active')>Onaylandı</option>
                 <option value="cancelled" @selected($status === 'cancelled')>İptal</option>
+                <option value="abandoned" @selected($status === 'abandoned')>Yarım bırakıldı</option>
             </select>
             <select name="payment" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                 <option value="">Ödeme: Tümü</option>

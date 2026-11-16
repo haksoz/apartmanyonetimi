@@ -29,6 +29,7 @@ class AdminOrderController extends Controller
                 'subscription',
                 'items.apartment',
                 'payments',
+                'paymentAttempts' => fn ($query) => $query->latest('id')->limit(1),
             ])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
@@ -50,12 +51,15 @@ class AdminOrderController extends Controller
             })
             ->when(in_array($status, $statuses, true), function ($query) use ($status) {
                 $query->where('status', $status);
+                if ($status === UserSubscription::STATUS_PENDING) $query->whereNull('checkout_abandoned_at');
             })
+            ->when($status === 'abandoned', fn ($query) => $query->whereNotNull('checkout_abandoned_at'))
             ->when($payment === 'collected', function ($query) {
                 $query->whereHas('payments');
             })
             ->when($payment === 'pending', function ($query) {
                 $query->where('status', UserSubscription::STATUS_PENDING)
+                    ->whereNull('checkout_abandoned_at')
                     ->whereDoesntHave('payments');
             })
             ->when($payment === 'unpaid', function ($query) {

@@ -133,7 +133,7 @@
                 @if ($cardPaymentState['can_start'])
                     <form method="POST" action="{{ route('subscriber.subscriptions.card.start', $subscription) }}" class="mt-3">
                         @csrf
-                        <button class="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white">Kartla ödemeye devam et</button>
+                        <button class="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white">Ödemeye Geç</button>
                     </form>
                 @else
                     <a href="{{ route('subscriber.subscriptions.card-result', $subscription) }}" class="mt-3 inline-block font-semibold text-emerald-700 underline">Ödeme durumunu görüntüle</a>

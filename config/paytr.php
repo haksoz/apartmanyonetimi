@@ -14,4 +14,6 @@ return [
     ))),
     'public_url' => env('PAYTR_PUBLIC_URL', env('APP_URL')),
     'payment_timeout_minutes' => 30,
+    // Ignored outside APP_ENV=local and for non-test attempts.
+    'local_test_ip' => env('PAYTR_LOCAL_TEST_IP'),
 ];

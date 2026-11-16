@@ -171,7 +171,7 @@ class DashboardSubscriptionTest extends TestCase
         $apartment = $this->apartment($user);
         $this->paid($user, $apartment, 3);
         $pending = $this->paid($user, $apartment, 33, ['status' => 'pending'], ['status' => 'pending', 'is_active' => false]);
-        $this->dashboard($user, $apartment)->assertSee('3 gün kaldı')->assertSee('ödeme / onay bekliyor')
+        $this->dashboard($user, $apartment)->assertSee('3 gün kaldı')->assertSee('Abonelik siparişiniz ödeme bekliyor.')
             ->assertSee(route('subscriber.subscriptions.receipt', $pending->subscription_id), false)
             ->assertDontSee('Süreyi uzat');
     }
@@ -182,7 +182,7 @@ class DashboardSubscriptionTest extends TestCase
         $apartment = $this->apartment($user);
         $other = User::factory()->create();
         $pending = $this->paid($other, $apartment, 33, ['status' => 'pending'], ['status' => 'pending', 'is_active' => false]);
-        $this->dashboard($user, $apartment)->assertSee('ödeme / onay bekliyor')
+        $this->dashboard($user, $apartment)->assertSee('Abonelik siparişiniz ödeme bekliyor.')
             ->assertDontSee(route('subscriber.subscriptions.receipt', $pending->subscription_id), false);
     }
 
@@ -208,6 +208,27 @@ class DashboardSubscriptionTest extends TestCase
             ->assertSee('Giderin dairelere dağıtılması')
             ->assertSee('Metrekare ve paya göre dağıtım')
             ->assertSee('Gider belgesi yükleme ve rapor dışa aktarma');
+    }
+
+    public function test_unfinished_card_payment_offers_resume_instead_of_admin_approval(): void
+    {
+        $user = User::factory()->create();
+        $apartment = $this->apartment($user);
+        $item = $this->paid($user, $apartment, 30, ['status' => 'pending'],
+            ['status' => 'pending', 'is_active' => false, 'payment_method' => 'kredi_kartı']);
+        $order = $item->subscription;
+        $attempt = $order->paymentAttempts()->create(['provider' => 'paytr', 'merchant_oid' => 'ACRESUME123',
+            'amount_minor' => 15000, 'currency' => 'TRY', 'is_test' => true, 'status' => 'pending',
+            'submitted_at' => now(), 'iframe_token' => 'test-token', 'token_expires_at' => now()->addMinutes(20)]);
+        $this->dashboard($user, $apartment)->assertSee('Kart ödemeniz henüz tamamlanmadı.')
+            ->assertSee('Ödeme durumunu görüntüle')->assertSee(route('subscriber.subscriptions.card-result', $order), false)
+            ->assertDontSee('onay bekliyor')->assertDontSee('Yenileme siparişiniz');
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertFalse($order->fresh()->is_active);
+        $this->assertDatabaseCount('subscription_payments', 0);
+        $attempt->update(['status' => 'unknown', 'iframe_token' => null]);
+        $this->dashboard($user, $apartment)->assertSee('Ödeme durumunu görüntüle')
+            ->assertDontSee('Ödemeye devam et')->assertDontSee('onay bekliyor');
     }
 
     public function test_unlimited_paid_period_has_no_countdown(): void

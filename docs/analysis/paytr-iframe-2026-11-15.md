@@ -50,6 +50,8 @@ Bu örnek izole veritabanı olan local/staging test ortamı içindir. Kullanıc�
 
 ## Doğrulama ve kalan işler
 
+Yerel token teşhisi için `PAYTR_LOCAL_TEST_IP` ayarı eklendi. Yalnızca APP_ENV=local, PAYTR_TEST_MODE=true ve denemenin is_test=true olduğu durumda Request IP yerine bu dış IP kullanılır. Production/staging ve canlı denemelerde bu ayar yok sayılır. İstek gövdesi ve HMAC aynı çözümlenmiş IP'yi kullanır. IP kodda sabitlenmez; yerel `.env` üzerinden güncellenir. Mevcut PayTR paneli callback adresi değiştirilmez. Yerel veritabanında açılan siparişin bildirimi production veritabanında bulunmayacağından, bu şekilde yalnızca token/iFrame açılışı teşhis edilmeli; tam ödeme/abonelik testi dış erişimi olan aynı veritabanına bağlı callback ile yapılmalıdır.
+
 Laravel HTTP fake ile imza/sepet/tutar, HTTP sırasında transaction'ın kapalı olması, tek token isteği, token şifreleme, tekrar, timeout, açık ret, yeni merchant_oid, oturum/sahiplik kontrolleri, dönüşte sahte başarı engeli, token süresi ve callback/token yarışı sınandı. Mevcut sipariş ve callback testleri de çalıştırıldı.
 
 Gerçek sağlayıcı token'ı, PayTR kart ekranı, 3D Secure dönüşü ve dış callback henüz denenmedi. Bunun için mağaza bilgileri, HTTPS test adresi ve PayTR panel ayarı gereklidir. Durum sorgusu ile belirsiz/eskimiş denemelerin mutabakatı ve iade sonraki aşamalardır. Çok worker/MySQL eşzamanlılık kontrolü canlıya geçmeden ayrıca yapılmalıdır.

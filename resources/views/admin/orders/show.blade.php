@@ -172,7 +172,14 @@
         </dl>
     </section>
 
-    @if ($order->isPending() && $payer)
+    @if ($order->checkout_abandoned_at)
+        @if ($order->paymentAttempts->first()?->token_failure_code)
+        <p class="mt-3 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">PayTR ödeme ekranı hazırlanamadı. Teknik kayıt müşterinin sipariş listesinde gösterilmez.</p>
+        @else
+        <p class="mt-3 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">Kullanıcı ödeme sürecinden {{ $order->checkout_abandoned_at->format('d.m.Y H:i') }} tarihinde çıktı. Bu kayıt müşterinin sipariş listesinde gösterilmez. Sağlayıcı sonucu kesinleşene kadar işlem geçmişi korunur.</p>
+        @endif
+    @endif
+    @if ($order->isPending() && ! $order->checkout_abandoned_at && $order->payment_method !== 'kredi_kartı' && $payer)
         <section class="mt-6">
             <h2 class="mb-3 text-lg font-semibold text-slate-900">Sipariş kararı</h2>
             @include('admin.managers.partials.approve', ['manager' => $payer, 'subscription' => $order, 'open' => true])
@@ -205,6 +212,9 @@
                             <span>{{ number_format($attempt->amount_minor / 100, 2, ',', '.') }} ₺</span>
                         </div>
                         <p class="mt-2 break-all font-mono text-xs text-slate-500">{{ $attempt->merchant_oid }}</p>
+                        @if ($attempt->token_failure_code)
+                            <p class="mt-2 text-xs text-slate-600">Ödeme ekranı hata kodu: <span class="font-mono">{{ $attempt->token_failure_code }}</span></p>
+                        @endif
                         @if ($attempt->review_required)
                             <p class="mt-2 font-semibold text-amber-700">Ödeme incelemesi gerekiyor. Yeni ödeme ve manuel onay/iptal işlemleri durduruldu.</p>
                         @endif

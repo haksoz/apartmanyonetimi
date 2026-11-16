@@ -15,9 +15,9 @@
     @endif
     @if ($summary['pending'])
         <div class="mt-1.5 flex flex-wrap items-center gap-2">
-            <span>Yenileme siparişiniz ödeme / onay bekliyor.</span>
+            <span>{{ $summary['pending_message'] }}</span>
             @if ($summary['pending_url'])
-                <a href="{{ $summary['pending_url'] }}" class="font-semibold underline underline-offset-2">Siparişi görüntüle</a>
+                <a href="{{ $summary['pending_url'] }}" class="font-semibold underline underline-offset-2">{{ $summary['pending_link_label'] }}</a>
             @endif
         </div>
     @elseif ($summary['expiring'])

@@ -77,6 +77,9 @@ class FinalizeSubscriptionPayment
     {
         return DB::transaction(function () use ($order, $method, $reference, $notes) {
             $order = SubscriptionOrderLock::acquire($order);
+            if ($order->checkout_abandoned_at) {
+                throw ValidationException::withMessages(['subscription' => 'Yarım bırakılmış ödeme girişimi manuel onaylanamaz.']);
+            }
             if ($order->paymentAttempts()->where('review_required', true)->exists()) {
                 throw ValidationException::withMessages(['subscription' => 'Ödeme incelemesi tamamlanmadan işlem yapılamaz.']);
             }

@@ -5,8 +5,11 @@
         \App\Models\UserSubscription::STATUS_CANCELLED => 'İptal',
         default => $order->status ?: '—',
     };
+    if ($order->checkout_abandoned_at) $orderStatusLabel = 'Yarım bırakıldı';
+    if ($order->checkout_abandoned_at && $order->paymentAttempts->sortByDesc('id')->first()?->token_failure_code) $orderStatusLabel = 'Ödeme ekranı açılamadı';
     $paymentStatusLabel = match (true) {
         $order->payments->isNotEmpty() => 'Tahsil edildi',
+        $order->checkout_abandoned_at !== null => 'Kullanıcı işlemden çıktı',
         $order->status === \App\Models\UserSubscription::STATUS_PENDING && ($order->receipt_path || $order->receipt_reference) => 'Onay bekliyor',
         $order->status === \App\Models\UserSubscription::STATUS_PENDING => 'Ödeme bekliyor',
         $order->status === \App\Models\UserSubscription::STATUS_CANCELLED => 'Ödenmedi',

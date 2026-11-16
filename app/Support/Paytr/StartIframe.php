@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -27,13 +28,10 @@ class StartIframe
             $this->reject('Kartla ödeme şu anda kapalı.');
         }
         $this->settings->assertReady();
-        if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            $this->reject('Ödeme için bağlantı adresiniz doğrulanamadı. Lütfen HTTPS test adresinden tekrar deneyin.');
-        }
 
         [$attempt, $payload] = DB::transaction(function () use ($order, $ip) {
             $order = SubscriptionOrderLock::acquire($order);
-            if ($order->trashed() || ! $order->isPending() || $order->payment_method !== 'kredi_kartı'
+            if ($order->trashed() || $order->checkout_abandoned_at || ! $order->isPending() || $order->payment_method !== 'kredi_kartı'
                 || $order->payments()->withTrashed()->exists()) {
                 $this->reject('Bu sipariş kart ödemesine uygun değil.');
             }
@@ -50,6 +48,7 @@ class StartIframe
                 || $attempt->amount_minor !== PaymentAmount::minor($order->price) || $attempt->amount_minor <= 0) {
                 $this->reject('Sipariş ödeme bilgileri eşleşmiyor. Lütfen destek alın.');
             }
+            $ip = app(ClientIp::class)->resolve($ip, $attempt->is_test);
             if ($attempt->submitted_at !== null) {
                 return [$attempt, null]; // Never repeat an external request, including after timeout.
             }
@@ -107,23 +106,43 @@ class StartIframe
             return $attempt;
         }
         // The reservation is committed before I/O. No retries, no redirects, TLS verification stays enabled.
+        $httpStatus = null;
+        $failureCode = null;
+        $responseDetails = [];
         try {
             $response = Http::asForm()->acceptJson()->connectTimeout(5)->timeout(20)
                 ->withOptions(['allow_redirects' => false])->post(self::ENDPOINT, $payload);
             $result = $response->json();
+            $httpStatus = $response->status();
             $kind = $response->successful() && is_array($result) && ($result['status'] ?? null) === 'failed' ? 'failed' : 'unknown';
             $token = is_array($result) ? ($result['token'] ?? null) : null;
+            $responseDetails = [
+                'response_format' => is_array($result) ? 'json' : (str_starts_with(ltrim($response->body()), '<') ? 'html' : 'text'),
+                'provider_status' => is_array($result) && in_array($result['status'] ?? null, ['success', 'failed', 'error'], true) ? $result['status'] : 'unrecognized',
+                'has_token' => is_string($token) && $token !== '',
+                'token_length' => is_string($token) ? strlen($token) : null,
+                'token_format_valid' => IframeToken::valid($token),
+            ];
             if ($response->successful() && is_array($result) && ($result['status'] ?? null) === 'success'
-                && is_string($token) && preg_match('/^[a-zA-Z0-9]{1,128}$/D', $token)) {
+                && IframeToken::valid($token)) {
                 $kind = 'pending';
             }
-        } catch (Throwable) {
+            $failureCode = $kind === 'pending' ? null : ($kind === 'failed' ? 'provider_rejected'
+                : (! $response->successful() ? 'http_error' : 'invalid_token_response'));
+        } catch (Throwable $exception) {
             $kind = 'unknown';
             $token = null;
+            // Never log the raw exception/request/body: these can contain payer data or signatures.
+            preg_match('/cURL error (\d+)/', $exception->getMessage(), $curlError);
+            $failureCode = match ((int) ($curlError[1] ?? 0)) {
+                6 => 'dns_error', 7 => 'connection_failed', 28 => 'timeout',
+                35 => 'tls_connection_failed', 60 => 'tls_certificate_error',
+                default => $exception instanceof ConnectionException ? 'connection_error' : 'request_error',
+            };
         }
 
-        return DB::transaction(function () use ($order, $attempt, $kind, $token) {
-            SubscriptionOrderLock::acquire($order);
+        return DB::transaction(function () use ($order, $attempt, $kind, $token, $httpStatus, $failureCode, $responseDetails) {
+            $order = SubscriptionOrderLock::acquire($order);
             $attempt = SubscriptionPaymentAttempt::whereKey($attempt->id)->lockForUpdate()->firstOrFail();
             // A callback can arrive before the token HTTP response. Never overwrite its result.
             if ($attempt->review_required || ! in_array($attempt->status, ['pending', 'unknown'], true)) {
@@ -133,8 +152,19 @@ class StartIframe
                 'iframe_token' => $token,
                 'token_expires_at' => $attempt->submitted_at->copy()->addMinutes((int) config('paytr.payment_timeout_minutes'))->subSeconds(10),
             ] : ($kind === 'failed' ? ['settled_at' => now()] : [])));
+            $attempt->token_failure_code = $failureCode;
+            $attempt->save();
             if ($kind !== 'pending') {
-                Log::warning('PayTR iframe request did not provide a usable token.', ['attempt_id' => $attempt->id, 'outcome' => $kind]);
+                $order->update(['checkout_abandoned_at' => $order->checkout_abandoned_at ?? now(),
+                    'notes' => trim(($order->notes ?? '')."\nPayTR ödeme ekranı açılamadı: ".$failureCode)]);
+                if ($kind === 'failed') {
+                    app(\App\Support\CancelSubscriptionOrder::class)->cancel($order, UserSubscription::CANCELLED_BY_SYSTEM,
+                        $order->notes);
+                }
+                Log::warning('PayTR iframe request did not provide a usable token.', [
+                    'attempt_id' => $attempt->id, 'order_id' => $attempt->subscription_id,
+                    'outcome' => $kind, 'failure_code' => $failureCode, 'http_status' => $httpStatus,
+                ] + $responseDetails);
             }
 
             return $attempt;

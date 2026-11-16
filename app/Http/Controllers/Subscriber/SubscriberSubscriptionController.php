@@ -28,6 +28,7 @@ class SubscriberSubscriptionController extends Controller
         $subscriptions = auth()->user()
             ->subscriptions()
             ->commercial()
+            ->whereNull('checkout_abandoned_at')
             ->with(['items', 'package'])
             ->orderByDesc('created_at')
             ->paginate(15);
@@ -184,6 +185,9 @@ class SubscriberSubscriptionController extends Controller
                     if ((int) $replay->user_id !== $user->id || $replay->checkout_fingerprint !== $fingerprint || $replay->trashed()) {
                         throw ValidationException::withMessages(['checkout_token' => 'Bu işlem anahtarı farklı veya silinmiş bir siparişe ait. Sayfayı yenileyin.']);
                     }
+                    if ($replay->checkout_abandoned_at) {
+                        throw ValidationException::withMessages(['checkout_token' => 'Bu ödeme girişimi kapatıldı. İşlemi yeniden başlatın.']);
+                    }
                     return $replay;
                 }
 
@@ -196,6 +200,9 @@ class SubscriberSubscriptionController extends Controller
                     ->whereHas('subscription', fn ($query) => $query->where('status', UserSubscription::STATUS_PENDING))
                     ->with('subscription')->first();
                 if ($pending) {
+                    if ($pending->subscription->checkout_abandoned_at) {
+                        throw ValidationException::withMessages(['payment_method' => 'Önceki ödeme girişiminin sonucu henüz kesinleşmedi. Yeni tahsilat başlamadan önce sonuç doğrulanmalıdır. Lütfen daha sonra tekrar deneyin.']);
+                    }
                     if ((int) $pending->subscription->user_id !== $user->id) {
                         throw ValidationException::withMessages(['apartment_ids' => 'Bu apartman için başka bir kullanıcının bekleyen siparişi bulunuyor.']);
                     }
@@ -249,6 +256,9 @@ class SubscriberSubscriptionController extends Controller
     public function receipt(UserSubscription $subscription)
     {
         $this->authorizeSubscription($subscription);
+        if ($subscription->checkout_abandoned_at) {
+            return redirect()->route('subscriber.subscriptions.create', ['apartment_id' => $subscription->items()->value('apartment_id')]);
+        }
 
         $subscription->load(['items.apartment', 'items.apartmentSubscription', 'package', 'legalAcceptances.legalDocumentVersion']);
         $cardPaymentState = $subscription->payment_method === 'kredi_kartı'
@@ -338,7 +348,8 @@ class SubscriberSubscriptionController extends Controller
     {
         $pending = $items->first(function (SubscriptionItem $item) {
             return $item->status === SubscriptionItem::STATUS_PENDING
-                && $item->subscription?->status === UserSubscription::STATUS_PENDING;
+                && $item->subscription?->status === UserSubscription::STATUS_PENDING
+                && ! $item->subscription->checkout_abandoned_at;
         });
 
         if ($pending) {

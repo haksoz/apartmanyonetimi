@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('dues:auto-generate')->dailyAt('08:00');
 Schedule::command('financial-plans:auto-generate')->dailyAt('08:05');
+Schedule::command('paytr:expire-checkouts')->everyMinute()->withoutOverlapping();

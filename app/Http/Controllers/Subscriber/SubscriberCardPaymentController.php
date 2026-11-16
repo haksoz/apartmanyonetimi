@@ -26,6 +26,9 @@ class SubscriberCardPaymentController extends Controller
     public function show(UserSubscription $subscription, PaymentState $states)
     {
         $this->owned($subscription);
+        if ($subscription->checkout_abandoned_at) {
+            return redirect()->route('subscriber.subscriptions.create', ['apartment_id' => $subscription->items()->value('apartment_id')]);
+        }
         $state = $states->forOrder($subscription);
         $attempt = $subscription->paymentAttempts()->where('provider', 'paytr')->latest('id')->first();
         if ($state['state'] !== 'ready' || ! app(\App\Support\Paytr\Access::class)->canStart(auth()->user()) || ! $attempt?->iframe_token
@@ -52,5 +55,17 @@ class SubscriberCardPaymentController extends Controller
         $this->owned($subscription);
 
         return response()->json($states->forOrder($subscription))->header('Cache-Control', 'no-store, private');
+    }
+
+    public function abandon(Request $request, UserSubscription $subscription, \App\Support\Paytr\AbandonCheckout $checkout)
+    {
+        $this->owned($subscription);
+        $checkout->abandon($subscription);
+        $subscription->refresh();
+        $redirect = $subscription->status === UserSubscription::STATUS_ACTIVE
+            ? route('subscriber.subscriptions.receipt', $subscription)
+            : route(session('subscription_return.'.$subscription->id) === 'dashboard' ? 'dashboard' : 'subscriber.dashboard');
+
+        return $request->expectsJson() ? response()->json(['redirect' => $redirect]) : redirect($redirect);
     }
 }

@@ -196,6 +196,7 @@ class SubscriptionCheckout
         $subscription->update([
             'status' => UserSubscription::STATUS_ACTIVE,
             'is_active' => true,
+            'checkout_abandoned_at' => null,
             'started_at' => $startedAt,
             'expires_at' => $expiresAt,
         ]);

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SubscriptionPaymentAttempt extends Model
 {
-    protected $fillable = ['subscription_id', 'provider', 'merchant_oid', 'amount_minor', 'currency', 'is_test', 'status', 'settled_at', 'payer_snapshot', 'submitted_at', 'review_required', 'iframe_token', 'token_expires_at'];
+    protected $fillable = ['subscription_id', 'provider', 'merchant_oid', 'amount_minor', 'currency', 'is_test', 'status', 'settled_at', 'payer_snapshot', 'submitted_at', 'review_required', 'iframe_token', 'token_expires_at', 'token_failure_code'];
 
     protected $hidden = ['iframe_token', 'payer_snapshot'];
 

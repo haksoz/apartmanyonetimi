@@ -142,7 +142,7 @@
             @endif
 
             <div class="mt-4 flex flex-wrap gap-2">
-                @if ($subscription->isPending())
+                @if ($subscription->isPending() && ! $subscription->checkout_abandoned_at && $subscription->payment_method !== 'kredi_kartı')
                     @include('admin.managers.partials.approve', ['manager' => $manager, 'subscription' => $subscription])
                 @elseif ($subscription->isCovering())
                     <form method="POST" action="{{ route('admin.managers.subscription.cancel', [$manager, $subscription]) }}" onsubmit="return confirm('Bu dönem sonlandırılacak. Emin misiniz?')">

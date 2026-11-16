@@ -96,6 +96,26 @@ class PaytrIframeTest extends TestCase
         $this->assertUnpaid($order);
     }
 
+    public function test_local_token_request_uses_public_override_in_payload_and_signature(): void
+    {
+        app()->instance('env', 'local');
+        config(['paytr.local_test_ip' => '78.177.167.115']);
+        $order = $this->order();
+        Http::fake(function ($request) {
+            $this->assertSame('78.177.167.115', $request['user_ip']);
+            $input = '';
+            foreach (['merchant_id', 'user_ip', 'merchant_oid', 'email', 'payment_amount', 'user_basket', 'no_installment', 'max_installment', 'currency', 'test_mode'] as $field) {
+                $input .= $request[$field];
+            }
+            $this->assertSame(base64_encode(hash_hmac('sha256', $input.'iframe-test-salt', 'iframe-test-key', true)), $request['paytr_token']);
+
+            return Http::response(['status' => 'success', 'token' => str_repeat('f', 56)]);
+        });
+        app(StartIframe::class)->start($order, '127.0.0.1');
+        Http::assertSentCount(1);
+        $this->assertUnpaid($order);
+    }
+
     public function test_final_checkout_post_continues_pending_order_directly_into_iframe(): void
     {
         $order = $this->order();
@@ -156,37 +176,111 @@ class PaytrIframeTest extends TestCase
             throw new ConnectionException('Do not log raw transport details');
         });
         $first = $this->start($order);
-        $second = $this->start($order);
-        $this->assertSame($first->id, $second->id);
-        $this->assertSame('unknown', $second->status);
+        try {
+            $this->start($order);
+            $this->fail('An unavailable checkout must not be retried automatically.');
+        } catch (ValidationException) {}
+        $this->assertSame('unknown', $first->fresh()->status);
         $this->assertSame(1, $requests);
-        $this->assertNull($second->iframe_token);
+        $this->assertNull($first->iframe_token);
+        $this->assertNotNull($order->fresh()->checkout_abandoned_at);
+        $this->assertSame('connection_error', $first->fresh()->token_failure_code);
         $this->assertDatabaseCount('subscription_payment_attempts', 1);
         $this->assertUnpaid($order);
     }
 
-    public function test_token_rejection_allows_new_oid_and_copies_payer_for_explicit_retry(): void
+    public function test_connection_diagnostics_do_not_log_raw_exception_or_credentials(): void
+    {
+        $order = $this->order();
+        \Illuminate\Support\Facades\Log::spy();
+        Http::fake(fn () => throw new ConnectionException('cURL error 60: raw-private-detail iframe-test-key payer@example.com'));
+        $attempt = $this->start($order);
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('warning')->once()->with(
+            'PayTR iframe request did not provide a usable token.',
+            ['attempt_id' => $attempt->id, 'order_id' => $order->id, 'outcome' => 'unknown', 'failure_code' => 'tls_certificate_error', 'http_status' => null],
+        );
+        $this->get(route('subscriber.subscriptions.card-result', $order))->assertOk()
+            ->assertSee('PayTR ödeme ekranı henüz açılamadı.')
+            ->assertDontSee('Ödeme sonucunuz bekleniyor.')->assertDontSee('raw-private-detail');
+    }
+
+    public function test_invalid_token_response_logs_shape_without_token_value(): void
+    {
+        $order = $this->order();
+        \Illuminate\Support\Facades\Log::spy();
+        $token = str_repeat('x', 2049);
+        Http::fake(fn () => Http::response(['status' => 'success', 'token' => $token]));
+        $attempt = $this->start($order);
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('warning')->once()->with(
+            'PayTR iframe request did not provide a usable token.',
+            ['attempt_id' => $attempt->id, 'order_id' => $order->id, 'outcome' => 'unknown',
+                'failure_code' => 'invalid_token_response', 'http_status' => 200,
+                'response_format' => 'json', 'provider_status' => 'success', 'has_token' => true,
+                'token_length' => 2049, 'token_format_valid' => false],
+        );
+        $this->assertNull($attempt->iframe_token);
+        $this->assertUnpaid($order);
+    }
+
+    public function test_token_rejection_closes_customer_order_and_restarts_with_a_new_quote_and_oid(): void
     {
         $order = $this->order();
         Http::fakeSequence()->push(['status' => 'failed', 'reason' => 'Provider internal details'])
             ->push(['status' => 'success', 'token' => str_repeat('b', 56)]);
         $first = $this->start($order);
         $this->assertSame('failed', $first->status);
-        $second = $this->start($order);
+        $this->assertSame('provider_rejected', $first->token_failure_code);
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertNotNull($order->fresh()->checkout_abandoned_at);
+        $this->get(route('subscriber.subscriptions.index'))->assertOk()->assertDontSee($order->order_number);
+        $this->get(route('subscriber.subscriptions.card-result', $order))->assertOk()
+            ->assertSee('Ödeme ekranı açılamadı')->assertSee('Yeniden başla')
+            ->assertDontSee('Kart bilgilerinizi kontrol')->assertDontSee('Sipariş detayı');
+        $this->get(route('subscriber.subscriptions.card-status', $order))->assertJsonPath('state', 'screen_failed')
+            ->assertJsonPath('can_start', false)->assertJsonPath('can_restart', true);
+        $apartment = $order->items()->first()->apartment;
+        $new = app(SubscriptionCheckout::class)->openPending($order->user, collect([$apartment]), 'yearly', 'kredi_kartı', $order->billingProfile);
+        app(LegalConsent::class)->recordSale($order->user, $new, Request::create('/'));
+        app(SubscriptionPaymentAttempts::class)->open($new)->update(['payer_snapshot' => $first->payer_snapshot]);
+        $second = $this->start($new);
         $this->assertNotSame($first->merchant_oid, $second->merchant_oid);
         $this->assertSame('payer@example.com', $second->payer_snapshot['payer_email']);
         $this->assertSame('pending', $second->status);
         Http::assertSentCount(2);
-        $this->assertUnpaid($order);
+        $this->assertUnpaid($new);
     }
 
     public function test_malformed_success_and_http_error_remain_unknown(): void
     {
-        foreach ([['status' => 'success', 'token' => '../evil'], ['status' => 'unexpected'], null] as $result) {
+        foreach ([['status' => 'success', 'token' => "invalid\ntoken"], ['status' => 'unexpected'], null] as $result) {
             $order = $this->order();
             Http::fake(fn () => Http::response($result, $result === null ? 503 : 200));
             $this->assertSame('unknown', $this->start($order)->status);
             $this->assertUnpaid($order);
+        }
+    }
+
+    public function test_token_connection_failure_can_still_be_resolved_by_a_verified_callback(): void
+    {
+        foreach (['success', 'failed'] as $status) {
+            $order = $this->order();
+            Http::fake(fn () => throw new ConnectionException('Unavailable'));
+            $attempt = $this->start($order);
+            $this->get(route('subscriber.subscriptions.card-status', $order))
+                ->assertJsonPath('state', 'screen_unavailable')->assertJsonPath('can_start', false)
+                ->assertJsonPath('can_restart', false);
+            $this->get(route('subscriber.subscriptions.index'))->assertOk()->assertDontSee($order->order_number);
+            $this->post(route('payments.paytr.callback'), $this->callbackPayload($attempt, $status))->assertOk();
+            if ($status === 'success') {
+                $this->assertTrue($order->fresh()->is_active);
+                $this->assertNull($order->fresh()->checkout_abandoned_at);
+                $this->get(route('subscriber.subscriptions.card-status', $order))->assertJsonPath('state', 'paid');
+            } else {
+                $this->assertSame('cancelled', $order->fresh()->status);
+                $this->assertSame('system', $order->fresh()->cancelled_by);
+                $this->get(route('subscriber.subscriptions.card-status', $order))
+                    ->assertJsonPath('state', 'screen_failed')->assertJsonPath('can_restart', true);
+            }
         }
     }
 
@@ -246,6 +340,22 @@ class PaytrIframeTest extends TestCase
         $this->assertUnpaid($order);
     }
 
+    public function test_provider_token_with_punctuation_is_preserved_and_encoded_as_one_url_segment(): void
+    {
+        $order = $this->order();
+        $token = '123456789:'.str_repeat('a', 60).'_+-=';
+        $this->assertSame(74, strlen($token));
+        Http::fake([StartIframe::ENDPOINT => Http::response(['status' => 'success', 'token' => $token])]);
+        $attempt = $this->start($order);
+        $this->assertSame('pending', $attempt->status);
+        $this->assertSame($token, $attempt->iframe_token);
+        $this->get(route('subscriber.subscriptions.card', $order))->assertOk()
+            ->assertSee('https://www.paytr.com/odeme/guvenli/'.rawurlencode($token), false);
+        $this->start($order);
+        Http::assertSentCount(1);
+        $this->assertUnpaid($order);
+    }
+
     public function test_callback_can_win_race_with_token_response_and_is_the_only_activation_source(): void
     {
         $order = $this->order();
@@ -263,5 +373,122 @@ class PaytrIframeTest extends TestCase
         $this->assertNull($attempt->iframe_token);
         $this->get(route('subscriber.subscriptions.card-status', $order))->assertJsonPath('state', 'paid')->assertJsonPath('can_start', false);
         $this->assertDatabaseCount('subscription_payments', 1);
+    }
+
+    private function callbackPayload(SubscriptionPaymentAttempt $attempt, string $status): array
+    {
+        $total = $status === 'success' ? (string) $attempt->amount_minor : '0';
+        return ['merchant_oid' => $attempt->merchant_oid, 'status' => $status, 'total_amount' => $total,
+            'payment_amount' => (string) $attempt->amount_minor, 'currency' => 'TL', 'payment_type' => 'card', 'test_mode' => '1',
+            'hash' => base64_encode(hash_hmac('sha256', $attempt->merchant_oid.'iframe-test-salt'.$status.$total, 'iframe-test-key', true))];
+    }
+
+    public function test_confirmed_exit_hides_checkout_keeps_admin_history_and_restarts_at_plan(): void
+    {
+        $order = $this->order();
+        Http::fake([StartIframe::ENDPOINT => Http::response(['status' => 'success', 'token' => 'valid-token-123'])]);
+        $this->start($order);
+        $this->withSession(['subscription_return.'.$order->id => 'dashboard'])
+            ->postJson(route('subscriber.subscriptions.card-abandon', $order))
+            ->assertOk()->assertJsonPath('redirect', route('dashboard'));
+        $this->assertNotNull($order->fresh()->checkout_abandoned_at);
+        $this->assertUnpaid($order);
+        $this->get(route('subscriber.subscriptions.index'))->assertOk()->assertDontSee($order->order_number);
+        $apartment = $order->items()->first()->apartment;
+        $this->assertNull(app(\App\Support\SubscriberApartmentOverview::class)->coverageFor($apartment)['pending']);
+        $this->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]))
+            ->assertOk()->assertSee('data-pay-step="plan"', false);
+        $this->get(route('subscriber.subscriptions.card', $order))
+            ->assertRedirect(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]));
+        $this->postJson(route('subscriber.subscriptions.card-abandon', $order))->assertOk();
+        $this->get(route('subscriber.subscriptions.card-status', $order))
+            ->assertJsonPath('state', 'abandoned')->assertJsonPath('can_start', false);
+        Http::assertSentCount(1);
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.orders.show', $order))
+            ->assertOk()->assertSee('Yarım bırakıldı')->assertDontSee('Onayla ve aktif et');
+    }
+
+    public function test_abandoned_submitted_attempt_cannot_be_reopened_or_charged_again(): void
+    {
+        $order = $this->order();
+        Http::fake([StartIframe::ENDPOINT => Http::response(['status' => 'success', 'token' => 'valid-token-123'])]);
+        $this->start($order);
+        $this->postJson(route('subscriber.subscriptions.card-abandon', $order))->assertOk();
+        try {
+            $this->start($order);
+            $this->fail('A closed checkout must not resume.');
+        } catch (ValidationException) {}
+        $apartment = $order->items()->first()->apartment;
+        $payload = ['apartment_ids' => [$apartment->id], 'period' => 'yearly', 'payment_method' => 'kredi_kartı',
+            'billing_mode' => 'existing', 'billing_profile_id' => $order->billing_profile_id,
+            'checkout_token' => (string) \Illuminate\Support\Str::uuid(),
+            'quote_signature' => app(\App\Support\CheckoutQuote::class)->signature($order->user, $apartment),
+            'payer_name' => 'Ad Soyad', 'payer_email' => 'payer@example.com', 'payer_phone' => '05551112233', 'payer_address' => 'Adres', 'accept_sales' => 1];
+        $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasErrors('payment_method');
+        $this->assertDatabaseCount('user_subscriptions', 1);
+        Http::assertSentCount(1);
+    }
+
+    public function test_late_success_after_exit_is_not_lost_and_becomes_a_real_visible_order_once(): void
+    {
+        $order = $this->order();
+        $attempt = $order->paymentAttempts()->sole();
+        $attempt->update(['submitted_at' => now()]);
+        $this->postJson(route('subscriber.subscriptions.card-abandon', $order))->assertOk();
+        $payload = $this->callbackPayload($attempt, 'success');
+        $this->post(route('payments.paytr.callback'), $payload)->assertOk()->assertContent('OK');
+        $this->post(route('payments.paytr.callback'), $payload)->assertOk()->assertContent('OK');
+        $this->assertTrue($order->fresh()->is_active);
+        $this->assertNull($order->fresh()->checkout_abandoned_at);
+        $this->assertStringContainsString('Ödeme ekranından çıkıldı:', $order->fresh()->notes);
+        $this->assertDatabaseCount('subscription_payments', 1);
+        $this->get(route('subscriber.subscriptions.index'))->assertOk()->assertSee($order->order_number);
+        $this->postJson(route('subscriber.subscriptions.card-abandon', $order))->assertOk()
+            ->assertJsonPath('redirect', route('subscriber.subscriptions.receipt', $order));
+        $this->assertNull($order->fresh()->checkout_abandoned_at);
+    }
+
+    public function test_failed_callback_closes_abandoned_attempt_and_releases_new_checkout(): void
+    {
+        $order = $this->order();
+        $attempt = $order->paymentAttempts()->sole();
+        $attempt->update(['submitted_at' => now()]);
+        $this->postJson(route('subscriber.subscriptions.card-abandon', $order))->assertOk();
+        $payload = $this->callbackPayload($attempt, 'failed');
+        $this->post(route('payments.paytr.callback'), $payload)->assertOk()->assertContent('OK');
+        $this->post(route('payments.paytr.callback'), $payload)->assertOk()->assertContent('OK');
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertNotNull($order->fresh()->checkout_abandoned_at);
+        $apartment = $order->items()->first()->apartment;
+        $new = app(SubscriptionCheckout::class)->openPending($order->user, collect([$apartment]), 'yearly', 'kredi_kartı', $order->billingProfile);
+        $this->assertNotSame($order->id, $new->id);
+        $this->assertSame('yearly', $new->period);
+        $this->assertDatabaseCount('subscription_payments', 0);
+    }
+
+    public function test_exit_before_submission_cancels_immediately_and_non_owner_cannot_abandon(): void
+    {
+        $order = $this->order();
+        $this->postJson(route('subscriber.subscriptions.card-abandon', $order))->assertOk();
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertSame('cancelled', $order->paymentAttempts()->sole()->status);
+        $otherOrder = $this->order();
+        $this->postJson(route('subscriber.subscriptions.card-abandon', $order))->assertForbidden();
+        $this->assertNull($otherOrder->fresh()->checkout_abandoned_at);
+    }
+
+    public function test_expired_screen_is_archived_without_assuming_the_provider_payment_failed(): void
+    {
+        $order = $this->order();
+        $attempt = $order->paymentAttempts()->sole();
+        $attempt->update(['submitted_at' => now()->subMinutes(40), 'token_expires_at' => now()->subMinutes(10), 'status' => 'pending']);
+        $this->artisan('paytr:expire-checkouts')->assertSuccessful();
+        $this->assertNotNull($order->fresh()->checkout_abandoned_at);
+        $this->assertSame('pending', $attempt->fresh()->status);
+        $this->assertUnpaid($order);
+        $this->artisan('paytr:expire-checkouts')->assertSuccessful();
+        $this->post(route('payments.paytr.callback'), $this->callbackPayload($attempt, 'success'))->assertOk();
+        $this->assertTrue($order->fresh()->is_active);
+        $this->assertNull($order->fresh()->checkout_abandoned_at);
     }
 }

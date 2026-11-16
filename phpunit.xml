@@ -20,6 +20,15 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="REGISTRATION_ENABLED" value="true"/>
+        <env name="PAYTR_CARD_ENABLED" value="false" force="true"/>
+        <env name="PAYTR_TEST_MODE" value="true" force="true"/>
+        <env name="PAYTR_ALLOW_TEST_SETTLEMENT" value="false" force="true"/>
+        <env name="PAYTR_TEST_ACCOUNTS_ONLY" value="false" force="true"/>
+        <env name="PAYTR_TEST_ACCOUNT_EMAILS" value="" force="true"/>
+        <env name="PAYTR_LOCAL_TEST_IP" value="" force="true"/>
+        <env name="PAYTR_MERCHANT_ID" value="" force="true"/>
+        <env name="PAYTR_MERCHANT_KEY" value="" force="true"/>
+        <env name="PAYTR_MERCHANT_SALT" value="" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

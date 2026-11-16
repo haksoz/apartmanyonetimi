@@ -13,7 +13,7 @@
                                     'fixed inset-0 z-50 items-center justify-center bg-black/50 p-4',
                                     'flex' => true,
                                     'hidden' => false,
-                                ])  onclick="if (event.target === this) payStep(this, 'backdrop')">
+                                ]) onclick="if (event.target === this) payStep(this, 'backdrop')">
                                     <div class="flex max-h-[92dvh] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="{{ $payModalId }}-title">
                                         <header class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
                                             <div class="flex items-center gap-2"><img src="{{ asset('images/logo.png') }}" alt="" class="h-8 w-auto"><span class="text-lg font-bold"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span></div>
@@ -57,7 +57,6 @@
                                                 </div>
                                             </div>
                                             <div class="flex shrink-0 justify-end gap-3 border-t border-slate-200 px-6 py-4">
-                                                <button type="button" onclick="return payStep(this, 'close')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
                                                 <button type="button" data-pay-next="billing" onclick="return payStep(this, 'next')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Devam</button>
                                             </div>
                                         </div>
@@ -80,8 +79,7 @@
                                                 <p class="mt-3 text-xs text-slate-500">Yeni fatura bilgileriniz, Devam dediğinizde sonraki işlemleriniz için kaydedilir. Bu adımda sipariş oluşturulmaz.</p>
                                                 <p data-pay-billing-error class="mt-2 hidden text-sm text-red-600" hidden>Devam etmek için fatura alanlarını doldurun.</p>
                                             </div>
-                                            <div class="flex shrink-0 justify-between gap-3 border-t border-slate-200 px-6 py-4">
-                                                <button type="button" onclick="return payStep(this, 'close')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                                            <div class="flex shrink-0 justify-end gap-3 border-t border-slate-200 px-6 py-4">
                                                 <div class="flex gap-3">
                                                     <button type="button" data-pay-prev="plan" onclick="return payStep(this, 'back')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri</button>
                                                     <button type="button" data-pay-next="payment" onclick="return payStep(this, 'next')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Devam</button>
@@ -97,7 +95,6 @@
                                             <div class="min-h-0 flex-1 overflow-y-auto p-6">
                                                 @include('subscriber.partials.pay-steps', ['active' => 3])
                                                 <h3 class="text-lg font-bold text-slate-900">Sipariş Özeti ve Ödeme</h3>
-                                                <p class="mt-2 text-sm text-slate-600">Ödeme yöntemini seçin. Sipariş, seçiminizden sonra açılır.</p>
                                                 <dl class="mt-3 space-y-1 rounded-xl bg-slate-50 p-3 text-sm">
                                                     <div><dt class="inline text-slate-500">Apartman:</dt> <dd class="inline font-semibold">{{ $apartment->name }}</dd></div>
                                                     <div><dt class="inline text-slate-500">Dönem:</dt> <dd class="inline font-semibold" data-checkout-period></dd></div>
@@ -125,9 +122,21 @@
                                                 </fieldset>
                                                 @if ($cardEnabled)
                                                     <fieldset class="mt-4 space-y-3">
-                                                        <legend class="text-sm font-semibold">Kart ödemesi için ödeyen kişi bilgileri</legend>
+                                                        <legend class="text-sm font-semibold">Ödeme iletişim bilgileri</legend>
+                                                        <p class="text-xs text-slate-500">PayTR ödeme ekranını açmak için gereklidir. Kart üzerindeki isim ve kart bilgileri PayTR ekranında ayrıca alınır.</p>
                                                         @foreach (['payer_name' => ['Ad soyad', auth()->user()->name, 60], 'payer_email' => ['E-posta', auth()->user()->email, 100], 'payer_phone' => ['Telefon', auth()->user()->phone, 20], 'payer_address' => ['Adres', '', 400]] as $field => [$label, $default, $limit])
-                                                            <label class="block text-sm text-slate-700">{{ $label }}<input name="{{ $field }}" maxlength="{{ $limit }}" value="{{ old($field, $default) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"></label>
+                                                            <div>
+                                                                <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-700">
+                                                                    <label for="{{ $payModalId }}-{{ $field }}">{{ $label }}</label>
+                                                                    @if ($field === 'payer_address')
+                                                                        <button type="button" onclick="payUseBillingAddress(this)" class="text-xs font-semibold text-emerald-700 underline underline-offset-2">Fatura adresini kullan</button>
+                                                                    @endif
+                                                                </div>
+                                                                <input id="{{ $payModalId }}-{{ $field }}" name="{{ $field }}" maxlength="{{ $limit }}" value="{{ old($field, $default) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                                                                @if ($field === 'payer_address')
+                                                                    <p data-payer-address-feedback role="status" aria-live="polite" class="mt-1 hidden text-xs text-slate-500" hidden></p>
+                                                                @endif
+                                                            </div>
                                                         @endforeach
                                                     </fieldset>
                                                 @endif
@@ -147,11 +156,10 @@
                                                     <div class="mt-1 text-sm text-red-600">{{ $message }}</div>
                                                 @enderror
                                             </div>
-                                            <div class="flex shrink-0 justify-between gap-3 border-t border-slate-200 px-6 py-4">
-                                                <button type="button" onclick="return payStep(this, 'close')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Vazgeç</button>
+                                            <div class="flex shrink-0 justify-end gap-3 border-t border-slate-200 px-6 py-4">
                                                 <div class="flex gap-3">
                                                     <button type="button" data-pay-prev="billing" onclick="return payStep(this, 'back')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri</button>
-                                                    <button type="submit" data-checkout-submit class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Siparişi Onayla</button>
+                                                    <button type="submit" data-checkout-submit class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ödemeye Geç</button>
                                                 </div>
                                             </div>
                                         </div>

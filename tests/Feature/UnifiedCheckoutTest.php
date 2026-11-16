@@ -110,7 +110,7 @@ class UnifiedCheckoutTest extends TestCase
             ->assertOk()->assertSee('id="subscription-checkout"', false)
             ->assertSee('name="checkout_token"', false)->assertSee('name="quote_signature"', false)
             ->assertSee('value="kredi_kartı" class="mt-1" disabled', false)
-            ->assertSee('Siparişi Onayla')->assertDontSee('id="sidebar"', false);
+            ->assertSee('Ödemeye Geç')->assertDontSee('id="sidebar"', false);
         $this->get(route('subscriber.subscriptions.create', ['type' => 'renew']))
             ->assertOk()->assertSee('id="subscription-checkout"', false);
         $this->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id, 'from' => 'dashboard']))

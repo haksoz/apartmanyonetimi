@@ -75,6 +75,9 @@ class HandleNotification
 
             // A declined card ends this attempt. The unpaid order can be retried with a new merchant_oid.
             $attempt->update(['status' => 'failed', 'settled_at' => now()]);
+            if ($order->checkout_abandoned_at) {
+                app(AbandonCheckout::class)->abandon($order);
+            }
             $audit->fill(['outcome' => 'failed', 'reason' => null])->save();
 
             return true;

@@ -14,6 +14,7 @@
             #apartment-setup-dialog { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); border-radius: 1rem; }
         }
     </style>
+    @stack('setup_styles')
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-900">
     <dialog id="apartment-setup-dialog" aria-labelledby="apartment-setup-title" aria-describedby="apartment-setup-description" class="rounded-2xl bg-slate-50 shadow-xl">
@@ -47,10 +48,50 @@
     <script>
         (() => {
             const dialog = document.getElementById('apartment-setup-dialog');
+            const confirmClose = @json($__env->hasSection('setup_confirm_close'));
+            const closeMessage = @json(trim($__env->yieldContent('setup_close_message', 'İşlemi tamamlamadan çıkmak istiyor musunuz?')));
+            let exitBusy = false;
+            const finishClose = async () => {
+                if (exitBusy) return;
+                const form = document.getElementById('payment-exit-form');
+                if (!form) { window.location.assign(document.getElementById('apartment-setup-close').href); return; }
+                exitBusy = true;
+                try {
+                    const response = await fetch(form.action, {method: 'POST', body: new FormData(form), headers: {'Accept': 'application/json'}, credentials: 'same-origin'});
+                    if (!response.ok) throw new Error('exit_failed');
+                    const result = await response.json();
+                    form.dataset.exitSent = '1';
+                    window.location.assign(result.redirect);
+                } catch (_) {
+                    const error = document.getElementById('payment-exit-error');
+                    error.textContent = 'Çıkış kaydedilemedi. Lütfen tekrar deneyin.';
+                    error.hidden = false;
+                    exitBusy = false;
+                }
+            };
+            document.getElementById('apartment-setup-close').addEventListener('click', event => {
+                if (confirmClose) {
+                    event.preventDefault();
+                    if (!exitBusy && window.confirm(closeMessage)) finishClose();
+                }
+            });
             dialog.showModal();
+            if (confirmClose) {
+                dialog.addEventListener('click', event => {
+                    if (event.target !== dialog) return;
+                    const bounds = dialog.getBoundingClientRect();
+                    const outside = event.clientX < bounds.left || event.clientX > bounds.right
+                        || event.clientY < bounds.top || event.clientY > bounds.bottom;
+                    if (outside && !exitBusy && window.confirm(closeMessage)) finishClose();
+                });
+            }
             document.getElementById('apartment-setup-title').focus();
             dialog.addEventListener('cancel', event => {
                 event.preventDefault();
+                if (confirmClose) {
+                    if (!exitBusy && window.confirm(closeMessage)) finishClose();
+                    return;
+                }
                 // Escape first dismisses an open consent text within the setup dialog.
                 const openConsent = Array.from(dialog.querySelectorAll('[role="dialog"]')).find(node => !node.classList.contains('hidden'));
                 if (openConsent) {

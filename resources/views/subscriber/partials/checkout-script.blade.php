@@ -13,6 +13,7 @@
                     }
                 };
                 const show = function (name) {
+                    if (name !== 'plan') modal.dataset.checkoutStarted = '1';
                     modal.querySelectorAll('[data-pay-panel]').forEach(function (panel) {
                         reveal(panel, panel.getAttribute('data-pay-panel') === name);
                     });
@@ -31,14 +32,12 @@
                     show(modal.getAttribute('data-pay-step') || 'plan');
                     return false;
                 }
-                if (action === 'close') {
+                if (action === 'close' || action === 'backdrop') {
+                    if (modal.dataset.billingSaving || modal.querySelector('[data-checkout-submit]')?.disabled) return false;
+                    const progressed = modal.dataset.checkoutStarted || modal.dataset.checkoutDirty
+                        || modal.querySelector('[data-pay-panel]:not([hidden])')?.getAttribute('data-pay-panel') !== 'plan';
+                    if ((progressed || action === 'backdrop') && !window.confirm('İşlemi tamamlamadan çıkmak istiyor musunuz?')) return false;
                     close();
-                    return false;
-                }
-                if (action === 'backdrop') {
-                    const reading = modal.querySelector('[data-pay-panel="distance"]:not([hidden]), [data-pay-panel="pre"]:not([hidden])');
-                    if (reading) show('payment');
-                    else close();
                     return false;
                 }
                 if (action === 'next') {
@@ -89,7 +88,7 @@
                         const button = modal.querySelector('[data-checkout-submit]');
                         if (button.disabled) return false;
                         button.disabled = true;
-                        button.textContent = 'Sipariş oluşturuluyor…';
+                        button.textContent = 'Ödeme hazırlanıyor…';
                         return true;
                     }
                     show('payment');
@@ -153,6 +152,34 @@
                     button.disabled = false;
                     button.textContent = originalText;
                 }
+            }
+            function payUseBillingAddress(button) {
+                const modal = button.closest('[data-pay-modal]');
+                const target = modal?.querySelector('[name="payer_address"]');
+                if (!target) return;
+                const option = modal.querySelector('[name="billing_profile_id"] option:checked');
+                const mode = modal.querySelector('input[type="hidden"][name="billing_mode"], input[name="billing_mode"]:checked');
+                const read = key => {
+                    const value = mode?.value === 'new'
+                        ? modal.querySelector('[name="billing_' + key + '"]')?.value
+                        : option?.getAttribute('data-billing-' + key.replaceAll('_', '-'));
+                    return (value || '').trim();
+                };
+                const address = ['address', 'district', 'province', 'postal_code', 'country'].map(read).filter(Boolean).join(', ');
+                const feedback = modal.querySelector('[data-payer-address-feedback]');
+                feedback.hidden = false;
+                feedback.classList.remove('hidden');
+                if (!read('address')) {
+                    feedback.textContent = 'Seçili fatura profilinde adres bulunamadı. Adresi elle girebilirsiniz.';
+                    return;
+                }
+                if (address.length > target.maxLength) {
+                    feedback.textContent = 'Fatura adresi bu alan için çok uzun. Adresi 400 karakteri aşmayacak şekilde elle girin.';
+                    return;
+                }
+                target.value = address;
+                target.dispatchEvent(new Event('input', {bubbles: true}));
+                feedback.textContent = 'Fatura adresi aktarıldı. İsterseniz değiştirebilirsiniz.';
             }
             function payLegalText(value) {
                 return value && String(value).trim() !== '' ? String(value).trim() : 'Belirtilmedi';
@@ -262,16 +289,20 @@
             }
         </script>
 <script>
+    ['input', 'change'].forEach(name => document.addEventListener(name, event => {
+        const modal = event.target.closest?.('[data-pay-modal]');
+        if (modal) modal.dataset.checkoutDirty = '1';
+    }));
     window.addEventListener('pageshow', () => {
         document.querySelectorAll('[data-checkout-submit]').forEach(button => {
             button.disabled = false;
-            button.textContent = 'Siparişi Onayla';
+            button.textContent = 'Ödemeye Geç';
         });
     });
     document.addEventListener('keydown', event => {
         const modal = document.querySelector('[data-pay-modal]:not([hidden])');
         if (!modal) return;
-        if (event.key === 'Escape') { event.preventDefault(); payStep(modal, 'backdrop'); }
+        if (event.key === 'Escape') { event.preventDefault(); payStep(modal, 'backdrop'); return; }
         if (event.key === 'Tab') {
             const controls = Array.from(modal.querySelectorAll('a,button,input,select,textarea')).filter(node => !node.disabled && node.offsetParent !== null && node.tabIndex >= 0);
             const first = controls[0], last = controls[controls.length - 1];

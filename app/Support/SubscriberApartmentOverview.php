@@ -101,7 +101,8 @@ class SubscriberApartmentOverview
     private function pendingItem(Collection $items): ?SubscriptionItem
     {
         return $items->first(function (SubscriptionItem $item) {
-            return $item->subscription?->status === UserSubscription::STATUS_PENDING;
+            return $item->subscription?->status === UserSubscription::STATUS_PENDING
+                && ! $item->subscription->checkout_abandoned_at;
         });
     }
 
