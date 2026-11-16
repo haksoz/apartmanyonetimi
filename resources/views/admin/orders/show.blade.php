@@ -247,6 +247,12 @@
                             <dl class="mt-2 space-y-1 text-xs text-slate-600">
                                 <div><dt class="inline">Son kayıtlı sonuç:</dt> <dd class="inline">{{ $notification->provider_status === 'success' ? 'Başarılı bildirimi' : 'Başarısız bildirimi' }} · {{ $notification->updated_at->format('d.m.Y H:i') }}</dd></div>
                                 <div><dt class="inline">Bildirilen tutar:</dt> <dd class="inline">{{ number_format($notification->total_amount_minor / 100, 2, ',', '.') }} {{ $notification->reported_currency ?? '—' }}</dd></div>
+                                @if ($notification->provider_status === 'failed' && $notification->failed_reason_code !== null)
+                                    <div><dt class="inline">PayTR başarısızlık kodu:</dt> <dd class="inline font-mono">{{ $notification->failed_reason_code }}</dd></div>
+                                    @if ($notification->failed_reason_code === '6')
+                                        <div>Ödeme süresi doldu veya müşteri ödeme sayfasından ayrıldı.</div>
+                                    @endif
+                                @endif
                                 @if ($notification->reason)<div><dt class="inline">İnceleme kodu:</dt> <dd class="inline font-mono">{{ $notification->reason }}</dd></div>@endif
                             </dl>
                         @else

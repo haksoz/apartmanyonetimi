@@ -68,14 +68,26 @@ class HandleNotification
 
                 return true;
             }
-            if (! in_array($attempt->status, ['pending', 'unknown'], true) || $order->trashed() || ! $order->isPending()
+            if (! in_array($attempt->status, ['pending', 'unknown'], true) || ! $order->isPending()
                 || $order->payments()->withTrashed()->exists()) {
                 return $review('terminal_attempt_conflict');
             }
 
             // A declined card ends this attempt. The unpaid order can be retried with a new merchant_oid.
             $attempt->update(['status' => 'failed', 'settled_at' => now()]);
-            if ($order->checkout_abandoned_at) {
+            if ($order->trashed()) {
+                // Hiding an unpaid order must not prevent an authenticated failure from resolving it.
+                $unresolved = $order->paymentAttempts()->where(fn ($query) => $query
+                    ->whereIn('status', ['pending', 'unknown', 'succeeded'])->orWhere('review_required', true))->exists();
+                if (! $unresolved) {
+                    $ids = $order->items()->pluck('apartment_id');
+                    $order->items()->where('status', \App\Models\SubscriptionItem::STATUS_PENDING)
+                        ->update(['status' => \App\Models\SubscriptionItem::STATUS_CANCELLED, 'ended_at' => now()]);
+                    $order->update(['status' => \App\Models\UserSubscription::STATUS_CANCELLED, 'is_active' => false,
+                        'cancelled_by' => \App\Models\UserSubscription::CANCELLED_BY_SYSTEM, 'ended_at' => now()]);
+                    \App\Support\ApartmentCoverage::sync($ids);
+                }
+            } elseif ($order->checkout_abandoned_at || $notification->failureCode === '6') {
                 app(AbandonCheckout::class)->abandon($order);
             }
             $audit->fill(['outcome' => 'failed', 'reason' => null])->save();

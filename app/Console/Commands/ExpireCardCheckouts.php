@@ -23,9 +23,9 @@ class ExpireCardCheckouts extends Command
                         $order = SubscriptionOrderLock::acquire($order);
                         if (! $order->isPending() || $order->checkout_abandoned_at || $order->payments()->withTrashed()->exists()) return;
                         $attempt = $order->paymentAttempts()->latest('id')->lockForUpdate()->first();
-                        $expired = $attempt?->token_expires_at
-                            ? $attempt->token_expires_at->lte(now())
-                            : ($attempt?->submitted_at ?? $order->created_at)->lte(now()->subMinutes((int) config('paytr.payment_timeout_minutes', 30)));
+                        // token_expires_at includes a UI safety margin; it is not PayTR's actual deadline.
+                        $expired = ($attempt?->submitted_at ?? $order->created_at)
+                            ->lte(now()->subMinutes((int) config('paytr.payment_timeout_minutes', 30)));
                         if ($expired) { $checkout->abandon($order); $count++; }
                     });
                 }

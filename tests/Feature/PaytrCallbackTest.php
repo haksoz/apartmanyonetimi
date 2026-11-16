@@ -203,16 +203,49 @@ class PaytrCallbackTest extends TestCase
         $this->assertUnpaid($attempt);
     }
 
+    public function test_paytr_timeout_notification_closes_checkout_and_releases_apartment_even_when_soft_deleted(): void
+    {
+        foreach ([false, true] as $deleted) {
+            $attempt = $this->attempt();
+            $order = $attempt->subscription;
+            if ($deleted) $order->delete();
+            $payload = $this->payload($attempt, ['status' => 'failed', 'total_amount' => '0', 'failed_reason_code' => '6']);
+            $this->send($payload)->assertOk()->assertContent('OK');
+            $this->send($payload)->assertOk()->assertContent('OK');
+            $closed = UserSubscription::withTrashed()->findOrFail($order->id);
+            $this->assertSame('cancelled', $closed->status);
+            $this->assertSame($deleted, $closed->trashed());
+            $this->assertSame('failed', $attempt->fresh()->status);
+            $this->assertFalse($attempt->fresh()->review_required);
+            $this->assertSame('cancelled', $closed->items()->first()->status);
+            $this->assertSame('6', $attempt->notifications()->first()->failed_reason_code);
+            $new = app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
+                'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
+            $this->assertNotSame($order->id, $new->id);
+        }
+    }
+
+    public function test_timeout_failure_code_alone_does_not_override_signature_or_success_status(): void
+    {
+        $attempt = $this->attempt();
+        $forged = $this->payload($attempt, ['failed_reason_code' => '6']);
+        $forged['status'] = 'failed';
+        $this->send($forged)->assertForbidden();
+        $this->assertSame('pending', $attempt->fresh()->status);
+        $this->send($this->payload($attempt, ['failed_reason_code' => '6']))->assertOk();
+        $this->assertSame('succeeded', $attempt->fresh()->status);
+    }
+
     public function test_decline_ends_only_attempt_and_retry_has_a_new_oid(): void
     {
         $attempt = $this->attempt();
-        $payload = $this->payload($attempt, ['status' => 'failed', 'total_amount' => '0', 'failed_reason_code' => '6', 'failed_reason_msg' => 'Never store this raw message']);
+        $payload = $this->payload($attempt, ['status' => 'failed', 'total_amount' => '0', 'failed_reason_code' => '0', 'failed_reason_msg' => 'Never store this raw message']);
         $this->send($payload)->assertOk()->assertContent('OK');
         $this->send($payload)->assertOk()->assertContent('OK');
         $this->assertUnpaid($attempt);
         $this->assertSame('failed', $attempt->fresh()->status);
         $this->assertFalse($attempt->fresh()->review_required);
-        $this->assertSame('6', SubscriptionPaymentNotification::sole()->failed_reason_code);
+        $this->assertSame('0', SubscriptionPaymentNotification::sole()->failed_reason_code);
         $retry = app(SubscriptionPaymentAttempts::class)->open($attempt->subscription);
         $this->assertNotSame($attempt->merchant_oid, $retry->merchant_oid);
         $retry->update(['submitted_at' => now()]);

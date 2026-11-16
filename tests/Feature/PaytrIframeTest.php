@@ -477,6 +477,21 @@ class PaytrIframeTest extends TestCase
         $this->assertNull($otherOrder->fresh()->checkout_abandoned_at);
     }
 
+    public function test_expiry_uses_paytr_deadline_instead_of_the_early_iframe_display_cutoff(): void
+    {
+        $this->freezeTime();
+        $order = $this->order();
+        $attempt = $order->paymentAttempts()->sole();
+        $attempt->update(['submitted_at' => now()->subMinutes(30)->addSeconds(5),
+            'token_expires_at' => now()->subSeconds(5), 'status' => 'pending']);
+        $this->artisan('paytr:expire-checkouts')->assertSuccessful();
+        $this->assertNull($order->fresh()->checkout_abandoned_at);
+        $this->travel(5)->seconds();
+        $this->artisan('paytr:expire-checkouts')->assertSuccessful();
+        $this->assertNotNull($order->fresh()->checkout_abandoned_at);
+        $this->assertSame('pending', $attempt->fresh()->status);
+    }
+
     public function test_expired_screen_is_archived_without_assuming_the_provider_payment_failed(): void
     {
         $order = $this->order();
