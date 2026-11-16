@@ -42,7 +42,9 @@ class ProfileController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
+        ], [
+            'phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
         ]);
 
         $request->user()->update([

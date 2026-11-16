@@ -60,7 +60,7 @@ class LegalConsentTest extends TestCase
 
     public function test_free_apartment_opening_stores_resident_data_acceptance_without_a_sale(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $payload = [
             'name' => 'Ücretsiz Blok',
             'address' => 'Adres',
@@ -105,7 +105,7 @@ class LegalConsentTest extends TestCase
 
     public function test_apartment_opening_ignores_paid_choice_and_does_not_store_a_sale(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $payload = [
             'name' => 'Ücretli Blok',
             'address' => 'Adres',
@@ -133,7 +133,7 @@ class LegalConsentTest extends TestCase
 
     public function test_each_later_paid_order_stores_its_own_acceptance(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => 'Yenileme Apartmanı',
             'unit_count' => 10,

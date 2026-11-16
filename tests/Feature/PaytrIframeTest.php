@@ -42,7 +42,7 @@ class PaytrIframeTest extends TestCase
         $order = $checkout->openPending($user, collect([$apartment]), 'monthly', 'kredi_kartı', $profile);
         app(LegalConsent::class)->recordSale($user, $order, Request::create('/'));
         app(SubscriptionPaymentAttempts::class)->open($order)->update(['payer_snapshot' => [
-            'payer_name' => 'Ad Soyad', 'payer_email' => 'payer@example.com', 'payer_phone' => '05551112233', 'payer_address' => 'Adres',
+            'payer_name' => 'Ad Soyad', 'payer_email' => 'payer@example.com', 'payer_phone' => '5551112233', 'payer_address' => 'Adres',
         ]]);
         $this->actingAs($user);
 
@@ -125,7 +125,7 @@ class PaytrIframeTest extends TestCase
             'billing_mode' => 'existing', 'billing_profile_id' => $order->billing_profile_id,
             'checkout_token' => (string) \Illuminate\Support\Str::uuid(),
             'quote_signature' => app(\App\Support\CheckoutQuote::class)->signature($order->user, $apartment),
-            'payer_name' => 'Ad Soyad', 'payer_email' => 'payer@example.com', 'payer_phone' => '05551112233', 'payer_address' => 'Adres', 'accept_sales' => 1, 'checkout_return' => 'dashboard'];
+            'payer_name' => 'Ad Soyad', 'payer_email' => 'payer@example.com', 'payer_phone' => '5551112233', 'payer_address' => 'Adres', 'accept_sales' => 1, 'checkout_return' => 'dashboard'];
         $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->post(route('subscriber.subscriptions.store'), $payload)
             ->assertRedirect(route('subscriber.subscriptions.card', $order));
         $this->post(route('subscriber.subscriptions.store'), $payload)
@@ -423,7 +423,7 @@ class PaytrIframeTest extends TestCase
             'billing_mode' => 'existing', 'billing_profile_id' => $order->billing_profile_id,
             'checkout_token' => (string) \Illuminate\Support\Str::uuid(),
             'quote_signature' => app(\App\Support\CheckoutQuote::class)->signature($order->user, $apartment),
-            'payer_name' => 'Ad Soyad', 'payer_email' => 'payer@example.com', 'payer_phone' => '05551112233', 'payer_address' => 'Adres', 'accept_sales' => 1];
+            'payer_name' => 'Ad Soyad', 'payer_email' => 'payer@example.com', 'payer_phone' => '5551112233', 'payer_address' => 'Adres', 'accept_sales' => 1];
         $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasErrors('payment_method');
         $this->assertDatabaseCount('user_subscriptions', 1);
         Http::assertSentCount(1);

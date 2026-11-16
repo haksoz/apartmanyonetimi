@@ -53,7 +53,7 @@ class PurchaseItemFlowTest extends TestCase
 
     public function test_a_legacy_apartment_without_a_subscription_cannot_start_a_paid_order(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => 'Eski Apartman',
             'unit_count' => 10,
@@ -75,7 +75,7 @@ class PurchaseItemFlowTest extends TestCase
 
     public function test_approval_activates_paid_items_and_closes_only_the_ordered_apartments_free_periods(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $admin = User::factory()->admin()->create();
         [, $apartmentA, $freeA] = $this->freeApartment('A Blok', $user);
         [, $apartmentB, $freeB] = $this->freeApartment('B Blok', $user);
@@ -289,7 +289,7 @@ class PurchaseItemFlowTest extends TestCase
     public function test_approval_does_not_create_a_subscription_for_a_legacy_apartment(): void
     {
         $admin = User::factory()->admin()->create();
-        $manager = User::factory()->create();
+        $manager = User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($manager)->create([
             'name' => 'Eski Apartman',
             'unit_count' => 12,
@@ -467,7 +467,7 @@ class PurchaseItemFlowTest extends TestCase
      */
     private function freeApartment(string $name, ?User $user = null): array
     {
-        $user ??= User::factory()->create();
+        $user ??= User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => $name,
             'unit_count' => 10,

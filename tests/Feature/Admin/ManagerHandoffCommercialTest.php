@@ -18,7 +18,7 @@ class ManagerHandoffCommercialTest extends TestCase
 
     public function test_paid_access_follows_the_active_item_not_billing_plan(): void
     {
-        $payer = User::factory()->create();
+        $payer = User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($payer)->create([
             'name' => 'C Apartmanı',
             'unit_count' => 70,
@@ -33,7 +33,7 @@ class ManagerHandoffCommercialTest extends TestCase
     public function test_a_period_that_has_not_started_is_not_paid_coverage(): void
     {
         $admin = User::factory()->admin()->create();
-        $manager = User::factory()->create(['name' => 'Gelecek Yonetici']);
+        $manager = User::factory()->withBankTransfer()->create(['name' => 'Gelecek Yonetici']);
         $apartment = Apartment::factory()->forUser($manager)->create([
             'name' => 'Gelecek Apartman',
             'unit_count' => 10,
@@ -58,8 +58,8 @@ class ManagerHandoffCommercialTest extends TestCase
     public function test_manager_change_keeps_the_purchase_with_the_payer_and_history_on_the_apartment(): void
     {
         $admin = User::factory()->admin()->create();
-        $hasan = User::factory()->create(['name' => 'Hasan Yonetici']);
-        $mehmet = User::factory()->create(['name' => 'Mehmet Yonetici']);
+        $hasan = User::factory()->withBankTransfer()->create(['name' => 'Hasan Yonetici']);
+        $mehmet = User::factory()->withBankTransfer()->create(['name' => 'Mehmet Yonetici']);
         $apartment = Apartment::factory()->forUser($hasan)->create([
             'name' => 'C Apartmanı',
             'unit_count' => 70,

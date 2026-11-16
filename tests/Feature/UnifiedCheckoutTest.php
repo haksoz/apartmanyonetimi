@@ -87,7 +87,7 @@ class UnifiedCheckoutTest extends TestCase
 
     private function customer(): array
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($user)->create(['unit_count' => 10, 'setup_completed_at' => now()]);
         $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
         app(SubscriptionCheckout::class)->openFree($user, $apartment);
@@ -109,7 +109,7 @@ class UnifiedCheckoutTest extends TestCase
         $this->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]))
             ->assertOk()->assertSee('id="subscription-checkout"', false)
             ->assertSee('name="checkout_token"', false)->assertSee('name="quote_signature"', false)
-            ->assertSee('value="kredi_kartı" class="mt-1" disabled', false)
+            ->assertSee('type="hidden" name="payment_method" value="havale"', false)
             ->assertSee('Ödemeye Geç')->assertDontSee('id="sidebar"', false);
         $this->get(route('subscriber.subscriptions.create', ['type' => 'renew']))
             ->assertOk()->assertSee('id="subscription-checkout"', false);
@@ -251,7 +251,7 @@ class UnifiedCheckoutTest extends TestCase
         $payload['payment_method'] = 'kredi_kartı';
         $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasErrors(['payer_name', 'payer_email', 'payer_phone', 'payer_address']);
         $this->assertDatabaseCount('user_subscriptions', 0);
-        $payload += ['payer_name' => 'Ödeyen Kişi', 'payer_email' => 'payer@example.com', 'payer_phone' => '05551112233', 'payer_address' => 'Ödeme adresi'];
+        $payload += ['payer_name' => 'Ödeyen Kişi', 'payer_email' => 'payer@example.com', 'payer_phone' => '5551112233', 'payer_address' => 'Ödeme adresi'];
         $this->post(route('subscriber.subscriptions.store'), $payload)->assertRedirect();
         $attempt = SubscriptionPaymentAttempt::sole();
         $this->assertSame('paytr', $attempt->provider);

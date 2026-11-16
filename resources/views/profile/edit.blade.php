@@ -27,7 +27,8 @@
             </div>
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-600" for="phone">Telefon</label>
-                <input id="phone" name="phone" type="text" value="{{ old('phone', $user->phone) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <input id="phone" name="phone" type="tel" inputmode="numeric" pattern="[1-9][0-9]{9}" maxlength="10" autocomplete="tel-national" placeholder="5551234567" title="Başında 0 olmadan 10 hane girin. Örnek: 5551234567" aria-describedby="phone-format" value="{{ old('phone', $user->phone) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <p id="phone-format" class="mt-1 text-xs text-slate-500">Başında 0 olmadan 10 hane.</p>
                 @error('phone')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
             <div class="flex flex-wrap items-center gap-2">

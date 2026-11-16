@@ -299,7 +299,7 @@ class SingleApartmentOrderTest extends TestCase
      */
     private function freeApartment(string $name, ?User $user = null): array
     {
-        $user ??= User::factory()->create();
+        $user ??= User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => $name,
             'unit_count' => 10,

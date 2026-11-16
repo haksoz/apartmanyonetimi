@@ -26,7 +26,7 @@
             checkout.querySelector('[data-pay-panel]:not([hidden]) input, [data-pay-panel]:not([hidden]) button')?.focus();
         </script>
     @else
-        <div class="fixed inset-0 flex items-center justify-center bg-black/50 p-3 sm:p-5">
+        <div class="fixed inset-0 flex items-center justify-center p-3 sm:p-5" style="background: rgb(15 23 42 / .18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);">
             <main role="dialog" aria-modal="true" aria-labelledby="checkout-picker-title" class="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
                 <div class="mb-4 flex items-center justify-between gap-3">
                     <div class="flex items-center gap-2"><img src="{{ asset('images/logo.png') }}" alt="" class="h-8 w-auto"><span class="text-xl font-bold"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span></div>

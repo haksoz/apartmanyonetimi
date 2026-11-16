@@ -14,7 +14,7 @@ class ArchivedApartmentTest extends TestCase
 
     public function test_manager_payment_page_hides_an_apartment_they_retired(): void
     {
-        $manager = User::factory()->create();
+        $manager = User::factory()->withBankTransfer()->create();
         $active = Apartment::factory()->forUser($manager)->create([
             'name' => 'Canlı Apartman',
             'is_active' => true,
@@ -50,7 +50,7 @@ class ArchivedApartmentTest extends TestCase
     public function test_admin_opens_retired_apartments_from_a_separate_list(): void
     {
         $admin = User::factory()->admin()->create();
-        $manager = User::factory()->create(['name' => 'Ayşe Yönetici']);
+        $manager = User::factory()->withBankTransfer()->create(['name' => 'Ayşe Yönetici']);
         Apartment::factory()->forUser($manager)->create([
             'name' => 'Canlı Apartman',
             'is_active' => true,

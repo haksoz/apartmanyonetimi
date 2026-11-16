@@ -105,7 +105,7 @@ class UserInvitationTest extends TestCase
     public function test_refreshing_an_invite_drops_the_previous_link(): void
     {
         [$manager, $apartment] = $this->managerApartment();
-        $invited = User::factory()->create([
+        $invited = User::factory()->withBankTransfer()->create([
             'role' => 'user',
             'activated_at' => null,
             'email' => 'eski@example.com',
@@ -146,7 +146,7 @@ class UserInvitationTest extends TestCase
 
     public function test_a_member_cannot_open_subscriptions_or_create_an_apartment(): void
     {
-        $member = User::factory()->create(['role' => 'user']);
+        $member = User::factory()->withBankTransfer()->create(['role' => 'user']);
         $apartment = Apartment::factory()->create(['is_active' => true, 'unit_count' => 8]);
         $apartment->members()->attach($member->id, ['role' => 'member', 'is_active' => true]);
 
@@ -164,7 +164,7 @@ class UserInvitationTest extends TestCase
                 'accept_privacy' => '1',
             ])->assertForbidden();
 
-        $loose = User::factory()->create(['role' => 'user']);
+        $loose = User::factory()->withBankTransfer()->create(['role' => 'user']);
 
         $this->actingAs($loose)
             ->post(route('onboarding.store'), [
@@ -182,7 +182,7 @@ class UserInvitationTest extends TestCase
     public function test_a_promoted_owner_can_order_the_next_subscription_without_opening_a_new_apartment(): void
     {
         [$manager, $apartment] = $this->managerApartment();
-        $next = User::factory()->create([
+        $next = User::factory()->withBankTransfer()->create([
             'role' => 'user',
             'name' => 'Sonraki Yonetici',
             'activated_at' => now(),
@@ -284,7 +284,7 @@ class UserInvitationTest extends TestCase
 
     public function test_admin_can_let_a_non_subscriber_create_by_setting_a_quota(): void
     {
-        $user = User::factory()->create(['role' => 'user']);
+        $user = User::factory()->withBankTransfer()->create(['role' => 'user']);
         UserQuotaOverride::query()->create([
             'user_id' => $user->id,
             'max_apartments' => 1,
@@ -315,18 +315,18 @@ class UserInvitationTest extends TestCase
     public function test_customer_list_defaults_to_commercial_counterparts(): void
     {
         $admin = User::factory()->admin()->create();
-        $customer = User::factory()->create(['name' => 'Kayitli Musteri', 'role' => 'manager']);
-        $member = User::factory()->create([
+        $customer = User::factory()->withBankTransfer()->create(['name' => 'Kayitli Musteri', 'role' => 'manager']);
+        $member = User::factory()->withBankTransfer()->create([
             'name' => 'Sadece Uye',
             'role' => 'user',
             'activated_at' => now(),
         ]);
-        $invitee = User::factory()->create([
+        $invitee = User::factory()->withBankTransfer()->create([
             'name' => 'Davet Bekleyen',
             'role' => 'user',
             'activated_at' => null,
         ]);
-        $owner = User::factory()->create([
+        $owner = User::factory()->withBankTransfer()->create([
             'name' => 'Bina Yoneticisi',
             'role' => 'user',
             'activated_at' => now(),
@@ -374,7 +374,7 @@ class UserInvitationTest extends TestCase
     public function test_admin_cannot_impersonate_an_unactivated_user(): void
     {
         $admin = User::factory()->admin()->create();
-        $invitee = User::factory()->create([
+        $invitee = User::factory()->withBankTransfer()->create([
             'role' => 'user',
             'activated_at' => null,
         ]);
@@ -386,7 +386,7 @@ class UserInvitationTest extends TestCase
 
     public function test_missing_kvkk_approval_is_collected_in_a_popup(): void
     {
-        $user = User::factory()->create(['role' => 'user']);
+        $user = User::factory()->withBankTransfer()->create(['role' => 'user']);
 
         $this->actingAs($user)
             ->get(route('profile.edit'))
@@ -416,7 +416,7 @@ class UserInvitationTest extends TestCase
      */
     private function managerApartment(): array
     {
-        $manager = User::factory()->create(['role' => 'manager']);
+        $manager = User::factory()->withBankTransfer()->create(['role' => 'manager']);
         $apartment = Apartment::factory()->forUser($manager)->create([
             'name' => 'Davet Apartmani',
             'unit_count' => 10,

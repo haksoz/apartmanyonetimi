@@ -1,5 +1,7 @@
 @php
     $cardEnabled = app(\App\Support\Paytr\Access::class)->canStart(auth()->user());
+    $paymentMethods = app(\App\Support\CheckoutPaymentMethods::class)->forUser(auth()->user());
+    $selectedMethod = in_array(old('payment_method'), $paymentMethods, true) ? old('payment_method') : ($paymentMethods[0] ?? null);
 @endphp
                             <form novalidate method="POST" action="{{ route('subscriber.subscriptions.store') }}" onsubmit="return payStep(this.querySelector('[data-pay-modal]'), 'submit')">
                                 @csrf
@@ -9,7 +11,7 @@
                                 <input type="hidden" name="apartment_ids[]" value="{{ $apartment->id }}">
 
 
-                                <div id="{{ $payModalId }}" data-pay-modal data-pay-step="{{ $payStep }}" data-checkout-close-url="{{ $checkoutCloseUrl }}" data-apartment-name="{{ $apartment->name }}" data-unit-count="{{ $apartment->unit_count }}" data-price-monthly="{{ $monthly['amount'] ?? '' }}" data-price-yearly="{{ $yearly['amount'] ?? '' }}" @class([
+                                <div id="{{ $payModalId }}" data-pay-modal style="background: rgb(15 23 42 / .18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);" data-pay-step="{{ $payStep }}" data-checkout-close-url="{{ $checkoutCloseUrl }}" data-apartment-name="{{ $apartment->name }}" data-unit-count="{{ $apartment->unit_count }}" data-price-monthly="{{ $monthly['amount'] ?? '' }}" data-price-yearly="{{ $yearly['amount'] ?? '' }}" @class([
                                     'fixed inset-0 z-50 items-center justify-center bg-black/50 p-4',
                                     'flex' => true,
                                     'hidden' => false,
@@ -101,10 +103,11 @@
                                                     <div><dt class="inline text-slate-500">Toplam (KDV dahil):</dt> <dd class="inline font-semibold" data-checkout-total></dd></div>
                                                     <div><dt class="inline text-slate-500">Hizmet başlangıcı:</dt> <dd class="inline">{{ $coverageEnd ? $coverageEnd->format('d.m.Y').' tarihinden itibaren, ödeme onayıyla' : 'Ödeme onayından itibaren' }}</dd></div>
                                                 </dl>
+                                                @if (count($paymentMethods) > 1)
                                                 <fieldset class="mt-4 space-y-2">
                                                     <legend class="text-sm font-medium text-slate-700">Ödeme yöntemi</legend>
                                                     <label class="mt-2 flex items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-800">
-                                                        <input type="radio" name="payment_method" value="havale" class="mt-1" @checked(old('payment_method', 'havale') === 'havale')>
+                                                        <input type="radio" name="payment_method" value="havale" class="mt-1" @checked($selectedMethod === 'havale')>
                                                         <span>
                                                             <span class="font-semibold">Havale / EFT</span>
                                                             <span class="mt-0.5 block text-slate-500">Banka bilgileri bir sonraki adımda gösterilir.</span>
@@ -112,27 +115,37 @@
                                                     </label>
                                                     @if (! config('paytr.test_accounts_only') || $cardEnabled)
                                                     <label @class(['flex items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm', 'bg-slate-50 text-slate-400' => ! $cardEnabled, 'text-slate-800' => $cardEnabled])>
-                                                        <input type="radio" name="payment_method" value="kredi_kartı" class="mt-1" @disabled(! $cardEnabled) @checked($cardEnabled && old('payment_method') === 'kredi_kartı')>
+                                                        <input type="radio" name="payment_method" value="kredi_kartı" class="mt-1" @checked($selectedMethod === 'kredi_kartı')>
                                                         <span>
                                                             <span class="font-semibold">Kredi kartı</span>
-                                                            <span class="mt-0.5 block">{{ $cardEnabled ? 'PayTR güvenli ödeme ekranı · Tek çekim' : 'Yakında PayTR ile kullanılabilecek' }}</span>
+                                                            <span class="mt-1 block">@include('subscriber.partials.paytr-mark')</span>
                                                         </span>
                                                     </label>
                                                     @endif
                                                 </fieldset>
+                                                @elseif ($selectedMethod)
+                                                    <input type="hidden" name="payment_method" value="{{ $selectedMethod }}">
+                                                    @if ($selectedMethod === 'kredi_kartı')
+                                                        <div class="mt-4">@include('subscriber.partials.paytr-mark')</div>
+                                                    @else
+                                                        <p class="mt-4 text-sm text-slate-600">Ödeme yöntemi: Havale / EFT</p>
+                                                    @endif
+                                                @else
+                                                    <p role="status" class="mt-4 text-sm text-slate-600">Kartla ödeme şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.</p>
+                                                @endif
                                                 @if ($cardEnabled)
-                                                    <fieldset class="mt-4 space-y-3">
-                                                        <legend class="text-sm font-semibold">Ödeme iletişim bilgileri</legend>
-                                                        <p class="text-xs text-slate-500">PayTR ödeme ekranını açmak için gereklidir. Kart üzerindeki isim ve kart bilgileri PayTR ekranında ayrıca alınır.</p>
-                                                        @foreach (['payer_name' => ['Ad soyad', auth()->user()->name, 60], 'payer_email' => ['E-posta', auth()->user()->email, 100], 'payer_phone' => ['Telefon', auth()->user()->phone, 20], 'payer_address' => ['Adres', '', 400]] as $field => [$label, $default, $limit])
+                                                    <fieldset data-card-payer @class(['mt-4 space-y-3', 'hidden' => $selectedMethod !== 'kredi_kartı']) @if ($selectedMethod !== 'kredi_kartı') hidden disabled @endif>
+                                                        <legend class="text-sm font-semibold">PayTR Ödeme İletişim Bilgileri</legend>
+                                                        @foreach (['payer_name' => ['Ad soyad', auth()->user()->name, 60], 'payer_email' => ['E-posta', auth()->user()->email, 100], 'payer_phone' => ['Telefon', auth()->user()->phone, 10], 'payer_address' => ['Adres', '', 400]] as $field => [$label, $default, $limit])
                                                             <div>
                                                                 <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-700">
-                                                                    <label for="{{ $payModalId }}-{{ $field }}">{{ $label }}</label>
+                                                                    <label for="{{ $payModalId }}-{{ $field }}">{{ $label }} <span aria-hidden="true">*</span></label>
                                                                     @if ($field === 'payer_address')
                                                                         <button type="button" onclick="payUseBillingAddress(this)" class="text-xs font-semibold text-emerald-700 underline underline-offset-2">Fatura adresini kullan</button>
                                                                     @endif
                                                                 </div>
-                                                                <input id="{{ $payModalId }}-{{ $field }}" name="{{ $field }}" maxlength="{{ $limit }}" value="{{ old($field, $default) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                                                                <input id="{{ $payModalId }}-{{ $field }}" name="{{ $field }}" type="{{ $field === 'payer_email' ? 'email' : ($field === 'payer_phone' ? 'tel' : 'text') }}" @if ($field === 'payer_phone') inputmode="numeric" pattern="[1-9][0-9]{9}" autocomplete="tel-national" placeholder="5551234567" title="Başında 0 olmadan 10 hane girin" @endif required aria-required="true" maxlength="{{ $limit }}" value="{{ old($field, $default) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                                                                @error($field)<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                                                                 @if ($field === 'payer_address')
                                                                     <p data-payer-address-feedback role="status" aria-live="polite" class="mt-1 hidden text-xs text-slate-500" hidden></p>
                                                                 @endif
@@ -159,7 +172,7 @@
                                             <div class="flex shrink-0 justify-end gap-3 border-t border-slate-200 px-6 py-4">
                                                 <div class="flex gap-3">
                                                     <button type="button" data-pay-prev="billing" onclick="return payStep(this, 'back')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri</button>
-                                                    <button type="submit" data-checkout-submit class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ödemeye Geç</button>
+                                                    <button type="submit" data-checkout-submit @if (!$selectedMethod) data-payment-unavailable disabled @endif class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ödemeye Geç</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -175,7 +188,7 @@
                                                 'unit_count' => $apartment->unit_count,
                                                 'period' => $previewPeriod,
                                                 'price' => $previewPeriod === 'yearly' ? ($yearly['amount'] ?? null) : ($monthly['amount'] ?? null),
-                                                'payment_method' => $reopenThisPay ? old('payment_method', 'havale') : 'havale',
+                                                'payment_method' => $selectedMethod,
                                                 'billing_legal_name' => $billingMode === 'new' ? old('billing_legal_name') : $previewProfile?->legal_name,
                                                 'billing_identity_number' => $billingMode === 'new' ? old('billing_identity_number') : $previewProfile?->identity_number,
                                                 'billing_tax_office' => $billingMode === 'new' ? old('billing_tax_office') : $previewProfile?->tax_office,

@@ -21,7 +21,10 @@ class SubscriptionCheckout
     public function openPending(User $user, Collection $apartments, string $period, string $paymentMethod, BillingProfile $billingProfile, ?string $receiptPath = null, ?string $reference = null): UserSubscription
     {
         return DB::transaction(function () use ($user, $apartments, $period, $paymentMethod, $billingProfile, $receiptPath, $reference) {
-            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $lockedUser = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if ($paymentMethod === 'havale' && ! $lockedUser->bank_transfer_allowed) {
+                throw ValidationException::withMessages(['payment_method' => 'Havale / EFT ile ödeme izniniz bulunmuyor.']);
+            }
             $lockedApartments = Apartment::whereIn('id', $apartments->pluck('id'))->orderBy('id')->lockForUpdate()->get();
             if ($lockedApartments->count() !== $apartments->count()) {
                 throw ValidationException::withMessages(['apartment_ids' => 'Apartman listesi değişti. Tekrar deneyin.']);

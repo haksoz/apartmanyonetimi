@@ -317,6 +317,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('customers/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
     Route::patch('customers/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');
     Route::patch('customers/{customer}/quota', [AdminCustomerController::class, 'updateQuota'])->name('customers.quota.update');
+    Route::patch('customers/{customer}/payment-settings', [AdminCustomerController::class, 'updatePaymentSettings'])->name('customers.payment-settings.update');
     Route::patch('customers/{customer}/password', [AdminCustomerController::class, 'updatePassword'])->name('customers.password.update');
     Route::patch('customers/{customer}/deactivate', [AdminCustomerController::class, 'deactivate'])->name('customers.deactivate');
     Route::patch('customers/{customer}/activate', [AdminCustomerController::class, 'activate'])->name('customers.activate');

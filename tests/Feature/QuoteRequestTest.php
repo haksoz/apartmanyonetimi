@@ -24,7 +24,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_one_hundred_units_open_a_free_apartment(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($user)
             ->post(route('subscriber.apartments.store'), $this->payload('Yüz Daire', 100))
@@ -43,7 +43,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_one_hundred_one_units_create_a_quote_request_without_commercial_records(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($user)
             ->from(route('subscriber.apartments.create'))
@@ -73,7 +73,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_quote_scale_does_not_ask_for_a_sales_contract(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($user)
             ->get(route('subscriber.apartments.create'))
@@ -101,7 +101,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_pending_request_is_not_duplicated(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($user)->post(route('subscriber.apartments.store'), $this->payload('Aynı Blok', 110, false));
         $this->actingAs($user)
@@ -114,7 +114,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_contacted_request_is_not_duplicated(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         QuoteRequest::create([
             'user_id' => $user->id,
             'apartment_name' => 'Görüşülen Blok',
@@ -132,7 +132,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_cancelled_request_does_not_block_a_new_one(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         QuoteRequest::create([
             'user_id' => $user->id,
             'apartment_name' => 'İptal Blok',
@@ -151,7 +151,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_converted_request_does_not_block_a_new_one(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         QuoteRequest::create([
             'user_id' => $user->id,
             'apartment_name' => 'Dönüşen Blok',
@@ -170,7 +170,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_existing_free_apartment_can_still_move_to_a_paid_order(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => 'Küçük Blok',
             'unit_count' => 10,
@@ -204,7 +204,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_quote_scale_apartment_cannot_open_a_member_order(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => 'Büyük Blok',
             'unit_count' => 160,
@@ -218,7 +218,7 @@ class QuoteRequestTest extends TestCase
 
         $quote = app(PriceQuote::class)->forUnits(160, 'monthly', $apartment);
         $this->assertFalse($quote['requires_quote']);
-        $this->assertEquals(1200, $quote['amount']);
+        $this->assertEquals(1200, $quote['net_amount']);
 
         $this->actingAs($user)
             ->get(route('subscriber.dashboard'))
@@ -242,7 +242,7 @@ class QuoteRequestTest extends TestCase
 
     public function test_admin_can_list_quote_requests_and_change_status(): void
     {
-        $user = User::factory()->create(['name' => 'Talep Eden']);
+        $user = User::factory()->withBankTransfer()->create(['name' => 'Talep Eden']);
         $request = QuoteRequest::create([
             'user_id' => $user->id,
             'apartment_name' => 'Admin Blok',

@@ -106,7 +106,7 @@ class PublishedSaleDocumentsTest extends TestCase
      */
     private function apartmentFor(string $name): array
     {
-        $user = User::factory()->create(['name' => $name]);
+        $user = User::factory()->withBankTransfer()->create(['name' => $name]);
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => 'A Apartmanı',
             'unit_count' => 10,

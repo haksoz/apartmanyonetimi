@@ -204,7 +204,7 @@ class LegalDocumentVersionTest extends TestCase
 
         [$ahmet, $apartment] = $this->apartmentFor('Ahmet');
         $order = $this->place($ahmet, $apartment);
-        $stranger = User::factory()->create();
+        $stranger = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($stranger)
             ->get(route('subscriber.subscriptions.receipt', $order))
@@ -302,7 +302,7 @@ class LegalDocumentVersionTest extends TestCase
      */
     private function apartmentFor(string $name): array
     {
-        $user = User::factory()->create(['name' => $name]);
+        $user = User::factory()->withBankTransfer()->create(['name' => $name]);
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => 'A Apartmanı',
             'unit_count' => 10,

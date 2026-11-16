@@ -21,7 +21,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_upcoming_payment_card_not_shown_when_subscription_has_more_than_three_days_left(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
-        $manager = User::factory()->withSubscription($package, 'monthly')->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package, 'monthly')->create();
 
         $manager->subscription->update([
             'expires_at' => now()->addDays(10),
@@ -37,7 +37,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_apartment_card_shows_renewal_when_coverage_ends_within_three_days(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
-        $manager = User::factory()->withSubscription($package, 'monthly')->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package, 'monthly')->create();
         $expiry = now()->addDays(2);
         $manager->subscription->update([
             'expires_at' => $expiry,
@@ -79,7 +79,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_expired_coverage_leaves_the_apartment_on_the_free_card(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
-        $manager = User::factory()->withSubscription($package, 'monthly')->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package, 'monthly')->create();
         $manager->subscription->update([
             'expires_at' => now()->subDay(),
             'is_active' => false,
@@ -108,7 +108,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_order_page_lists_the_managers_apartments(): void
     {
         $package = Package::factory()->create();
-        $manager = User::factory()->withSubscription($package, 'monthly')->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package, 'monthly')->create();
         $apartment = Apartment::factory()->forUser($manager)->create([
             'name' => 'Sipariş Apartmanı',
             'unit_count' => 10,
@@ -127,7 +127,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_subscriber_can_create_havale_order_without_reference(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
-        $manager = User::factory()->withSubscription($package, 'monthly')->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package, 'monthly')->create();
         $apartment = Apartment::factory()->forUser($manager)->create([
             'name' => 'Havale Apartmanı',
             'unit_count' => 10,
@@ -171,7 +171,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_credit_card_order_is_rejected_until_card_payments_are_enabled(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100, 'yearly_price' => 1000]);
-        $manager = User::factory()->withSubscription($package, 'monthly')->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package, 'monthly')->create();
         $apartment = Apartment::factory()->forUser($manager)->create([
             'unit_count' => 10,
         ]);
@@ -197,7 +197,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_receipt_page_shows_active_bank_accounts(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100]);
-        $manager = User::factory()->withSubscription($package)->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package)->create();
         $subscription = UserSubscription::factory()->create([
             'user_id' => $manager->id,
             'package_id' => $package->id,
@@ -221,7 +221,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_receipt_page_highlights_the_apartment(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100]);
-        $manager = User::factory()->withSubscription($package)->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package)->create();
         $apartment = Apartment::factory()->forUser($manager)->create([
             'name' => 'Belirgin Apartman',
             'address' => 'Ordu Sokak',
@@ -268,7 +268,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_receipt_page_shows_only_the_opened_order(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100]);
-        $manager = User::factory()->withSubscription($package)->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package)->create();
         $first = UserSubscription::factory()->create([
             'user_id' => $manager->id,
             'package_id' => $package->id,
@@ -296,7 +296,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_subscriber_can_add_payment_info(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100]);
-        $manager = User::factory()->withSubscription($package)->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package)->create();
         $subscription = UserSubscription::factory()->create([
             'user_id' => $manager->id,
             'package_id' => $package->id,
@@ -318,7 +318,7 @@ class SubscriptionOrderTest extends TestCase
     public function test_subscriber_can_view_own_orders_list(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100]);
-        $manager = User::factory()->withSubscription($package)->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package)->create();
         $order = UserSubscription::factory()->create([
             'user_id' => $manager->id,
             'package_id' => $package->id,
@@ -336,8 +336,8 @@ class SubscriptionOrderTest extends TestCase
     public function test_subscriber_cannot_view_other_users_receipt(): void
     {
         $package = Package::factory()->create(['monthly_price' => 100]);
-        $manager = User::factory()->withSubscription($package)->create();
-        $other = User::factory()->withSubscription($package)->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package)->create();
+        $other = User::factory()->withBankTransfer()->withSubscription($package)->create();
         $subscription = UserSubscription::factory()->create([
             'user_id' => $other->id,
             'package_id' => $package->id,
@@ -572,7 +572,7 @@ class SubscriptionOrderTest extends TestCase
     private function pendingOrder(array $extra = []): array
     {
         $package = Package::factory()->create(['monthly_price' => 100]);
-        $manager = User::factory()->withSubscription($package)->create();
+        $manager = User::factory()->withBankTransfer()->withSubscription($package)->create();
         $subscription = UserSubscription::factory()->create(array_merge([
             'user_id' => $manager->id,
             'package_id' => $package->id,

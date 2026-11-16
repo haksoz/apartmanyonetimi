@@ -111,6 +111,19 @@ class AdminCustomerController extends Controller
             ->with('status', 'Apartman oluşturma limiti güncellendi.');
     }
 
+    public function updatePaymentSettings(Request $request, User $customer)
+    {
+        $this->ensureCustomer($customer);
+        $validated = $request->validate(['bank_transfer_allowed' => ['required', 'boolean']]);
+        DB::transaction(function () use ($customer, $validated) {
+            $customer = User::whereKey($customer->id)->lockForUpdate()->firstOrFail();
+            $customer->bank_transfer_allowed = (bool) $validated['bank_transfer_allowed'];
+            $customer->save();
+        });
+
+        return redirect()->route('admin.customers.show', $customer)->with('status', 'Ödeme yöntemi izni güncellendi.');
+    }
+
     public function updatePassword(Request $request, User $customer)
     {
         $this->ensureCustomer($customer);

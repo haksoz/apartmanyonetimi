@@ -22,7 +22,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_existing_free_apartment_stays_usable_without_a_subscription(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = $this->own($user, ['name' => 'Mevcut Apartman', 'unit_count' => 8, 'billing_plan' => 'free']);
 
         $this->actingAs($user)
@@ -64,7 +64,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_free_apartment_cannot_access_advanced_reports_or_their_exports(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = $this->own($user, ['name' => 'Ücretsiz Rapor Kontrolü', 'unit_count' => 8, 'billing_plan' => 'free']);
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
 
@@ -79,7 +79,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_free_apartment_cannot_export_basic_reports_as_pdf_or_excel(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = $this->own($user, ['name' => 'Ücretsiz Dışa Aktarma Kontrolü', 'unit_count' => 8, 'billing_plan' => 'free']);
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
 
@@ -93,7 +93,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_one_hundred_units_can_be_created_free(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($user)
             ->post(route('subscriber.apartments.store'), $this->payload('Yüz Daire', 100))
@@ -129,7 +129,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_each_create_flow_opens_a_free_period_and_factory_does_not(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         Apartment::factory()->forUser($user)->create(['name' => 'Fabrika']);
         $this->assertDatabaseCount('subscription_items', 0);
         $this->assertDatabaseCount('subscriptions', 0);
@@ -213,7 +213,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_a_failed_apartment_create_rolls_back_the_free_subscription(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = $this->own($user, ['name' => 'Yarim Apartman', 'unit_count' => 4, 'billing_plan' => 'free']);
 
         try {
@@ -232,7 +232,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_one_hundred_one_units_cannot_be_created_free(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($user)
             ->from(route('subscriber.apartments.create'))
@@ -246,7 +246,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_one_hundred_one_units_do_not_open_a_paid_order(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($user)
             ->post(route('subscriber.apartments.store'), $this->payload('Ücretli Blok', 101, true))
@@ -261,7 +261,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_same_user_can_keep_a_free_apartment_and_a_quote_request(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($user)->post(route('subscriber.apartments.store'), $this->payload('Ücretsiz Blok', 12));
         $this->actingAs($user)->post(route('subscriber.apartments.store'), $this->payload('Ücretli Blok', 101, true));
@@ -273,7 +273,7 @@ class CommercialBillingTest extends TestCase
 
     public function test_item_amount_does_not_change_when_the_apartment_is_renamed(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withBankTransfer()->create();
         $apartment = $this->own($user, ['name' => 'Eski Ad', 'unit_count' => 10, 'billing_plan' => 'free']);
         Subscription::create([
             'apartment_id' => $apartment->id,
@@ -334,7 +334,7 @@ class CommercialBillingTest extends TestCase
 
         $this->assertDatabaseHas('system_settings', ['subscription_tax_rate' => 18]);
 
-        $manager = User::factory()->create();
+        $manager = User::factory()->withBankTransfer()->create();
         $apartment = Apartment::factory()->forUser($manager)->create(['unit_count' => 160]);
 
         $this->actingAs($admin)

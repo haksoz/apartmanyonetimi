@@ -203,7 +203,7 @@ class AidatCepAccountUserTest extends TestCase
         $this->actingAs($member)
             ->patch(route('profile.update'), [
                 'name' => 'Duzenlenmis Ad',
-                'phone' => '5559',
+                'phone' => '5559998877',
             ])
             ->assertRedirect(route('profile.edit'));
 
@@ -212,7 +212,7 @@ class AidatCepAccountUserTest extends TestCase
             ->get(route('users.index'))
             ->assertOk()
             ->assertSee('Duzenlenmis Ad')
-            ->assertSee('5559')
+            ->assertSee('5559998877')
             ->assertDontSee('Yeni Kullanıcı Oluştur')
             ->assertSee('ilgili hesabın detayından eklenir');
 
@@ -226,7 +226,7 @@ class AidatCepAccountUserTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame('Duzenlenmis Ad', $first->fresh()->name);
-        $this->assertSame('5559', $first->fresh()->phone);
+        $this->assertSame('5559998877', $first->fresh()->phone);
         $this->assertSame('sakin@example.com', $first->fresh()->email);
         $this->assertSame('Ikinci Unvan', $second->fresh()->name);
         $this->assertSame('5552', $second->fresh()->phone);

@@ -109,6 +109,22 @@
         </form>
     </section>
 
+    <section class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+        <h2 class="text-lg font-semibold text-slate-900">Ödeme yöntemleri</h2>
+        <p class="mt-2 text-sm text-slate-500">Müşteriler varsayılan olarak kredi kartıyla ödeme yapar. Gerektiğinde bu müşteriye Havale / EFT seçeneğini ayrıca açabilirsiniz.</p>
+        <form method="POST" action="{{ route('admin.customers.payment-settings.update', $customer) }}" class="mt-4 space-y-3">
+            @csrf
+            @method('PATCH')
+            <input type="hidden" name="bank_transfer_allowed" value="0">
+            <label class="flex items-start gap-2 text-sm text-slate-700">
+                <input type="checkbox" name="bank_transfer_allowed" value="1" class="mt-1" @checked(old('bank_transfer_allowed', $customer->bank_transfer_allowed))>
+                <span>Havale / EFT ile ödeme izni</span>
+            </label>
+            @error('bank_transfer_allowed')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Kaydet</button>
+        </form>
+    </section>
+
     <section class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-xl border border-slate-200 bg-white p-5">
             <div class="text-sm text-slate-500">Apartmanlar</div>

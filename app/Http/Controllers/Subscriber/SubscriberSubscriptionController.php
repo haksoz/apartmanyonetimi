@@ -110,12 +110,12 @@ class SubscriberSubscriptionController extends Controller
             'apartment_ids' => ['required', 'array', 'min:1', 'max:1'],
             'apartment_ids.*' => ['integer'],
             'period' => ['required', Rule::in(['monthly', 'yearly'])],
-            'payment_method' => ['required', Rule::in(app(\App\Support\Paytr\Access::class)->canStart(auth()->user()) ? ['havale', 'kredi_kartı'] : ['havale'])],
+            'payment_method' => ['required', Rule::in(app(\App\Support\CheckoutPaymentMethods::class)->forUser(auth()->user()))],
             'checkout_token' => ['required_if:payment_method,kredi_kartı', 'nullable', 'uuid'],
             'quote_signature' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'size:64'],
             'payer_name' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:60'],
             'payer_email' => ['required_if:payment_method,kredi_kartı', 'nullable', 'email', 'max:100', 'regex:/^[\x00-\x7F]+$/'],
-            'payer_phone' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:20'],
+            'payer_phone' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
             'payer_address' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:400'],
             'reference_code' => ['nullable', 'string', 'max:255'],
             'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
@@ -135,7 +135,10 @@ class SubscriberSubscriptionController extends Controller
             'billing_address' => ['nullable', 'string', 'max:1000', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && in_array($request->input('billing_party_type'), [BillingProfile::TYPE_INDIVIDUAL, BillingProfile::TYPE_CORPORATE], true))],
             'billing_postal_code' => ['nullable', 'string', 'max:32'],
         ], [
-            'payment_method.in' => 'Kredi kartı ödemesi henüz aktif değil. Havale / EFT ile devam edebilirsiniz.',
+            'payment_method.in' => 'Seçilen ödeme yöntemi hesabınız için kullanılamıyor. Ödeme seçeneklerini yeniden kontrol edin.',
+            'payer_phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
+            'payer_email.email' => 'Geçerli bir e-posta adresi girin.',
+            'payer_email.regex' => 'Ödeme e-posta adresinde Türkçe karakter kullanmayın.',
             'apartment_ids.max' => 'Bir siparişte yalnızca bir apartman olabilir.',
             'accept_sales.accepted' => 'Ücretli abonelik için mesafeli satış sözleşmesini ve ön bilgilendirme formunu kabul edin.',
             'billing_mode.required' => 'Fatura profilini seçin veya yeni bir profil oluşturun.',
@@ -179,7 +182,10 @@ class SubscriberSubscriptionController extends Controller
         $receiptPath = null;
         try {
             $subscription = DB::transaction(function () use ($checkout, $request, $user, $apartments, $validated, $fingerprint, &$receiptPath) {
-                User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $lockedUser = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                if ($validated['payment_method'] === 'havale' && ! $lockedUser->bank_transfer_allowed) {
+                    throw ValidationException::withMessages(['payment_method' => 'Havale / EFT ile ödeme izniniz bulunmuyor.']);
+                }
                 $token = $validated['checkout_token'] ?? null;
                 if ($token && ($replay = UserSubscription::withTrashed()->where('checkout_token', $token)->first())) {
                     if ((int) $replay->user_id !== $user->id || $replay->checkout_fingerprint !== $fingerprint || $replay->trashed()) {

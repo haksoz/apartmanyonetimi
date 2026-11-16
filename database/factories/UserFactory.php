@@ -54,6 +54,11 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function withBankTransfer(): static
+    {
+        return $this->state(fn () => ['bank_transfer_allowed' => true]);
+    }
+
     public function withSubscription(?Package $package = null, string $period = 'monthly'): static
     {
         return $this->afterCreating(function (User $user) use ($package, $period) {

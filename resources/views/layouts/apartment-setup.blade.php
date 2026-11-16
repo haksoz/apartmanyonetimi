@@ -9,7 +9,8 @@
     @endif
     <style>
         #apartment-setup-dialog { width: min(@yield('setup_width', '44rem'), calc(100% - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); margin: auto; padding: 0; border: 0; overflow-y: auto; overscroll-behavior: contain; }
-        #apartment-setup-dialog::backdrop { background: rgb(15 23 42 / .55); }
+        #apartment-setup-dialog::backdrop { background: rgb(15 23 42 / .18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+        #apartment-setup-title:focus { outline: none; }
         @media (max-width: 640px) {
             #apartment-setup-dialog { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); border-radius: 1rem; }
         }

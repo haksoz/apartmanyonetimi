@@ -119,7 +119,7 @@ class BillingProfileTest extends TestCase
         $frozen = $this->snapshot($first);
         $this->approve($ahmet, $first);
 
-        $mehmet = User::factory()->create(['name' => 'Mehmet']);
+        $mehmet = User::factory()->withBankTransfer()->create(['name' => 'Mehmet']);
         $apartment->members()->updateExistingPivot($ahmet->id, ['role' => 'member', 'is_active' => false]);
         $apartment->members()->attach($mehmet->id, ['role' => 'owner', 'is_active' => true]);
         $profileC = $this->profile($mehmet, 'Mehmet Profil C', 'Mehmet Ltd.');
@@ -278,7 +278,7 @@ class BillingProfileTest extends TestCase
      */
     private function apartmentFor(string $name): array
     {
-        $user = User::factory()->create(['name' => $name]);
+        $user = User::factory()->withBankTransfer()->create(['name' => $name]);
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => 'A Apartmanı',
             'unit_count' => 10,

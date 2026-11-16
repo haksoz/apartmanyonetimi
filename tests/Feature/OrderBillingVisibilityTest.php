@@ -108,7 +108,7 @@ class OrderBillingVisibilityTest extends TestCase
 
     public function test_an_order_without_a_snapshot_does_not_borrow_the_current_profile(): void
     {
-        $ahmet = User::factory()->create(['name' => 'Ahmet']);
+        $ahmet = User::factory()->withBankTransfer()->create(['name' => 'Ahmet']);
         BillingProfile::query()->create([
             'user_id' => $ahmet->id,
             'label' => 'Canli Profil',
@@ -150,12 +150,12 @@ class OrderBillingVisibilityTest extends TestCase
         $order = $this->place($ahmet, $apartment, $profile);
         $frozen = $order->only(['user_id', 'billing_legal_name', 'billing_label', 'billing_address']);
 
-        $stranger = User::factory()->create();
+        $stranger = User::factory()->withBankTransfer()->create();
         $this->actingAs($stranger)
             ->get(route('subscriber.subscriptions.receipt', $order))
             ->assertForbidden();
 
-        $mehmet = User::factory()->create(['name' => 'Mehmet']);
+        $mehmet = User::factory()->withBankTransfer()->create(['name' => 'Mehmet']);
         $apartment->members()->updateExistingPivot($ahmet->id, ['role' => 'member', 'is_active' => false]);
         $apartment->members()->attach($mehmet->id, ['role' => 'owner', 'is_active' => true]);
 
@@ -180,7 +180,7 @@ class OrderBillingVisibilityTest extends TestCase
     public function test_admin_order_list_shows_and_searches_the_billing_recipient_without_marking_an_invoice(): void
     {
         $admin = User::factory()->admin()->create();
-        $payer = User::factory()->create(['name' => 'Liste Odeyen']);
+        $payer = User::factory()->withBankTransfer()->create(['name' => 'Liste Odeyen']);
         $matched = UserSubscription::factory()->create([
             'user_id' => $payer->id,
             'order_number' => 'SIP-LISTE-VAR',
@@ -246,7 +246,7 @@ class OrderBillingVisibilityTest extends TestCase
      */
     private function apartmentFor(string $name): array
     {
-        $user = User::factory()->create(['name' => $name]);
+        $user = User::factory()->withBankTransfer()->create(['name' => $name]);
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => 'A Apartmanı',
             'unit_count' => 10,

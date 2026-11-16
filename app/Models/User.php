@@ -57,6 +57,7 @@ class User extends Authenticatable implements CanResetPasswordContract
             'deactivated_at' => 'datetime',
             'activated_at' => 'datetime',
             'password' => 'hashed',
+            'bank_transfer_allowed' => 'boolean',
         ];
     }
 

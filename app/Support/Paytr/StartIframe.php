@@ -59,11 +59,11 @@ class StartIframe
             $validator = Validator::make($payer ?? [], [
                 'payer_name' => ['required', 'string', 'max:60'],
                 'payer_email' => ['required', 'email', 'max:100', 'regex:/^[\x00-\x7F]+$/'],
-                'payer_phone' => ['required', 'string', 'max:20'],
+                'payer_phone' => ['required', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
                 'payer_address' => ['required', 'string', 'max:400'],
             ]);
             if ($validator->fails()) {
-                $this->reject('Kart ödemesi için ödeyen kişi bilgileri eksik. Lütfen destek alın.');
+                $this->reject('Ödeme iletişim bilgilerini kontrol edin. Telefonu başında 0 olmadan 10 hane, e-postayı geçerli biçimde girin.');
             }
             $items = $order->items()->get();
             if ($items->isEmpty() || $items->contains(fn ($item) => $item->status !== 'pending' || $item->currency !== 'TRY')

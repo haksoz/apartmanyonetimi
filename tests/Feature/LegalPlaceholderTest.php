@@ -272,7 +272,7 @@ class LegalPlaceholderTest extends TestCase
      */
     private function apartmentFor(): array
     {
-        $user = User::factory()->create(['name' => 'Ahmet']);
+        $user = User::factory()->withBankTransfer()->create(['name' => 'Ahmet']);
         $apartment = Apartment::factory()->forUser($user)->create([
             'name' => 'A Apartmanı',
             'unit_count' => 10,

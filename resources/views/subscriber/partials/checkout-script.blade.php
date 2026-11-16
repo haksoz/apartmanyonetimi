@@ -33,7 +33,8 @@
                     return false;
                 }
                 if (action === 'close' || action === 'backdrop') {
-                    if (modal.dataset.billingSaving || modal.querySelector('[data-checkout-submit]')?.disabled) return false;
+                    const submitButton = modal.querySelector('[data-checkout-submit]');
+                    if (modal.dataset.billingSaving || (submitButton?.disabled && !submitButton.hasAttribute('data-payment-unavailable'))) return false;
                     const progressed = modal.dataset.checkoutStarted || modal.dataset.checkoutDirty
                         || modal.querySelector('[data-pay-panel]:not([hidden])')?.getAttribute('data-pay-panel') !== 'plan';
                     if ((progressed || action === 'backdrop') && !window.confirm('İşlemi tamamlamadan çıkmak istiyor musunuz?')) return false;
@@ -83,6 +84,15 @@
                     return false;
                 }
                 if (action === 'submit') {
+                    const payer = modal.querySelector('[data-card-payer]');
+                    if (payer && !payer.disabled) {
+                        const invalid = Array.from(payer.querySelectorAll('input')).find(input => !input.checkValidity());
+                        if (invalid) {
+                            show('payment');
+                            invalid.reportValidity();
+                            return false;
+                        }
+                    }
                     const box = modal.querySelector('input[name="accept_sales"]');
                     if (box && box.checked && payStepReady(modal)) {
                         const button = modal.querySelector('[data-checkout-submit]');
@@ -231,9 +241,20 @@
                     ]),
                 };
             }
+            function paySyncPaymentMethod(modal) {
+                const method = modal.querySelector('input[name="payment_method"]:checked, input[type="hidden"][name="payment_method"]');
+                const payer = modal.querySelector('[data-card-payer]');
+                if (payer) {
+                    const show = method?.value === 'kredi_kartı';
+                    payer.hidden = !show;
+                    payer.disabled = !show;
+                    payer.classList.toggle('hidden', !show);
+                }
+            }
             function payLegalFill(modal) {
+                paySyncPaymentMethod(modal);
                 const periodInput = modal.querySelector('input[name="period"]:checked');
-                const methodInput = modal.querySelector('input[name="payment_method"]:checked');
+                const methodInput = modal.querySelector('input[name="payment_method"]:checked, input[type="hidden"][name="payment_method"]');
                 const period = periodInput ? periodInput.value : 'monthly';
                 const method = methodInput ? methodInput.value : 'havale';
                 const price = period === 'yearly' ? modal.getAttribute('data-price-yearly') : modal.getAttribute('data-price-monthly');
@@ -292,10 +313,11 @@
     ['input', 'change'].forEach(name => document.addEventListener(name, event => {
         const modal = event.target.closest?.('[data-pay-modal]');
         if (modal) modal.dataset.checkoutDirty = '1';
+        if (modal && event.target.name === 'payment_method') paySyncPaymentMethod(modal);
     }));
     window.addEventListener('pageshow', () => {
         document.querySelectorAll('[data-checkout-submit]').forEach(button => {
-            button.disabled = false;
+            button.disabled = button.hasAttribute('data-payment-unavailable');
             button.textContent = 'Ödemeye Geç';
         });
     });
