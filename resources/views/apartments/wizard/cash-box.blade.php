@@ -55,7 +55,7 @@
                 </div>
                 <div>
                     <label for="opening_date" class="text-sm font-medium text-slate-700">Açılış Tarihi</label>
-                    <input id="opening_date" name="opening_date" type="date" value="{{ old('opening_date', now()->toDateString()) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none">
+                    <input id="opening_date" name="opening_date" type="date" value="{{ old('opening_date', ($apartment->account_opening_date ?? $apartment->created_at)->toDateString()) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none">
                     @error('opening_date')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
             </div>
