@@ -312,7 +312,7 @@ class PaytrIframeTest extends TestCase
     {
         $order = $this->order();
         $this->get(route('subscriber.subscriptions.card-result', $order).'?status=success')
-            ->assertOk()->assertSee('Kartla ödeme işleminize')->assertDontSee('Ödemeniz onaylandı.');
+            ->assertOk()->assertSee('Ödeme sonucunuz doğrulanıyor.')->assertDontSee('Ödemeniz onaylandı.');
         $this->get(route('subscriber.subscriptions.card-status', $order))->assertOk()->assertJsonPath('state', 'ready');
         $this->get(route('subscriber.subscriptions.card', $order))->assertRedirect(route('subscriber.subscriptions.card-result', $order));
         $this->assertUnpaid($order);

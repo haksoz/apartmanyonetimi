@@ -236,6 +236,47 @@ class PaytrCallbackTest extends TestCase
         $this->assertSame('succeeded', $attempt->fresh()->status);
     }
 
+    public function test_documented_failure_codes_have_safe_customer_messages_and_matching_actions(): void
+    {
+        config(['payments.card_enabled' => true, 'paytr.test_accounts_only' => false]);
+        $cases = [
+            ['0', 'Ödeme tamamlanamadı', true],
+            ['1', 'Doğrulama tamamlanmadı', true],
+            ['2', 'Doğrulama başarısız', true],
+            ['3', 'Ödeme onaylanmadı', false],
+            ['6', 'Ödeme tamamlanmadı', true],
+            ['8', 'Taksit seçimi uygun değil', true],
+            ['9', 'Kartla ödeme onaylanmadı', true],
+            ['10', '3D Secure doğrulaması gerekli', false],
+            ['11', 'Ödeme onaylanmadı', false],
+            ['99', 'Ödeme tamamlanamadı', false],
+            ['unknown', 'Ödeme tamamlanamadı', true],
+        ];
+        foreach ($cases as [$code, $title, $retry]) {
+            $attempt = $this->attempt();
+            $order = $attempt->subscription;
+            $this->send($this->payload($attempt, ['status' => 'failed', 'total_amount' => '0',
+                'failed_reason_code' => $code, 'failed_reason_msg' => 'Unsafe provider detail']))->assertOk();
+            $this->actingAs($order->user);
+            $this->get(route('subscriber.subscriptions.card-status', $order))->assertOk()
+                ->assertJsonPath('state', 'failed')->assertJsonPath('title', $title)
+                ->assertJsonPath('can_start', $retry && $code !== '6')
+                ->assertJsonPath('can_restart', $code === '6');
+            $this->get(route('subscriber.subscriptions.card-result', $order))->assertOk()
+                ->assertSee($title)->assertDontSee('Unsafe provider detail');
+        }
+    }
+
+    public function test_conflicting_notification_shows_review_instead_of_failure_or_retry(): void
+    {
+        $attempt = $this->attempt();
+        $this->send($this->payload($attempt, ['status' => 'failed', 'total_amount' => '0', 'failed_reason_code' => '6']))->assertOk();
+        $this->send($this->payload($attempt))->assertStatus(409);
+        $this->actingAs($attempt->subscription->user);
+        $this->get(route('subscriber.subscriptions.card-status', $attempt->subscription))->assertOk()
+            ->assertJsonPath('state', 'review')->assertJsonPath('can_start', false)->assertJsonPath('can_restart', false);
+    }
+
     public function test_decline_ends_only_attempt_and_retry_has_a_new_oid(): void
     {
         $attempt = $this->attempt();
