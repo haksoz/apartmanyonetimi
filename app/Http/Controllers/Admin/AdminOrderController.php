@@ -96,20 +96,25 @@ class AdminOrderController extends Controller
         $request->validate([
             'current_password' => ['required', 'current_password'],
             'purge_order_action' => ['nullable', 'string'],
+            'deletion_reason' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $number = $order->order_number ?: 'Sipariş';
-        \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($order, $request) {
             $order = \App\Support\SubscriptionOrderLock::acquire($order);
-            if ($order->payments()->exists() || $order->paymentAttempts()->where(fn ($query) => $query
+            if ($order->payments()->exists() || $order->paymentAttempts()->where('status', 'succeeded')->exists()) {
+                throw ValidationException::withMessages(['order' => 'Tahsilat kaydı olan sipariş silinemez. İade veya düzeltme sürecini kullanın.']);
+            }
+            $unresolved = $order->paymentAttempts()->where(fn ($query) => $query
                 ->whereIn('status', ['unknown', 'succeeded'])
                 ->orWhere('review_required', true)
-                ->orWhere(fn ($query) => $query->where('provider', 'paytr')->where('status', 'pending')))->exists()) {
-                throw ValidationException::withMessages(['order' => 'Ödeme veya sonucu belirsiz işlem kaydı olan sipariş silinemez.']);
+                ->orWhere(fn ($query) => $query->where('provider', 'paytr')->where('status', 'pending')))->exists();
+            $order->update(['notes' => trim(($order->notes ?? '')."\nAdmin pasif silme: ".$request->user()->id.' · '.now()->toIso8601String().' · '.($request->input('deletion_reason') ?: 'Yönetici tarafından listeden kaldırıldı.'))]);
+            if (! $unresolved) {
+                $order->paymentAttempts()->where('status', 'pending')->update(['status' => 'cancelled']);
+                $order->items()->where('status', \App\Models\SubscriptionItem::STATUS_PENDING)
+                    ->update(['status' => \App\Models\SubscriptionItem::STATUS_CANCELLED, 'ended_at' => now()]);
             }
-            $order->paymentAttempts()->where('status', 'pending')->update(['status' => 'cancelled']);
-            $order->items()->where('status', \App\Models\SubscriptionItem::STATUS_PENDING)
-                ->update(['status' => \App\Models\SubscriptionItem::STATUS_CANCELLED, 'ended_at' => now()]);
             $order->delete();
         });
 

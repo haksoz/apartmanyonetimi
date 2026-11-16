@@ -338,7 +338,29 @@ class PaytrCallbackTest extends TestCase
         app(CancelSubscriptionOrder::class)->cancel($attempt->subscription, UserSubscription::CANCELLED_BY_ADMIN);
     }
 
-    public function test_admin_sees_review_reason_and_cannot_delete_a_reviewed_order(): void
+    public function test_soft_deleting_pending_paytr_order_requires_password_and_keeps_duplicate_payment_guard(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin);
+        $this->delete(route('admin.orders.destroy', $order), ['current_password' => 'wrong'])
+            ->assertSessionHasErrors('current_password');
+        $this->assertNotSoftDeleted($order);
+        $this->delete(route('admin.orders.destroy', $order), ['current_password' => 'password'])
+            ->assertRedirect(route('admin.orders.index'));
+        $this->assertSoftDeleted($order);
+        $this->assertSame('pending', $attempt->fresh()->status);
+        $this->assertStringContainsString('Admin pasif silme: '.$admin->id, UserSubscription::withTrashed()->findOrFail($order->id)->notes);
+        $this->get(route('admin.orders.index'))->assertViewHas('orders', fn ($orders) => $orders->total() === 0);
+        $this->get(route('subscriber.subscriptions.receipt', $order))->assertNotFound();
+
+        $this->expectException(ValidationException::class);
+        app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
+            'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
+    }
+
+    public function test_admin_can_soft_delete_reviewed_order_without_losing_payment_evidence(): void
     {
         $attempt = $this->attempt();
         $this->send($this->payload($attempt, ['total_amount' => '1']))->assertStatus(409);
@@ -346,8 +368,15 @@ class PaytrCallbackTest extends TestCase
         $this->get(route('admin.orders.show', $attempt->subscription))->assertOk()
             ->assertSee('PayTR ödeme işlemleri')->assertSee('Ödeme incelemesi gerekiyor.')
             ->assertSee('total_amount_mismatch')->assertSee($attempt->merchant_oid);
-        $this->delete(route('admin.orders.destroy', $attempt->subscription), ['current_password' => 'password'])
-            ->assertSessionHasErrors('order');
-        $this->assertNull($attempt->subscription->fresh()->deleted_at);
+        $order = $attempt->subscription;
+        $this->delete(route('admin.orders.destroy', $order), ['current_password' => 'password', 'deletion_reason' => 'Eski test kaydı'])
+            ->assertRedirect(route('admin.orders.index'));
+        $this->assertSoftDeleted($order);
+        $this->assertSame('unknown', $attempt->fresh()->status);
+        $this->assertTrue($attempt->fresh()->review_required);
+        $this->assertStringContainsString('Eski test kaydı', UserSubscription::withTrashed()->findOrFail($order->id)->notes);
+        $this->assertSame('pending', $order->items()->first()->status);
+        $this->send($this->payload($attempt))->assertStatus(409);
+        $this->assertSame(0, $order->payments()->count());
     }
 }

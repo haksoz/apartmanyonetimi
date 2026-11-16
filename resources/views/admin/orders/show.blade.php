@@ -287,7 +287,12 @@
             @csrf
             @method('DELETE')
             <h2 class="text-lg font-bold text-slate-900">Siparişi pasif sil</h2>
-            <p class="mt-2 text-sm text-slate-600">{{ $order->order_number ?: 'Sipariş' }} listeden kalkar. Bağlı ödeme varsa önce ödeme silinir.</p>
+            <p class="mt-2 text-sm text-slate-600">{{ $order->order_number ?: 'Sipariş' }} listeden kalkar. Tahsilat kaydı olan siparişler silinemez.</p>
+            <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Bu işlem PayTR ödemesini iptal etmez; sonradan ödeme bildirimi gelebilir. Sonucu belirsiz girişimler ve tekrar ödeme koruması devam eder. Gelen bildirimler incelemeye alınır.</p>
+            <label class="mt-4 block text-sm font-medium text-slate-700">Silme gerekçesi
+                <textarea name="deletion_reason" maxlength="1000" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">{{ old('deletion_reason') }}</textarea>
+                @error('deletion_reason')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+            </label>
             <label class="mt-4 block text-sm font-medium text-slate-700">
                 Kendi parolanız
                 <input type="password" name="current_password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
