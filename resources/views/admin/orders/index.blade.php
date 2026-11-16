@@ -25,6 +25,7 @@
                 <option value="active" @selected($status === 'active')>Onaylandı</option>
                 <option value="cancelled" @selected($status === 'cancelled')>İptal</option>
                 <option value="abandoned" @selected($status === 'abandoned')>Yarım bırakıldı</option>
+                <option value="deleted" @selected($status === 'deleted')>Pasif silinenler</option>
             </select>
             <select name="payment" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">
                 <option value="">Ödeme: Tümü</option>
@@ -65,7 +66,9 @@
                     <span class="text-slate-300"> · </span>
                     <a href="{{ route('admin.orders.show', $order) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">Detay</a>
                     <span class="text-slate-300"> · </span>
+                    @unless ($order->trashed())
                     <button type="button" onclick="openPurgeOrder(@js(route('admin.orders.destroy', $order)), @js($order->order_number ?: 'Sipariş'))" class="font-semibold text-red-700 hover:text-red-800">Pasif sil</button>
+                    @endunless
                 </p>
                 <div class="mt-1 flex flex-wrap gap-2">
                     @include('admin.orders.partials.badges', ['order' => $order])
@@ -130,7 +133,9 @@
                         <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $order->created_at?->format('d.m.Y') ?? '—' }}</td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('admin.orders.show', $order) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
+                    @unless ($order->trashed())
                             <button type="button" onclick="openPurgeOrder(@js(route('admin.orders.destroy', $order)), @js($order->order_number ?: 'Sipariş'))" class="ml-3 text-sm font-semibold text-red-700 hover:text-red-800">Pasif sil</button>
+                    @endunless
                         </td>
                     </tr>
                 @empty
@@ -172,7 +177,7 @@
             const form = modal.querySelector('form');
             form.action = action;
             form.querySelector('input[name="purge_order_action"]').value = action;
-            document.getElementById('purge-order-copy').textContent = number + ' listeden kalkar. Bağlı ödeme varsa önce ödeme silinir. Kayıt veritabanında durur.';
+            document.getElementById('purge-order-copy').textContent = number + ' listeden kalkar. Bu işlem PayTR ödemesini iptal etmez. Belirsiz girişimler ve tekrar ödeme koruması devam eder.';
             modal.classList.remove('hidden');
         }
     </script>

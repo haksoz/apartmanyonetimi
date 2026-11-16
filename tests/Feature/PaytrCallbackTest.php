@@ -360,6 +360,51 @@ class PaytrCallbackTest extends TestCase
             'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
     }
 
+    public function test_admin_closes_deleted_test_order_and_can_start_again_while_late_success_requires_review(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        $order->delete();
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin);
+        $this->get(route('admin.orders.index', ['status' => 'deleted']))
+            ->assertViewHas('orders', fn ($orders) => $orders->total() === 1);
+        $this->get(route('admin.orders.show', $order))->assertOk()->assertSee('Test girişimini kapat');
+        $this->post(route('admin.orders.close-test', $order), ['current_password' => 'password', 'test_close_reason' => 'Eski test'])
+            ->assertRedirect(route('admin.orders.show', $order));
+        $closed = UserSubscription::withTrashed()->findOrFail($order->id);
+        $this->assertTrue($closed->trashed());
+        $this->assertSame('cancelled', $closed->status);
+        $this->assertSame('cancelled', $attempt->fresh()->status);
+        $this->assertSame('cancelled', $closed->items()->first()->status);
+        $this->assertStringContainsString('Eski test', $closed->notes);
+        $new = app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
+            'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
+        $this->assertNotSame($order->id, $new->id);
+        $this->send($this->payload($attempt))->assertStatus(409);
+        $this->assertTrue($attempt->fresh()->review_required);
+        $this->assertSame(0, $closed->payments()->count());
+        $this->assertSame('pending', $new->fresh()->status);
+    }
+
+    public function test_test_close_requires_admin_password_reason_and_rejects_live_or_paid_attempts(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        $url = route('admin.orders.close-test', $order);
+        $this->actingAs($order->user)->post($url, ['current_password' => 'password', 'test_close_reason' => 'Test'])->assertForbidden();
+        $this->actingAs(User::factory()->admin()->create());
+        $this->post($url, ['current_password' => 'wrong', 'test_close_reason' => 'Test'])->assertSessionHasErrors('current_password');
+        $this->post($url, ['current_password' => 'password'])->assertSessionHasErrors('test_close_reason');
+        $attempt->update(['is_test' => false]);
+        $this->post($url, ['current_password' => 'password', 'test_close_reason' => 'Test'])->assertSessionHasErrors('test_checkout');
+        $this->assertSame('pending', $attempt->fresh()->status);
+        $attempt->update(['is_test' => true]);
+        $this->send($this->payload($attempt))->assertOk();
+        $this->post($url, ['current_password' => 'password', 'test_close_reason' => 'Test'])->assertSessionHasErrors('test_checkout');
+        $this->assertSame('succeeded', $attempt->fresh()->status);
+    }
+
     public function test_admin_can_soft_delete_reviewed_order_without_losing_payment_evidence(): void
     {
         $attempt = $this->attempt();

@@ -8,10 +8,6 @@
         <p class="mt-1 text-sm text-slate-500">Ad ve telefon size aittir. E-posta giriş adresinizdir.</p>
     </div>
 
-    @if (session('status'))
-        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('status') }}</div>
-    @endif
-
     <div class="max-w-xl rounded-2xl bg-white p-6 shadow-sm">
         <form method="POST" action="{{ route('profile.update') }}" class="space-y-5">
             @csrf

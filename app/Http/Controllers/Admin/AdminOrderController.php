@@ -23,6 +23,7 @@ class AdminOrderController extends Controller
         ];
 
         $orders = UserSubscription::query()
+            ->when($status === 'deleted', fn ($query) => $query->onlyTrashed())
             ->commercial()
             ->with([
                 'user',
@@ -88,7 +89,20 @@ class AdminOrderController extends Controller
             'paymentAttempts.notifications' => fn ($query) => $query->latest('updated_at')->latest('id')->limit(1),
         ]);
 
-        return view('admin.orders.show', compact('order'));
+        $canCloseTest = app(\App\Support\Paytr\CloseTestCheckout::class)->eligible($order);
+
+        return view('admin.orders.show', compact('order', 'canCloseTest'));
+    }
+
+    public function closeTest(Request $request, UserSubscription $order)
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'test_close_reason' => ['required', 'string', 'max:1000'],
+        ]);
+        app(\App\Support\Paytr\CloseTestCheckout::class)->close($order, $request->user()->id, $data['test_close_reason']);
+
+        return redirect()->route('admin.orders.show', $order)->with('status', 'Test girişimi kapatıldı. Yeni ödeme denemesi başlatılabilir.');
     }
 
     public function destroy(Request $request, UserSubscription $order)

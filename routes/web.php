@@ -325,7 +325,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('customers/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
     Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
-    Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::get('orders/{order}', [AdminOrderController::class, 'show'])->withTrashed()->name('orders.show');
+    Route::post('orders/{order}/close-test', [AdminOrderController::class, 'closeTest'])->withTrashed()->name('orders.close-test');
     Route::delete('orders/{order}/payments/{payment}', [AdminOrderController::class, 'destroyPayment'])->name('orders.payments.destroy');
     Route::delete('orders/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
     Route::get('subscriptions/{subscription}', [AdminSubscriptionItemController::class, 'subscription'])->name('subscriptions.show');
