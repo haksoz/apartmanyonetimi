@@ -6,7 +6,10 @@
             <h1 class="text-2xl font-bold text-slate-950">{{ $user->name }}</h1>
             <p class="mt-1 text-sm text-slate-500">AidatCep kimliği, rol ve bağlı hesaplar.</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
+            @if ($user->id !== auth()->id() && $apartment->members()->whereKey($user->id)->wherePivot('role', 'member')->wherePivot('is_active', true)->exists())
+                <button type="button" onclick="openManagementTransfer(@js(route('users.role', $user)), {{ $user->id }}, @js($user->name))" class="rounded-xl border border-emerald-200 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">Yöneticiliği devret</button>
+            @endif
             <a href="{{ route('users.index') }}" class="flex-1 md:flex-none rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 text-center hover:bg-slate-50">Kullanıcılara Dön</a>
         </div>
     </div>
@@ -125,4 +128,5 @@
             </div>
         @endif
     </div>
+    @include('users._management-transfer')
 @endsection

@@ -23,9 +23,10 @@ class ManagementOfferTest extends TestCase
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->patch(route('users.role', $member), ['role' => 'owner'])
+            ->patch(route('users.role', $member), ['role' => 'owner', 'current_password' => 'password', 'confirm_transfer' => 1])
             ->assertRedirect()
-            ->assertSessionHas('management_offer_url');
+            ->assertSessionMissing('management_offer_url')
+            ->assertSessionHas('status', 'Yöneticilik daveti kullanıcının panelinde gösteriliyor. Kabulü bekleniyor.');
 
         $this->assertSame('member', $apartment->members()->whereKey($member->id)->first()->pivot->role);
         $this->assertSame(0, app(UserApartmentQuota::class)->currentCount($member));
@@ -36,16 +37,23 @@ class ManagementOfferTest extends TestCase
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->get(route('users.index'))
             ->assertOk()
-            ->assertSee('Kabul bekliyor');
+            ->assertSee('Kabul bekliyor')
+            ->assertDontSee('Yöneticilik kabul bağlantısı')
+            ->assertDontSee('Bağlantıyı kişiye iletin');
 
         $this->actingAs($member)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->get(route('residence.home'))
             ->assertOk()
-            ->assertSee('Kabul penceresini aç')
+            ->assertSee('Daveti incele')
             ->assertDontSee('Apartmanımı AidatCep')
             ->assertSee('sidebar-text">Abone Paneli', false)
             ->assertDontSee('sidebar-text">Özet', false);
+
+        $this->actingAs($member)->get(route('subscriber.dashboard'))->assertOk()
+            ->assertSee('Yöneticilik daveti')->assertSee('B Apartmani için yönetici olarak davet edildiniz.')
+            ->assertSee('border-red-300 bg-red-50', false)->assertSee('Daveti incele')
+            ->assertSee(route('management-offers.show', $offer), false);
 
         $this->actingAs($member)
             ->get(route('management-offers.show', $offer))
@@ -61,7 +69,7 @@ class ManagementOfferTest extends TestCase
 
         $this->assertSame('owner', $apartment->members()->whereKey($member->id)->first()->pivot->role);
         $this->assertSame(1, app(UserApartmentQuota::class)->currentCount($member));
-        $this->assertSame(1, app(UserApartmentQuota::class)->currentCount($manager));
+        $this->assertSame(0, app(UserApartmentQuota::class)->currentCount($manager));
         $this->assertDatabaseHas('legal_acceptances', [
             'user_id' => $member->id,
             'apartment_id' => $apartment->id,
@@ -76,11 +84,11 @@ class ManagementOfferTest extends TestCase
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->patch(route('users.role', $member), ['role' => 'owner']);
+            ->patch(route('users.role', $member), ['role' => 'owner', 'current_password' => 'password', 'confirm_transfer' => 1]);
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->patch(route('users.role', $member), ['role' => 'owner'])
+            ->patch(route('users.role', $member), ['role' => 'owner', 'current_password' => 'password', 'confirm_transfer' => 1])
             ->assertSessionHas('status');
 
         $this->assertSame(1, ManagementOffer::query()->where('user_id', $member->id)->where('status', ManagementOffer::STATUS_PENDING)->count());
@@ -108,7 +116,7 @@ class ManagementOfferTest extends TestCase
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->patch(route('users.role', $member), ['role' => 'owner'])
+            ->patch(route('users.role', $member), ['role' => 'owner', 'current_password' => 'password', 'confirm_transfer' => 1])
             ->assertSessionHasErrors('role');
 
         $this->assertSame('member', $apartment->members()->whereKey($member->id)->first()->pivot->role);
@@ -126,7 +134,7 @@ class ManagementOfferTest extends TestCase
             ->get(route('residence.home'))
             ->assertOk()
             ->assertSee(UserApartmentQuota::CONTACT_MESSAGE)
-            ->assertDontSee('Kabul penceresini aç');
+            ->assertDontSee('Daveti incele');
     }
 
     public function test_a_raised_limit_allows_another_offer_and_an_unlimited_subscriber_can_take_more(): void
@@ -142,8 +150,9 @@ class ManagementOfferTest extends TestCase
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->patch(route('users.role', $member), ['role' => 'owner'])
-            ->assertSessionHas('management_offer_url');
+            ->patch(route('users.role', $member), ['role' => 'owner', 'current_password' => 'password', 'confirm_transfer' => 1])
+            ->assertSessionMissing('management_offer_url')
+            ->assertSessionHas('status', 'Yöneticilik daveti kullanıcının panelinde gösteriliyor. Kabulü bekleniyor.');
 
         $subscriber = User::factory()->create(['role' => 'manager']);
         $subscriberBuilding = Apartment::factory()->forUser($subscriber)->create(['is_active' => true]);
@@ -154,8 +163,9 @@ class ManagementOfferTest extends TestCase
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->patch(route('users.role', $subscriber), ['role' => 'owner'])
-            ->assertSessionHas('management_offer_url');
+            ->patch(route('users.role', $subscriber), ['role' => 'owner', 'current_password' => 'password', 'confirm_transfer' => 1])
+            ->assertSessionMissing('management_offer_url')
+            ->assertSessionHas('status', 'Yöneticilik daveti kullanıcının panelinde gösteriliyor. Kabulü bekleniyor.');
     }
 
     public function test_existing_owner_membership_counts_and_demotion_releases_it(): void

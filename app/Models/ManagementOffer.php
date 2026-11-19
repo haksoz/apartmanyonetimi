@@ -24,6 +24,8 @@ class ManagementOffer extends Model
         'expires_at',
         'accepted_at',
         'rejected_at',
+        'transfer_confirmed_at',
+        'previous_manager_ids',
     ];
 
     protected function casts(): array
@@ -32,6 +34,8 @@ class ManagementOffer extends Model
             'expires_at' => 'datetime',
             'accepted_at' => 'datetime',
             'rejected_at' => 'datetime',
+            'transfer_confirmed_at' => 'datetime',
+            'previous_manager_ids' => 'array',
         ];
     }
 

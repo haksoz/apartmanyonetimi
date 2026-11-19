@@ -68,7 +68,11 @@ class CustomerManagementTest extends TestCase
             ->assertSee('Detay Musteri')
             ->assertSee('detay@example.com')
             ->assertSee('02.10.2026')
-            ->assertSee('Yönetici');
+            ->assertSee('id="customer-info-form-fields" data-edit-fields disabled', false)
+            ->assertSee('id="customer-quota-form-fields" data-edit-fields disabled', false)
+            ->assertSee('id="customer-payment-form-fields" data-edit-fields disabled', false)
+            ->assertSee('>Düzelt</button>', false)
+            ->assertDontSee('<div class="text-slate-500">Durum</div>', false);
     }
 
     public function test_customer_without_an_apartment_does_not_error(): void
@@ -126,7 +130,7 @@ class CustomerManagementTest extends TestCase
             ->assertSee('Ücretli')
             ->assertSee('Yönetici')
             ->assertSee('01.01.2020 - 01.01.2030')
-            ->assertSee(route('apartments.show', $apartment), false)
+            ->assertSee(route('admin.apartments.show', $apartment), false)
             ->assertSee(route('admin.subscriptions.show', $record), false);
     }
 
@@ -487,6 +491,11 @@ class CustomerManagementTest extends TestCase
             ->assertSessionHasErrors('email');
 
         $this->assertSame('musteri@example.com', $customer->fresh()->email);
+        $this->get(route('admin.customers.show', $customer))->assertOk()
+            ->assertDontSee('id="customer-info-form-fields" data-edit-fields disabled', false)
+            ->assertSee('id="customer-quota-form-fields" data-edit-fields disabled', false)
+            ->assertSee('id="customer-payment-form-fields" data-edit-fields disabled', false)
+            ->assertSee('value="dolu@example.com"', false);
     }
 
     public function test_admin_can_update_customer_password(): void

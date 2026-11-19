@@ -92,10 +92,10 @@
                                 <form method="POST" action="{{ route('users.role', $user) }}">
                                     @csrf
                                     @method('PATCH')
-                                    <select name="role" onchange="this.form.submit()"
+                                    <select name="role" onchange="changeManagementRole(this, @js(route('users.role', $user)), {{ $user->id }}, @js($user->name))"
                                         class="text-xs rounded-lg border px-2 py-1.5 focus:outline-none cursor-pointer {{ $role === 'owner' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200' }}">
                                         <option value="member" {{ $role === 'member' ? 'selected' : '' }}>Üye</option>
-                                        <option value="owner"    {{ $role === 'owner'    ? 'selected' : '' }}>Yönetici</option>
+                                        <option value="owner"    {{ $role === 'owner'    ? 'selected' : '' }}>Yönetici (devir)</option>
                                     </select>
                                 </form>
                                 </div>
@@ -212,6 +212,9 @@
                     </div>
                 </div>
 
+                @if ($isActive && ! $isCurrentUser && $role !== 'owner')
+                    <button type="button" onclick="openManagementTransfer(@js(route('users.role', $user)), {{ $user->id }}, @js($user->name))" class="mb-3 w-full rounded-xl border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">Yöneticiliği devret</button>
+                @endif
                 <div class="flex gap-2">
                     @if (! $user->isActivated())
                         <form method="POST" action="{{ route('users.invite', $user) }}" class="flex-1" onsubmit="return confirm('Yeni davet bağlantısı üretilir. Daha önce verilen bağlantı geçersiz olur.')">
@@ -242,4 +245,5 @@
         @endforelse
     </div>
 
+    @include('users._management-transfer')
 @endsection

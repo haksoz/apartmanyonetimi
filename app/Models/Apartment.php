@@ -146,6 +146,16 @@ class Apartment extends Model
             ->withTimestamps();
     }
 
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function managers(): BelongsToMany
+    {
+        return $this->members()->wherePivot('role', 'owner')->wherePivot('is_active', true);
+    }
+
     public function subscriptionItems(): HasMany
     {
         return $this->hasMany(SubscriptionItem::class);

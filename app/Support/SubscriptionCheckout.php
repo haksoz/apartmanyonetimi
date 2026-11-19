@@ -30,6 +30,12 @@ class SubscriptionCheckout
                 throw ValidationException::withMessages(['apartment_ids' => 'Apartman listesi değişti. Tekrar deneyin.']);
             }
 
+            $managed = Apartment::whereIn('id', $lockedApartments->modelKeys())->where('is_active', true)
+                ->whereHas('members', fn ($query) => $query->where('users.id', $user->id)
+                    ->where('apartment_user.role', 'owner')->where('apartment_user.is_active', true))->count();
+            if ($managed !== $lockedApartments->count()) {
+                throw ValidationException::withMessages(['apartment_ids' => 'Apartman yönetim yetkiniz değişti.']);
+            }
             return $this->createPending($user, $lockedApartments, $period, $paymentMethod, $billingProfile, $receiptPath, $reference);
         });
     }

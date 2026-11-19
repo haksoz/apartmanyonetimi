@@ -97,7 +97,7 @@
 
         <div class="mt-6 flex flex-wrap items-center gap-2">
             @if ($item->apartment)
-                <a href="{{ route('apartments.show', $item->apartment) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Apartman detayına git</a>
+                <a href="{{ route('admin.apartments.show', $item->apartment) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Apartman detayına git</a>
             @endif
             @if ($subscription)
                 <a href="{{ route('admin.orders.show', $subscription) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sipariş detayına git</a>

@@ -59,9 +59,16 @@
             <a href="{{ route('admin.orders.index') }}" class="text-sm font-semibold text-amber-700 hover:text-amber-800">← Siparişlere dön</a>
             <h1 class="mt-2 text-2xl font-bold text-slate-900">Sipariş Detayı</h1>
         </div>
+        <div class="flex flex-wrap items-center gap-2">
+            @if ($order->invoice)
+                <a href="{{ route('admin.order-invoices.show', $order->invoice) }}" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Fatura takibi · {{ $order->invoice->trackingNumber() }}</a>
+            @elseif ($canInvoice)
+                <button type="button" onclick="document.getElementById('invoice-order-modal').showModal()" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Faturala</button>
+            @endif
         @unless ($order->trashed())
             <button type="button" onclick="document.getElementById('purge-order-modal').classList.remove('hidden')" class="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Siparişi pasif sil</button>
         @endunless
+        </div>
     </div>
 
     @if (session('status'))<p class="mb-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('status') }}</p>@endif
@@ -87,13 +94,12 @@
         </details>
     @endif
 
-    <section class="rounded-xl border border-slate-200 bg-white p-6">
+    <section class="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sipariş no</p>
-                <p class="mt-1 font-mono text-2xl font-bold text-slate-900">{{ $order->order_number ?: '—' }}</p>
-                <p class="mt-2 text-sm text-slate-500">{{ $order->created_at?->format('d.m.Y') ?? '—' }} · Toplam {{ number_format((float) $order->price, 2, ',', '.') }} ₺</p>
-                <p class="mt-1 text-xs text-slate-500">Net {{ number_format((float) ($order->net_amount ?? $order->price), 2, ',', '.') }} ₺ + KDV (%{{ number_format((float) $order->tax_rate, 2, ',', '.') }}) {{ number_format((float) $order->tax_amount, 2, ',', '.') }} ₺</p>
+                <p class="mt-1 font-mono text-lg font-bold text-slate-900">{{ $order->order_number ?: '—' }}</p>
+                <p class="mt-1 text-xs text-slate-500">Sipariş tarihi: {{ $order->created_at?->format('d.m.Y') ?? '—' }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 @include('admin.orders.partials.badges', ['order' => $order])
@@ -104,7 +110,7 @@
                 @endif
             </div>
         </div>
-        <dl class="mt-6 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
                 <dt class="text-slate-500">Apartman</dt>
                 <dd class="font-medium text-slate-900">
@@ -112,7 +118,7 @@
                         $cardApartment = $linkedSubscription?->apartment ?? ($order->items->count() === 1 ? $order->items->first()?->apartment : null);
                     @endphp
                     @if ($cardApartment)
-                        <a href="{{ route('apartments.show', $cardApartment) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">{{ $cardApartment->name }}</a>
+                        <a href="{{ route('admin.apartments.show', $cardApartment) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">{{ $cardApartment->name }}</a>
                     @else
                         {{ $summaryApartment }}
                     @endif
@@ -132,13 +138,13 @@
                 <dt class="text-slate-500">Dönem</dt>
                 <dd class="font-medium text-slate-900">{{ $summaryPeriod }}</dd>
             </div>
-            <div>
+            <div class="order-last sm:col-span-2 lg:col-span-4 border-t border-slate-100 pt-3">
                 <dt class="text-slate-500">Plan</dt>
                 <dd class="font-medium text-slate-900">
                     @if ($order->items->isEmpty())
                         Bu kayıtta sipariş kalemi yok.
                     @else
-                        <div class="space-y-3">
+                        <div class="mt-2 space-y-2">
                             @foreach ($order->items as $item)
                                 @php
                                     $band = $item->band_label
@@ -146,11 +152,12 @@
                                             ? trim(($item->band_min_units ?: '1').'–'.($item->band_max_units ?: '∞')).' daire'
                                             : null);
                                 @endphp
-                                <div>
+                                <div class="grid gap-2 rounded-lg bg-slate-50 p-3 lg:grid-cols-2 lg:items-center">
+                                    <div>
                                     @if ($order->items->count() > 1)
                                         <div>
                                             @if ($item->apartment)
-                                                <a href="{{ route('apartments.show', $item->apartment) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">{{ $item->apartment->name }}</a>
+                                                <a href="{{ route('admin.apartments.show', $item->apartment) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">{{ $item->apartment->name }}</a>
                                             @else
                                                 {{ $item->apartment_name ?: '—' }}
                                             @endif
@@ -171,21 +178,41 @@
                                     @if ($band)
                                         <div class="font-normal text-slate-500">{{ $band }}</div>
                                     @endif
-                                    <div class="font-normal text-slate-600">
-                                        Net {{ number_format((float) ($item->net_amount ?? $item->amount), 2, ',', '.') }} ₺ + KDV {{ number_format((float) $item->tax_amount, 2, ',', '.') }} ₺ = {{ number_format((float) $item->amount, 2, ',', '.') }} ₺
-                                        · {{ $itemStatusLabel($item->status) }}
-                                        · {{ $periodText($item) }}
+                                    <div class="text-xs font-normal text-slate-500">
+                                        {{ $itemStatusLabel($item->status) }} · {{ $periodText($item) }}
                                     </div>
+                                    </div>
+                                    <dl class="grid grid-cols-3 gap-3 text-xs font-normal">
+                                        <div>
+                                            <dt class="text-slate-500">KDV hariç</dt>
+                                            <dd class="mt-1 whitespace-nowrap font-medium tabular-nums text-slate-700">{{ number_format((float) ($item->net_amount ?? $item->amount), 2, ',', '.') }} ₺</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-slate-500">KDV (%{{ number_format((float) $item->tax_rate, 2, ',', '.') }})</dt>
+                                            <dd class="mt-1 whitespace-nowrap font-medium tabular-nums text-slate-700">{{ number_format((float) $item->tax_amount, 2, ',', '.') }} ₺</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-slate-500">KDV dahil</dt>
+                                            <dd class="mt-1 whitespace-nowrap font-semibold tabular-nums text-slate-900">{{ number_format((float) $item->amount, 2, ',', '.') }} ₺</dd>
+                                        </div>
+                                    </dl>
                                 </div>
                             @endforeach
+                            @if ($order->items->count() > 1)
+                                <p class="text-right text-sm font-semibold text-slate-900">Sipariş toplamı (KDV dahil): {{ number_format((float) $order->price, 2, ',', '.') }} ₺</p>
+                            @endif
                         </div>
                     @endif
                 </dd>
             </div>
             <div>
-                <dt class="text-slate-500">Ödeyen</dt>
+                <dt class="text-slate-500">Müşteri</dt>
                 <dd class="font-medium text-slate-900">
-                    {{ $payer?->name ?: '—' }}
+                    @if ($payer && ! $payer->isAdminPanelUser())
+                        <a href="{{ route('admin.customers.show', $payer) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">{{ $payer->name ?: 'Müşteri detayı' }}</a>
+                    @else
+                        {{ $payer?->name ?: '—' }}
+                    @endif
                     @if ($payer?->email)
                         <div class="font-normal text-slate-500">{{ $payer->email }}</div>
                     @endif
@@ -302,13 +329,21 @@
                             @if ($payment->notes)
                                 <p class="mt-3 text-sm text-slate-600">{{ $payment->notes }}</p>
                             @endif
+                            @unless ($order->invoice)
                             <button type="button" onclick="openPurgePayment(@js(route('admin.orders.payments.destroy', [$order, $payment])))" class="mt-3 text-sm font-semibold text-red-700 hover:text-red-800">Ödemeyi pasif sil</button>
+                            @endunless
                         </article>
                     @endforeach
                 </div>
             @endif
         </div>
     </details>
+
+    @if ($canInvoice)
+        @include('admin.orders.partials.invoice-modal', ['order' => $order, 'modalId' => 'invoice-order-modal'])
+    @else
+        @error('invoicing')<p class="mt-3 text-sm text-red-700">{{ $message }}</p>@enderror
+    @endif
 
     <div id="purge-order-modal" @class([
         'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4',

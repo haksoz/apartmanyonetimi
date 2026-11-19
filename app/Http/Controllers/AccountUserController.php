@@ -283,7 +283,7 @@ class AccountUserController extends Controller
     private function applyRole(Apartment $apartment, User $user, string $role)
     {
         if ($role === 'owner') {
-            return app(ManagementOfferService::class)->offer($apartment, $user, auth()->user());
+            return app(ManagementOfferService::class)->offer($apartment, $user, auth()->user(), request());
         }
 
         if (! $this->hasOtherActiveOwner($apartment, $user->id)) {

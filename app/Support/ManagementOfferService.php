@@ -6,6 +6,8 @@ use App\Models\Apartment;
 use App\Models\ManagementOffer;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ManagementOfferService
 {
@@ -13,56 +15,45 @@ class ManagementOfferService
 
     public function __construct(private UserApartmentQuota $quota) {}
 
-    public function offer(Apartment $apartment, User $user, User $offeredBy): RedirectResponse
+    public function offer(Apartment $apartment, User $user, User $offeredBy, Request $request): RedirectResponse
     {
-        $membership = $apartment->members()->whereKey($user->id)->first();
-
-        if (! $membership || ! $membership->pivot->is_active) {
-            return back()->withErrors(['role' => 'Erişimi kapalı bir kişiye yöneticilik teklif edilemez.']);
-        }
-
-        if ($membership->pivot->role === 'owner') {
-            return back()->with('status', 'Bu kişi zaten yönetici.');
-        }
-
-        $pending = ManagementOffer::query()
-            ->where('apartment_id', $apartment->id)
-            ->where('user_id', $user->id)
-            ->openPending()
-            ->first();
-
-        if ($pending) {
-            return back()
-                ->with('status', 'Yöneticilik kabulü bekleniyor.')
-                ->with('management_offer_url', route('management-offers.show', $pending));
-        }
-
-        if (! $this->quota->hasRoomForManagement($user)) {
-            ManagementOffer::query()->updateOrCreate(
-                [
-                    'apartment_id' => $apartment->id,
-                    'user_id' => $user->id,
-                    'status' => ManagementOffer::STATUS_BLOCKED,
-                ],
-                [
-                    'offered_by' => $offeredBy->id,
-                    'expires_at' => null,
-                ],
-            );
-
-            return back()->withErrors(['role' => self::OFFER_BLOCKED_MESSAGE]);
-        }
-
-        $offer = ManagementOffer::query()->create([
-            'apartment_id' => $apartment->id,
-            'user_id' => $user->id,
-            'offered_by' => $offeredBy->id,
-            'status' => ManagementOffer::STATUS_PENDING,
-            'expires_at' => now()->addDays(14),
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'confirm_transfer' => ['accepted'],
+        ], [
+            'current_password.required' => 'Yöneticilik devri için kendi parolanızı girin.',
+            'confirm_transfer.accepted' => 'Kabul sonrası apartman erişiminizin kapanacağını onaylayın.',
         ]);
 
-        return back()
-            ->with('status', 'Yöneticilik kabulü bekleniyor. Bağlantıyı kişiye iletin.')
-            ->with('management_offer_url', route('management-offers.show', $offer));
+        return DB::transaction(function () use ($apartment, $user, $offeredBy) {
+            $apartment = Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
+            abort_unless($apartment->is_active, 403);
+            abort_unless($offeredBy->isAdmin() || $apartment->managers()->whereKey($offeredBy->id)->exists(), 403);
+            $membership = $apartment->members()->whereKey($user->id)->first();
+            if (! $membership || ! $membership->pivot->is_active) {
+                return back()->withErrors(['role' => 'Erişimi kapalı bir kişiye yöneticilik teklif edilemez.']);
+            }
+            if ($membership->pivot->role === 'owner') {
+                return back()->with('status', 'Bu kişi zaten yönetici.');
+            }
+            $pending = ManagementOffer::where('apartment_id', $apartment->id)->where('user_id', $user->id)->openPending()->first();
+            if ($pending) {
+                return back()->with('status', 'Yöneticilik daveti kullanıcının panelinde gösteriliyor. Kabulü bekleniyor.');
+            }
+            if (! $this->quota->hasRoomForManagement($user)) {
+                ManagementOffer::updateOrCreate([
+                    'apartment_id' => $apartment->id, 'user_id' => $user->id, 'status' => ManagementOffer::STATUS_BLOCKED,
+                ], ['offered_by' => $offeredBy->id, 'expires_at' => null]);
+
+                return back()->withErrors(['role' => self::OFFER_BLOCKED_MESSAGE]);
+            }
+            ManagementOffer::create([
+                'apartment_id' => $apartment->id, 'user_id' => $user->id, 'offered_by' => $offeredBy->id,
+                'status' => ManagementOffer::STATUS_PENDING, 'expires_at' => now()->addDays(14),
+                'transfer_confirmed_at' => now(),
+            ]);
+
+            return back()->with('status', 'Yöneticilik daveti kullanıcının panelinde gösteriliyor. Kabulü bekleniyor.');
+        });
     }
 }

@@ -4,11 +4,9 @@
 
 @section('content')
     @php
-        $roleLabel = match ($customer->role) {
-            \App\Models\User::ROLE_MANAGER => 'Yönetici',
-            \App\Models\User::ROLE_RESIDENT => 'Sakin',
-            default => $customer->role ?: '—',
-        };
+        $profileEditing = $errors->hasAny(['name', 'email', 'phone']) || session()->hasOldInput('email');
+        $quotaEditing = $errors->has('max_apartments') || session()->hasOldInput('max_apartments');
+        $paymentEditing = $errors->has('bank_transfer_allowed') || session()->hasOldInput('bank_transfer_allowed');
         $membershipLabel = function ($role) {
             return match ($role) {
                 'owner' => 'Yönetici',
@@ -75,55 +73,94 @@
     </div>
 
     <section class="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 class="text-lg font-semibold text-slate-900">Müşteri bilgileri</h2>
-        <form method="POST" action="{{ route('admin.customers.update', $customer) }}" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @csrf
-            @method('PATCH')
-            <label class="block text-sm text-slate-700">
-                Ad soyad
-                <input type="text" name="name" value="{{ old('name', $customer->name) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
-                @error('name')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-            </label>
-            <label class="block text-sm text-slate-700">
-                E-posta
-                <input type="email" name="email" value="{{ old('email', $customer->email) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
-                @error('email')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-            </label>
-            <label class="block text-sm text-slate-700">
-                Telefon
-                <input type="text" name="phone" value="{{ old('phone', $customer->phone) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
-                @error('phone')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-            </label>
-            <div class="text-sm">
-                <div class="text-slate-500">Kayıt tarihi</div>
-                <div class="mt-1 font-medium text-slate-900">{{ $customer->created_at?->format('d.m.Y') ?? '—' }}</div>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold text-slate-900">Müşteri bilgileri</h2>
+                <button type="button" data-edit-target="customer-info-form" aria-controls="customer-info-form-fields" aria-expanded="{{ $profileEditing ? 'true' : 'false' }}" onclick="setCustomerEditing('customer-info-form', true)" @class(['rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50', 'hidden' => $profileEditing])>Düzelt</button>
             </div>
-            <div class="text-sm">
-                <div class="text-slate-500">Durum</div>
-                <div class="mt-1 font-medium text-slate-900">{{ $roleLabel }}</div>
-            </div>
-            <div class="flex flex-wrap items-end gap-2">
-                <button type="button" onclick="document.getElementById('customer-password-modal').classList.remove('hidden')" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Parolayı güncelle</button>
-                <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Bilgileri kaydet</button>
-            </div>
+        <form id="customer-info-form" data-customer-editor method="POST" action="{{ route('admin.customers.update', $customer) }}" class="mt-4">
+            <fieldset id="customer-info-form-fields" data-edit-fields @disabled(! $profileEditing) class="min-w-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @csrf
+                @method('PATCH')
+                <label class="block text-sm text-slate-700">
+                    Ad soyad
+                    <input type="text" name="name" data-saved-value="{{ $customer->name }}" value="{{ old('name', $customer->name) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                    @error('name')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+                </label>
+                <label class="block text-sm text-slate-700">
+                    E-posta
+                    <input type="email" name="email" data-saved-value="{{ $customer->email }}" value="{{ old('email', $customer->email) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                    @error('email')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+                </label>
+                <label class="block text-sm text-slate-700">
+                    Telefon
+                    <input type="text" name="phone" data-saved-value="{{ $customer->phone }}" value="{{ old('phone', $customer->phone) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                    @error('phone')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+                </label>
+                <div class="text-sm">
+                    <div class="text-slate-500">Kayıt tarihi</div>
+                    <div class="mt-1 font-medium text-slate-900">{{ $customer->created_at?->format('d.m.Y') ?? '—' }}</div>
+                </div>
+                <div data-edit-actions @class(['flex flex-wrap items-end gap-2', 'hidden' => ! $profileEditing])>
+                    <button type="button" onclick="document.getElementById('customer-password-modal').classList.remove('hidden')" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Parolayı güncelle</button>
+                    <button type="button" onclick="setCustomerEditing('customer-info-form', false, true)" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Vazgeç</button>
+                    <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Bilgileri kaydet</button>
+                </div>
+            </fieldset>
         </form>
     </section>
 
-    <section class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 class="text-lg font-semibold text-slate-900">Ödeme yöntemleri</h2>
-        <p class="mt-2 text-sm text-slate-500">Müşteriler varsayılan olarak kredi kartıyla ödeme yapar. Gerektiğinde bu müşteriye Havale / EFT seçeneğini ayrıca açabilirsiniz.</p>
-        <form method="POST" action="{{ route('admin.customers.payment-settings.update', $customer) }}" class="mt-4 space-y-3">
-            @csrf
-            @method('PATCH')
-            <input type="hidden" name="bank_transfer_allowed" value="0">
-            <label class="flex items-start gap-2 text-sm text-slate-700">
-                <input type="checkbox" name="bank_transfer_allowed" value="1" class="mt-1" @checked(old('bank_transfer_allowed', $customer->bank_transfer_allowed))>
-                <span>Havale / EFT ile ödeme izni</span>
-            </label>
-            @error('bank_transfer_allowed')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
-            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Kaydet</button>
-        </form>
-    </section>
+    <div class="mt-6 grid gap-6 lg:grid-cols-2">
+        <section class="min-w-0 rounded-xl border border-slate-200 bg-white p-6">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-lg font-semibold text-slate-900">Aktif apartman limiti</h2>
+                <button type="button" data-edit-target="customer-quota-form" aria-controls="customer-quota-form-fields" aria-expanded="{{ $quotaEditing ? 'true' : 'false' }}" onclick="setCustomerEditing('customer-quota-form', true)" @class(['rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50', 'hidden' => $quotaEditing])>Düzelt</button>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">Yalnızca kabul edilmiş yönetici üyelikleri sayılır. Daire üyeliği ve pasif apartmanlar bu sayıya girmez. Boş bırakılırsa sınır yoktur.</p>
+            <form id="customer-quota-form" data-customer-editor method="POST" action="{{ route('admin.customers.quota.update', $customer) }}" class="mt-4">
+                <fieldset id="customer-quota-form-fields" data-edit-fields @disabled(! $quotaEditing) class="min-w-0 flex flex-wrap items-end gap-3">
+                    @csrf
+                    @method('PATCH')
+                    <div class="text-sm">
+                        <div class="text-slate-500">Aktif apartman</div>
+                        <div class="mt-1 text-2xl font-bold text-slate-900">{{ $activeApartmentCount }}</div>
+                    </div>
+                    <label class="block text-sm text-slate-700">
+                        Limit
+                        <input type="number" name="max_apartments" data-saved-value="{{ $apartmentLimit ?? '' }}" min="1" max="1000" value="{{ old('max_apartments', $apartmentLimit) }}" class="mt-1 w-32 rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                        @error('max_apartments')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+                    </label>
+                    <div data-edit-actions @class(['flex flex-wrap gap-2', 'hidden' => ! $quotaEditing])>
+                        <button type="button" onclick="setCustomerEditing('customer-quota-form', false, true)" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Vazgeç</button>
+                        <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Limiti kaydet</button>
+                    </div>
+                </fieldset>
+            </form>
+        </section>
+
+        <section class="min-w-0 rounded-xl border border-slate-200 bg-white p-6">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-lg font-semibold text-slate-900">Ödeme yöntemleri</h2>
+                <button type="button" data-edit-target="customer-payment-form" aria-controls="customer-payment-form-fields" aria-expanded="{{ $paymentEditing ? 'true' : 'false' }}" onclick="setCustomerEditing('customer-payment-form', true)" @class(['rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50', 'hidden' => $paymentEditing])>Düzelt</button>
+            </div>
+            <p class="mt-2 text-sm text-slate-500">Müşteriler varsayılan olarak kredi kartıyla ödeme yapar. Gerektiğinde bu müşteriye Havale / EFT seçeneğini ayrıca açabilirsiniz.</p>
+            <form id="customer-payment-form" data-customer-editor method="POST" action="{{ route('admin.customers.payment-settings.update', $customer) }}" class="mt-4">
+                <fieldset id="customer-payment-form-fields" data-edit-fields @disabled(! $paymentEditing) class="min-w-0 space-y-3">
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="bank_transfer_allowed" value="0">
+                    <label class="flex items-start gap-2 text-sm text-slate-700">
+                        <input type="checkbox" name="bank_transfer_allowed" data-saved-checked="{{ $customer->bank_transfer_allowed ? '1' : '0' }}" value="1" class="mt-1" @checked(old('bank_transfer_allowed', $customer->bank_transfer_allowed))>
+                        <span>Havale / EFT ile ödeme izni</span>
+                    </label>
+                    @error('bank_transfer_allowed')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                    <div data-edit-actions @class(['flex flex-wrap gap-2', 'hidden' => ! $paymentEditing])>
+                        <button type="button" onclick="setCustomerEditing('customer-payment-form', false, true)" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Vazgeç</button>
+                        <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Kaydet</button>
+                    </div>
+                </fieldset>
+            </form>
+        </section>
+    </div>
 
     <section class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-xl border border-slate-200 bg-white p-5">
@@ -145,27 +182,6 @@
         </div>
     </section>
 
-    </section>
-
-    <section class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 class="text-lg font-semibold text-slate-900">Aktif apartman limiti</h2>
-        <p class="mt-1 text-sm text-slate-500">Yalnızca kabul edilmiş yönetici üyelikleri sayılır. Daire üyeliği ve pasif apartmanlar bu sayıya girmez. Boş bırakılırsa sınır yoktur.</p>
-        <form method="POST" action="{{ route('admin.customers.quota.update', $customer) }}" class="mt-4 flex flex-wrap items-end gap-3">
-            @csrf
-            @method('PATCH')
-            <div class="text-sm">
-                <div class="text-slate-500">Aktif apartman</div>
-                <div class="mt-1 text-2xl font-bold text-slate-900">{{ $activeApartmentCount }}</div>
-            </div>
-            <label class="block text-sm text-slate-700">
-                Limit
-                <input type="number" name="max_apartments" min="1" max="1000" value="{{ old('max_apartments', $apartmentLimit) }}" class="mt-1 w-32 rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
-                @error('max_apartments')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-            </label>
-            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Limiti kaydet</button>
-        </form>
-    </section>
-
     <section id="customer-apartments" class="mt-6">
         <h2 class="text-lg font-semibold text-slate-900">Apartmanlar</h2>
         <div class="mt-3 space-y-2 md:hidden">
@@ -183,7 +199,7 @@
                     <p class="mt-1 text-sm text-slate-600">
                         {{ $periodText($period) }}
                         <span class="text-slate-300"> · </span>
-                        <a href="{{ route('apartments.show', $apartment) }}" class="font-semibold text-slate-700 hover:text-slate-900">Apartman</a>
+                        <a href="{{ route('admin.apartments.show', $apartment) }}" class="font-semibold text-slate-700 hover:text-slate-900">Apartman</a>
                         @unless ($apartment->is_active)
                             <span class="text-slate-300"> · </span>
                             <button type="button" onclick="openPurgeApartment(@js(route('admin.customers.apartments.destroy', [$customer, $apartment])), @js($apartment->name))" class="font-semibold text-red-700 hover:text-red-800">Kalıcı sil</button>
@@ -241,7 +257,7 @@
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap justify-end gap-3">
-                                    <a href="{{ route('apartments.show', $apartment) }}" class="text-sm font-semibold text-slate-600 hover:text-slate-800">Apartman</a>
+                                    <a href="{{ route('admin.apartments.show', $apartment) }}" class="text-sm font-semibold text-slate-600 hover:text-slate-800">Apartman</a>
                                     @unless ($apartment->is_active)
                                         <button type="button" onclick="openPurgeApartment(@js(route('admin.customers.apartments.destroy', [$customer, $apartment])), @js($apartment->name))" class="text-sm font-semibold text-red-700 hover:text-red-800">Kalıcı sil</button>
                                     @endunless
@@ -582,6 +598,32 @@
             </div>
         </form>
     </div>
+    <script>
+        function setCustomerEditing(formId, editing, discard = false) {
+            const form = document.getElementById(formId);
+            const fields = form.querySelector('[data-edit-fields]');
+            if (discard) {
+                fields.querySelectorAll('[data-saved-value]').forEach(input => {
+                    input.value = input.dataset.savedValue;
+                });
+                fields.querySelectorAll('[data-saved-checked]').forEach(input => {
+                    input.checked = input.dataset.savedChecked === '1';
+                });
+            }
+            fields.disabled = !editing;
+            form.querySelector('[data-edit-actions]').classList.toggle('hidden', !editing);
+            const editButton = document.querySelector('[data-edit-target="' + formId + '"]');
+            editButton.classList.toggle('hidden', editing);
+            editButton.setAttribute('aria-expanded', String(editing));
+            if (editing) fields.querySelector('input:not([type="hidden"])')?.focus();
+            else editButton.focus();
+        }
+        document.querySelectorAll('[data-customer-editor]').forEach(form => {
+            form.addEventListener('submit', event => {
+                if (form.querySelector('[data-edit-fields]').disabled) event.preventDefault();
+            });
+        });
+    </script>
     <script>
         function openPurgeApartment(action, name) {
             const modal = document.getElementById('purge-apartment-modal');

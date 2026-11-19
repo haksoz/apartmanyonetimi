@@ -269,7 +269,7 @@ class UnifiedCheckoutTest extends TestCase
         $this->assertFalse($order->fresh()->is_active);
     }
 
-    public function test_unknown_attempt_is_reused_and_blocks_cancellation_and_deletion(): void
+    public function test_unknown_attempt_blocks_customer_cancellation_and_survives_admin_soft_deletion(): void
     {
         [, , $payload] = $this->customer();
         $this->post(route('subscriber.subscriptions.store'), $payload)->assertRedirect();
@@ -280,8 +280,10 @@ class UnifiedCheckoutTest extends TestCase
         $this->post(route('subscriber.subscriptions.cancel', $order))->assertSessionHasErrors('subscription');
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin)->delete(route('admin.orders.destroy', $order), ['current_password' => 'password'])
-            ->assertSessionHasErrors('order');
-        $this->assertNull($order->fresh()->deleted_at);
+            ->assertRedirect(route('admin.orders.index'));
+        $this->assertSoftDeleted($order);
+        $this->assertSame('unknown', $attempt->fresh()->status);
+        $this->assertSame('pending', $order->items()->first()->status);
         $this->assertDatabaseCount('subscription_payment_attempts', 1);
     }
 }

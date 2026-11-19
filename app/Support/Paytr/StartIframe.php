@@ -78,6 +78,12 @@ class StartIframe
                 || \App\Models\Subscription::whereIn('id', $subscriptionIds)->where('status', 'active')->count() !== $subscriptionIds->count()) {
                 $this->reject('Apartmanın aboneliği ödeme için uygun değil. Lütfen destek alın.');
             }
+            $managed = \App\Models\Apartment::whereIn('id', $apartmentIds)
+                ->whereHas('members', fn ($query) => $query->where('users.id', $order->user_id)
+                    ->where('apartment_user.role', 'owner')->where('apartment_user.is_active', true))->count();
+            if ($managed !== $apartmentIds->count()) {
+                $this->reject('Bu apartmanın yönetimi devredilmiş. Yeni ödeme başlatılamaz.');
+            }
             $basket = $items->map(fn ($item) => [$item->apartment_name.' · AidatCep '.($order->period === 'yearly' ? 'Yıllık' : 'Aylık'), (string) $item->amount, 1])->all();
             $origin = $this->settings->publicOrigin();
             $payload = [

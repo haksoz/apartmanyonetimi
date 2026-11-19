@@ -199,7 +199,7 @@ class UserInvitationTest extends TestCase
 
         $this->actingAs($manager)
             ->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
-            ->patch(route('users.role', $next), ['role' => 'owner'])
+            ->patch(route('users.role', $next), ['role' => 'owner', 'current_password' => 'password', 'confirm_transfer' => 1])
             ->assertRedirect();
 
         $next->refresh();

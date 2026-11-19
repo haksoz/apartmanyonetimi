@@ -24,7 +24,7 @@
         </div>
         <div class="mt-4 flex justify-end gap-2">
             <button type="button" data-consent-close class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Kapat</button>
-            <button type="button" data-consent-accept="accept_resident_data" class="rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white">Okudum, kabul ediyorum</button>
+            <button type="button" data-consent-accept="accept_resident_data" class="rounded-lg {{ ($consentTheme ?? null) === 'emerald' ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-slate-950' }} px-3 py-2 text-sm font-semibold text-white">Okudum, kabul ediyorum</button>
         </div>
     </div>
 </div>
@@ -37,7 +37,7 @@
         </div>
         <div class="mt-4 flex justify-end gap-2">
             <button type="button" data-consent-close class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Kapat</button>
-            <button type="button" data-consent-accept="accept_privacy" class="rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white">Okudum, kabul ediyorum</button>
+            <button type="button" data-consent-accept="accept_privacy" class="rounded-lg {{ ($consentTheme ?? null) === 'emerald' ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-slate-950' }} px-3 py-2 text-sm font-semibold text-white">Okudum, kabul ediyorum</button>
         </div>
     </div>
 </div>

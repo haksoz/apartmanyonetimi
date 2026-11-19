@@ -311,6 +311,8 @@ Route::post('admin/impersonate/leave', [AdminImpersonateController::class, 'leav
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/', AdminDashboardController::class)->name('dashboard');
+    Route::get('apartments', [\App\Http\Controllers\Admin\AdminApartmentController::class, 'index'])->name('apartments.index');
+    Route::get('apartments/{apartment}', [\App\Http\Controllers\Admin\AdminApartmentController::class, 'show'])->withTrashed()->name('apartments.show');
     Route::get('archived-apartments', [AdminArchivedApartmentController::class, 'index'])->name('archived-apartments.index');
 
     Route::get('customers', [AdminCustomerController::class, 'index'])->name('customers.index');
@@ -324,6 +326,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('customers/{customer}/apartments/{apartment}', [AdminCustomerController::class, 'destroyApartment'])->name('customers.apartments.destroy');
     Route::delete('customers/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
     Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
+    Route::post('orders/{order}/invoice', [\App\Http\Controllers\Admin\AdminOrderInvoiceController::class, 'store'])->name('orders.invoice.store');
+    Route::get('order-invoices/xml/upload', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'create'])->name('order-invoices.xml.create');
+    Route::post('order-invoices/xml/upload', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'upload'])->name('order-invoices.xml.upload');
+    Route::get('order-invoices/xml/preview', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'preview'])->name('order-invoices.xml.preview');
+    Route::post('order-invoices/xml/confirm', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'confirm'])->name('order-invoices.xml.confirm');
+    Route::post('order-invoices/xml/cancel', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'cancel'])->name('order-invoices.xml.cancel');
+    Route::get('order-invoices/{invoice}/xml', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'download'])->name('order-invoices.xml.download');
+    Route::get('order-invoices/{invoice}', [\App\Http\Controllers\Admin\AdminOrderInvoiceController::class, 'show'])->name('order-invoices.show');
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->withTrashed()->name('orders.show');
     Route::post('orders/{order}/close-test', [AdminOrderController::class, 'closeTest'])->withTrashed()->name('orders.close-test');

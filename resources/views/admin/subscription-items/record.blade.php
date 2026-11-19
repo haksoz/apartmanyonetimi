@@ -97,7 +97,7 @@
         </dl>
         <div class="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
             @if ($record->apartment ?? $period?->apartment)
-                <a href="{{ route('apartments.show', $record->apartment ?? $period->apartment) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Apartman detayına git</a>
+                <a href="{{ route('admin.apartments.show', $record->apartment ?? $period->apartment) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Apartman detayına git</a>
             @endif
             @if ($currentOrder)
                 <a href="{{ route('admin.orders.show', $currentOrder) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{{ $currentOrder->isPending() ? 'Siparişi incele' : 'Sipariş detayına git' }}</a>
@@ -146,7 +146,7 @@
         </dl>
         <div class="mt-4 flex flex-wrap items-center gap-2">
             @if ($record->apartment ?? $period?->apartment)
-                <a href="{{ route('apartments.show', $record->apartment ?? $period->apartment) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Apartman detayına git</a>
+                <a href="{{ route('admin.apartments.show', $record->apartment ?? $period->apartment) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Apartman detayına git</a>
             @endif
             @if ($currentOrder)
                 <a href="{{ route('admin.orders.show', $currentOrder) }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{{ $currentOrder->isPending() ? 'Siparişi incele' : 'Sipariş detayına git' }}</a>

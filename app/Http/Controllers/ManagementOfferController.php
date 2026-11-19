@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Apartment;
 use App\Models\ManagementOffer;
+use App\Models\User;
 use App\Support\CurrentApartment;
 use App\Support\LegalConsent;
+use App\Support\ManagementTransfer;
 use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +19,7 @@ class ManagementOfferController extends Controller
         $this->authorizeOffer($offer);
 
         return view('management-offers.show', [
-            'offer' => $offer->load('apartment'),
+            'offer' => $offer->load(['apartment', 'offerer']),
             'needsResidentData' => $consent->needsResidentData(auth()->user(), $offer->apartment),
         ]);
     }
@@ -41,11 +44,19 @@ class ManagementOfferController extends Controller
         $blocked = false;
 
         DB::transaction(function () use ($offer, $user, $apartment, $quota, $consent, $request, &$blocked) {
+            $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $apartment = Apartment::whereKey($offer->apartment_id)->lockForUpdate()->firstOrFail();
+            abort_unless($apartment->is_active, 403);
             $locked = ManagementOffer::query()->whereKey($offer->id)->lockForUpdate()->first();
 
             if (! $locked || ! $locked->isOpen()) {
                 abort(404);
             }
+
+            $membership = $apartment->members()->whereKey($user->id)->first();
+            $sender = $locked->offerer;
+            abort_unless($membership && $membership->pivot->is_active, 403);
+            abort_unless($sender && ($sender->isAdmin() || $apartment->managers()->whereKey($sender->id)->exists()), 403);
 
             if (! $quota->hasRoomForManagement($user)) {
                 $locked->update([
@@ -61,15 +72,7 @@ class ManagementOfferController extends Controller
                 $consent->recordResidentData($user, $apartment, $request);
             }
 
-            $apartment->members()->updateExistingPivot($user->id, [
-                'role' => 'owner',
-                'is_active' => true,
-            ]);
-
-            $locked->update([
-                'status' => ManagementOffer::STATUS_ACCEPTED,
-                'accepted_at' => now(),
-            ]);
+            app(ManagementTransfer::class)->complete($apartment, $user, $locked);
         });
 
         if ($blocked) {
@@ -78,17 +81,19 @@ class ManagementOfferController extends Controller
 
         return redirect()
             ->route('subscriber.dashboard')
-            ->with('status', 'Yöneticilik kabul edildi.');
+            ->with('status', 'Yöneticilik devri tamamlandı. Apartmanın yönetimi artık sizde.');
     }
 
     public function reject(ManagementOffer $offer)
     {
         $this->authorizeOffer($offer);
 
-        $offer->update([
-            'status' => ManagementOffer::STATUS_REJECTED,
-            'rejected_at' => now(),
-        ]);
+        DB::transaction(function () use ($offer) {
+            Apartment::whereKey($offer->apartment_id)->lockForUpdate()->firstOrFail();
+            $locked = ManagementOffer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->isOpen(), 404);
+            $locked->update(['status' => ManagementOffer::STATUS_REJECTED, 'rejected_at' => now()]);
+        });
 
         app(CurrentApartment::class)->setFor($offer->user, $offer->apartment_id);
 

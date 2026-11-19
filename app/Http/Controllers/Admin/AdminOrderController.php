@@ -28,10 +28,14 @@ class AdminOrderController extends Controller
             ->with([
                 'user',
                 'subscription',
+                'invoice',
                 'items.apartment',
+                'items.apartmentSubscription',
                 'payments',
                 'paymentAttempts' => fn ($query) => $query->latest('id')->limit(1),
             ])
+            ->withSum('payments as collected_total', 'amount')
+            ->withExists(['paymentAttempts as has_payment_review' => fn ($query) => $query->where('review_required', true)])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('order_number', 'like', "%{$search}%")
@@ -72,6 +76,10 @@ class AdminOrderController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        foreach ($orders as $order) {
+            $order->can_invoice = ! $order->invoice && app(\App\Support\OrderInvoicing::class)->eligible($order);
+        }
+
         return view('admin.orders.index', compact('orders', 'search', 'status', 'payment'));
     }
 
@@ -79,6 +87,7 @@ class AdminOrderController extends Controller
     {
         $order->load([
             'user',
+            'invoice',
             'subscription.apartment',
             'subscription.items',
             'items.apartment',
@@ -91,7 +100,9 @@ class AdminOrderController extends Controller
 
         $canCloseTest = app(\App\Support\Paytr\CloseTestCheckout::class)->eligible($order);
 
-        return view('admin.orders.show', compact('order', 'canCloseTest'));
+        $canInvoice = ! $order->invoice && app(\App\Support\OrderInvoicing::class)->eligible($order);
+
+        return view('admin.orders.show', compact('order', 'canCloseTest', 'canInvoice'));
     }
 
     public function closeTest(Request $request, UserSubscription $order)
@@ -148,6 +159,9 @@ class AdminOrderController extends Controller
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($order, $payment) {
             \App\Support\SubscriptionOrderLock::acquire($order);
+            if ($order->invoice()->exists()) {
+                throw ValidationException::withMessages(['order' => 'Faturalandırılmış siparişin tahsilatı silinemez.']);
+            }
             $payment = SubscriptionPayment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
             if ($payment->payment_attempt_id) {
                 throw ValidationException::withMessages(['order' => 'Ödeme denemesine bağlı tahsilat silinemez. İade veya düzeltme sürecini kullanın.']);

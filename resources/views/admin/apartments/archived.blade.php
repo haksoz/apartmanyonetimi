@@ -36,7 +36,7 @@
                             <td class="px-4 py-3">{{ $apartment->accounts_count }}</td>
                             <td class="px-4 py-3">{{ $apartment->updated_at?->format('d.m.Y H:i') }}</td>
                             <td class="px-4 py-3 text-right">
-                                <a href="{{ route('apartments.show', $apartment) }}" class="font-semibold text-emerald-600 hover:text-emerald-700">Görüntüle</a>
+                                <a href="{{ route('admin.apartments.show', $apartment) }}" class="font-semibold text-emerald-600 hover:text-emerald-700">Görüntüle</a>
                             </td>
                         </tr>
                     @endforeach

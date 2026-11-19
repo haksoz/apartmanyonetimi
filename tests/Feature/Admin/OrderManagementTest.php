@@ -15,7 +15,7 @@ class OrderManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_order_list_opens_and_shows_the_order_number_from_the_linked_subscription(): void
+    public function test_order_list_shows_service_summary_with_subscription_and_order_numbers(): void
     {
         $admin = User::factory()->admin()->create();
         $payer = User::factory()->create(['name' => 'Bagli Odeyen', 'email' => 'odeyen@example.com', 'phone' => '5551112233']);
@@ -30,6 +30,7 @@ class OrderManagementTest extends TestCase
             'user_id' => $payer->id,
             'subscription_id' => $record->id,
             'order_number' => 'SIP-26-309232',
+            'period' => UserSubscription::PERIOD_MONTHLY,
             'price' => 900,
             'status' => UserSubscription::STATUS_ACTIVE,
             'is_active' => true,
@@ -47,7 +48,11 @@ class OrderManagementTest extends TestCase
             ->assertSee('Bu ticari işlem ne durumda?')
             ->assertSee(route('admin.orders.index'), false)
             ->assertSee('Abonelikler')
-            ->assertSeeInOrder(['SIP-26-309232', 'ABN-26-000111', 'Bagli Apartman', 'Bagli Odeyen'])
+            ->assertSeeInOrder(['SIP-26-309232', 'AidatCep Aylık Abonelik - ABN-26-000111 - SIP-26-309232'])
+            ->assertDontSee('Bagli Odeyen')
+            ->assertDontSee('>Ödeyen</th>', false)
+            ->assertDontSee('>Apartman</th>', false)
+            ->assertDontSee('>Fatura alıcısı</th>', false)
             ->assertSee('12.03.2026')
             ->assertSee('900,00')
             ->assertSee('Onaylandı')
@@ -77,10 +82,8 @@ class OrderManagementTest extends TestCase
             ->get(route('admin.orders.index'))
             ->assertOk()
             ->assertSee('SIP-26-COKLU')
-            ->assertSee('A Apartman')
-            ->assertSee('B Apartman')
-            ->assertSee('Coklu Odeyen')
-            ->assertDontSee('ABN-26-100001')
+            ->assertDontSee('Coklu Odeyen')
+            ->assertSee('ABN-26-100001')
             ->assertDontSee('ABN-26-100002');
     }
 
@@ -101,7 +104,7 @@ class OrderManagementTest extends TestCase
             ->get(route('admin.orders.index'))
             ->assertOk()
             ->assertSee('SIP-26-ESKI')
-            ->assertSee('Eski Odeyen')
+            ->assertDontSee('Eski Odeyen')
             ->assertDontSee('ABN-');
 
         $this->actingAs($admin)
@@ -212,8 +215,8 @@ class OrderManagementTest extends TestCase
             ->assertSee('Birden fazla dönem')
             ->assertSee(route('admin.subscriptions.show', $recordA), false)
             ->assertSee(route('admin.subscriptions.show', $recordB), false)
-            ->assertSee(route('apartments.show', $first), false)
-            ->assertSee(route('apartments.show', $second), false)
+            ->assertSee(route('admin.apartments.show', $first), false)
+            ->assertSee(route('admin.apartments.show', $second), false)
             ->assertDontSee('ABN-26-200001/');
     }
 
@@ -253,9 +256,11 @@ class OrderManagementTest extends TestCase
             ->assertSee('Havale / EFT')
             ->assertSee('HVL-DETAY')
             ->assertSee('Dekontu aç')
+            ->assertSee(route('admin.customers.show', $payer), false)
+            ->assertSee('>Müşteri</dt>', false)
             ->assertSee('Banka dekontu')
             ->assertSee(route('admin.subscriptions.show', $record), false)
-            ->assertSee(route('apartments.show', $apartment), false)
+            ->assertSee(route('admin.apartments.show', $apartment), false)
             ->assertDontSee('Abonelik detayına git')
             ->assertDontSee('Apartman detayına git');
 

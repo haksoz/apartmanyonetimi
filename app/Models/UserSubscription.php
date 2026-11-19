@@ -128,6 +128,29 @@ class UserSubscription extends Model
         return $this->hasMany(SubscriptionItem::class, 'subscription_id');
     }
 
+    public function serviceDescription(?SubscriptionItem $item = null): string
+    {
+        $item ??= $this->items->first();
+        $cycle = match ($this->period) {
+            self::PERIOD_MONTHLY => 'Aylık',
+            self::PERIOD_YEARLY => 'Yıllık',
+            default => null,
+        };
+        $subscriptionNumber = $item?->apartmentSubscription?->subscription_no
+            ?: $this->subscription?->subscription_no;
+
+        return collect([
+            collect(['AidatCep', $cycle, 'Abonelik'])->filter()->implode(' '),
+            $subscriptionNumber,
+            $this->order_number,
+        ])->filter()->implode(' - ');
+    }
+
+    public function invoice(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(OrderInvoice::class);
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(SubscriptionPayment::class, 'subscription_id');

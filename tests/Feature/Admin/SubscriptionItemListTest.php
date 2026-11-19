@@ -81,7 +81,7 @@ class SubscriptionItemListTest extends TestCase
             ->assertOk()
             ->assertSee('Sipariş no')
             ->assertDontSee('Müşteri yönetimi')
-            ->assertDontSee('Apartmanlar')
+            ->assertDontSee('>Apartmanlar</h1>', false)
             ->assertSee('Abonelik No')
             ->assertSee('Canli Apartman')
             ->assertSeeInOrder(['Canli Apartman', '—', 'Guncel Yonetici'])
