@@ -1,6 +1,5 @@
 @php
     $currentOrder = $period?->subscription;
-    $payer = $currentOrder?->user;
     $owners = $record->apartment?->members ?? $period?->apartment?->members ?? collect();
     $apartmentName = $record->apartment?->name
         ?? $record->apartment_name
@@ -72,15 +71,6 @@
                 <dd class="mt-1 font-medium text-slate-900">{{ $owners->pluck('name')->join(', ') ?: '—' }}</dd>
             </div>
             <div>
-                <dt class="text-slate-500">Güncel ödeyen</dt>
-                <dd class="mt-1 font-medium text-slate-900">
-                    {{ $payer?->name ?? '—' }}
-                    @if ($payer?->email)
-                        <div class="font-normal text-slate-500">{{ $payer->email }}</div>
-                    @endif
-                </dd>
-            </div>
-            <div>
                 <dt class="text-slate-500">Başlangıç</dt>
                 <dd class="mt-1 font-medium text-slate-900">{{ $record->started_at?->format('d.m.Y') ?? '—' }}</dd>
             </div>
@@ -121,15 +111,6 @@
             <div>
                 <dt class="text-slate-500">Güncel yönetici</dt>
                 <dd class="font-medium text-slate-900">{{ $owners->pluck('name')->join(', ') ?: '—' }}</dd>
-            </div>
-            <div>
-                <dt class="text-slate-500">Güncel ödeyen</dt>
-                <dd class="font-medium text-slate-900">
-                    {{ $payer?->name ?? '—' }}
-                    @if ($payer?->email)
-                        <div class="text-slate-500">{{ $payer->email }}</div>
-                    @endif
-                </dd>
             </div>
             <div>
                 <dt class="text-slate-500">Abonelik başlangıcı</dt>

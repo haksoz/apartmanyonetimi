@@ -6,7 +6,6 @@
     @php
         $subscriptionRows = $subscriptions->getCollection()->map(function ($subscription) {
             $current = $subscription->currentItem();
-            $payer = $current?->subscription?->user;
             $owners = $subscription->apartment?->members ?? collect();
             $planLabel = match ($current?->plan) {
                 \App\Models\SubscriptionItem::PLAN_PAID => 'Ücretli',
@@ -45,9 +44,6 @@
                     ?? '—',
                 'subscription_no' => $subscription->subscription_no ?: '—',
                 'managers' => $owners->pluck('name')->join(', ') ?: '—',
-                'payer_name' => $payer?->name,
-                'payer_email' => $payer?->email,
-                'payer_url' => $payer ? route('admin.managers.show', $payer) : null,
                 'plan' => $planLabel,
                 'period' => $period,
                 'status' => $statusLabel,
@@ -57,7 +53,6 @@
         });
 
         $legacyRows = $legacyItems->getCollection()->map(function ($item) {
-            $payer = $item->subscription?->user;
             $owners = $item->apartment?->members ?? collect();
             $planLabel = match ($item->plan) {
                 \App\Models\SubscriptionItem::PLAN_PAID => 'Ücretli',
@@ -85,9 +80,6 @@
                 'apartment_name' => $item->apartment?->name ?? $item->apartment_name,
                 'subscription_no' => '—',
                 'managers' => $owners->pluck('name')->join(', ') ?: '—',
-                'payer_name' => $payer?->name,
-                'payer_email' => $payer?->email,
-                'payer_url' => $payer ? route('admin.managers.show', $payer) : null,
                 'plan' => $planLabel,
                 'period' => $period,
                 'status' => $statusLabel,
@@ -133,8 +125,6 @@
                     <p class="text-sm text-slate-600">{{ $row['managers'] }}</p>
                 </div>
                 <p class="mt-1 text-sm text-slate-600">
-                    {{ $row['payer_name'] ?: '—' }}
-                    <span class="text-slate-300"> · </span>
                     {{ $row['period'] }}
                     <span class="text-slate-300"> · </span>
                     <a href="{{ $row['detail_url'] }}" class="font-semibold text-emerald-700 hover:text-emerald-800">Detay</a>
@@ -155,7 +145,6 @@
                 <tr>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Apartman / Abonelik No</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Güncel yönetici</th>
-                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Güncel ödeyen</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Plan</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Başlangıç / Bitiş</th>
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
@@ -171,14 +160,6 @@
                         </td>
                         <td class="px-4 py-3 text-slate-700">{{ $row['managers'] }}</td>
                         <td class="px-4 py-3">
-                            @if ($row['payer_name'])
-                                <a href="{{ $row['payer_url'] }}" class="font-medium text-slate-900 hover:text-emerald-700">{{ $row['payer_name'] }}</a>
-                                <div class="text-xs text-slate-500">{{ $row['payer_email'] }}</div>
-                            @else
-                                —
-                            @endif
-                        </td>
-                        <td class="px-4 py-3">
                             @include('admin.managers.partials.plan-badge', ['plan' => $row['plan']])
                         </td>
                         <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $row['period'] }}</td>
@@ -191,7 +172,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-6 text-center text-sm text-slate-500">Abonelik yok.</td>
+                        <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">Abonelik yok.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -213,8 +194,6 @@
                         <p class="text-sm text-slate-600">{{ $row['managers'] }}</p>
                     </div>
                     <p class="mt-1 text-sm text-slate-600">
-                        {{ $row['payer_name'] ?: '—' }}
-                        <span class="text-slate-300"> · </span>
                         {{ $row['period'] }}
                         <span class="text-slate-300"> · </span>
                         {{ $row['order_number'] }}
@@ -235,7 +214,6 @@
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Apartman / Abonelik No</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Güncel yönetici</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Ödeyen</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Plan</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Başlangıç / Bitiş</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
@@ -251,14 +229,6 @@
                                 <div class="text-xs text-slate-500">{{ $row['subscription_no'] }}</div>
                             </td>
                             <td class="px-4 py-3 text-slate-700">{{ $row['managers'] }}</td>
-                            <td class="px-4 py-3">
-                                @if ($row['payer_name'])
-                                    <a href="{{ $row['payer_url'] }}" class="font-medium text-slate-900 hover:text-emerald-700">{{ $row['payer_name'] }}</a>
-                                    <div class="text-xs text-slate-500">{{ $row['payer_email'] }}</div>
-                                @else
-                                    —
-                                @endif
-                            </td>
                             <td class="px-4 py-3">
                                 @include('admin.managers.partials.plan-badge', ['plan' => $row['plan']])
                             </td>

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Apartment;
+use App\Models\QuoteRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -53,6 +54,35 @@ class ApartmentSetupDialogTest extends TestCase
         $this->get(route('subscriber.dashboard'))->assertOk()->assertDontSee('Kurulum tamamlanmadı');
         $this->assertSame(1, $apartment->cashBoxes()->count());
         $this->assertSame(4, $apartment->units()->count());
+    }
+
+    public function test_quote_request_finishes_setup_and_returns_to_panel_without_reopening_a_dialog(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->get(route('subscriber.apartments.create'))->assertOk()
+            ->assertDontSee('Talebiniz alınmıştır.')
+            ->assertSee('Teklif talebi gönder');
+        $this->from(route('subscriber.apartments.create'))->post(route('subscriber.apartments.store'), [
+            'name' => '120 Daireli Apartman', 'address' => 'Adres', 'unit_count' => 120,
+            'account_opening_date' => '2026-11-20',
+        ])->assertRedirect(route('subscriber.dashboard'))->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('quote_requests', [
+            'user_id' => $user->id, 'apartment_name' => '120 Daireli Apartman', 'unit_count' => 120, 'status' => QuoteRequest::STATUS_PENDING,
+        ]);
+        $this->assertDatabaseCount('apartments', 0);
+        $this->assertDatabaseCount('subscriptions', 0);
+        $this->assertDatabaseCount('user_subscriptions', 0);
+        foreach ([1, 2] as $visit) {
+            $this->get(route('subscriber.dashboard'))->assertOk()->assertSee('120 Daireli Apartman')
+                ->assertSee('Özel teklif talepleriniz')
+                ->assertDontSee('id="apartment-setup-dialog"', false)
+                ->assertDontSee('id="first-apartment-dialog"', false);
+        }
+        $this->post(route('subscriber.apartments.store'), [
+            'name' => '120 Daireli Apartman', 'address' => 'Adres', 'unit_count' => 120,
+            'account_opening_date' => '2026-11-20',
+        ])->assertRedirect(route('subscriber.dashboard'));
+        $this->assertDatabaseCount('quote_requests', 1);
     }
 
     public function test_invalid_step_one_stays_in_the_dialog_with_validation_errors(): void

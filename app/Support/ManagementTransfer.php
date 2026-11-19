@@ -14,6 +14,7 @@ class ManagementTransfer
     /** Apartment and offer must be locked by the enclosing transaction. */
     public function complete(Apartment $apartment, User $user, ManagementOffer $offer): void
     {
+        app(ApartmentManagementHistory::class)->transfer($apartment, $user, $offer);
         $previous = $apartment->members()->wherePivot('role', 'owner')->where('users.id', '!=', $user->id)->pluck('users.id')->all();
         DB::table('apartment_user')->where('apartment_id', $apartment->id)
             ->where('user_id', '!=', $user->id)->where('role', 'owner')

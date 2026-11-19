@@ -94,7 +94,7 @@ class ApartmentController extends Controller
         if ($decision['quote']) {
             QuoteRequest::record($user, $validated['name'], (int) $validated['unit_count']);
 
-            return back()->with('status', ApartmentCommercial::QUOTE_MESSAGE)->withInput();
+            return redirect()->route('subscriber.dashboard')->with('status', ApartmentCommercial::QUOTE_MESSAGE);
         }
 
         app(LegalConsent::class)->requireForApartment($request, false);
@@ -114,6 +114,7 @@ class ApartmentController extends Controller
             ]);
 
             $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
+            app(\App\Support\ApartmentManagementHistory::class)->startInitial($apartment, $user);
             app(\App\Support\SubscriptionCheckout::class)->openFree($user, $apartment);
             Category::createDefaultsFor($apartment->id);
 

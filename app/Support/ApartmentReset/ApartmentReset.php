@@ -172,6 +172,7 @@ class ApartmentReset
             ]);
 
             $apartment->members()->attach($actor->id, ['role' => 'owner', 'is_active' => true]);
+            app(\App\Support\ApartmentManagementHistory::class)->startInitial($apartment, $actor);
             $source->update(['is_active' => false]);
             Subscription::query()
                 ->where('apartment_id', $source->id)

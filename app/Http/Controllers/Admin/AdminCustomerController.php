@@ -51,7 +51,6 @@ class AdminCustomerController extends Controller
                         ->where('apartment_user.is_active', true);
                 },
             ])
-            ->selectSub($this->activeSubscriptionCount(), 'active_subscription_count')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
@@ -243,9 +242,13 @@ class AdminCustomerController extends Controller
         $deletionBlockReason = $this->customerDeletionBlockReason($customer);
         $memberDeletionNeedsConfirmation = $this->memberDeletionNeedsConfirmation($customer);
 
+        $managementPeriods = $customer->managementPeriods()->with('apartment')
+            ->orderByDesc('started_at')->orderByDesc('id')->get();
+        $managementByApartment = $managementPeriods->groupBy('original_apartment_id');
+
         $subscriptions = $this->subscriptionsFor($customer)
             ->with([
-                'apartment',
+                'apartment' => fn ($query) => $query->withTrashed(),
                 'items.subscription',
             ])
             ->orderBy('subscription_no')
@@ -254,13 +257,45 @@ class AdminCustomerController extends Controller
             ->unique('id')
             ->values();
 
-        $subscriptionForApartment = $subscriptions
-            ->groupBy('apartment_id')
-            ->map(fn ($group) => $group->sortByDesc(fn (Subscription $subscription) => sprintf(
-                '%d-%010d',
-                $subscription->status === Subscription::STATUS_ACTIVE ? 1 : 0,
-                $subscription->id
-            ))->first());
+        $memberships = $customer->apartments->keyBy('id');
+        $makeRow = function (?Apartment $apartment, ?Subscription $record) use ($memberships, $managementByApartment): array {
+            $membership = $apartment ? $memberships->get($apartment->id) : null;
+
+            return [
+                'apartment' => $apartment,
+                'subscription' => $record,
+                'name' => $apartment?->name ?: $record?->displayApartmentName() ?: '—',
+                'role' => $membership?->pivot->role,
+                'management_history' => $managementByApartment->get($apartment?->id ?? $record?->apartment_id, collect()),
+                'period' => $record?->displayItem(),
+                'can_delete' => $membership && ! $apartment->is_active && ! $apartment->trashed(),
+            ];
+        };
+        $apartmentSubscriptions = $subscriptions->map(fn (Subscription $record) => $makeRow(
+            $memberships->get($record->apartment_id) ?? $record->apartment,
+            $record,
+        ));
+        foreach ($customer->apartments as $apartment) {
+            if (! $subscriptions->contains('apartment_id', $apartment->id)) {
+                $apartmentSubscriptions->push($makeRow($apartment, null));
+            }
+        }
+        foreach ($managementByApartment as $apartmentId => $periods) {
+            if (! $apartmentSubscriptions->contains(fn ($row) => (int) $row['apartment']?->id === (int) $apartmentId)) {
+                $latest = $periods->first();
+                $row = $makeRow($latest->apartment, null);
+                $row['name'] = $latest->apartment?->name ?: $latest->apartment_name;
+                $row['management_history'] = $periods;
+                $apartmentSubscriptions->push($row);
+            }
+        }
+        $apartmentSubscriptions = $apartmentSubscriptions->map(function (array $row): array {
+            $row['is_former_manager'] = $row['role'] !== 'owner'
+                && $row['management_history']->isNotEmpty()
+                && ! $row['management_history']->contains('is_current', true);
+
+            return $row;
+        })->sortBy('name')->values();
 
         $orders = UserSubscription::query()
             ->commercial()
@@ -290,15 +325,19 @@ class AdminCustomerController extends Controller
         $renewalPassives = ApartmentDataOperation::query()
             ->where('action', ApartmentDataOperation::ACTION_NEW_APARTMENT)
             ->where('result', ApartmentDataOperation::RESULT_COMPLETED)
-            ->whereIn('source_apartment_id', $customer->apartments->pluck('id'))
+            ->whereIn('source_apartment_id', $apartmentSubscriptions->pluck('apartment.id')->filter())
             ->orderByDesc('id')
             ->get()
             ->unique('source_apartment_id')
             ->keyBy('source_apartment_id');
 
+        $managedApartmentIds = $customer->apartments
+            ->filter(fn (Apartment $apartment) => $apartment->is_active && $apartment->pivot->role === 'owner')
+            ->pluck('id');
         $summary = [
             'apartments' => $customer->apartments->count(),
-            'active_subscriptions' => $subscriptions->where('status', Subscription::STATUS_ACTIVE)->count(),
+            'active_subscriptions' => $subscriptions->filter(fn (Subscription $record) => $record->status === Subscription::STATUS_ACTIVE
+                && $managedApartmentIds->contains($record->apartment_id))->count(),
             'pending_orders' => $orders->where('status', UserSubscription::STATUS_PENDING)->count(),
             'orders' => $orders->count(),
         ];
@@ -306,7 +345,7 @@ class AdminCustomerController extends Controller
         return view('admin.customers.show', compact(
             'customer',
             'subscriptions',
-            'subscriptionForApartment',
+            'apartmentSubscriptions',
             'orders',
             'payments',
             'renewalPassives',
@@ -377,6 +416,7 @@ class AdminCustomerController extends Controller
                 ->where('role', '!=', User::ROLE_MANAGER)
                 ->whereDoesntHave('apartments', $ownerMembership)
                 ->whereDoesntHave('ownedApartments', fn ($q) => $q->withTrashed())
+                ->whereDoesntHave('managementPeriods')
                 ->whereDoesntHave('subscriptions', fn ($q) => $q->withTrashed()->commercial());
 
             return;
@@ -391,6 +431,7 @@ class AdminCustomerController extends Controller
                 $query->where('role', User::ROLE_MANAGER)
                     ->orWhereHas('apartments', $ownerMembership)
                     ->orWhereHas('ownedApartments', fn ($q) => $q->withTrashed())
+                    ->orWhereHas('managementPeriods')
                     ->orWhereHas('subscriptions', fn ($q) => $q->withTrashed()->commercial());
             });
     }
@@ -398,14 +439,6 @@ class AdminCustomerController extends Controller
     private function ensureCustomer(User $customer): void
     {
         abort_if($customer->isAdminPanelUser(), 404);
-    }
-
-    private function activeSubscriptionCount(): Builder
-    {
-        return Subscription::query()
-            ->selectRaw('count(distinct subscriptions.id)')
-            ->where('subscriptions.status', Subscription::STATUS_ACTIVE)
-            ->where(fn ($query) => $this->constrainToCustomer($query, 'users.id'));
     }
 
     private function subscriptionsFor(User $customer): Builder
@@ -447,6 +480,10 @@ class AdminCustomerController extends Controller
                 ->join('user_subscriptions as customer_orders', 'customer_orders.id', '=', 'subscription_items.subscription_id')
                 ->whereColumn('subscription_items.apartment_subscription_id', 'subscriptions.id');
             $matchUser($query, 'customer_orders.user_id');
+        })->orWhereExists(function ($query) use ($matchUser) {
+            $query->selectRaw('1')->from('apartment_management_periods')
+                ->whereColumn('apartment_management_periods.original_apartment_id', 'subscriptions.apartment_id');
+            $matchUser($query, 'apartment_management_periods.user_id');
         })->orWhere(function ($query) use ($matchUser) {
             $matchUser($query, 'subscriptions.retained_user_id');
         });

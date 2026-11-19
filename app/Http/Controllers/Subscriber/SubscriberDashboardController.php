@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Subscriber;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\QuoteRequest;
 use App\Models\AccountPortalAccessEvent;
 use App\Support\BuildingPlaces;
 use App\Support\CurrentApartment;
@@ -43,8 +44,13 @@ class SubscriberDashboardController extends Controller
         $showApartmentCreate = $managedApartments->isNotEmpty()
             || ($residenceAccounts->isEmpty() && $canCreateApartment);
 
+        $pendingQuoteRequests = QuoteRequest::where('user_id', $user->id)
+            ->whereIn('status', [QuoteRequest::STATUS_PENDING, QuoteRequest::STATUS_CONTACTED])
+            ->latest('id')->get();
+
         return view('subscriber.dashboard', [
             'apartments' => $managedApartments,
+            'pendingQuoteRequests' => $pendingQuoteRequests,
             'residenceAccounts' => $residenceAccounts,
             'removedPortalLinks' => AccountPortalAccessEvent::with('account.apartment')
                 ->where('user_id', $user->id)->where('action', 'unlink')->latest('id')->get(),

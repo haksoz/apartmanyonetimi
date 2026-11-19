@@ -48,7 +48,7 @@ class QuoteRequestTest extends TestCase
         $this->actingAs($user)
             ->from(route('subscriber.apartments.create'))
             ->post(route('subscriber.apartments.store'), $this->payload('Yüz Bir', 101, false))
-            ->assertRedirect(route('subscriber.apartments.create'))
+            ->assertRedirect(route('subscriber.dashboard'))
             ->assertSessionHas('status', ApartmentCommercial::QUOTE_MESSAGE);
 
         $this->assertDatabaseCount('apartments', 0);

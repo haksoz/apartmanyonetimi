@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Apartment;
-use App\Models\ManagementOffer;
+use App\Models\ApartmentManagementPeriod;
 use App\Models\UserSubscription;
 use Illuminate\Http\Request;
 
@@ -38,9 +38,12 @@ class AdminApartmentController extends Controller
             ->where(fn ($query) => $query->whereHas('items', fn ($query) => $query->where('apartment_id', $apartment->id))
                 ->orWhereIn('subscription_id', $subscriptions->modelKeys()))
             ->with(['user', 'invoice'])->orderByDesc('id')->paginate(15, ['*'], 'orders_page')->withQueryString();
-        $offers = ManagementOffer::where('apartment_id', $apartment->id)
-            ->with(['user', 'offerer'])->orderByDesc('id')->paginate(10, ['*'], 'offers_page')->withQueryString();
+        $managementPeriods = ApartmentManagementPeriod::where('original_apartment_id', $apartment->id)
+            ->with('user')->orderByDesc('started_at')->orderByDesc('id')
+            ->paginate(15, ['*'], 'management_page')->withQueryString();
+        $currentManagement = ApartmentManagementPeriod::where('original_apartment_id', $apartment->id)
+            ->where('is_current', true)->get()->keyBy('user_id');
 
-        return view('admin.apartments.show', compact('apartment', 'subscriptions', 'orders', 'offers'));
+        return view('admin.apartments.show', compact('apartment', 'subscriptions', 'orders', 'managementPeriods', 'currentManagement'));
     }
 }

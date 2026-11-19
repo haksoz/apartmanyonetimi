@@ -61,6 +61,11 @@ class User extends Authenticatable implements CanResetPasswordContract
         ];
     }
 
+    public function managementPeriods(): HasMany
+    {
+        return $this->hasMany(ApartmentManagementPeriod::class);
+    }
+
     public function ownedApartments(): HasMany
     {
         return $this->hasMany(Apartment::class);

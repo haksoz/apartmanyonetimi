@@ -87,8 +87,8 @@ class SubscriptionItemListTest extends TestCase
             ->assertSeeInOrder(['Canli Apartman', '—', 'Guncel Yonetici'])
             ->assertDontSee('Eski Anlik Ad')
             ->assertSee('Guncel Yonetici')
-            ->assertSee('Odeyen Kisi')
-            ->assertSee('odeyen@example.com')
+            ->assertDontSee('Odeyen Kisi')
+            ->assertDontSee('odeyen@example.com')
             ->assertSee('Ücretsiz')
             ->assertDontSee('Ücretli')
             ->assertSee('01.03.2026')
@@ -158,7 +158,7 @@ class SubscriptionItemListTest extends TestCase
             ->assertSee('Sipariş no')
             ->assertSee('Apartman')
             ->assertSee('Güncel yönetici')
-            ->assertSee('Ödeyen')
+            ->assertDontSee('Ödeyen')
             ->assertSee('Plan')
             ->assertSee('Başlangıç')
             ->assertSee('Bitiş')
@@ -171,7 +171,7 @@ class SubscriptionItemListTest extends TestCase
             ->assertSee('01.12.2026')
             ->assertDontSee('SIP-26-309232')
             ->assertSee('SIP-26-ESKI')
-            ->assertSeeInOrder(['Bagli Apartman', 'ABN-26-000001', 'Bagli Yonetici', 'Bagli Odeyen'])
+            ->assertSeeInOrder(['Bagli Apartman', 'ABN-26-000001', 'Bagli Yonetici'])
             ->assertSeeInOrder(['Eski Apartman', '—', 'Eski Yonetici', 'SIP-26-ESKI'])
             ->getContent();
 
@@ -282,7 +282,7 @@ class SubscriptionItemListTest extends TestCase
             ->assertOk()
             ->assertSee('Silinmis Apartman')
             ->assertSee('—')
-            ->assertSee('Snapshot Odeyen')
+            ->assertDontSee('Snapshot Odeyen')
             ->assertSee('Ücretli')
             ->assertSee('İptal');
     }
@@ -439,7 +439,7 @@ class SubscriptionItemListTest extends TestCase
             ->assertSee('Dertli Deliler')
             ->assertSee('ABN-26-000001')
             ->assertSee('Dertli Yonetici')
-            ->assertSee('Guncel Odeyen')
+            ->assertDontSee('Guncel Odeyen')
             ->assertSee('Ücretli')
             ->assertSee('05.10.2026')
             ->assertSee('05.11.2026')

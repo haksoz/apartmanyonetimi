@@ -3,6 +3,20 @@
 @section('title', 'Abone Paneli')
 
 @section('content')
+    @if ($pendingQuoteRequests->isNotEmpty())
+        <section class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4" aria-labelledby="pending-quotes-title">
+            <h2 id="pending-quotes-title" class="font-semibold text-emerald-950">Özel teklif talepleriniz</h2>
+            <p class="mt-1 text-sm text-emerald-800">Talepleriniz kaydedildi. Temsilcimiz teklif için sizinle iletişime geçecek.</p>
+            <div class="mt-3 space-y-2">
+                @foreach ($pendingQuoteRequests as $quoteRequest)
+                    <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white p-3 text-sm">
+                        <span class="font-medium text-slate-900">{{ $quoteRequest->apartment_name }} · {{ $quoteRequest->unit_count }} daire</span>
+                        <span class="text-xs font-semibold text-emerald-700">{{ \App\Models\QuoteRequest::STATUS_LABELS[$quoteRequest->status] }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
     @foreach ($removedPortalLinks as $event)
         <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <p class="font-semibold">{{ $event->account?->apartment?->name }} apartmanındaki bir hesap bağlantınız, yanlış bağlantı olarak kaldırıldı.</p>
@@ -35,7 +49,7 @@
         </section>
     @endif
 
-    @if ($apartments->isEmpty() && $showApartmentCreate && $canCreateApartment)
+    @if ($apartments->isEmpty() && $showApartmentCreate && $canCreateApartment && $pendingQuoteRequests->isEmpty())
         <dialog id="first-apartment-dialog" aria-labelledby="first-apartment-title" aria-describedby="first-apartment-description" class="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-2xl border-0 bg-white p-6 shadow-xl backdrop:bg-slate-950/50">
             <h2 id="first-apartment-title" class="text-xl font-bold text-slate-950">İlk apartmanınızı oluşturun</h2>
             <p id="first-apartment-description" class="mt-3 text-sm text-slate-600">Henüz yönettiğiniz bir apartman bulunmuyor. Apartman oluşturma hakkınız var; ilk apartmanınızı ekleyerek kuruluma başlayabilirsiniz.</p>

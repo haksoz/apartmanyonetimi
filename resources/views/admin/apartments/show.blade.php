@@ -23,7 +23,7 @@
             <h2 class="font-semibold text-slate-900">Güncel yöneticiler</h2>
             <div class="mt-3 space-y-3 text-sm">
                 @forelse ($apartment->managers as $manager)
-                    <div>@include('admin.apartments.partials.person', ['person' => $manager])<div class="text-slate-500">{{ $manager->email }}@if ($manager->deactivated_at) · Hesap pasif @endif</div></div>
+                    <div>@include('admin.apartments.partials.person', ['person' => $manager])<div class="text-slate-500">{{ $manager->email }}@if ($manager->deactivated_at) · Hesap pasif @endif</div><p class="mt-1 text-xs text-slate-500">Yönetim başlangıcı: {{ $currentManagement->get($manager->id)?->started_at?->timezone('Europe/Istanbul')->format('d.m.Y H:i') ?? 'Başlangıç kaydı yok' }}</p></div>
                 @empty
                     <p class="text-slate-500">Bu apartmanda aktif yönetici üyeliği yok.</p>
                 @endforelse
@@ -72,16 +72,26 @@
         </table></div>
         <div class="px-4 py-3">{{ $orders->links() }}</div>
     </section>
-    <details class="mt-5 rounded-xl border border-slate-200 bg-white p-5" @if(request()->has('offers_page')) open @endif>
-        <summary class="cursor-pointer font-semibold text-slate-900">Yöneticilik teklif geçmişi</summary>
-        <div class="mt-3 space-y-3 text-sm">
-            @forelse ($offers as $offer)
-                @php($offerStatus = match ($offer->status) { 'accepted' => 'Kabul edildi', 'rejected' => 'Reddedildi', 'blocked' => 'Limit nedeniyle bekliyor', default => $offer->isOpen() ? 'Kabul bekliyor' : 'Süresi doldu' })
-                <div class="rounded-lg bg-slate-50 p-3"><div>@include('admin.apartments.partials.person', ['person' => $offer->user]) · {{ $offerStatus }}</div><p class="mt-1 text-xs text-slate-500">Teklif eden: {{ $offer->offerer?->name ?: '—' }} · Teklif: {{ $offer->created_at?->format('d.m.Y H:i') }}@if ($offer->accepted_at) · Kabul: {{ $offer->accepted_at->format('d.m.Y H:i') }}@endif</p></div>
-            @empty
-                <p class="text-slate-500">Yöneticilik teklifi yok.</p>
-            @endforelse
-        </div>
-        <div class="mt-3">{{ $offers->links() }}</div>
-    </details>
+    <section id="apartment-management-history" class="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <h2 class="px-5 py-4 font-semibold text-slate-900">Yönetim geçmişi</h2>
+        <div class="overflow-x-auto"><table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-left text-slate-500"><tr>
+                <th class="px-4 py-3">Yönetici</th><th class="px-4 py-3">Başlangıç</th><th class="px-4 py-3">Bitiş</th><th class="px-4 py-3">Yönetim süresi</th><th class="px-4 py-3">Durum</th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-100">
+                @forelse ($managementPeriods as $managementPeriod)
+                    <tr>
+                        <td class="px-4 py-3">@if ($managementPeriod->user) @include('admin.apartments.partials.person', ['person' => $managementPeriod->user]) @else {{ $managementPeriod->manager_name }} @endif</td>
+                        <td class="whitespace-nowrap px-4 py-3">{{ $managementPeriod->started_at?->timezone('Europe/Istanbul')->format('d.m.Y H:i') ?? 'Başlangıç kaydı yok' }}@if ($managementPeriod->start_source === 'initial_membership')<div class="mt-1 text-xs text-slate-500">İlk üyelik kaydına göre</div>@endif</td>
+                        <td class="whitespace-nowrap px-4 py-3">{{ $managementPeriod->ended_at?->timezone('Europe/Istanbul')->format('d.m.Y H:i') ?? ($managementPeriod->is_current ? 'Devam ediyor' : 'Bitiş kaydı yok') }}</td>
+                        <td class="whitespace-nowrap px-4 py-3">{{ $managementPeriod->durationLabel() }}</td>
+                        <td class="px-4 py-3"><span class="{{ $managementPeriod->is_current ? 'font-semibold text-emerald-700' : 'text-slate-500' }}">{{ $managementPeriod->is_current ? 'Güncel yönetici' : 'Eski yönetici' }}</span></td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">Yönetim geçmişi kaydı yok.</td></tr>
+                @endforelse
+            </tbody>
+        </table></div>
+        <div class="px-4 py-3">{{ $managementPeriods->links() }}</div>
+    </section>
 @endsection

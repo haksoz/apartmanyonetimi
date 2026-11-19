@@ -35,6 +35,7 @@ class CustomerManagementTest extends TestCase
             ->get(route('admin.customers.index'))
             ->assertOk()
             ->assertSee('Müşteriler')
+            ->assertDontSee('Aktif abonelik')
             ->assertSee(route('admin.customers.index'), false)
             ->assertSeeInOrder([
                 'Yeni Musteri',
@@ -42,8 +43,6 @@ class CustomerManagementTest extends TestCase
                 '5550001122',
                 '01.10.2026',
                 'Apartman',
-                '0',
-                'Aktif abonelik',
                 '0',
                 'Bekleyen sipariş',
                 '0',
@@ -88,8 +87,7 @@ class CustomerManagementTest extends TestCase
             ->get(route('admin.customers.show', $customer))
             ->assertOk()
             ->assertSeeInOrder(['Apartmanlar', '0', 'Aktif abonelikler', '0', 'Bekleyen siparişler', '0', 'Toplam siparişler', '0'])
-            ->assertSee('Apartman yok.')
-            ->assertSee('Abonelik yok.')
+            ->assertSee('Apartman veya abonelik kaydı yok.')
             ->assertSee('Sipariş yok.')
             ->assertSee('Bu müşteriye bağlı tahsilat yok.')
             ->assertSee('Bilgileri kaydet')
@@ -119,7 +117,7 @@ class CustomerManagementTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.customers.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Tek Apartman Musteri', 'Apartman', '1', 'Aktif abonelik', '1']);
+            ->assertSeeInOrder(['Tek Apartman Musteri', 'Apartman', '1']);
 
         $this->actingAs($admin)
             ->get(route('admin.customers.show', $customer))
@@ -168,7 +166,7 @@ class CustomerManagementTest extends TestCase
 
         $response->assertOk()->assertSeeInOrder(['Apartmanlar', '2', 'Aktif abonelikler', '2']);
 
-        $apartments = $this->section($response->getContent(), 'customer-apartments', 'customer-subscriptions');
+        $apartments = $this->section($response->getContent(), 'customer-apartments', 'customer-orders');
         $this->assertStringContainsString('Dertli Deliler Apartmanı', $apartments);
         $this->assertStringContainsString('ABN-26-000001', $apartments);
         $this->assertStringContainsString('Ücretli', $apartments);
@@ -217,13 +215,46 @@ class CustomerManagementTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.customers.show', $customer));
         $response->assertOk();
 
-        $subscriptions = $this->section($response->getContent(), 'customer-subscriptions', 'customer-orders');
+        $subscriptions = $this->section($response->getContent(), 'customer-apartments', 'customer-orders');
         $this->assertSame(2, substr_count($subscriptions, 'ABN-26-000007'));
         $this->assertStringContainsString('Dertli Deliler Apartmanı', $subscriptions);
         $this->assertStringContainsString('Aktif', $subscriptions);
         $this->assertStringContainsString('Ücretli', $subscriptions);
         $this->assertStringNotContainsString('Ücretsiz', $subscriptions);
         $this->assertStringContainsString(route('admin.subscriptions.show', $record), $subscriptions);
+        $this->assertStringContainsString(route('admin.apartments.show', $apartment), $subscriptions);
+        $this->assertStringContainsString('>Abonelik</a>', $subscriptions);
+        $this->assertStringNotContainsString('id="customer-subscriptions"', $response->getContent());
+        $response->assertViewHas('apartmentSubscriptions', fn ($rows) => $rows->count() === 1);
+    }
+
+    public function test_combined_table_preserves_unsubscribed_apartments_and_historical_subscription_links(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create();
+        $current = Apartment::factory()->forUser($customer)->create(['name' => 'Aboneliksiz Apartman']);
+        $this->member($customer, $current);
+        $former = Apartment::factory()->create(['name' => 'Gecmis Apartman']);
+        $former->members()->attach($customer->id, ['role' => 'member', 'is_active' => false]);
+        $record = $this->subscription($former, 'ABN-26-123456');
+        $this->order($customer, ['subscription_id' => $record->id]);
+        $former->delete();
+
+        $response = $this->actingAs($admin)->get(route('admin.customers.show', $customer))->assertOk();
+        $response->assertViewHas('apartmentSubscriptions', function ($rows) use ($current, $record, $former) {
+            return $rows->count() === 2
+                && $rows->firstWhere('apartment.id', $current->id)['subscription'] === null
+                && $rows->firstWhere('subscription.id', $record->id)['apartment']->id === $former->id
+                && $rows->firstWhere('subscription.id', $record->id)['role'] === null
+                && ! $rows->firstWhere('subscription.id', $record->id)['can_delete'];
+        });
+        $section = $this->section($response->getContent(), 'customer-apartments', 'customer-orders');
+        $this->assertStringContainsString('Aboneliksiz Apartman', $section);
+        $this->assertStringContainsString('Gecmis Apartman', $section);
+        $this->assertStringContainsString('Geçmiş kayıt', $section);
+        $this->assertStringContainsString('Apartman silinmiş.', $section);
+        $this->assertStringContainsString(route('admin.subscriptions.show', $record), $section);
+        $this->assertStringContainsString(route('admin.apartments.show', $former), $section);
     }
 
     public function test_customer_orders_and_existing_payments_are_shown(): void
@@ -236,6 +267,7 @@ class CustomerManagementTest extends TestCase
         $order = $this->order($customer, [
             'subscription_id' => $record->id,
             'order_number' => 'SIP-26-300918',
+            'billing_label' => 'Yönetici Bilgileriyle Fatura',
             'status' => UserSubscription::STATUS_PENDING,
             'is_active' => false,
             'price' => 150,
@@ -265,7 +297,8 @@ class CustomerManagementTest extends TestCase
         $this->assertStringContainsString('Bekliyor', $orders);
         $this->assertStringContainsString('Tahsil edildi', $orders);
         $this->assertStringContainsString('Dertli Deliler Apartmanı', $orders);
-        $this->assertStringContainsString('ABN-26-000001', $orders);
+        $this->assertStringNotContainsString('Yönetici Bilgileriyle Fatura', $orders);
+        $this->assertStringNotContainsString('ABN-26-000001', $orders);
         $this->assertStringContainsString(route('admin.orders.show', $order), $orders);
 
         $payments = $this->section($response->getContent(), 'customer-payments', null);
@@ -301,8 +334,8 @@ class CustomerManagementTest extends TestCase
         $this->assertStringContainsString('SIP-26-COKLU', $orders);
         $this->assertStringContainsString('Dertli Deliler Apartmanı', $orders);
         $this->assertStringContainsString('Sarıkayalar Apartmanı', $orders);
-        $this->assertStringContainsString('ABN-26-000001', $orders);
-        $this->assertStringContainsString('ABN-26-000002', $orders);
+        $this->assertStringNotContainsString('ABN-26-000001', $orders);
+        $this->assertStringNotContainsString('ABN-26-000002', $orders);
         $this->assertStringContainsString(route('admin.orders.show', $order), $orders);
         $this->assertNull($order->fresh()->subscription_id);
     }
@@ -339,8 +372,7 @@ class CustomerManagementTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Eski Musteri')
-            ->assertSee('Apartman yok.')
-            ->assertSee('Abonelik yok.')
+            ->assertSee('Apartman veya abonelik kaydı yok.')
             ->assertSee('SIP-26-ESKI')
             ->assertSee('Eski Kalem Apartmani')
             ->assertSee('—')
@@ -428,7 +460,7 @@ class CustomerManagementTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.customers.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Temel Musteri', 'Apartman', '1', 'Aktif abonelik', '1', 'Bekleyen sipariş', '0']);
+            ->assertSeeInOrder(['Temel Musteri', 'Apartman', '1', 'Bekleyen sipariş', '0']);
 
         $response = $this->actingAs($admin)->get(route('admin.customers.show', $customer));
         $response->assertOk()

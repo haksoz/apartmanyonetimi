@@ -237,7 +237,7 @@ class CommercialBillingTest extends TestCase
         $this->actingAs($user)
             ->from(route('subscriber.apartments.create'))
             ->post(route('subscriber.apartments.store'), $this->payload('Yüz Bir', 101))
-            ->assertRedirect(route('subscriber.apartments.create'))
+            ->assertRedirect(route('subscriber.dashboard'))
             ->assertSessionHas('status');
 
         $this->assertDatabaseCount('apartments', 0);

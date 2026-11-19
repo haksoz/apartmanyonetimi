@@ -290,6 +290,7 @@ class AccountUserController extends Controller
             return back()->withErrors(['role' => 'Apartmanda en az bir yönetici olmalıdır.']);
         }
 
+        app(\App\Support\ApartmentManagementHistory::class)->end($apartment, $user);
         $apartment->members()->updateExistingPivot($user->id, ['role' => 'member']);
 
         ManagementOffer::query()

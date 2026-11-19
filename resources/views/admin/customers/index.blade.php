@@ -60,8 +60,6 @@
                         Apartman <span class="font-medium text-slate-900">{{ $customer->managed_apartment_count }}</span>
                         / {{ $customer->quotaOverride?->max_apartments ?? 'sınırsız' }}
                         <span class="text-slate-300"> · </span>
-                        Aktif abonelik <span class="font-medium text-slate-900">{{ $customer->active_subscription_count }}</span>
-                        <span class="text-slate-300"> · </span>
                         Bekleyen sipariş <span class="font-medium text-slate-900">{{ $customer->pending_order_count }}</span>
                     @else
                         @php
@@ -91,7 +89,6 @@
                     <th class="px-4 py-3 text-left font-semibold text-slate-700">Telefon</th>
                     @if ($showsCommerce)
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Yönetilen / limit</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Aktif abonelik</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Bekleyen sipariş</th>
                     @else
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Rol</th>
@@ -114,7 +111,6 @@
                         <td class="px-4 py-3 text-slate-700">{{ $customer->phone ?: '-' }}</td>
                         @if ($showsCommerce)
                             <td class="px-4 py-3 text-slate-700">{{ $customer->managed_apartment_count }} / {{ $customer->quotaOverride?->max_apartments ?? 'sınırsız' }}</td>
-                            <td class="px-4 py-3 text-slate-700">{{ $customer->active_subscription_count }}</td>
                             <td class="px-4 py-3 text-slate-700">{{ $customer->pending_order_count }}</td>
                         @else
                             @php
@@ -133,7 +129,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-6 text-center text-sm text-slate-500">Müşteri yok.</td>
+                        <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">Müşteri yok.</td>
                     </tr>
                 @endforelse
             </tbody>

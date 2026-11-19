@@ -69,6 +69,7 @@ class OnboardingController extends Controller
             ]);
 
             $apartment->members()->attach($user->id, ['role' => 'owner']);
+            app(\App\Support\ApartmentManagementHistory::class)->startInitial($apartment, $user);
             app(\App\Support\SubscriptionCheckout::class)->openFree($user, $apartment);
             Category::createDefaultsFor($apartment->id);
 

@@ -69,7 +69,7 @@ class ApartmentRegistryTest extends TestCase
         ]);
         $this->actingAs(User::factory()->admin()->create())->get(route('admin.apartments.show', $apartment))->assertOk()
             ->assertSee('SIP-26-ESKI')->assertSee('SIP-26-YENI')->assertSee('Ilk Musteri')->assertSee('Yeni Musteri')
-            ->assertSee('Kabul edildi')->assertSee($subscription->subscription_no)
+            ->assertSee('Yönetim geçmişi')->assertSee('Eski yönetici')->assertSee($subscription->subscription_no)
             ->assertViewHas('apartment', fn ($row) => $row->managers->modelKeys() === [$newManager->id])
             ->assertViewHas('orders', fn ($orders) => $orders->modelKeys() === [$newOrder->id, $oldOrder->id]);
     }

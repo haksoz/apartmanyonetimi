@@ -182,171 +182,7 @@
         </div>
     </section>
 
-    <section id="customer-apartments" class="mt-6">
-        <h2 class="text-lg font-semibold text-slate-900">Apartmanlar</h2>
-        <div class="mt-3 space-y-2 md:hidden">
-            @forelse ($customer->apartments as $apartment)
-                @php
-                    $record = $subscriptionForApartment->get($apartment->id);
-                    $period = $record?->currentItem();
-                @endphp
-                <article class="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                    <div class="flex flex-wrap items-baseline gap-2">
-                        <p class="font-semibold text-slate-900">{{ $apartment->name ?: '—' }}</p>
-                        <p class="text-sm text-slate-600">{{ $record?->subscription_no ?: '—' }}</p>
-                        <p class="text-sm text-slate-600">{{ $membershipLabel($apartment->pivot->role) }}</p>
-                    </div>
-                    <p class="mt-1 text-sm text-slate-600">
-                        {{ $periodText($period) }}
-                        <span class="text-slate-300"> · </span>
-                        <a href="{{ route('admin.apartments.show', $apartment) }}" class="font-semibold text-slate-700 hover:text-slate-900">Apartman</a>
-                        @unless ($apartment->is_active)
-                            <span class="text-slate-300"> · </span>
-                            <button type="button" onclick="openPurgeApartment(@js(route('admin.customers.apartments.destroy', [$customer, $apartment])), @js($apartment->name))" class="font-semibold text-red-700 hover:text-red-800">Kalıcı sil</button>
-                        @endunless
-                        @if ($record)
-                            <span class="text-slate-300"> · </span>
-                            <a href="{{ route('admin.subscriptions.show', $record) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">Detay</a>
-                        @endif
-                    </p>
-                    <div class="mt-1 flex flex-wrap items-center gap-1">
-                        @include('admin.managers.partials.plan-badge', ['plan' => $planLabel($period?->plan)])
-                        @include('admin.managers.partials.status-badges', ['status' => $record ? $subscriptionStatus($record->status) : '—', 'pending' => false])
-                    </div>
-                </article>
-            @empty
-                <div class="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">Apartman yok.</div>
-            @endforelse
-        </div>
-        <div class="mt-3 hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
-            <table class="min-w-full text-sm">
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Apartman / Abonelik No</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Rol</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Plan</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Dönem</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
-                        <th class="px-4 py-3 text-right font-semibold text-slate-700">İşlem</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200">
-                    @forelse ($customer->apartments as $apartment)
-                        @php
-                            $record = $subscriptionForApartment->get($apartment->id);
-                            $period = $record?->currentItem();
-                        @endphp
-                        <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3">
-                                <div class="font-medium text-slate-900">{{ $apartment->name ?: '—' }}</div>
-                                <div class="text-xs text-slate-500">{{ $record?->subscription_no ?: '—' }}</div>
-                            </td>
-                            <td class="px-4 py-3 text-slate-700">{{ $membershipLabel($apartment->pivot->role) }}</td>
-                            <td class="px-4 py-3">
-                                @include('admin.managers.partials.plan-badge', ['plan' => $planLabel($period?->plan)])
-                            </td>
-                            <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $periodText($period) }}</td>
-                            <td class="px-4 py-3">
-                                @include('admin.managers.partials.status-badges', ['status' => $record ? $subscriptionStatus($record->status) : '—', 'pending' => false])
-                                @unless ($apartment->is_active)
-                                    <div class="mt-1 text-xs text-slate-500">Apartman pasif</div>
-                                @endunless
-                                @if ($renewalPassives->get($apartment->id))
-                                    <div class="mt-1 text-xs text-slate-500">Kurulum yenileme ile pasife alındı. Daire sayısı ücretli dilimin dışındaydı.</div>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="flex flex-wrap justify-end gap-3">
-                                    <a href="{{ route('admin.apartments.show', $apartment) }}" class="text-sm font-semibold text-slate-600 hover:text-slate-800">Apartman</a>
-                                    @unless ($apartment->is_active)
-                                        <button type="button" onclick="openPurgeApartment(@js(route('admin.customers.apartments.destroy', [$customer, $apartment])), @js($apartment->name))" class="text-sm font-semibold text-red-700 hover:text-red-800">Kalıcı sil</button>
-                                    @endunless
-                                    @if ($record)
-                                        <a href="{{ route('admin.subscriptions.show', $record) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">Apartman yok.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <section id="customer-subscriptions" class="mt-6">
-        <h2 class="text-lg font-semibold text-slate-900">Abonelikler</h2>
-        <div class="mt-3 space-y-2 md:hidden">
-            @forelse ($subscriptions as $record)
-                @php
-                    $period = $record->displayItem();
-                @endphp
-                <article class="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                    <div class="flex flex-wrap items-baseline gap-2">
-                        <p class="font-semibold text-slate-900">{{ $record->displayApartmentName() }}</p>
-                        <p class="text-sm text-slate-600">{{ $record->subscription_no ?: '—' }}</p>
-                    </div>
-                    <p class="mt-1 text-sm text-slate-600">
-                        {{ $periodText($period) }}
-                        <span class="text-slate-300"> · </span>
-                        <a href="{{ route('admin.subscriptions.show', $record) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">Detay</a>
-                    </p>
-                    <div class="mt-1 flex flex-wrap items-center gap-1">
-                        @include('admin.managers.partials.plan-badge', ['plan' => $planLabel($period?->plan)])
-                        @include('admin.managers.partials.status-badges', ['status' => $subscriptionStatus($record->status), 'pending' => false])
-                    </div>
-                </article>
-            @empty
-                <div class="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">Abonelik yok.</div>
-            @endforelse
-        </div>
-        <div class="mt-3 hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
-            <table class="min-w-full text-sm">
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Apartman / Abonelik No</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Plan</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Dönem</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
-                        <th class="px-4 py-3 text-right font-semibold text-slate-700">İşlem</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200">
-                    @forelse ($subscriptions as $record)
-                        @php
-                            $period = $record->displayItem();
-                        @endphp
-                        <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3">
-                                <div class="font-medium text-slate-900">{{ $record->displayApartmentName() }}</div>
-                                <div class="text-xs text-slate-500">{{ $record->subscription_no ?: '—' }}</div>
-                            </td>
-                            <td class="px-4 py-3">
-                                @include('admin.managers.partials.plan-badge', ['plan' => $planLabel($period?->plan)])
-                            </td>
-                            <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $periodText($period) }}</td>
-                            <td class="px-4 py-3">
-                                @include('admin.managers.partials.status-badges', ['status' => $subscriptionStatus($record->status), 'pending' => false])
-                                @if ($renewalPassives->get($record->apartment_id))
-                                    <div class="mt-1 text-xs text-slate-500">Kurulum yenileme ile pasife alındı. Daire sayısı ücretli dilimin dışındaydı.</div>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-right">
-                                <a href="{{ route('admin.subscriptions.show', $record) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-6 text-center text-sm text-slate-500">Abonelik yok.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </section>
+    @include('admin.customers.partials.apartment-subscriptions')
 
     <section id="customer-orders" class="mt-6">
         <h2 class="text-lg font-semibold text-slate-900">Siparişler</h2>
@@ -355,11 +191,6 @@
                 @php
                     $apartmentNames = $order->items
                         ->map(fn ($item) => $item->apartment?->name ?? $item->apartment_name)
-                        ->filter()
-                        ->unique()
-                        ->values();
-                    $subscriptionNumbers = collect([$order->subscription?->subscription_no])
-                        ->merge($order->items->map(fn ($item) => $item->apartmentSubscription?->subscription_no))
                         ->filter()
                         ->unique()
                         ->values();
@@ -372,12 +203,6 @@
                     </div>
                     <p class="mt-1 text-sm text-slate-600">
                         {{ $apartmentNames->isNotEmpty() ? $apartmentNames->join(', ') : '—' }}
-                        <span class="text-slate-300"> · </span>
-                        {{ $subscriptionNumbers->isNotEmpty() ? $subscriptionNumbers->join(', ') : '—' }}
-                        @if ($order->billing_label)
-                            <span class="text-slate-300"> · </span>
-                            {{ $order->billing_label }}
-                        @endif
                         <span class="text-slate-300"> · </span>
                         <a href="{{ route('admin.orders.show', $order) }}" class="font-semibold text-emerald-700 hover:text-emerald-800">Detay</a>
                     </p>
@@ -394,10 +219,10 @@
                 <thead class="bg-slate-50">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Sipariş</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Sipariş tarihi</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Apartman</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Tutar</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Kayıt Tarihi</th>
                         <th class="px-4 py-3 text-right font-semibold text-slate-700">İşlem</th>
                     </tr>
                 </thead>
@@ -409,22 +234,14 @@
                                 ->filter()
                                 ->unique()
                                 ->values();
-                            $subscriptionNumbers = collect([$order->subscription?->subscription_no])
-                                ->merge($order->items->map(fn ($item) => $item->apartmentSubscription?->subscription_no))
-                                ->filter()
-                                ->unique()
-                                ->values();
                         @endphp
                         <tr class="hover:bg-slate-50">
                             <td class="px-4 py-3">
                                 <div class="font-mono font-medium text-slate-900">{{ $order->order_number ?: '—' }}</div>
-                                <div class="text-xs text-slate-500">{{ $subscriptionNumbers->isNotEmpty() ? $subscriptionNumbers->join(', ') : '—' }}</div>
                             </td>
+                            <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $order->created_at?->format('d.m.Y') ?? '—' }}</td>
                             <td class="px-4 py-3 text-slate-700">
                                 {{ $apartmentNames->isNotEmpty() ? $apartmentNames->join(', ') : '—' }}
-                                @if ($order->billing_label)
-                                    <div class="text-xs text-slate-500">{{ $order->billing_label }}</div>
-                                @endif
                             </td>
                             <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ number_format((float) $order->price, 2, ',', '.') }} ₺</td>
                             <td class="px-4 py-3">
@@ -432,7 +249,6 @@
                                     @include('admin.orders.partials.badges', ['order' => $order])
                                 </div>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $order->created_at?->format('d.m.Y') ?? '—' }}</td>
                             <td class="px-4 py-3 text-right">
                                 <a href="{{ route('admin.orders.show', $order) }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Detay</a>
                             </td>
@@ -477,9 +293,9 @@
                 <thead class="bg-slate-50">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Sipariş</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Tarih</th>
-                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Tutar</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Ödeme tarihi</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Yöntem</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-700">Tutar</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Referans</th>
                         <th class="px-4 py-3 text-left font-semibold text-slate-700">Durum</th>
                         <th class="px-4 py-3 text-right font-semibold text-slate-700">İşlem</th>
@@ -490,8 +306,8 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-4 py-3 font-mono font-medium text-slate-900">{{ $row['order']->order_number ?: '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ $row['payment']->payment_date?->format('d.m.Y') ?? '—' }}</td>
-                            <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ number_format((float) $row['payment']->amount, 2, ',', '.') }} ₺</td>
                             <td class="px-4 py-3 text-slate-700">{{ $paymentMethodLabel($row['payment']->payment_method) }}</td>
+                            <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ number_format((float) $row['payment']->amount, 2, ',', '.') }} ₺</td>
                             <td class="px-4 py-3 text-slate-700">{{ $row['payment']->reference_code ?: '—' }}</td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Tahsil edildi</span>
