@@ -22,6 +22,44 @@ class ManagementTransferTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_former_manager_keeps_linked_owner_or_tenant_portal_without_management_rights(): void
+    {
+        foreach ([\App\Models\Account::TYPE_OWNER, \App\Models\Account::TYPE_TENANT] as $type) {
+            [$old, $next, $apartment] = $this->building();
+            $unit = \App\Models\Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+            $account = \App\Models\Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+                'user_id' => $old->id, 'name' => 'Eski yöneticinin dairesi', 'type' => $type, 'is_active' => true]);
+            $this->accept($next, $this->offer($old, $next, $apartment))->assertSessionHasNoErrors();
+            $membership = $apartment->members()->whereKey($old->id)->first()->pivot;
+            $this->assertSame('member', $membership->role);
+            $this->assertTrue((bool) $membership->is_active);
+            $this->assertSame([$next->id], $apartment->managers()->pluck('users.id')->all());
+            $this->assertSame($old->id, $account->fresh()->user_id);
+            $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+                ->get(route('users.index'))->assertOk()
+                ->assertViewHas('users', fn ($users) => $users->contains('id', $old->id));
+            $this->actingAs($old)->get(route('subscriber.dashboard'))->assertOk()
+                ->assertViewHas('residenceAccounts', fn ($accounts) => $accounts->contains('id', $account->id));
+            $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
+                ->get(route('residence.account', $account))->assertOk();
+            $this->get(route('users.index'))->assertForbidden();
+        }
+    }
+
+    public function test_matching_email_without_a_linked_portal_account_does_not_keep_old_management_access(): void
+    {
+        [$old, $next, $apartment] = $this->building();
+        \App\Models\Account::create(['apartment_id' => $apartment->id, 'name' => 'Bağlanmamış hesap',
+            'type' => \App\Models\Account::TYPE_TENANT, 'email' => $old->email, 'is_active' => true]);
+        $this->accept($next, $this->offer($old, $next, $apartment))->assertSessionHasNoErrors();
+        $this->assertFalse((bool) $apartment->members()->whereKey($old->id)->first()->pivot->is_active);
+        $this->assertFalse(app(CurrentApartment::class)->hasAvailableFor($old));
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->get(route('users.index'))
+            ->assertOk()->assertViewHas('users', fn ($users) => ! $users->contains('id', $old->id));
+        $this->get(route('users.index', ['durum' => 'eski']))->assertOk()->assertSee('Erişim kapalı')
+            ->assertViewHas('users', fn ($users) => $users->contains('id', $old->id));
+    }
+
     public function test_starting_a_transfer_requires_own_password_and_explicit_confirmation(): void
     {
         [$old, $next, $apartment] = $this->building();

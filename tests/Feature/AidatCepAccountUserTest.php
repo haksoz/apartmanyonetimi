@@ -215,7 +215,7 @@ class AidatCepAccountUserTest extends TestCase
             ->assertSee('Duzenlenmis Ad')
             ->assertSee('5559998877')
             ->assertDontSee('Yeni Kullanıcı Oluştur')
-            ->assertSee('ilgili hesabın detayından eklenir');
+            ->assertSeeText('ilgili hesabın detayından eklenir');
 
         $this->assertSame('Defter Adi', $first->fresh()->name);
         $this->assertSame('5551', $first->fresh()->phone);

@@ -71,8 +71,10 @@ class AccountUserController extends Controller
         $filter = $request->query('durum') === 'eski' ? 'eski' : 'aktif';
         $users = $users->filter(function ($user) use ($linkedAccounts, $filter) {
             $accounts = $linkedAccounts->get($user->id, collect());
-            $former = $user->pivot->role !== 'owner' && $accounts->isNotEmpty()
-                && $accounts->every(fn ($account) => $account->residenceHasEnded());
+            $former = $user->pivot->role !== 'owner' && (
+                ($accounts->isEmpty() && ! ($user->pivot->is_active ?? true))
+                || ($accounts->isNotEmpty() && $accounts->every(fn ($account) => $account->residenceHasEnded()))
+            );
 
             return $filter === 'eski' ? $former : ! $former;
         });

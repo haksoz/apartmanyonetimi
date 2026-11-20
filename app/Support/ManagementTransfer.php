@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Apartment;
+use App\Models\Account;
 use App\Models\ManagementOffer;
 use App\Models\Subscription;
 use App\Models\User;
@@ -27,9 +28,16 @@ class ManagementTransfer
         }
         app(ApartmentManagementHistory::class)->transfer($apartment, $user, $offer);
         $previous = $apartment->members()->wherePivot('role', 'owner')->where('users.id', '!=', $user->id)->pluck('users.id')->all();
+        $residentManagers = $apartment->members()->wherePivot('role', 'owner')->wherePivot('is_active', true)
+            ->where('users.id', '!=', $user->id)
+            ->whereHas('accounts', fn ($query) => $query->where('apartment_id', $apartment->id)
+                ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT]))
+            ->pluck('users.id')->all();
         DB::table('apartment_user')->where('apartment_id', $apartment->id)
             ->where('user_id', '!=', $user->id)->where('role', 'owner')
             ->update(['role' => 'member', 'is_active' => false, 'updated_at' => now()]);
+        DB::table('apartment_user')->where('apartment_id', $apartment->id)->whereIn('user_id', $residentManagers)
+            ->update(['is_active' => true]);
         $apartment->members()->updateExistingPivot($user->id, ['role' => 'owner', 'is_active' => true]);
         Subscription::where('apartment_id', $apartment->id)->update(['billing_profile_id' => null]);
         $this->closeUnpaidOrders($apartment, $previous);
