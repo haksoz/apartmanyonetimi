@@ -16,6 +16,24 @@ class ManagementOfferTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_transfer_preserves_explicit_quota_and_existing_unlimited_customer_rights(): void
+    {
+        foreach ([['user', 3], [User::ROLE_MANAGER, null]] as [$role, $limit]) {
+            [$manager, $apartment] = $this->building();
+            $member = $this->memberOf($apartment);
+            $member->update(['role' => $role]);
+            if ($limit !== null) {
+                $member->quotaOverride()->create(['max_apartments' => $limit]);
+            }
+            $offer = ManagementOffer::create(['apartment_id' => $apartment->id, 'user_id' => $member->id,
+                'offered_by' => $manager->id, 'status' => 'pending', 'expires_at' => now()->addDays(14)]);
+            $this->actingAs($member)->post(route('management-offers.accept', $offer), [
+                'accept_resident_data' => 1, 'accept_privacy' => 1,
+            ])->assertSessionHasNoErrors()->assertRedirect(route('subscriber.dashboard'));
+            $this->assertSame($limit, app(UserApartmentQuota::class)->definedLimit($member->fresh()));
+        }
+    }
+
     public function test_owner_role_opens_a_pending_offer_and_acceptance_counts_toward_the_quota(): void
     {
         [$manager, $apartment] = $this->building();
@@ -69,6 +87,9 @@ class ManagementOfferTest extends TestCase
 
         $this->assertSame('owner', $apartment->members()->whereKey($member->id)->first()->pivot->role);
         $this->assertSame(1, app(UserApartmentQuota::class)->currentCount($member));
+        $this->assertSame(User::ROLE_MANAGER, $member->fresh()->role);
+        $this->assertSame(1, app(UserApartmentQuota::class)->definedLimit($member->fresh()));
+        $this->assertFalse(app(UserApartmentQuota::class)->canCreate($member->fresh()));
         $this->assertSame(0, app(UserApartmentQuota::class)->currentCount($manager));
         $this->assertDatabaseHas('legal_acceptances', [
             'user_id' => $member->id,

@@ -4,7 +4,7 @@
     {{-- Header --}}
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-slate-950">Kullanıcılar</h1>
-        <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Yeni AidatCep kullanıcısı, ilgili hesabın detayından eklenir. Bu ekranda rol ve bina erişimi yönetilir.</div>
+        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-700">Yeni AidatCep kullanıcısı, <span class="font-semibold">ilgili hesabın detayından</span> eklenir. Bu ekranda <span class="font-semibold">rol ve bina erişimi</span> yönetilir.</p>
     </div>
 
     <nav class="mb-4 flex gap-2" aria-label="Apartman kullanıcı durumu">

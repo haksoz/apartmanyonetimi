@@ -14,6 +14,17 @@ class ManagementTransfer
     /** Apartment and offer must be locked by the enclosing transaction. */
     public function complete(Apartment $apartment, User $user, ManagementOffer $offer): void
     {
+        $firstCustomerMembership = ! $user->isAdminPanelUser()
+            && ! $user->isSubscriber()
+            && ! $user->ownedApartments()->withTrashed()->exists()
+            && ! $user->managementPeriods()->exists()
+            && ! $user->apartments()->wherePivot('role', 'owner')->exists()
+            && ! $user->subscriptions()->withTrashed()->commercial()->exists();
+        if ($firstCustomerMembership) {
+            $user->quotaOverride()->firstOrCreate([], ['max_apartments' => 1]);
+            $user->update(['role' => User::ROLE_MANAGER]);
+            $user->unsetRelation('quotaOverride');
+        }
         app(ApartmentManagementHistory::class)->transfer($apartment, $user, $offer);
         $previous = $apartment->members()->wherePivot('role', 'owner')->where('users.id', '!=', $user->id)->pluck('users.id')->all();
         DB::table('apartment_user')->where('apartment_id', $apartment->id)
