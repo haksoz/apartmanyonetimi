@@ -85,7 +85,7 @@
 
                 {{-- Right Side: User & Apartment Info --}}
                 <div class="flex items-center gap-4">
-                    @if ($currentApartment)
+                    @if ($currentApartment && ! request()->routeIs('admin.*'))
                         <div class="relative hidden md:block" id="apt-switcher">
                             <button type="button" onclick="document.getElementById('apt-dropdown').classList.toggle('hidden')" class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm transition-colors">
                                 <svg class="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,7 +205,7 @@
                         $subscriberNav = request()->routeIs('subscriber.*', 'profile.*');
                         $showBuildingMenu = ($navIsOwner ?? false) && ($currentApartment ?? null) && ! request()->routeIs('residence.home');
                     @endphp
-                    @if(!request()->routeIs('admin.*') && ! $subscriberNav)
+                    @if(!request()->routeIs('admin.*') && (! $subscriberNav || request()->routeIs('profile.*')))
                         @if(auth()->user()->isAdmin())
                             <a href="{{ route('admin.dashboard') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.dashboard') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,6 +256,10 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
                                 <span class="sidebar-text">Siparişler</span>
+                            </a>
+                            <a href="{{ route('admin.card-transactions.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.card-transactions.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8h18M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zm2 11h4"/></svg>
+                                <span class="sidebar-text">Kredi Kartı İşlemleri</span>
                             </a>
 
                             <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Paket Yönetimi</div>

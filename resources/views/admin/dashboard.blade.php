@@ -8,54 +8,7 @@
         <p class="text-sm text-slate-500">Operasyonel özet ve yönetim.</p>
     </div>
 
-    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-xl border border-slate-200 bg-white p-6">
-            <div class="text-sm font-medium text-slate-500">Yönetici</div>
-            <div class="mt-2 text-3xl font-bold text-slate-900">{{ $managerCount }}</div>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-6">
-            <div class="text-sm font-medium text-slate-500">Apartman</div>
-            <div class="mt-2 text-3xl font-bold text-slate-900">{{ $apartmentCount }}</div>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-6">
-            <div class="text-sm font-medium text-slate-500">Aktif Abonelik</div>
-            <div class="mt-2 text-3xl font-bold text-slate-900">{{ $activeSubscriptionCount }}</div>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-6">
-            <div class="text-sm font-medium text-slate-500">Süresi Dolmuş Abonelik</div>
-            <div class="mt-2 text-3xl font-bold text-slate-900">{{ $expiredSubscriptionCount }}</div>
-        </div>
-    </div>
-
-    <div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 class="text-lg font-semibold text-slate-900">Apartman Yönetimi</h2>
-        <p class="mt-1 text-sm text-slate-500">Yönetmek istediğiniz apartmanı seçin veya apartman yönetim ekranına geçin.</p>
-
-        @if ($apartments->isEmpty())
-            <p class="mt-4 text-sm text-slate-500">Henüz apartman yok.</p>
-        @else
-            <div class="mt-4 grid gap-4 md:grid-cols-2">
-                @foreach ($apartments as $apartment)
-                    <form method="POST" action="{{ route('current-apartment.update') }}" class="rounded-xl border border-slate-200 p-4">
-                        @csrf
-                        <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
-                        <div class="font-semibold text-slate-900">{{ $apartment->name }}</div>
-                        <div class="text-sm text-slate-500">{{ $apartment->address ?: 'Adres girilmedi' }}</div>
-                        <div class="mt-1 text-sm text-slate-600">Yönetici: <span class="font-medium">{{ $apartment->user?->name ?? 'Belirtilmemiş' }}</span></div>
-                        <div class="mt-2 text-sm text-slate-500">{{ $apartment->unit_count }} daire</div>
-                        <button type="submit" class="mt-3 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Bu Apartmanla Devam Et</button>
-                    </form>
-                @endforeach
-            </div>
-        @endif
-
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <a href="{{ route('subscriber.dashboard') }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Apartman Yönetimine Git →</a>
-            <a href="{{ route('admin.archived-apartments.index') }}" class="text-sm font-semibold text-slate-500 hover:text-slate-700">Silinmiş apartmanlar</a>
-        </div>
-    </div>
-
-    <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <div class="grid gap-6 lg:grid-cols-3">
         <a href="{{ route('admin.customers.index') }}" class="rounded-xl border border-slate-200 bg-white p-6 hover:border-sky-300 transition-colors">
             <div class="flex items-center gap-3">
                 <div class="rounded-lg bg-sky-50 p-3">
@@ -64,7 +17,7 @@
                     </svg>
                 </div>
                 <div>
-                    <div class="font-semibold text-slate-900">Müşteriler</div>
+                    <div class="font-semibold text-slate-900">Müşteriler ({{ $customerCount }})</div>
                     <div class="text-sm text-slate-500">Kayıtlı müşteriyi ve ilişkilerini gör.</div>
                 </div>
             </div>
@@ -77,7 +30,7 @@
                     </svg>
                 </div>
                 <div>
-                    <div class="font-semibold text-slate-900">Abonelikler</div>
+                    <div class="font-semibold text-slate-900">Abonelikler ({{ $subscriptionCount }})</div>
                     <div class="text-sm text-slate-500">Apartmanın abonelik geçmişini takip et.</div>
                 </div>
             </div>
@@ -90,10 +43,16 @@
                     </svg>
                 </div>
                 <div>
-                    <div class="font-semibold text-slate-900">Siparişler</div>
+                    <div class="font-semibold text-slate-900">Siparişler ({{ $orderCount }})</div>
                     <div class="text-sm text-slate-500">Siparişin ve tahsilatın durumunu takip et.</div>
+                    <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                        <span class="text-amber-700">Bekleyen: {{ $pendingOrderCount }}</span>
+                        <span class="text-emerald-700">Aktif: {{ $activeOrderCount }}</span>
+                        <span class="text-slate-500">İptal: {{ $cancelledOrderCount }}</span>
+                    </div>
                 </div>
             </div>
         </a>
     </div>
+
 @endsection

@@ -38,7 +38,18 @@
                         </td>
                         <td class="px-4 py-3">{{ $apartment->unit_count }}</td>
                         <td class="px-4 py-3"><span class="{{ $apartment->is_active ? 'text-emerald-700' : 'text-slate-500' }}">{{ $apartment->is_active ? 'Aktif' : 'Pasif' }}</span></td>
-                        <td class="px-4 py-3 text-right"><a href="{{ route('admin.apartments.show', $apartment) }}" class="font-semibold text-emerald-700">Detay</a></td>
+                        <td class="px-4 py-3 text-right">
+                            <div class="flex items-center justify-end gap-3">
+                                @if ($apartment->is_active)
+                                    <form method="POST" action="{{ route('current-apartment.update') }}">
+                                        @csrf
+                                        <input type="hidden" name="apartment_id" value="{{ $apartment->id }}">
+                                        <button type="submit" aria-label="{{ $apartment->name }} apartmanını yönet" class="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">Yönet</button>
+                                    </form>
+                                @endif
+                                <a href="{{ route('admin.apartments.show', $apartment) }}" class="font-semibold text-emerald-700">Detay</a>
+                            </div>
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">Apartman bulunamadı.</td></tr>

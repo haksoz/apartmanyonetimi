@@ -164,6 +164,16 @@ class UserSubscription extends Model
     /**
      * Gerçek satın alma. Yalnızca ücretsiz temel kullanım kalemi taşıyan başlıklar sipariş değildir.
      */
+    public function scopeVisibleInOrderList(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query) {
+            $query->whereNull('checkout_abandoned_at')
+                ->orWhere('status', self::STATUS_ACTIVE)
+                ->orWhereHas('payments')
+                ->orWhereHas('paymentAttempts', fn ($query) => $query->where('review_required', true)->orWhere('status', 'succeeded'));
+        });
+    }
+
     public function scopeCommercial(Builder $query): Builder
     {
         return $query->where(function (Builder $query) {

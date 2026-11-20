@@ -29,35 +29,48 @@
 
         <section class="rounded-xl border border-slate-200 bg-white p-6">
             <h2 class="text-lg font-semibold text-slate-900">Fiyat bantları</h2>
-            <div class="mt-4 space-y-4">
-                @foreach ($bands as $band)
-                    <form method="POST" action="{{ route('admin.commercial.bands.update', $band) }}" class="grid gap-3 rounded-xl border border-slate-100 p-4 sm:grid-cols-5">
-                        @csrf
-                        @method('PATCH')
-                        <div class="sm:col-span-2">
-                            <div class="text-sm font-semibold text-slate-900">{{ $band->label }}</div>
-                            <div class="text-xs text-slate-500">{{ $band->min_units }}–{{ $band->max_units ?? '∞' }} daire</div>
-                        </div>
-                        @if ($band->is_quote)
-                            <div class="sm:col-span-2 text-sm text-slate-500">Teklif bandı. Fiyat, apartman kaydına yazılır.</div>
-                        @else
-                            <label class="text-xs font-medium text-slate-600">
-                                Aylık net (KDV hariç)
-                                <input type="number" step="0.01" min="0" name="monthly_price" value="{{ $band->monthly_price }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                            </label>
-                            <label class="text-xs font-medium text-slate-600">
-                                Yıllık net (KDV hariç)
-                                <input type="number" step="0.01" min="0" name="yearly_price" value="{{ $band->yearly_price }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                            </label>
-                        @endif
-                        <div class="flex items-end justify-between gap-3">
-                            <label class="flex items-center gap-2 text-sm text-slate-700">
-                                <input type="checkbox" name="is_active" value="1" {{ $band->is_active ? 'checked' : '' }}> Aktif
-                            </label>
-                            <button class="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">Kaydet</button>
-                        </div>
-                    </form>
-                @endforeach
+            <div class="mt-4 overflow-x-auto rounded-lg border border-slate-200">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-slate-50 text-left text-slate-600">
+                        <tr>
+                            <th scope="col" class="px-4 py-3">Daire bandı</th>
+                            <th scope="col" class="px-4 py-3">Aylık net (KDV hariç)</th>
+                            <th scope="col" class="px-4 py-3">Yıllık net (KDV hariç)</th>
+                            <th scope="col" class="px-4 py-3 text-center">Aktif</th>
+                            <th scope="col" class="px-4 py-3 text-right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach ($bands as $band)
+                            <tr>
+                                <th scope="row" class="px-4 py-3 text-left font-normal">
+                                    <div class="font-semibold text-slate-900">{{ $band->label }}</div>
+                                    <div class="text-xs text-slate-500">{{ $band->min_units }}–{{ $band->max_units ?? '∞' }} daire</div>
+                                </th>
+                                @if ($band->is_quote)
+                                    <td colspan="2" class="px-4 py-3 text-slate-500">Teklif bandı. Fiyat, apartman kaydına yazılır.</td>
+                                @else
+                                    <td class="px-4 py-3">
+                                        <input form="price-band-{{ $band->id }}" aria-label="{{ $band->label }} aylık net (KDV hariç)" type="number" step="0.01" min="0" name="monthly_price" value="{{ $band->monthly_price }}" class="w-full min-w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <input form="price-band-{{ $band->id }}" aria-label="{{ $band->label }} yıllık net (KDV hariç)" type="number" step="0.01" min="0" name="yearly_price" value="{{ $band->yearly_price }}" class="w-full min-w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                                    </td>
+                                @endif
+                                <td class="px-4 py-3 text-center">
+                                    <input form="price-band-{{ $band->id }}" aria-label="{{ $band->label }} aktif" type="checkbox" name="is_active" value="1" {{ $band->is_active ? 'checked' : '' }}>
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <form id="price-band-{{ $band->id }}" method="POST" action="{{ route('admin.commercial.bands.update', $band) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button class="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">Kaydet</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         </section>
 

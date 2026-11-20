@@ -25,7 +25,7 @@
             @endif
         </select>
         @if ($profile->exists)
-            <span class="mt-1 block text-xs font-normal text-slate-500">Fatura türü değiştirilemez. Farklı bir tür için <a href="{{ route('subscriber.billing-profiles.create') }}" class="font-semibold text-emerald-700 underline">yeni profil oluşturun</a>.</span>
+            <span class="mt-1 block text-xs font-normal text-slate-500">Fatura türü değiştirilemez. Farklı bir tür için <a href="{{ $createProfileUrl ?? route('subscriber.billing-profiles.create') }}" class="font-semibold text-emerald-700 underline">yeni profil oluşturun</a>.</span>
         @endif
         @error('party_type') <span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span> @enderror
     </label>

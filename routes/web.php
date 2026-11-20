@@ -1,55 +1,59 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AccountPortalOfferController;
 use App\Http\Controllers\AccountUserController;
-use App\Http\Controllers\LandingController;
-use App\Http\Controllers\ApartmentController;
-use App\Http\Controllers\ApartmentSelectionController;
-use App\Http\Controllers\ApartmentWizardController;
-use App\Http\Controllers\ApartmentSwitchController;
+use App\Http\Controllers\Admin\AdminApartmentController;
 use App\Http\Controllers\Admin\AdminArchivedApartmentController;
+use App\Http\Controllers\Admin\AdminBankAccountController;
 use App\Http\Controllers\Admin\AdminCommercialController;
+use App\Http\Controllers\Admin\AdminCustomerBillingProfileController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminDataOperationController;
 use App\Http\Controllers\Admin\AdminImpersonateController;
 use App\Http\Controllers\Admin\AdminManagerController;
 use App\Http\Controllers\Admin\AdminOrderController;
-use App\Http\Controllers\Admin\AdminBankAccountController;
+use App\Http\Controllers\Admin\AdminOrderInvoiceController;
+use App\Http\Controllers\Admin\AdminOrderInvoiceXmlController;
 use App\Http\Controllers\Admin\AdminPackageController;
 use App\Http\Controllers\Admin\AdminQuoteRequestController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\Admin\AdminSubscriptionItemController;
 use App\Http\Controllers\Admin\AdminUserController;
-use App\Http\Controllers\Subscriber\SubscriberApartmentController;
-use App\Http\Controllers\Subscriber\SubscriberApartmentCreateController;
-use App\Http\Controllers\Subscriber\SubscriberBillingProfileController;
-use App\Http\Controllers\Subscriber\SubscriberDashboardController;
-use App\Http\Controllers\Subscriber\SubscriberSubscriptionController;
-use App\Http\Controllers\Subscriber\SubscriberCardPaymentController;
+use App\Http\Controllers\ApartmentController;
+use App\Http\Controllers\ApartmentSelectionController;
+use App\Http\Controllers\ApartmentSwitchController;
+use App\Http\Controllers\ApartmentWizardController;
+use App\Http\Controllers\AssessmentPlanController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\InviteController;
-use App\Http\Controllers\MembershipConsentController;
 use App\Http\Controllers\CashBoxController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ResidenceController;
-use App\Http\Controllers\AssessmentPlanController;
 use App\Http\Controllers\DueController;
 use App\Http\Controllers\DuePlanController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ExpensePlanController;
 use App\Http\Controllers\FinancialPlanController;
+use App\Http\Controllers\InviteController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LedgerController;
-use App\Http\Controllers\PaymentAllocationController;
+use App\Http\Controllers\ManagementOfferController;
+use App\Http\Controllers\MembershipConsentController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\PaymentAllocationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\AccountPortalOfferController;
-use App\Http\Controllers\ManagementOfferController;
-use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ResidenceController;
+use App\Http\Controllers\Subscriber\SubscriberApartmentController;
+use App\Http\Controllers\Subscriber\SubscriberApartmentCreateController;
+use App\Http\Controllers\Subscriber\SubscriberBillingProfileController;
+use App\Http\Controllers\Subscriber\SubscriberCardPaymentController;
+use App\Http\Controllers\Subscriber\SubscriberDashboardController;
+use App\Http\Controllers\Subscriber\SubscriberSubscriptionController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
@@ -148,7 +152,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     Route::get('reports/account-statement/export/{type}', [ReportController::class, 'accountStatementExport'])->middleware('feature.export')->name('reports.account-statement.export');
 
     // Raporlar - Tüm kullanıcılar
-        Route::prefix('reports')->name('reports.')->middleware('building.panel')->group(function () {
+    Route::prefix('reports')->name('reports.')->middleware('building.panel')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('income-expense', [ReportController::class, 'incomeExpense'])->name('income-expense');
         Route::get('income-expense/export/{type}', [ReportController::class, 'incomeExpenseExport'])->middleware('feature.export')->name('income-expense.export');
@@ -171,18 +175,18 @@ Route::middleware(['auth', 'apartment'])->group(function () {
     });
 
     Route::middleware('building.panel')->group(function () {
-    Route::resource('expenses', ExpenseController::class);
-    Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
-    Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');
-    Route::delete('expenses/{expense}/payment', [ExpenseController::class, 'destroyPayment'])->name('expenses.payment.destroy');
-    Route::post('expenses/{expense}/documents', [ExpenseController::class, 'storeDocument'])->name('expenses.documents.store');
-    Route::delete('expenses/{expense}/documents/{document}', [ExpenseController::class, 'destroyDocument'])->name('expenses.documents.destroy');
-    Route::get('expenses/{expense}/documents/{document}/download', [ExpenseController::class, 'downloadDocument'])->name('expenses.documents.download');
+        Route::resource('expenses', ExpenseController::class);
+        Route::get('expenses/{expense}/payment', [ExpenseController::class, 'createPayment'])->name('expenses.payment.create');
+        Route::post('expenses/{expense}/payment', [ExpenseController::class, 'storePayment'])->name('expenses.payment.store');
+        Route::delete('expenses/{expense}/payment', [ExpenseController::class, 'destroyPayment'])->name('expenses.payment.destroy');
+        Route::post('expenses/{expense}/documents', [ExpenseController::class, 'storeDocument'])->name('expenses.documents.store');
+        Route::delete('expenses/{expense}/documents/{document}', [ExpenseController::class, 'destroyDocument'])->name('expenses.documents.destroy');
+        Route::get('expenses/{expense}/documents/{document}/download', [ExpenseController::class, 'downloadDocument'])->name('expenses.documents.download');
     });
 
     // Aidatlar - Üye ve Yönetici erişimi
     Route::get('dues', [DueController::class, 'index'])->name('dues.index');
-        Route::get('dues/export', [DueController::class, 'export'])->middleware(['building.panel', 'feature.export'])->name('dues.export');
+    Route::get('dues/export', [DueController::class, 'export'])->middleware(['building.panel', 'feature.export'])->name('dues.export');
     Route::get('dues/account-eligibility', [DueController::class, 'accountEligibility'])->middleware('building.panel')->name('dues.account-eligibility');
     Route::get('dues/create', [DueController::class, 'create'])->middleware('building.panel')->name('dues.create');
     Route::post('dues', [DueController::class, 'store'])->name('dues.store');
@@ -310,9 +314,19 @@ Route::post('admin/impersonate/leave', [AdminImpersonateController::class, 'leav
     ->middleware('auth');
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('card-transactions', [\App\Http\Controllers\Admin\AdminCardTransactionController::class, 'index'])->name('card-transactions.index');
+    Route::get('card-transactions/{attempt}', [\App\Http\Controllers\Admin\AdminCardTransactionController::class, 'show'])->name('card-transactions.show');
+    Route::prefix('customers/{customer}/billing-profiles')->name('customers.billing-profiles.')->controller(AdminCustomerBillingProfileController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('{billingProfile}/edit', 'edit')->name('edit');
+        Route::put('{billingProfile}', 'update')->name('update');
+        Route::patch('{billingProfile}/active', 'active')->name('active');
+    });
     Route::get('/', AdminDashboardController::class)->name('dashboard');
-    Route::get('apartments', [\App\Http\Controllers\Admin\AdminApartmentController::class, 'index'])->name('apartments.index');
-    Route::get('apartments/{apartment}', [\App\Http\Controllers\Admin\AdminApartmentController::class, 'show'])->withTrashed()->name('apartments.show');
+    Route::get('apartments', [AdminApartmentController::class, 'index'])->name('apartments.index');
+    Route::get('apartments/{apartment}', [AdminApartmentController::class, 'show'])->withTrashed()->name('apartments.show');
     Route::get('archived-apartments', [AdminArchivedApartmentController::class, 'index'])->name('archived-apartments.index');
 
     Route::get('customers', [AdminCustomerController::class, 'index'])->name('customers.index');
@@ -326,14 +340,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('customers/{customer}/apartments/{apartment}', [AdminCustomerController::class, 'destroyApartment'])->name('customers.apartments.destroy');
     Route::delete('customers/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
     Route::get('managers', [AdminManagerController::class, 'index'])->name('managers.index');
-    Route::post('orders/{order}/invoice', [\App\Http\Controllers\Admin\AdminOrderInvoiceController::class, 'store'])->name('orders.invoice.store');
-    Route::get('order-invoices/xml/upload', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'create'])->name('order-invoices.xml.create');
-    Route::post('order-invoices/xml/upload', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'upload'])->name('order-invoices.xml.upload');
-    Route::get('order-invoices/xml/preview', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'preview'])->name('order-invoices.xml.preview');
-    Route::post('order-invoices/xml/confirm', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'confirm'])->name('order-invoices.xml.confirm');
-    Route::post('order-invoices/xml/cancel', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'cancel'])->name('order-invoices.xml.cancel');
-    Route::get('order-invoices/{invoice}/xml', [\App\Http\Controllers\Admin\AdminOrderInvoiceXmlController::class, 'download'])->name('order-invoices.xml.download');
-    Route::get('order-invoices/{invoice}', [\App\Http\Controllers\Admin\AdminOrderInvoiceController::class, 'show'])->name('order-invoices.show');
+    Route::post('orders/{order}/invoice', [AdminOrderInvoiceController::class, 'store'])->name('orders.invoice.store');
+    Route::get('order-invoices/xml/upload', [AdminOrderInvoiceXmlController::class, 'create'])->name('order-invoices.xml.create');
+    Route::post('order-invoices/xml/upload', [AdminOrderInvoiceXmlController::class, 'upload'])->name('order-invoices.xml.upload');
+    Route::get('order-invoices/xml/preview', [AdminOrderInvoiceXmlController::class, 'preview'])->name('order-invoices.xml.preview');
+    Route::post('order-invoices/xml/confirm', [AdminOrderInvoiceXmlController::class, 'confirm'])->name('order-invoices.xml.confirm');
+    Route::post('order-invoices/xml/cancel', [AdminOrderInvoiceXmlController::class, 'cancel'])->name('order-invoices.xml.cancel');
+    Route::get('order-invoices/{invoice}/xml', [AdminOrderInvoiceXmlController::class, 'download'])->name('order-invoices.xml.download');
+    Route::get('order-invoices/{invoice}', [AdminOrderInvoiceController::class, 'show'])->name('order-invoices.show');
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->withTrashed()->name('orders.show');
     Route::post('orders/{order}/close-test', [AdminOrderController::class, 'closeTest'])->withTrashed()->name('orders.close-test');
@@ -368,7 +382,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('data-operations/{dataOperation}', [AdminDataOperationController::class, 'show'])->name('data-operations.show');
 
     Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');
-    Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
 
     Route::resource('admin-users', AdminUserController::class)
         ->except(['show'])
@@ -381,41 +394,41 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth'])->group(fu
     Route::get('/', SubscriberDashboardController::class)->name('dashboard');
 
     Route::middleware('subscription.access')->group(function () {
-    Route::get('apartments', [SubscriberApartmentController::class, 'index'])->name('apartments.index');
-    Route::post('apartment', [SubscriberApartmentController::class, 'update'])->name('apartment.update');
-    Route::post('apartments/{apartment}/trigger-aidat', [SubscriberApartmentController::class, 'triggerAidatGeneration'])->name('apartments.trigger-aidat');
+        Route::get('apartments', [SubscriberApartmentController::class, 'index'])->name('apartments.index');
+        Route::post('apartment', [SubscriberApartmentController::class, 'update'])->name('apartment.update');
+        Route::post('apartments/{apartment}/trigger-aidat', [SubscriberApartmentController::class, 'triggerAidatGeneration'])->name('apartments.trigger-aidat');
 
-    // Apartment creation for subscribers - no apartment required
-    Route::get('apartments/create', [SubscriberApartmentCreateController::class, 'create'])->middleware('subscriber')->name('apartments.create');
-    Route::post('apartments', [SubscriberApartmentCreateController::class, 'store'])->middleware('subscriber')->name('apartments.store');
+        // Apartment creation for subscribers - no apartment required
+        Route::get('apartments/create', [SubscriberApartmentCreateController::class, 'create'])->middleware('subscriber')->name('apartments.create');
+        Route::post('apartments', [SubscriberApartmentCreateController::class, 'store'])->middleware('subscriber')->name('apartments.store');
 
-    // Apartment editing for subscribers
-    Route::get('apartments/{apartment}', [SubscriberApartmentController::class, 'show'])->name('apartments.show');
-    Route::get('apartments/{apartment}/edit', [ApartmentController::class, 'edit'])->name('apartments.edit');
-    Route::put('apartments/{apartment}', [ApartmentController::class, 'update'])->name('apartments.update');
+        // Apartment editing for subscribers
+        Route::get('apartments/{apartment}', [SubscriberApartmentController::class, 'show'])->name('apartments.show');
+        Route::get('apartments/{apartment}/edit', [ApartmentController::class, 'edit'])->name('apartments.edit');
+        Route::put('apartments/{apartment}', [ApartmentController::class, 'update'])->name('apartments.update');
     });
 
     Route::middleware('subscriber.commerce')->group(function () {
-    Route::get('billing-profiles', [SubscriberBillingProfileController::class, 'index'])->name('billing-profiles.index');
-    Route::get('billing-profiles/create', [SubscriberBillingProfileController::class, 'create'])->name('billing-profiles.create');
-    Route::post('billing-profiles', [SubscriberBillingProfileController::class, 'store'])->name('billing-profiles.store');
-    Route::get('billing-profiles/{billingProfile}/edit', [SubscriberBillingProfileController::class, 'edit'])->name('billing-profiles.edit');
-    Route::put('billing-profiles/{billingProfile}', [SubscriberBillingProfileController::class, 'update'])->name('billing-profiles.update');
-    Route::patch('billing-profiles/{billingProfile}/active', [SubscriberBillingProfileController::class, 'active'])->name('billing-profiles.active');
+        Route::get('billing-profiles', [SubscriberBillingProfileController::class, 'index'])->name('billing-profiles.index');
+        Route::get('billing-profiles/create', [SubscriberBillingProfileController::class, 'create'])->name('billing-profiles.create');
+        Route::post('billing-profiles', [SubscriberBillingProfileController::class, 'store'])->name('billing-profiles.store');
+        Route::get('billing-profiles/{billingProfile}/edit', [SubscriberBillingProfileController::class, 'edit'])->name('billing-profiles.edit');
+        Route::put('billing-profiles/{billingProfile}', [SubscriberBillingProfileController::class, 'update'])->name('billing-profiles.update');
+        Route::patch('billing-profiles/{billingProfile}/active', [SubscriberBillingProfileController::class, 'active'])->name('billing-profiles.active');
 
-    // Subscription renewal / upgrade orders
-    Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
-        Route::get('/', [SubscriberSubscriptionController::class, 'index'])->name('index');
-        Route::get('create', [SubscriberSubscriptionController::class, 'create'])->name('create');
-        Route::post('/', [SubscriberSubscriptionController::class, 'store'])->name('store');
-        Route::get('{subscription}/receipt', [SubscriberSubscriptionController::class, 'receipt'])->name('receipt');
-        Route::post('{subscription}/card', [SubscriberCardPaymentController::class, 'start'])->middleware('throttle:10,1')->name('card.start');
-        Route::get('{subscription}/card', [SubscriberCardPaymentController::class, 'show'])->name('card');
-        Route::post('{subscription}/card-abandon', [SubscriberCardPaymentController::class, 'abandon'])->name('card-abandon');
-        Route::get('{subscription}/card-result', [SubscriberCardPaymentController::class, 'result'])->name('card-result');
-        Route::get('{subscription}/card-status', [SubscriberCardPaymentController::class, 'status'])->middleware('throttle:30,1')->name('card-status');
-        Route::post('{subscription}/cancel', [SubscriberSubscriptionController::class, 'cancel'])->name('cancel');
-        Route::post('{subscription}/payment-info', [SubscriberSubscriptionController::class, 'paymentInfo'])->name('payment-info');
-    });
+        // Subscription renewal / upgrade orders
+        Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
+            Route::get('/', [SubscriberSubscriptionController::class, 'index'])->name('index');
+            Route::get('create', [SubscriberSubscriptionController::class, 'create'])->name('create');
+            Route::post('/', [SubscriberSubscriptionController::class, 'store'])->name('store');
+            Route::get('{subscription}/receipt', [SubscriberSubscriptionController::class, 'receipt'])->name('receipt');
+            Route::post('{subscription}/card', [SubscriberCardPaymentController::class, 'start'])->middleware('throttle:10,1')->name('card.start');
+            Route::get('{subscription}/card', [SubscriberCardPaymentController::class, 'show'])->name('card');
+            Route::post('{subscription}/card-abandon', [SubscriberCardPaymentController::class, 'abandon'])->name('card-abandon');
+            Route::get('{subscription}/card-result', [SubscriberCardPaymentController::class, 'result'])->name('card-result');
+            Route::get('{subscription}/card-status', [SubscriberCardPaymentController::class, 'status'])->middleware('throttle:30,1')->name('card-status');
+            Route::post('{subscription}/cancel', [SubscriberSubscriptionController::class, 'cancel'])->name('cancel');
+            Route::post('{subscription}/payment-info', [SubscriberSubscriptionController::class, 'paymentInfo'])->name('payment-info');
+        });
     });
 });

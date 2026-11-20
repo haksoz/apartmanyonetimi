@@ -54,6 +54,7 @@
             @endif
         </div>
         <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ route('admin.customers.billing-profiles.index', $customer) }}" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Fatura profilleri</a>
             @if ($customer->deactivated_at)
                 <form method="POST" action="{{ route('admin.customers.activate', $customer) }}">
                     @csrf

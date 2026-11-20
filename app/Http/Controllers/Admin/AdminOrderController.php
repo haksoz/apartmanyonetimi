@@ -25,6 +25,7 @@ class AdminOrderController extends Controller
         $orders = UserSubscription::query()
             ->when($status === 'deleted', fn ($query) => $query->onlyTrashed())
             ->commercial()
+            ->when(! in_array($status, ['abandoned', 'deleted'], true), fn ($query) => $query->visibleInOrderList())
             ->with([
                 'user',
                 'subscription',

@@ -3,37 +3,44 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Apartment;
-use App\Models\Package;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserSubscription;
-use App\Support\CurrentApartment;
 
 class AdminDashboardController extends Controller
 {
-    public function __invoke(CurrentApartment $currentApartment)
+    public function __invoke()
     {
-        $managerCount = User::where('role', 'manager')->count();
-        $apartmentCount = Apartment::count();
-        $activeSubscriptionCount = UserSubscription::where('is_active', true)->count();
-        $expiredSubscriptionCount = UserSubscription::where('is_active', true)
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<', now())
+        $customerCount = User::query()
+            ->whereNotIn('role', User::adminRoles())
+            ->whereNotNull('activated_at')
+            ->where(function ($query) {
+                $query->where('role', User::ROLE_MANAGER)
+                    ->orWhereHas('apartments', function ($query) {
+                        $query->where('apartments.is_active', true)
+                            ->where('apartment_user.role', 'owner')
+                            ->where('apartment_user.is_active', true);
+                    })
+                    ->orWhereHas('ownedApartments', fn ($query) => $query->withTrashed())
+                    ->orWhereHas('managementPeriods')
+                    ->orWhereHas('subscriptions', fn ($query) => $query->withTrashed()->commercial());
+            })
             ->count();
-        $packageCount = Package::where('is_active', true)->count();
-
-        $apartments = $currentApartment->queryFor(auth()->user())
-            ->with('user')
-            ->orderBy('name')
-            ->get();
+        $subscriptionCount = Subscription::count();
+        $orders = UserSubscription::query()->commercial()->visibleInOrderList();
+        $orderCount = (clone $orders)->count();
+        $pendingOrderCount = (clone $orders)->where('status', UserSubscription::STATUS_PENDING)
+            ->whereNull('checkout_abandoned_at')->count();
+        $activeOrderCount = (clone $orders)->where('status', UserSubscription::STATUS_ACTIVE)->count();
+        $cancelledOrderCount = (clone $orders)->where('status', UserSubscription::STATUS_CANCELLED)->count();
 
         return view('admin.dashboard', compact(
-            'managerCount',
-            'apartmentCount',
-            'activeSubscriptionCount',
-            'expiredSubscriptionCount',
-            'packageCount',
-            'apartments'
+            'customerCount',
+            'subscriptionCount',
+            'orderCount',
+            'pendingOrderCount',
+            'activeOrderCount',
+            'cancelledOrderCount'
         ));
     }
 }
