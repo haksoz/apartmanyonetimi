@@ -3,11 +3,12 @@
 @section('title', 'Müşteriler')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-2xl font-bold text-slate-900">Müşteriler</h1>
             <p class="text-sm text-slate-500">Ticari muhataplar. Diğer kişileri filtreyle açın.</p>
         </div>
+        <a href="{{ route('admin.customers.create') }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Müşteri ekle</a>
     </div>
 
     @php

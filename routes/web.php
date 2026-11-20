@@ -332,6 +332,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('archived-apartments', [AdminArchivedApartmentController::class, 'index'])->name('archived-apartments.index');
 
     Route::get('customers', [AdminCustomerController::class, 'index'])->name('customers.index');
+    Route::get('customers/create', [AdminCustomerController::class, 'create'])->name('customers.create');
+    Route::post('customers', [AdminCustomerController::class, 'store'])->name('customers.store');
     Route::get('customers/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
     Route::patch('customers/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');
     Route::patch('customers/{customer}/quota', [AdminCustomerController::class, 'updateQuota'])->name('customers.quota.update');

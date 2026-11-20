@@ -67,6 +67,44 @@ class AdminCustomerController extends Controller
         return view('admin.customers.index', compact('customers', 'search', 'filter'));
     }
 
+    public function create()
+    {
+        return view('admin.customers.create');
+    }
+
+    public function store(Request $request)
+    {
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => strtolower(trim($request->input('email')))]);
+        }
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'phone' => ['nullable', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
+            'password' => ['required', 'string', 'confirmed', Password::defaults()],
+            'max_apartments' => ['required', 'integer', 'min:1', 'max:1000'],
+        ], [
+            'phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
+            'email.unique' => 'Bu e-posta adresiyle kayıtlı bir hesap var. Mevcut müşteri kaydını kullanın.',
+        ]);
+
+        $customer = DB::transaction(function () use ($validated) {
+            $customer = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'password' => $validated['password'],
+                'role' => User::ROLE_MANAGER,
+                'activated_at' => now(),
+            ]);
+            $customer->quotaOverride()->create(['max_apartments' => (int) $validated['max_apartments']]);
+
+            return $customer;
+        });
+
+        return redirect()->route('admin.customers.show', $customer)->with('status', 'Müşteri oluşturuldu. Hesap giriş yapmaya hazır.');
+    }
+
     public function update(Request $request, User $customer)
     {
         $this->ensureCustomer($customer);
