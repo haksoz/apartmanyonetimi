@@ -45,7 +45,10 @@ class AdminAccessTest extends TestCase
 
         $this->actingAs($manager)
             ->get(route('admin.dashboard'))
-            ->assertStatus(403);
+            ->assertStatus(403)
+            ->assertSee('Bu sayfaya erişim izniniz yok')
+            ->assertSee('Ana sayfaya dön')
+            ->assertSee('href="'.route('landing').'"', false);
     }
 
     public function test_guest_is_redirected_to_login(): void
