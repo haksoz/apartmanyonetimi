@@ -161,17 +161,28 @@ class UserSubscription extends Model
         return $this->hasMany(SubscriptionPaymentAttempt::class, 'subscription_id');
     }
 
+    public function getPaymentReferenceAttribute(): ?string
+    {
+        return $this->order_number ?: $this->paymentAttempts()->latest('id')->first()?->transaction_number;
+    }
+
     /**
      * Gerçek satın alma. Yalnızca ücretsiz temel kullanım kalemi taşıyan başlıklar sipariş değildir.
      */
     public function scopeVisibleInOrderList(Builder $query): Builder
     {
-        return $query->where(function (Builder $query) {
+        return $query->numberedOrder()->where(function (Builder $query) {
             $query->whereNull('checkout_abandoned_at')
                 ->orWhere('status', self::STATUS_ACTIVE)
                 ->orWhereHas('payments')
                 ->orWhereHas('paymentAttempts', fn ($query) => $query->where('review_required', true)->orWhere('status', 'succeeded'));
         });
+    }
+
+    public function scopeNumberedOrder(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $query) => $query->whereNull('payment_method')
+            ->orWhere('payment_method', '!=', 'kredi_kartı')->orWhereNotNull('order_number'));
     }
 
     public function scopeCommercial(Builder $query): Builder

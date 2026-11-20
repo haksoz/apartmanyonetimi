@@ -58,6 +58,9 @@ class FinalizeSubscriptionPayment
                 $reject('apartment_subscription_unavailable');
             }
 
+            if (! $order->order_number) {
+                $order->update(['order_number' => app(SubscriptionCheckout::class)->orderNumber()]);
+            }
             app(SubscriptionCheckout::class)->activate($order);
             $payment = $order->payments()->create([
                 'payment_attempt_id' => $attempt->id,

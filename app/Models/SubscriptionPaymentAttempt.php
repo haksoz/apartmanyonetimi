@@ -13,6 +13,12 @@ class SubscriptionPaymentAttempt extends Model
 
     protected $casts = ['amount_minor' => 'integer', 'is_test' => 'boolean', 'settled_at' => 'datetime', 'payer_snapshot' => 'encrypted:array', 'submitted_at' => 'datetime', 'review_required' => 'boolean', 'iframe_token' => 'encrypted', 'token_expires_at' => 'datetime'];
 
+    // Persisted creation date and primary key give each attempt a stable, unique public reference.
+    public function getTransactionNumberAttribute(): string
+    {
+        return 'ODM-'.$this->created_at->format('y').'-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+    }
+
     public function notifications(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(SubscriptionPaymentNotification::class, 'payment_attempt_id');

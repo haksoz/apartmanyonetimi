@@ -26,7 +26,7 @@ class PaymentState
             default => 'ready',
         };
 
-        return ['state' => $state, 'title' => match ($state) {
+        return ['state' => $state, 'reference' => $order->payment_reference, 'title' => match ($state) {
             'paid' => 'Ödemeniz onaylandı',
             'failed' => $failure['title'],
             'waiting', 'ready' => 'Ödeme doğrulanıyor',

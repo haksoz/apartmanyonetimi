@@ -37,6 +37,8 @@ class SubscriberCardPaymentController extends Controller
             return redirect()->route('subscriber.subscriptions.card-result', $subscription);
         }
 
+        app(\App\Support\CheckoutJourneyTracking::class)->orderEvent($subscription->id, 'card_screen', ['attempt_id' => $attempt->id]);
+
         return response()->view('subscriber.subscriptions.card', compact('subscription', 'attempt'))
             ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
     }

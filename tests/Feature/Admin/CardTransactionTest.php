@@ -56,6 +56,27 @@ class CardTransactionTest extends TestCase
         $this->get(route('admin.card-transactions.show', $bank))->assertNotFound();
     }
 
+    public function test_abandoned_checkout_has_attempt_number_without_order_number_and_can_be_searched(): void
+    {
+        $attempt = $this->attempt(['checkout_abandoned_at' => now(), 'order_number' => null]);
+        $this->actingAs(User::factory()->admin()->create());
+        $this->get(route('admin.card-transactions.index', ['search' => $attempt->transaction_number]))
+            ->assertOk()->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 1)
+            ->assertSee($attempt->transaction_number)->assertSee('Yarım bırakıldı')->assertSee('Sipariş oluşmadı')
+            ->assertSee('PayTR bildirimi alınmadı');
+        $this->get(route('admin.card-transactions.index', ['status' => 'pending']))
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 0);
+        $this->get(route('admin.card-transactions.index', ['status' => 'abandoned']))
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 1);
+        $this->get(route('admin.card-transactions.show', $attempt))->assertOk()
+            ->assertSee($attempt->transaction_number)->assertSee('PayTR referansı:')->assertSee('Sipariş oluşmadı');
+        $this->get(route('admin.orders.index'))->assertViewHas('orders', fn ($orders) => $orders->total() === 0);
+        $attempt->update(['status' => 'failed']);
+        $this->get(route('admin.card-transactions.show', $attempt))->assertSee('Başarısız');
+        $this->get(route('admin.card-transactions.index', ['status' => 'abandoned']))
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 0);
+    }
+
     public function test_non_admin_cannot_read_payment_logs(): void
     {
         $attempt = $this->attempt();

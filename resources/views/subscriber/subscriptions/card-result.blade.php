@@ -13,7 +13,7 @@
 @endpush
 @section('content')
     @php($verifying = in_array($paymentState['state'], ['waiting', 'ready'], true))
-    <p class="text-sm text-slate-500">{{ $subscription->order_number }} · {{ number_format((float) $subscription->price, 2, ',', '.') }} ₺ (KDV dahil)</p>
+    <p class="text-sm text-slate-500"><span id="card-payment-reference">{{ $subscription->payment_reference }}</span> · {{ number_format((float) $subscription->price, 2, ',', '.') }} ₺ (KDV dahil)</p>
     <div class="mt-4 flex items-center gap-3">
         <span id="card-payment-spinner" class="payment-verification-spinner" aria-hidden="true" @if (! $verifying) hidden @endif></span>
         <p id="card-payment-message" role="status" aria-live="polite" class="text-sm font-semibold text-slate-900">{{ $verifying ? 'Ödeme sonucunuz doğrulanıyor.' : $paymentState['message'] }}</p>
@@ -55,6 +55,7 @@
                     if (!response.ok) { stopWaiting(); return; }
                     const result = await response.json();
                     state = result.state;
+                    document.getElementById('card-payment-reference').textContent = result.reference || '';
                     document.getElementById('apartment-setup-title').textContent = result.title;
                     document.title = result.title + ' — AidatCep';
                     const verifying = ['waiting', 'ready'].includes(state);

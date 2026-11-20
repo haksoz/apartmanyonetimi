@@ -107,7 +107,7 @@ class SubscriptionCheckout
         $linkedIds = collect($records)->pluck('id')->unique()->values();
 
         $subscription = UserSubscription::create([
-            'order_number' => $this->orderNumber(),
+            'order_number' => $paymentMethod === 'kredi_kartı' ? null : $this->orderNumber(),
             'user_id' => $user->id,
             'subscription_id' => $linkedIds->count() === 1 ? $linkedIds->first() : null,
             'package_id' => $this->carrierPackageId(),
@@ -404,14 +404,14 @@ class SubscriptionCheckout
         return $package->id;
     }
 
-    private function orderNumber(): string
+    public function orderNumber(): string
     {
         $year = now()->format('y');
 
         do {
             $random = strtoupper(substr(uniqid('', true), -6));
             $number = "SIP-{$year}-{$random}";
-        } while (UserSubscription::where('order_number', $number)->exists());
+        } while (UserSubscription::withTrashed()->where('order_number', $number)->exists());
 
         return $number;
     }

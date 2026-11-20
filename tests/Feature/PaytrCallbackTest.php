@@ -37,6 +37,7 @@ class PaytrCallbackTest extends TestCase
         $profile = $user->billingProfiles()->create(['label' => 'Ev', 'party_type' => BillingProfile::TYPE_INDIVIDUAL,
             'legal_name' => 'Test Kullanıcı', 'identity_number' => '12345678901', 'address' => 'Adres', 'is_active' => true]);
         $order = $checkout->openPending($user, collect([$apartment]), 'monthly', 'kredi_kartı', $profile);
+        app(\App\Support\CheckoutJourneyTracking::class)->attach($order, null);
         $attempt = app(SubscriptionPaymentAttempts::class)->open($order);
         $attempt->update(['submitted_at' => now(), 'is_test' => $isTest]);
 
@@ -67,6 +68,55 @@ class PaytrCallbackTest extends TestCase
         $this->assertSame('pending', $attempt->subscription->fresh()->status);
         $this->assertFalse($attempt->subscription->fresh()->is_active);
         $this->assertSame('pending', $attempt->subscription->items()->first()->status);
+    }
+
+    public function test_verified_card_result_is_recorded_in_journey_and_replay_preserves_one_order_number(): void
+    {
+        $attempt = $this->attempt();
+        $journey = \App\Models\CheckoutJourney::where('order_id', $attempt->subscription_id)->sole();
+        $this->assertNull($attempt->subscription->order_number);
+        $this->send($this->payload($attempt))->assertOk();
+        $number = $attempt->subscription->fresh()->order_number;
+        $this->assertNotNull($number);
+        $this->send($this->payload($attempt))->assertOk();
+        $this->assertSame($number, $attempt->subscription->fresh()->order_number);
+        $this->assertSame('Etkinleşti', $journey->fresh()->progress_label);
+        $this->assertSame(2, $journey->events()->where('type', 'payment_notification')->count());
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.checkout-journeys.show', $journey))
+            ->assertOk()->assertSee('Ödeme bildirimi alındı')->assertSee('Tekrarlanan bildirim')->assertSee($number);
+    }
+
+    public function test_card_checkout_gets_attempt_reference_first_and_order_number_only_on_verified_success(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        $this->assertNull($order->order_number);
+        $reference = $attempt->transaction_number;
+        $this->assertMatchesRegularExpression('/^ODM-\d{2}-\d{6,}$/', $reference);
+        $this->assertSame($reference, $order->payment_reference);
+        $this->assertSame($reference, $attempt->fresh()->transaction_number);
+        $forged = $this->payload($attempt);
+        $forged['hash'] = str_repeat('A', 44);
+        $this->send($forged)->assertForbidden();
+        $this->assertNull($order->fresh()->order_number);
+        $this->send($this->payload($attempt))->assertOk();
+        $number = $order->fresh()->order_number;
+        $this->assertMatchesRegularExpression('/^SIP-\d{2}-[A-Z0-9]+$/', $number);
+        $this->assertSame($number, $order->fresh()->payment_reference);
+        $this->send($this->payload($attempt))->assertOk();
+        $this->assertSame($number, $order->fresh()->order_number);
+        $this->assertSame($reference, $attempt->fresh()->transaction_number);
+    }
+
+    public function test_failed_card_checkout_stays_unnumbered_and_legacy_order_number_is_preserved(): void
+    {
+        $failed = $this->attempt();
+        $this->send($this->payload($failed, ['status' => 'failed', 'total_amount' => '0', 'failed_reason_code' => '6']))->assertOk();
+        $this->assertNull($failed->subscription->fresh()->order_number);
+        $legacy = $this->attempt();
+        $legacy->subscription->update(['order_number' => 'SIP-26-LEGACY']);
+        $this->send($this->payload($legacy))->assertOk();
+        $this->assertSame('SIP-26-LEGACY', $legacy->subscription->fresh()->order_number);
     }
 
     public function test_guest_callback_atomically_settles_and_replays_without_extending_service_twice(): void

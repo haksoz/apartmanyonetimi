@@ -1,4 +1,30 @@
         <script>
+            function payTrack(modal, type, stage, field) {
+                const form = modal?.closest('form');
+                const endpoint = form?.querySelector('[data-journey-url]')?.dataset.journeyUrl;
+                if (!endpoint) return;
+                const read = name => form.querySelector('input[type="hidden"][name="' + name + '"], input[name="' + name + '"]:checked, select[name="' + name + '"]')?.value || null;
+                const payload = {
+                    type, stage: stage || modal.querySelector('[data-pay-panel]:not([hidden])')?.dataset.payPanel || 'plan',
+                    period: read('period'),
+                };
+                if (payload.stage !== 'plan') {
+                    payload.billing_mode = read('billing_mode');
+                    payload.billing_profile_id = read('billing_profile_id');
+                    payload.billing_party_type = read('billing_party_type');
+                }
+                if (['payment', 'distance', 'pre'].includes(payload.stage)) payload.payment_method = read('payment_method');
+                if (payload.billing_mode === 'new') payload.billing_profile_id = null;
+                if (field) payload.field = field;
+                // Sequential requests preserve the user's action order. Tracking never blocks checkout.
+                const send = () => fetch(endpoint, {
+                    method: 'POST', credentials: 'same-origin', keepalive: true,
+                    headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value},
+                    body: JSON.stringify(payload),
+                });
+                if (type === 'closed') { send().catch(() => {}); return; }
+                modal.journeyQueue = (modal.journeyQueue || Promise.resolve()).then(send).catch(() => {});
+            }
             function payStep(node, action) {
                 const modal = node && node.hasAttribute && node.hasAttribute('data-pay-modal')
                     ? node
@@ -17,8 +43,10 @@
                     modal.querySelectorAll('[data-pay-panel]').forEach(function (panel) {
                         reveal(panel, panel.getAttribute('data-pay-panel') === name);
                     });
+                    payTrack(modal, 'viewed', name);
                 };
                 const close = function () {
+                    payTrack(modal, 'closed');
                     if (modal.dataset.checkoutCloseUrl) { window.location.assign(modal.dataset.checkoutCloseUrl); return; }
                     show('plan');
                     modal.hidden = true;
@@ -45,6 +73,7 @@
                     const next = node.getAttribute('data-pay-next');
                     const billingError = modal.querySelector('[data-pay-billing-error]');
                     if (next === 'payment' && ! payStepReady(modal)) {
+                        payTrack(modal, 'validation_failed', 'billing');
                         billingError.textContent = 'Devam etmek için fatura alanlarını doldurun.';
                         reveal(billingError, true);
                         return false;
@@ -73,6 +102,7 @@
                     return false;
                 }
                 if (action === 'accept') {
+                    payTrack(modal, 'accepted');
                     const visual = modal.querySelector('[data-pay-box="' + node.getAttribute('data-pay-accept') + '"]');
                     if (visual) visual.checked = true;
                     const distance = modal.querySelector('[data-pay-box="distance"]');
@@ -88,6 +118,7 @@
                     if (payer && !payer.disabled) {
                         const invalid = Array.from(payer.querySelectorAll('input')).find(input => !input.checkValidity());
                         if (invalid) {
+                            payTrack(modal, 'validation_failed', 'payment');
                             show('payment');
                             invalid.reportValidity();
                             return false;
@@ -102,6 +133,7 @@
                         return true;
                     }
                     show('payment');
+                    payTrack(modal, 'validation_failed', 'payment');
                     reveal(modal.querySelector('[data-pay-error]'), true);
                     return false;
                 }
@@ -116,6 +148,7 @@
                 try {
                     const form = modal.closest('form');
                     const payload = {};
+                    payload.checkout_journey = form.querySelector('[name="checkout_journey"]')?.value;
                     new FormData(form).forEach(function (value, key) {
                         if (key.startsWith('billing_') && key !== 'billing_mode' && key !== 'billing_profile_id') {
                             payload[key.slice(8)] = value;
@@ -154,6 +187,7 @@
                     delete modal.dataset.billingSaving;
                     payStep(button, 'next');
                 } catch (failure) {
+                    payTrack(modal, 'validation_failed', 'billing');
                     error.textContent = failure.message || 'Fatura profili kaydedilemedi. Lütfen tekrar deneyin.';
                     error.hidden = false;
                     error.classList.remove('hidden');

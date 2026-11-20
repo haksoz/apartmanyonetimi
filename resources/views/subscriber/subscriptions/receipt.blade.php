@@ -29,7 +29,7 @@
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">Sipariş</h1>
-            <p class="mt-1 font-mono text-sm text-slate-500">{{ $subscription->order_number ?: '—' }}</p>
+            <p class="mt-1 font-mono text-sm text-slate-500">{{ $subscription->payment_reference ?: '—' }}</p>
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2">
             @if ($canSubmitProof)

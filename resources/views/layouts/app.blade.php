@@ -257,9 +257,9 @@
                                 </svg>
                                 <span class="sidebar-text">Siparişler</span>
                             </a>
-                            <a href="{{ route('admin.card-transactions.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.card-transactions.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                            <a href="{{ route('admin.checkout-journeys.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('admin.checkout-journeys.*', 'admin.card-transactions.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8h18M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zm2 11h4"/></svg>
-                                <span class="sidebar-text">Kredi Kartı İşlemleri</span>
+                                <span class="sidebar-text">Ücretli Kullanıma Geçişler</span>
                             </a>
 
                             <div class="sidebar-text pt-3 pb-1 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Paket Yönetimi</div>

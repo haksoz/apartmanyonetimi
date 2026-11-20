@@ -5,6 +5,7 @@
 @endphp
                             <form novalidate method="POST" action="{{ route('subscriber.subscriptions.store') }}" onsubmit="return payStep(this.querySelector('[data-pay-modal]'), 'submit')">
                                 @csrf
+                                <input type="hidden" name="checkout_journey" value="{{ $checkoutJourney->uuid }}" data-journey-url="{{ route('subscriber.checkout-journeys.events', $checkoutJourney->uuid) }}">
                                 <input type="hidden" name="checkout_return" value="{{ $checkoutReturn }}">
                                 <input type="hidden" name="checkout_token" value="{{ old('checkout_token', (string) \Illuminate\Support\Str::uuid()) }}">
                                 <input type="hidden" name="quote_signature" value="{{ $quoteSignature }}">

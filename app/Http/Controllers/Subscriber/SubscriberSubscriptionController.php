@@ -28,6 +28,7 @@ class SubscriberSubscriptionController extends Controller
         $subscriptions = auth()->user()
             ->subscriptions()
             ->commercial()
+            ->numberedOrder()
             ->whereNull('checkout_abandoned_at')
             ->with(['items', 'package'])
             ->orderByDesc('created_at')
@@ -101,55 +102,65 @@ class SubscriberSubscriptionController extends Controller
         $quoteSignature = $checkoutApartment ? app(\App\Support\CheckoutQuote::class)->signature($request->user(), $checkoutApartment) : null;
         $coverageEnd = $checkoutApartment ? app(\App\Support\SubscriberApartmentOverview::class)->coverageFor($checkoutApartment)['end'] : null;
 
-        return view('subscriber.subscriptions.create', compact('apartments', 'billingProfiles', 'selectedBillingProfileId', 'selectedApartmentId', 'checkoutApartment', 'quoteSignature', 'coverageEnd'));
+        $checkoutJourney = $checkoutApartment
+            ? app(\App\Support\CheckoutJourneyTracking::class)->begin($request->user(), $checkoutApartment, old('checkout_journey'))
+            : null;
+
+        return view('subscriber.subscriptions.create', compact('apartments', 'billingProfiles', 'selectedBillingProfileId', 'selectedApartmentId', 'checkoutApartment', 'quoteSignature', 'coverageEnd', 'checkoutJourney'));
     }
 
     public function store(Request $request, SubscriptionCheckout $checkout)
     {
-        $validated = $request->validate([
-            'apartment_ids' => ['required', 'array', 'min:1', 'max:1'],
-            'apartment_ids.*' => ['integer'],
-            'period' => ['required', Rule::in(['monthly', 'yearly'])],
-            'payment_method' => ['required', Rule::in(app(\App\Support\CheckoutPaymentMethods::class)->forUser(auth()->user()))],
-            'checkout_token' => ['required_if:payment_method,kredi_kartı', 'nullable', 'uuid'],
-            'quote_signature' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'size:64'],
-            'payer_name' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:60'],
-            'payer_email' => ['required_if:payment_method,kredi_kartı', 'nullable', 'email', 'max:100', 'regex:/^[\x00-\x7F]+$/'],
-            'payer_phone' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
-            'payer_address' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:400'],
-            'reference_code' => ['nullable', 'string', 'max:255'],
-            'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
-            'accept_sales' => ['accepted'],
-            'billing_mode' => ['required', Rule::in(['existing', 'new'])],
-            'billing_profile_id' => ['required_if:billing_mode,existing', 'nullable', 'integer'],
-            'billing_label' => ['required_if:billing_mode,new', 'nullable', 'string', 'max:255'],
-            'billing_party_type' => ['required_if:billing_mode,new', 'nullable', 'string', 'max:32', Rule::in(array_keys(BillingProfile::partyTypes()))],
-            'billing_legal_name' => ['nullable', 'string', 'max:255', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && in_array($request->input('billing_party_type'), [BillingProfile::TYPE_INDIVIDUAL, BillingProfile::TYPE_CORPORATE], true))],
-            'billing_identity_number' => ['nullable', 'string', 'max:64', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && in_array($request->input('billing_party_type'), [BillingProfile::TYPE_INDIVIDUAL, BillingProfile::TYPE_CORPORATE], true))],
-            'billing_tax_office' => ['nullable', 'string', 'max:255', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && $request->input('billing_party_type') === BillingProfile::TYPE_CORPORATE)],
-            'billing_email' => ['nullable', 'email', 'max:255'],
-            'billing_phone' => ['nullable', 'string', 'max:255'],
-            'billing_country' => ['nullable', 'string', 'max:64'],
-            'billing_province' => ['nullable', 'string', 'max:255'],
-            'billing_district' => ['nullable', 'string', 'max:255'],
-            'billing_address' => ['nullable', 'string', 'max:1000', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && in_array($request->input('billing_party_type'), [BillingProfile::TYPE_INDIVIDUAL, BillingProfile::TYPE_CORPORATE], true))],
-            'billing_postal_code' => ['nullable', 'string', 'max:32'],
-        ], [
-            'payment_method.in' => 'Seçilen ödeme yöntemi hesabınız için kullanılamıyor. Ödeme seçeneklerini yeniden kontrol edin.',
-            'payer_phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
-            'payer_email.email' => 'Geçerli bir e-posta adresi girin.',
-            'payer_email.regex' => 'Ödeme e-posta adresinde Türkçe karakter kullanmayın.',
-            'apartment_ids.max' => 'Bir siparişte yalnızca bir apartman olabilir.',
-            'accept_sales.accepted' => 'Ücretli abonelik için mesafeli satış sözleşmesini ve ön bilgilendirme formunu kabul edin.',
-            'billing_mode.required' => 'Fatura profilini seçin veya yeni bir profil oluşturun.',
-            'billing_profile_id.required_if' => 'Kayıtlı bir fatura profili seçin.',
-            'billing_label.required_if' => 'Profil adı girin.',
-            'billing_party_type.required_if' => 'Bireysel veya kurumsal türü seçin.',
-            'billing_legal_name.required' => 'Fatura adı veya şirket adı girin.',
-            'billing_address.required' => 'Fatura adresi girin.',
-            'billing_identity_number.required' => 'Kimlik numarası veya vergi numarası girin.',
-            'billing_tax_office.required' => 'Vergi dairesi girin.',
-        ]);
+        try {
+            $validated = $request->validate([
+                'apartment_ids' => ['required', 'array', 'min:1', 'max:1'],
+                'apartment_ids.*' => ['integer'],
+                'period' => ['required', Rule::in(['monthly', 'yearly'])],
+                'payment_method' => ['required', Rule::in(app(\App\Support\CheckoutPaymentMethods::class)->forUser(auth()->user()))],
+                'checkout_token' => ['required_if:payment_method,kredi_kartı', 'nullable', 'uuid'],
+                'checkout_journey' => ['nullable', 'uuid'],
+                'quote_signature' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'size:64'],
+                'payer_name' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:60'],
+                'payer_email' => ['required_if:payment_method,kredi_kartı', 'nullable', 'email', 'max:100', 'regex:/^[\x00-\x7F]+$/'],
+                'payer_phone' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
+                'payer_address' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'max:400'],
+                'reference_code' => ['nullable', 'string', 'max:255'],
+                'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+                'accept_sales' => ['accepted'],
+                'billing_mode' => ['required', Rule::in(['existing', 'new'])],
+                'billing_profile_id' => ['required_if:billing_mode,existing', 'nullable', 'integer'],
+                'billing_label' => ['required_if:billing_mode,new', 'nullable', 'string', 'max:255'],
+                'billing_party_type' => ['required_if:billing_mode,new', 'nullable', 'string', 'max:32', Rule::in(array_keys(BillingProfile::partyTypes()))],
+                'billing_legal_name' => ['nullable', 'string', 'max:255', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && in_array($request->input('billing_party_type'), [BillingProfile::TYPE_INDIVIDUAL, BillingProfile::TYPE_CORPORATE], true))],
+                'billing_identity_number' => ['nullable', 'string', 'max:64', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && in_array($request->input('billing_party_type'), [BillingProfile::TYPE_INDIVIDUAL, BillingProfile::TYPE_CORPORATE], true))],
+                'billing_tax_office' => ['nullable', 'string', 'max:255', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && $request->input('billing_party_type') === BillingProfile::TYPE_CORPORATE)],
+                'billing_email' => ['nullable', 'email', 'max:255'],
+                'billing_phone' => ['nullable', 'string', 'max:255'],
+                'billing_country' => ['nullable', 'string', 'max:64'],
+                'billing_province' => ['nullable', 'string', 'max:255'],
+                'billing_district' => ['nullable', 'string', 'max:255'],
+                'billing_address' => ['nullable', 'string', 'max:1000', Rule::requiredIf(fn () => $request->input('billing_mode') === 'new' && in_array($request->input('billing_party_type'), [BillingProfile::TYPE_INDIVIDUAL, BillingProfile::TYPE_CORPORATE], true))],
+                'billing_postal_code' => ['nullable', 'string', 'max:32'],
+            ], [
+                'payment_method.in' => 'Seçilen ödeme yöntemi hesabınız için kullanılamıyor. Ödeme seçeneklerini yeniden kontrol edin.',
+                'payer_phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
+                'payer_email.email' => 'Geçerli bir e-posta adresi girin.',
+                'payer_email.regex' => 'Ödeme e-posta adresinde Türkçe karakter kullanmayın.',
+                'apartment_ids.max' => 'Bir siparişte yalnızca bir apartman olabilir.',
+                'accept_sales.accepted' => 'Ücretli abonelik için mesafeli satış sözleşmesini ve ön bilgilendirme formunu kabul edin.',
+                'billing_mode.required' => 'Fatura profilini seçin veya yeni bir profil oluşturun.',
+                'billing_profile_id.required_if' => 'Kayıtlı bir fatura profili seçin.',
+                'billing_label.required_if' => 'Profil adı girin.',
+                'billing_party_type.required_if' => 'Bireysel veya kurumsal türü seçin.',
+                'billing_legal_name.required' => 'Fatura adı veya şirket adı girin.',
+                'billing_address.required' => 'Fatura adresi girin.',
+                'billing_identity_number.required' => 'Kimlik numarası veya vergi numarası girin.',
+                'billing_tax_office.required' => 'Vergi dairesi girin.',
+            ]);
+        } catch (ValidationException $exception) {
+            app(\App\Support\CheckoutJourneyTracking::class)->validationFailed($request->user(), $request->input('checkout_journey'), array_keys($exception->errors()));
+            throw $exception;
+        }
 
         $user = auth()->user();
         $apartments = $this->ownedApartments($user)
@@ -176,7 +187,7 @@ class SubscriberSubscriptionController extends Controller
             ]);
         }
 
-        $fingerprintData = \Illuminate\Support\Arr::except($validated, ['checkout_token', 'quote_signature', 'receipt']);
+        $fingerprintData = \Illuminate\Support\Arr::except($validated, ['checkout_token', 'quote_signature', 'receipt', 'checkout_journey']);
         $fingerprintData['receipt_hash'] = $request->hasFile('receipt') ? hash_file('sha256', $request->file('receipt')->getRealPath()) : null;
         $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_THROW_ON_ERROR));
         $receiptPath = null;
@@ -225,7 +236,9 @@ class SubscriberSubscriptionController extends Controller
                 }
                 $order = $checkout->openPending($user, $locked, $validated['period'], $validated['payment_method'], $billingProfile, $receiptPath, $validated['reference_code'] ?? null);
                 $order->update(['checkout_token' => $token, 'checkout_fingerprint' => $fingerprint]);
+                app(\App\Support\CheckoutJourneyTracking::class)->attach($order, $validated['checkout_journey'] ?? null);
                 app(LegalConsent::class)->recordSale($user, $order, $request);
+                app(\App\Support\CheckoutJourneyTracking::class)->orderEvent($order->id, 'sale_accepted', []);
                 $attempt = app(\App\Support\SubscriptionPaymentAttempts::class)->open($order);
                 if ($validated['payment_method'] === 'kredi_kartı') {
                     $attempt->update(['payer_snapshot' => \Illuminate\Support\Arr::only($validated, ['payer_name', 'payer_email', 'payer_phone', 'payer_address'])]);
@@ -234,6 +247,9 @@ class SubscriberSubscriptionController extends Controller
                 return $order;
             });
         } catch (\Throwable $exception) {
+            if ($exception instanceof ValidationException) {
+                app(\App\Support\CheckoutJourneyTracking::class)->validationFailed($request->user(), $request->input('checkout_journey'), array_keys($exception->errors()));
+            }
             if ($receiptPath) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($receiptPath);
             }
@@ -331,6 +347,7 @@ class SubscriberSubscriptionController extends Controller
         }
 
         $subscription->update($data);
+        app(\App\Support\CheckoutJourneyTracking::class)->orderEvent($subscription->id, 'payment_proof', ['receipt_received' => (bool) $subscription->receipt_path, 'reference_received' => filled($subscription->receipt_reference)]);
 
         return back()->with('status', 'Ödeme bilgileriniz başarıyla kaydedildi.');
     }

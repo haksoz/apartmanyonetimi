@@ -30,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \App\Models\UserSubscription::observe(\App\Observers\CheckoutAuditObserver::class);
+        \App\Models\SubscriptionPaymentAttempt::observe(\App\Observers\CheckoutAuditObserver::class);
+        \App\Models\SubscriptionPaymentNotification::observe(\App\Observers\CheckoutAuditObserver::class);
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
@@ -74,6 +77,10 @@ class AppServiceProvider extends ServiceProvider
                 $homeUrl = $user->isAdmin()
                     ? route('admin.dashboard')
                     : route('subscriber.dashboard');
+                if (! $user->isAdmin() && $currentApartment && $navIsOwner
+                    && ! request()->routeIs('subscriber.*', 'profile.*')) {
+                    $homeUrl = route('dashboard');
+                }
                 $showSubscriberCommerce = app(SubscriberMenu::class)->showsCommerce($user);
 
                 $managementOffers = ManagementOffer::query()

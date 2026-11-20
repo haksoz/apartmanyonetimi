@@ -23,6 +23,12 @@
         <script>
             const checkout = document.querySelector('[data-pay-modal]');
             payLegalFill(checkout);
+            payTrack(checkout, 'viewed');
+            checkout.addEventListener('change', function (event) {
+                if (['period', 'payment_method', 'billing_mode', 'billing_profile_id', 'billing_party_type'].includes(event.target.name)) {
+                    payTrack(checkout, 'changed', null, event.target.name);
+                }
+            });
             checkout.querySelector('[data-pay-panel]:not([hidden]) input, [data-pay-panel]:not([hidden]) button')?.focus();
         </script>
     @else

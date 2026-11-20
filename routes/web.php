@@ -314,6 +314,8 @@ Route::post('admin/impersonate/leave', [AdminImpersonateController::class, 'leav
     ->middleware('auth');
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('checkout-journeys', [\App\Http\Controllers\Admin\AdminCheckoutJourneyController::class, 'index'])->name('checkout-journeys.index');
+    Route::get('checkout-journeys/{journey}', [\App\Http\Controllers\Admin\AdminCheckoutJourneyController::class, 'show'])->name('checkout-journeys.show');
     Route::get('card-transactions', [\App\Http\Controllers\Admin\AdminCardTransactionController::class, 'index'])->name('card-transactions.index');
     Route::get('card-transactions/{attempt}', [\App\Http\Controllers\Admin\AdminCardTransactionController::class, 'show'])->name('card-transactions.show');
     Route::prefix('customers/{customer}/billing-profiles')->name('customers.billing-profiles.')->controller(AdminCustomerBillingProfileController::class)->group(function () {
@@ -409,6 +411,7 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth'])->group(fu
     });
 
     Route::middleware('subscriber.commerce')->group(function () {
+        Route::post('checkout-journeys/{uuid}/events', [\App\Http\Controllers\Subscriber\CheckoutJourneyController::class, 'store'])->middleware('throttle:120,1')->name('checkout-journeys.events');
         Route::get('billing-profiles', [SubscriberBillingProfileController::class, 'index'])->name('billing-profiles.index');
         Route::get('billing-profiles/create', [SubscriberBillingProfileController::class, 'create'])->name('billing-profiles.create');
         Route::post('billing-profiles', [SubscriberBillingProfileController::class, 'store'])->name('billing-profiles.store');

@@ -46,6 +46,7 @@ class SubscriberBillingProfileController extends Controller
         });
 
         if ($request->expectsJson()) {
+            app(\App\Support\CheckoutJourneyTracking::class)->billingSaved($request->user(), $request->input('checkout_journey'), $profile);
             return response()->json(['profile' => $profile->only(array_merge(['id'], array_keys(BillingProfile::rules())))]);
         }
 

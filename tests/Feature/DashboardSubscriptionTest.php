@@ -56,6 +56,19 @@ class DashboardSubscriptionTest extends TestCase
             ->get(route('dashboard'))->assertOk();
     }
 
+    public function test_manager_logo_keeps_building_context_and_subscriber_panel_remains_in_user_menu(): void
+    {
+        $user = User::factory()->create();
+        $apartment = $this->apartment($user);
+        $response = $this->dashboard($user, $apartment);
+        $response->assertSee('href="'.route('dashboard').'" class="flex items-center gap-2"', false)
+            ->assertSee('Abone Panelim')
+            ->assertSee('href="'.route('subscriber.dashboard').'" class="flex items-center gap-3 px-4 py-2.5', false);
+
+        $this->get(route('subscriber.dashboard'))->assertOk()
+            ->assertSee('href="'.route('subscriber.dashboard').'" class="flex items-center gap-2"', false);
+    }
+
     public function test_single_quota_paid_manager_logs_into_dashboard_but_can_still_open_subscriber_panel(): void
     {
         $user = User::factory()->withApartmentQuota(1)->create();

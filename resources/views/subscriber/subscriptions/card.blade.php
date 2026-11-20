@@ -9,35 +9,26 @@
     <style>
         #apartment-setup-dialog { background: #fff; }
         #apartment-setup-dialog > header { border-color: #e7e7eb; }
-        #apartment-setup-title { font-size: 20px; line-height: 1.4; font-weight: 500; letter-spacing: -.02em; }
-        #apartment-setup-description { margin-top: 6px; font-size: 13px; line-height: 1.6; font-weight: 400; color: #748092; }
-        #apartment-setup-close { padding: 10px 16px; border-color: #dce1e8; border-radius: 12px; font-size: 14px; font-weight: 400; }
-        .paytr-order-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px 20px; max-width: 680px; margin: 0 auto 16px; padding: 18px 20px; border: 1px solid #e7e7eb; border-radius: 18px; background: #fafafa; }
-        .paytr-order-name { font-size: 16px; line-height: 1.5; font-weight: 500; color: #202836; overflow-wrap: anywhere; }
-        .paytr-order-meta { margin-top: 4px; font-size: 13px; line-height: 1.5; font-weight: 400; color: #748092; }
-        .paytr-order-amount { text-align: right; white-space: nowrap; }
-        .paytr-order-amount > p:first-child { font-size: 18px; line-height: 1.4; font-weight: 600; color: #202836; }
-        .paytr-test-label { display: inline-block; margin-top: 9px; padding: 3px 9px; border-radius: 7px; background: #eef0f3; color: #647080; font-size: 11px; line-height: 1.5; font-weight: 400; }
-        @media (max-width: 400px) {
-            .paytr-order-summary { padding: 14px; gap: 10px; }
-            .paytr-order-name { font-size: 14px; }
-            .paytr-order-amount > p:first-child { font-size: 16px; }
-        }
+        /* Keep the dialog's accessible name without a visible heading above the payment form. */
+        #apartment-setup-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        #apartment-setup-description { display: none; }
+        #apartment-setup-dialog > header { align-items: center; padding-top: 12px; padding-bottom: 12px; }
+        #apartment-setup-dialog > header > div > div { margin-bottom: 0; }
+        #apartment-setup-dialog > header img { height: 24px; }
+        #apartment-setup-dialog > header > div > div > span { font-size: 18px; }
+        #apartment-setup-close { padding: 7px 12px; border-color: #dce1e8; border-radius: 10px; font-size: 14px; font-weight: 400; }
+        #apartment-setup-dialog > main { padding-top: 12px; }
+        .paytr-order-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: 680px; margin: 0 auto 8px; }
+        .paytr-order-name { min-width: 0; font-size: 13px; line-height: 1.5; font-weight: 400; color: #647080; overflow-wrap: anywhere; }
+        .paytr-test-label { display: inline-block; padding: 2px 6px; border-radius: 5px; background: #eef0f3; color: #647080; font-size: 10px; line-height: 1.5; font-weight: 400; }
     </style>
 @endpush
 @section('content')
     <form id="payment-exit-form" method="POST" action="{{ route('subscriber.subscriptions.card-abandon', $subscription) }}" hidden>@csrf</form>
     <p id="payment-exit-error" role="alert" class="mb-3 text-sm text-red-600" hidden></p>
     <section class="paytr-order-summary" aria-label="Sipariş özeti">
-        <div>
-            <p class="paytr-order-name">{{ $subscription->items()->first()?->apartment_name }}</p>
-            <p class="paytr-order-meta">{{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }} abonelik · Tek çekim</p>
-            @if ($attempt->is_test)<span class="paytr-test-label">Test ödemesi</span>@endif
-        </div>
-        <div class="paytr-order-amount">
-            <p>{{ number_format((float) $subscription->price, 2, ',', '.') }} ₺</p>
-            <p class="paytr-order-meta">KDV dahil</p>
-        </div>
+        <p class="paytr-order-name">{{ $subscription->items()->first()?->apartment_name }} · {{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }} abonelik</p>
+        @if ($attempt->is_test)<span class="paytr-test-label">Test ödemesi</span>@endif
     </section>
     <iframe src="https://www.paytr.com/odeme/guvenli/{{ rawurlencode($attempt->iframe_token) }}" id="paytriframe" title="PayTR güvenli kart ödeme formu" style="width:100%;min-height:640px;border:0" scrolling="no" referrerpolicy="no-referrer"></iframe>
     <script src="https://www.paytr.com/js/iframeResizer.min.js"></script>
