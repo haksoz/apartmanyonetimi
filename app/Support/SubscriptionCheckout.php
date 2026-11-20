@@ -61,6 +61,8 @@ class SubscriptionCheckout
         $totalNet = 0.0;
         $totalTax = 0.0;
 
+        app(\App\Support\Paytr\SupersedeCheckout::class)->replacePending($user, $apartments->pluck('id'));
+
         $blocked = SubscriptionItem::query()
             ->whereIn('apartment_id', $apartments->pluck('id'))
             ->where('status', SubscriptionItem::STATUS_PENDING)

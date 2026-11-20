@@ -17,7 +17,7 @@ class CustomerCreationTest extends TestCase
     {
         return array_replace([
             'name' => 'Test Müşteri', 'email' => 'new-customer@example.com',
-            'phone' => '5551234567', 'password' => 'CustomerTest123!',
+            'phone' => '5551234567', 'address' => 'Test adresi', 'password' => 'CustomerTest123!',
             'password_confirmation' => 'CustomerTest123!', 'max_apartments' => 1,
         ], $overrides);
     }
@@ -52,12 +52,13 @@ class CustomerCreationTest extends TestCase
         $this->get(route('admin.customers.index', ['search' => $customer->email]))->assertSee($customer->email);
     }
 
-    public function test_created_customer_can_log_in_and_has_configured_quota_with_optional_phone(): void
+    public function test_created_customer_can_log_in_with_complete_contact_and_configured_quota(): void
     {
         $this->actingAs(User::factory()->admin()->create());
-        $this->post(route('admin.customers.store'), $this->payload(['phone' => '', 'max_apartments' => 3]))->assertSessionHasNoErrors();
+        $this->post(route('admin.customers.store'), $this->payload(['max_apartments' => 3]))->assertSessionHasNoErrors();
         $customer = User::where('email', 'new-customer@example.com')->sole();
-        $this->assertNull($customer->phone);
+        $this->assertSame('5551234567', $customer->phone);
+        $this->assertSame('Test adresi', $customer->address);
         $this->assertSame(3, app(UserApartmentQuota::class)->definedLimit($customer));
         $this->post(route('logout'));
         $this->post(route('login'), ['email' => $customer->email, 'password' => 'CustomerTest123!'])
@@ -76,6 +77,8 @@ class CustomerCreationTest extends TestCase
             [['phone' => '05551234567'], 'phone'],
             [['phone' => '+905551234567'], 'phone'],
             [['phone' => '555 1234567'], 'phone'],
+            [['phone' => ''], 'phone'],
+            [['address' => ''], 'address'],
             [['password_confirmation' => 'different'], 'password'],
             [['password' => 'short', 'password_confirmation' => 'short'], 'password'],
             [['max_apartments' => 0], 'max_apartments'],

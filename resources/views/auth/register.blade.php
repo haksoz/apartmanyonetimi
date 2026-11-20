@@ -11,16 +11,27 @@
             @csrf
             <div>
                 <label for="name" class="text-sm font-medium text-slate-700">Ad Soyad</label>
-                <input id="name" name="name" type="text" value="{{ old('name') }}" required autofocus class="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <input id="name" name="name" maxlength="60" type="text" value="{{ old('name') }}" required autofocus class="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 @error('name')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
             <div>
                 <label for="email" class="text-sm font-medium text-slate-700">E-posta</label>
-                <input id="email" name="email" type="email" value="{{ old('email') }}" required class="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <input id="email" name="email" maxlength="100" type="email" value="{{ old('email') }}" required class="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 @error('email')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
+            <div>
+                <label for="phone" class="text-sm font-medium text-slate-700">Telefon</label>
+                <input id="phone" name="phone" type="tel" value="{{ old('phone') }}" required inputmode="numeric" pattern="[1-9][0-9]{9}" maxlength="10" autocomplete="tel-national" placeholder="5551234567" class="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <p class="mt-1 text-xs text-slate-500">Başında 0 olmadan 10 hane.</p>
+                @error('phone')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+            <div>
+                <label for="address" class="text-sm font-medium text-slate-700">İletişim adresi</label>
+                <textarea id="address" name="address" required maxlength="400" rows="2" autocomplete="street-address" class="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">{{ old('address') }}</textarea>
+                @error('address')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
             <div>
                 <label for="password" class="text-sm font-medium text-slate-700">Şifre</label>
                 <input id="password" name="password" type="password" required class="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">

@@ -2,7 +2,7 @@
             function payTrack(modal, type, stage, field) {
                 const form = modal?.closest('form');
                 const endpoint = form?.querySelector('[data-journey-url]')?.dataset.journeyUrl;
-                if (!endpoint) return;
+                if (!endpoint) return Promise.resolve(null);
                 const read = name => form.querySelector('input[type="hidden"][name="' + name + '"], input[name="' + name + '"]:checked, select[name="' + name + '"]')?.value || null;
                 const payload = {
                     type, stage: stage || modal.querySelector('[data-pay-panel]:not([hidden])')?.dataset.payPanel || 'plan',
@@ -22,14 +22,24 @@
                     headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value},
                     body: JSON.stringify(payload),
                 });
-                if (type === 'closed') { send().catch(() => {}); return; }
-                modal.journeyQueue = (modal.journeyQueue || Promise.resolve()).then(send).catch(() => {});
+                if (['closed', 'timeout_closed', 'timeout_dismissed'].includes(type)) { send().catch(() => {}); return; }
+                const task = (modal.journeyQueue || Promise.resolve()).then(send).then(response => {
+                    if (!response.ok) {
+                        if (response.status === 409 && type !== 'renewed') window.payCheckoutTimers?.expire(modal);
+                        throw new Error('İşlem süresi yenilenemedi. Lütfen tekrar deneyin.');
+                    }
+                    if (!['timed_out', 'timeout_prompt'].includes(type)) window.payCheckoutTimers?.touch(modal);
+                    return response;
+                });
+                modal.journeyQueue = task.catch(() => {});
+                return task;
             }
             function payStep(node, action) {
                 const modal = node && node.hasAttribute && node.hasAttribute('data-pay-modal')
                     ? node
                     : (node && node.closest ? node.closest('[data-pay-modal]') : null);
                 if (!modal) return false;
+                if (!['close', 'backdrop', 'open'].includes(action) && window.payCheckoutTimers?.ensure(modal) === false) return false;
                 const reveal = function (element, on) {
                     if (!element) return;
                     element.hidden = !on;
@@ -46,6 +56,7 @@
                     payTrack(modal, 'viewed', name);
                 };
                 const close = function () {
+                    window.payCheckoutTimers?.stop(modal);
                     payTrack(modal, 'closed');
                     if (modal.dataset.checkoutCloseUrl) { window.location.assign(modal.dataset.checkoutCloseUrl); return; }
                     show('plan');
@@ -130,6 +141,7 @@
                         if (button.disabled) return false;
                         button.disabled = true;
                         button.textContent = 'Ödeme hazırlanıyor…';
+                        window.payCheckoutTimers?.stop(modal);
                         return true;
                     }
                     show('payment');
@@ -196,34 +208,6 @@
                     button.disabled = false;
                     button.textContent = originalText;
                 }
-            }
-            function payUseBillingAddress(button) {
-                const modal = button.closest('[data-pay-modal]');
-                const target = modal?.querySelector('[name="payer_address"]');
-                if (!target) return;
-                const option = modal.querySelector('[name="billing_profile_id"] option:checked');
-                const mode = modal.querySelector('input[type="hidden"][name="billing_mode"], input[name="billing_mode"]:checked');
-                const read = key => {
-                    const value = mode?.value === 'new'
-                        ? modal.querySelector('[name="billing_' + key + '"]')?.value
-                        : option?.getAttribute('data-billing-' + key.replaceAll('_', '-'));
-                    return (value || '').trim();
-                };
-                const address = ['address', 'district', 'province', 'postal_code', 'country'].map(read).filter(Boolean).join(', ');
-                const feedback = modal.querySelector('[data-payer-address-feedback]');
-                feedback.hidden = false;
-                feedback.classList.remove('hidden');
-                if (!read('address')) {
-                    feedback.textContent = 'Seçili fatura profilinde adres bulunamadı. Adresi elle girebilirsiniz.';
-                    return;
-                }
-                if (address.length > target.maxLength) {
-                    feedback.textContent = 'Fatura adresi bu alan için çok uzun. Adresi 400 karakteri aşmayacak şekilde elle girin.';
-                    return;
-                }
-                target.value = address;
-                target.dispatchEvent(new Event('input', {bubbles: true}));
-                feedback.textContent = 'Fatura adresi aktarıldı. İsterseniz değiştirebilirsiniz.';
             }
             function payLegalText(value) {
                 return value && String(value).trim() !== '' ? String(value).trim() : 'Belirtilmedi';
@@ -358,6 +342,7 @@
     document.addEventListener('keydown', event => {
         const modal = document.querySelector('[data-pay-modal]:not([hidden])');
         if (!modal) return;
+        if (modal.querySelector('[data-checkout-timeout]')?.open) return;
         if (event.key === 'Escape') { event.preventDefault(); payStep(modal, 'backdrop'); return; }
         if (event.key === 'Tab') {
             const controls = Array.from(modal.querySelectorAll('a,button,input,select,textarea')).filter(node => !node.disabled && node.offsetParent !== null && node.tabIndex >= 0);
@@ -367,3 +352,4 @@
         }
     });
 </script>
+<script src="{{ asset('js/checkout-timeout.js') }}?v={{ filemtime(public_path('js/checkout-timeout.js')) }}" defer></script>

@@ -18,23 +18,50 @@
         #apartment-setup-dialog > header > div > div > span { font-size: 18px; }
         #apartment-setup-close { padding: 7px 12px; border-color: #dce1e8; border-radius: 10px; font-size: 14px; font-weight: 400; }
         #apartment-setup-dialog > main { padding-top: 12px; }
-        .paytr-order-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: 680px; margin: 0 auto 8px; }
-        .paytr-order-name { min-width: 0; font-size: 13px; line-height: 1.5; font-weight: 400; color: #647080; overflow-wrap: anywhere; }
+        .paytr-order-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 14px; padding-bottom: 12px; border-bottom: 1px solid #eef0f3; text-align: left; }
+        .paytr-order-details { display: flex; flex: 1 1 200px; flex-wrap: wrap; align-items: baseline; gap: 5px 8px; min-width: 0; }
+        .paytr-order-name { min-width: 0; font-size: 15px; line-height: 1.5; font-weight: 600; color: #202836; overflow-wrap: anywhere; }
+        .paytr-order-period { font-size: 13px; line-height: 1.5; color: #647080; }
         .paytr-test-label { display: inline-block; padding: 2px 6px; border-radius: 5px; background: #eef0f3; color: #647080; font-size: 10px; line-height: 1.5; font-weight: 400; }
+        .paytr-payment-brand { flex-shrink: 0; width: 88px; height: auto; }
     </style>
 @endpush
 @section('content')
     <form id="payment-exit-form" method="POST" action="{{ route('subscriber.subscriptions.card-abandon', $subscription) }}" hidden>@csrf</form>
     <p id="payment-exit-error" role="alert" class="mb-3 text-sm text-red-600" hidden></p>
     <section class="paytr-order-summary" aria-label="Sipariş özeti">
-        <p class="paytr-order-name">{{ $subscription->items()->first()?->apartment_name }} · {{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }} abonelik</p>
-        @if ($attempt->is_test)<span class="paytr-test-label">Test ödemesi</span>@endif
+        <div class="paytr-order-details">
+            <p class="paytr-order-name">{{ $subscription->items()->first()?->apartment_name }}</p>
+            <p class="paytr-order-period">· {{ $subscription->period === 'yearly' ? 'Yıllık' : 'Aylık' }} abonelik</p>
+            @if ($attempt->is_test)<span class="paytr-test-label">Test ödemesi</span>@endif
+        </div>
+        <img src="{{ asset('images/paytr-logo.svg') }}" alt="PayTR" width="88" height="15" class="paytr-payment-brand">
     </section>
     <iframe src="https://www.paytr.com/odeme/guvenli/{{ rawurlencode($attempt->iframe_token) }}" id="paytriframe" title="PayTR güvenli kart ödeme formu" style="width:100%;min-height:640px;border:0" scrolling="no" referrerpolicy="no-referrer"></iframe>
     <script src="https://www.paytr.com/js/iframeResizer.min.js"></script>
     <script>if (typeof iFrameResize === 'function') iFrameResize({}, '#paytriframe');</script>
     <script>
+        // A new checkout in another tab can retire this screen. Stop presenting its old form.
+        let paymentScreenLeft = false;
+        const checkPaymentScreen = async () => {
+            if (paymentScreenLeft) return;
+            try {
+                const response = await fetch(@json(route('subscriber.subscriptions.card-status', $subscription)), {headers: {'Accept': 'application/json'}, credentials: 'same-origin', cache: 'no-store'});
+                if (response.ok) {
+                    const result = await response.json();
+                    if (['abandoned', 'superseded', 'cancelled', 'review', 'paid', 'failed'].includes(result.state)) {
+                        paymentScreenLeft = true;
+                        document.getElementById('payment-exit-form').dataset.exitSent = '1';
+                        window.location.replace(@json(route('subscriber.subscriptions.card-result', $subscription)));
+                        return;
+                    }
+                }
+            } catch (_) {}
+            setTimeout(checkPaymentScreen, 5000);
+        };
+        setTimeout(checkPaymentScreen, 5000);
         window.addEventListener('pagehide', () => {
+            paymentScreenLeft = true;
             const form = document.getElementById('payment-exit-form');
             if (form.dataset.exitSent !== '1') navigator.sendBeacon(form.action, new FormData(form));
         });

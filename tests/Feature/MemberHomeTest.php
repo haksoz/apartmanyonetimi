@@ -79,6 +79,7 @@ class MemberHomeTest extends TestCase
             ->patch(route('profile.update'), [
                 'name' => 'Daire Sakini',
                 'phone' => '5559998877',
+                'address' => 'Test adresi',
             ])
             ->assertRedirect(route('profile.edit'));
 
@@ -182,7 +183,7 @@ class MemberHomeTest extends TestCase
             ->assertOk()
             ->assertSee('Onaylanan belgeler')
             ->assertSee('Gizlilik ve KVKK aydınlatması')
-            ->assertSee('Daire sakini verisi bildirimi')
+            ->assertSee('Kat maliki ve kiracı verileri bildirimi')
             ->assertSee('Uye Apartmani')
             ->assertSee('KVKK metni')
             ->assertDontSee('Üyelik sözleşmesi');

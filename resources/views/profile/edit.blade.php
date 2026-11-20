@@ -5,7 +5,7 @@
 @section('content')
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-slate-950">Hesabım</h1>
-        <p class="mt-1 text-sm text-slate-500">Ad ve telefon size aittir. E-posta giriş adresinizdir.</p>
+        <p class="mt-1 text-sm text-slate-500">Ödeme iletişim bilgileriniz bu profilden alınır. E-posta giriş adresinizdir.</p>
     </div>
 
     <div class="max-w-xl rounded-2xl bg-white p-6 shadow-sm">
@@ -14,7 +14,7 @@
             @method('PATCH')
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-600" for="name">Ad Soyad</label>
-                <input id="name" name="name" type="text" value="{{ old('name', $user->name) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <input id="name" name="name" maxlength="60" type="text" value="{{ old('name', $user->name) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 @error('name')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
             <div>
@@ -22,10 +22,15 @@
                 <p class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{{ $user->email }}</p>
             </div>
             <div>
-                <label class="mb-2 block text-sm font-medium text-slate-600" for="phone">Telefon</label>
-                <input id="phone" name="phone" type="tel" inputmode="numeric" pattern="[1-9][0-9]{9}" maxlength="10" autocomplete="tel-national" placeholder="5551234567" title="Başında 0 olmadan 10 hane girin. Örnek: 5551234567" aria-describedby="phone-format" value="{{ old('phone', $user->phone) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <label class="mb-2 block text-sm font-medium text-slate-600" for="phone">Telefon *</label>
+                <input id="phone" required name="phone" type="tel" inputmode="numeric" pattern="[1-9][0-9]{9}" maxlength="10" autocomplete="tel-national" placeholder="5551234567" title="Başında 0 olmadan 10 hane girin. Örnek: 5551234567" aria-describedby="phone-format" value="{{ old('phone', $user->phone) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 <p id="phone-format" class="mt-1 text-xs text-slate-500">Başında 0 olmadan 10 hane.</p>
                 @error('phone')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div>
+                <label class="mb-2 block text-sm font-medium text-slate-600" for="address">İletişim adresi *</label>
+                <textarea id="address" name="address" required maxlength="400" rows="3" autocomplete="street-address" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">{{ old('address', $user->address) }}</textarea>
+                @error('address')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <button type="submit" class="rounded-xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800">Kaydet</button>

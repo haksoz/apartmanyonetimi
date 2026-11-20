@@ -78,9 +78,10 @@ class AdminCustomerController extends Controller
             $request->merge(['email' => strtolower(trim($request->input('email')))]);
         }
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'phone' => ['nullable', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
+            'name' => ['required', 'string', 'max:60'],
+            'email' => ['required', 'email', 'max:100', 'regex:/^[\x00-\x7F]+$/', Rule::unique('users', 'email')],
+            'phone' => ['required', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
+            'address' => ['required', 'string', 'max:400'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'max_apartments' => ['required', 'integer', 'min:1', 'max:1000'],
         ], [
@@ -93,6 +94,7 @@ class AdminCustomerController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'],
                 'password' => $validated['password'],
                 'role' => User::ROLE_MANAGER,
                 'activated_at' => now(),
@@ -110,15 +112,17 @@ class AdminCustomerController extends Controller
         $this->ensureCustomer($customer);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($customer->id)],
-            'phone' => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:60'],
+            'email' => ['required', 'email', 'max:100', 'regex:/^[\x00-\x7F]+$/', Rule::unique('users', 'email')->ignore($customer->id)],
+            'phone' => ['required', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
+            'address' => ['required', 'string', 'max:400'],
         ]);
 
         $customer->update([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?: null,
+            'address' => $validated['address'],
         ]);
 
         return redirect()

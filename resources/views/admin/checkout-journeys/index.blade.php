@@ -8,7 +8,7 @@
         <input name="search" value="{{ $search }}" aria-label="Geçiş ara" placeholder="Takip no, müşteri, apartman veya sipariş" class="min-w-0 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm sm:w-80">
         <select name="status" aria-label="Süreç durumu" class="max-w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
             <option value="">Durum: Tümü</option>
-            @foreach (['incomplete' => 'Tamamlanmadı', 'closed' => 'Ekrandan çıkıldı', 'pending' => 'Ödeme bekleniyor', 'active' => 'Etkinleşti', 'review' => 'İnceleme gerekli'] as $value => $label)
+            @foreach (['incomplete' => 'Tamamlanmadı', 'closed' => 'Ekrandan çıkıldı', 'expired' => 'Ödeme ekranının süresi doldu', 'superseded' => 'Yeni denemeyle değiştirildi', 'failed' => 'Ödeme başarısız', 'pending' => 'Ödeme bekleniyor', 'active' => 'Etkinleşti', 'review' => 'İnceleme gerekli'] as $value => $label)
                 <option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>
             @endforeach
         </select>
@@ -40,7 +40,7 @@
             <p class="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Geçiş süreci bulunamadı.</p>
         @endforelse
     </div>
-    <p class="mt-4 text-xs text-slate-500">30 dakika boyunca yeni adım kaydedilmeyen ve ödemeye gönderilmeyen süreçler “Tamamlanmadı” görünür. Bu, tarayıcının kesin olarak kapatıldığı anlamına gelmez.</p>
+    <p class="mt-4 text-xs text-slate-500">Formda 2 dakika işlem yapılmayan ve süresi uzatılmayan süreçler “Tamamlanmadı” görünür. PayTR ödeme ekranının süresi ayrıdır. Bu durum tarayıcının kesin olarak kapatıldığı anlamına gelmez.</p>
     <div class="mt-5">{{ $journeys->links() }}</div>
     <a href="{{ route('admin.card-transactions.index') }}" class="mt-4 inline-block text-sm font-semibold text-slate-600">Ödeme denemelerini ayrıca listele</a>
 @endsection

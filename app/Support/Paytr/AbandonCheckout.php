@@ -9,14 +9,17 @@ use Illuminate\Support\Facades\DB;
 
 class AbandonCheckout
 {
-    public function abandon(UserSubscription $order): void
+    public function abandon(UserSubscription $order, bool $expired = false): void
     {
-        DB::transaction(function () use ($order) {
+        DB::transaction(function () use ($order, $expired) {
             $order = SubscriptionOrderLock::acquire($order);
             if ($order->trashed() || ! $order->isPending() || $order->payments()->withTrashed()->exists()) return;
             if (! $order->checkout_abandoned_at) {
                 $order->update(['checkout_abandoned_at' => now(),
-                    'notes' => trim(($order->notes ?? '')."\nÖdeme ekranından çıkıldı: ".now()->toIso8601String())]);
+                    'notes' => trim(($order->notes ?? '')."\n".($expired ? 'Ödeme ekranının süresi doldu: ' : 'Ödeme ekranından çıkıldı: ').now()->toIso8601String())]);
+                if ($expired) {
+                    app(\App\Support\CheckoutJourneyTracking::class)->orderEvent($order->id, 'card_expired', []);
+                }
             }
             $attempts = $order->paymentAttempts()->lockForUpdate()->get();
             $unresolved = $attempts->contains(fn ($attempt) => $attempt->review_required || $attempt->status === 'succeeded'

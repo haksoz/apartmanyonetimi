@@ -19,6 +19,15 @@ class RegistrationPackageTest extends TestCase
             ->assertDontSee($package->name);
     }
 
+    public function test_registration_requires_phone_and_address(): void
+    {
+        $this->withSession(['register_challenge' => ['a' => 2, 'b' => 3, 'sum' => 5, 'opened_at' => now()->subSeconds(10)->timestamp]])
+            ->post(route('register'), ['name' => 'Yeni müşteri', 'email' => 'new@example.com',
+                'password' => 'password123', 'password_confirmation' => 'password123', 'human_answer' => 5,
+                'accept_membership' => 1, 'accept_privacy' => 1])->assertSessionHasErrors(['phone', 'address']);
+        $this->assertDatabaseMissing('users', ['email' => 'new@example.com']);
+    }
+
     public function test_registration_does_not_create_a_subscription(): void
     {
         $response = $this->withSession([
@@ -31,6 +40,8 @@ class RegistrationPackageTest extends TestCase
         ])->post(route('register'), [
             'name' => 'Test Manager',
             'email' => 'manager@example.com',
+            'phone' => '5551234567',
+            'address' => 'Test adresi',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'human_answer' => 5,
@@ -42,6 +53,8 @@ class RegistrationPackageTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'manager@example.com',
+            'phone' => '5551234567',
+            'address' => 'Test adresi',
             'role' => 'manager',
         ]);
 

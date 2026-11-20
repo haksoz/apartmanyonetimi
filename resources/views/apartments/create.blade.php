@@ -9,7 +9,7 @@
 @section('content')
     <div class="mb-4">
         <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">Yeni Apartman</h1>
-        <p class="mt-1 text-sm text-slate-500">Daire sayısına göre daire ve hesap kayıtları otomatik oluşturulur.</p>
+        <p class="mt-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-900">Daire sayısına göre daire ve hesap kayıtları otomatik oluşturulur.</p>
     </div>
 
     @if ($quotaBlocked ?? false)
@@ -35,6 +35,7 @@
                     . 'Niğde,Ordu,Rize,Sakarya,Samsun,Siirt,Sinop,Sivas,Tekirdağ,Tokat,'
                     . 'Trabzon,Tunceli,Şanlıurfa,Uşak,Van,Yozgat,Zonguldak,Aksaray,Bayburt,Karaman,'
                     . 'Kırıkkale,Batman,Şırnak,Bartın,Ardahan,Iğdır,Yalova,Karabük,Kilis,Osmaniye,Düzce');
+                $provinces = array_merge(['İstanbul', 'Ankara'], array_values(array_diff($provinces, ['İstanbul', 'Ankara'])));
             @endphp
             <div class="grid grid-cols-2 gap-3">
                 <div>

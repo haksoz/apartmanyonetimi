@@ -90,7 +90,10 @@ class SubscriberSubscriptionController extends Controller
         $candidate = $requestedId ? $apartments->firstWhere('id', $requestedId) : ($apartments->count() === 1 ? $apartments->first() : null);
         if ($candidate?->offer['action'] === 'pending' && (int) $candidate->offer['order']->user_id === (int) auth()->id()) {
             session(['subscription_return.'.$candidate->offer['order']->id => $request->input('from') === 'dashboard' ? 'dashboard' : 'subscriber']);
-            return redirect()->route('subscriber.subscriptions.receipt', $candidate->offer['order']);
+            return redirect()->route('subscriber.subscriptions.receipt', array_filter([
+                'subscription' => $candidate->offer['order'],
+                'from' => $request->input('from') === 'dashboard' ? 'dashboard' : null,
+            ]));
         }
         $selectedApartmentId = $candidate ? $selectable->firstWhere('id', $candidate->id)?->id : null;
         $selectedBillingProfileId = old('billing_profile_id');
@@ -112,6 +115,10 @@ class SubscriberSubscriptionController extends Controller
     public function store(Request $request, SubscriptionCheckout $checkout)
     {
         try {
+            if ($request->input('payment_method') === 'kredi_kartı') {
+                // Client fields are not authoritative; checkout always uses the customer's profile.
+                $request->merge(\App\Support\Paytr\PayerContact::fromUser($request->user()->fresh()));
+            }
             $validated = $request->validate([
                 'apartment_ids' => ['required', 'array', 'min:1', 'max:1'],
                 'apartment_ids.*' => ['integer'],
@@ -144,6 +151,10 @@ class SubscriberSubscriptionController extends Controller
             ], [
                 'payment_method.in' => 'Seçilen ödeme yöntemi hesabınız için kullanılamıyor. Ödeme seçeneklerini yeniden kontrol edin.',
                 'payer_phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
+                'payer_name.required' => 'Ad soyad bilginizi Hesabım sayfasından tamamlayın.',
+                'payer_email.required' => 'Müşteri profilinizde e-posta bilgisi bulunmuyor. Destek ekibiyle iletişime geçin.',
+                'payer_phone.required' => 'Telefon bilginizi Hesabım sayfasından tamamlayın.',
+                'payer_address.required' => 'İletişim adresinizi Hesabım sayfasından tamamlayın.',
                 'payer_email.email' => 'Geçerli bir e-posta adresi girin.',
                 'payer_email.regex' => 'Ödeme e-posta adresinde Türkçe karakter kullanmayın.',
                 'apartment_ids.max' => 'Bir siparişte yalnızca bir apartman olabilir.',
@@ -194,6 +205,9 @@ class SubscriberSubscriptionController extends Controller
         try {
             $subscription = DB::transaction(function () use ($checkout, $request, $user, $apartments, $validated, $fingerprint, &$receiptPath) {
                 $lockedUser = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                if ($validated['payment_method'] === 'kredi_kartı') {
+                    $validated = array_replace($validated, \App\Support\Paytr\PayerContact::validated($lockedUser));
+                }
                 if ($validated['payment_method'] === 'havale' && ! $lockedUser->bank_transfer_allowed) {
                     throw ValidationException::withMessages(['payment_method' => 'Havale / EFT ile ödeme izniniz bulunmuyor.']);
                 }
@@ -213,10 +227,17 @@ class SubscriberSubscriptionController extends Controller
                     throw ValidationException::withMessages(['apartment_ids' => 'Apartman yönetim yetkiniz değişti.']);
                 }
                 $apartment = $locked->first();
+                if (! empty($validated['checkout_journey'])) {
+                    $journey = \App\Models\CheckoutJourney::where('uuid', $validated['checkout_journey'])
+                        ->where('user_id', $user->id)->where('apartment_id', $apartment->id)->lockForUpdate()->first();
+                    if ($journey?->isFormTimedOut() || $journey?->closed_at) {
+                        throw ValidationException::withMessages(['checkout_journey' => 'Formun süresi doldu. Süreyi uzatarak devam edin.']);
+                    }
+                }
                 $pending = $apartment->subscriptionItems()->where('status', SubscriptionItem::STATUS_PENDING)
                     ->whereHas('subscription', fn ($query) => $query->where('status', UserSubscription::STATUS_PENDING))
                     ->with('subscription')->first();
-                if ($pending) {
+                if ($pending && $pending->subscription->payment_method !== 'kredi_kartı') {
                     if ($pending->subscription->checkout_abandoned_at) {
                         throw ValidationException::withMessages(['payment_method' => 'Önceki ödeme girişiminin sonucu henüz kesinleşmedi. Yeni tahsilat başlamadan önce sonuç doğrulanmalıdır. Lütfen daha sonra tekrar deneyin.']);
                     }
@@ -261,21 +282,23 @@ class SubscriberSubscriptionController extends Controller
             : 'Siparişiniz alındı. Güvenli kart ödeme ekranına geçebilirsiniz.');
 
         session(['subscription_return.'.$subscription->id => $request->input('checkout_return') === 'dashboard' ? 'dashboard' : 'subscriber']);
+        $receiptParameters = array_filter(['subscription' => $subscription,
+            'from' => $request->input('checkout_return') === 'dashboard' ? 'dashboard' : null]);
         if ($subscription->payment_method === 'kredi_kartı' && $subscription->isPending()) {
             try {
                 app(\App\Support\Paytr\StartIframe::class)->start($subscription, (string) $request->ip());
 
                 return redirect()->route('subscriber.subscriptions.card', $subscription);
             } catch (ValidationException $exception) {
-                return redirect()->route('subscriber.subscriptions.receipt', $subscription)->withErrors($exception->errors());
+                return redirect()->route('subscriber.subscriptions.receipt', $receiptParameters)->withErrors($exception->errors());
             }
         }
 
-        return redirect()->route('subscriber.subscriptions.receipt', $subscription)
+        return redirect()->route('subscriber.subscriptions.receipt', $receiptParameters)
             ->with('status', $message);
     }
 
-    public function receipt(UserSubscription $subscription)
+    public function receipt(Request $request, UserSubscription $subscription)
     {
         $this->authorizeSubscription($subscription);
         if ($subscription->checkout_abandoned_at) {
@@ -287,7 +310,9 @@ class SubscriberSubscriptionController extends Controller
             ? app(\App\Support\Paytr\PaymentState::class)->forOrder($subscription) : null;
         $accounts = BankAccount::active()->ordered()->get();
 
-        return view('subscriber.subscriptions.receipt', compact('subscription', 'accounts', 'cardPaymentState'));
+        $summaryMode = $request->query('from') === 'dashboard';
+
+        return view('subscriber.subscriptions.receipt', compact('subscription', 'accounts', 'cardPaymentState', 'summaryMode'));
     }
 
     public function paymentInfo(Request $request, UserSubscription $subscription)
@@ -372,6 +397,7 @@ class SubscriberSubscriptionController extends Controller
         $pending = $items->first(function (SubscriptionItem $item) {
             return $item->status === SubscriptionItem::STATUS_PENDING
                 && $item->subscription?->status === UserSubscription::STATUS_PENDING
+                && $item->subscription->payment_method !== 'kredi_kartı'
                 && ! $item->subscription->checkout_abandoned_at;
         });
 

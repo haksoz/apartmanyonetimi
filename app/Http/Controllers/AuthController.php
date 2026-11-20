@@ -87,8 +87,10 @@ class AuthController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'name' => ['required', 'string', 'max:60'],
+            'email' => ['required', 'email', 'max:100', 'regex:/^[\x00-\x7F]+$/', 'unique:users,email'],
+            'phone' => ['required', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
+            'address' => ['required', 'string', 'max:400'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'human_answer' => ['required', 'integer'],
             'company' => ['prohibited'],
@@ -96,6 +98,7 @@ class AuthController extends Controller
             'accept_privacy' => ['accepted'],
         ], [
             'accept_membership.accepted' => 'Devam etmek için üyelik sözleşmesini kabul edin.',
+            'phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
             'accept_privacy.accepted' => 'Devam etmek için gizlilik ve KVKK aydınlatmasını kabul edin.',
         ]);
 
@@ -129,6 +132,8 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'address' => $validated['address'],
             'password' => $validated['password'],
             'role' => 'manager',
             'activated_at' => now(),

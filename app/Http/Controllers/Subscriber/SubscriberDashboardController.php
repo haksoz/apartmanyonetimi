@@ -9,13 +9,14 @@ use App\Models\AccountPortalAccessEvent;
 use App\Support\BuildingPlaces;
 use App\Support\CurrentApartment;
 use App\Support\PriceQuote;
+use App\Support\LegalConsent;
 use App\Support\SubscriberApartmentOverview;
 use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
 
 class SubscriberDashboardController extends Controller
 {
-    public function __invoke(Request $request, CurrentApartment $currentApartment, PriceQuote $prices, SubscriberApartmentOverview $overview, BuildingPlaces $places)
+    public function __invoke(Request $request, CurrentApartment $currentApartment, PriceQuote $prices, SubscriberApartmentOverview $overview, BuildingPlaces $places, LegalConsent $consent)
     {
         $user = auth()->user();
         $managedApartments = $places->grouped($user)['managed'];
@@ -48,7 +49,12 @@ class SubscriberDashboardController extends Controller
             ->whereIn('status', [QuoteRequest::STATUS_PENDING, QuoteRequest::STATUS_CONTACTED])
             ->latest('id')->get();
 
+        $hasPendingLegalConsent = ! $request->session()->has('impersonate_admin_id')
+            && ! $user->isAdminPanelUser()
+            && ($consent->needsMembership($user) || $consent->needsPrivacy($user));
+
         return view('subscriber.dashboard', [
+            'hasPendingLegalConsent' => $hasPendingLegalConsent,
             'apartments' => $managedApartments,
             'pendingQuoteRequests' => $pendingQuoteRequests,
             'residenceAccounts' => $residenceAccounts,

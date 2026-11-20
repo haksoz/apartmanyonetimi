@@ -1,11 +1,12 @@
-@extends('layouts.apartment-setup')
+@extends($summaryMode ? 'layouts.apartment-setup' : 'layouts.app')
 
-@section('setup_title', 'Abonelik ve Ödeme')
-@section('setup_description', 'Siparişinizin ödeme ve onay durumunu buradan takip edebilirsiniz.')
-@section('setup_width', '56rem')
-@section('setup_close_url', route(session('subscription_return.'.$subscription->id) === 'dashboard' ? 'dashboard' : 'subscriber.dashboard'))
+@section('setup_title', 'Sipariş özeti')
+@section('setup_description', 'Sipariş no: '.($subscription->payment_reference ?: '—'))
+@section('setup_width', '46rem')
+@section('setup_close_url', route('dashboard'))
 
-@section('title', 'Sipariş')
+@section('title', 'Sipariş detayı')
+@section('content_width', 'max-w-4xl')
 
 @section('content')
     @php
@@ -26,25 +27,28 @@
         };
     @endphp
 
+    @unless ($summaryMode)
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">Sipariş</h1>
-            <p class="mt-1 font-mono text-sm text-slate-500">{{ $subscription->payment_reference ?: '—' }}</p>
+            @unless ($summaryMode)
+                <h1 class="text-xl font-bold text-slate-950 sm:text-2xl">Sipariş detayı</h1>
+            @endunless
+            @unless ($summaryMode)
+                <p class="mt-1 font-mono text-sm text-slate-500">{{ $subscription->payment_reference ?: '—' }}</p>
+            @endunless
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2">
-            @if ($canSubmitProof)
+            @unless ($summaryMode)
+                <a href="{{ route('subscriber.subscriptions.index') }}" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Siparişlerime dön</a>
+            @endunless
+            @if ($canSubmitProof && ! $summaryMode)
                 <button type="button" onclick="document.getElementById('payment-info-modal-{{ $subscription->id }}').classList.remove('hidden')" class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">Ödeme Gir</button>
             @endif
-            <button type="button" onclick="if (window.history.length > 1) { history.back(); } else { window.location.href = '{{ route('subscriber.subscriptions.index') }}'; }" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
-                </svg>
-                Geri
-            </button>
         </div>
     </div>
+    @endunless
 
-    <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <article @if ($summaryMode) data-receipt-summary @endif class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <dl class="divide-y divide-slate-200 text-sm">
             <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-slate-500">Tarih</dt>
@@ -71,13 +75,13 @@
                         <dt class="text-slate-500">Hizmet</dt>
                         <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ $item->apartment_name }} · {{ $item->unit_count }} daire AidatCep Kullanım / {{ $periodLabel }}</dd>
                     </div>
-                    @if ($addressLine !== '')
+                    @if (! $summaryMode && $addressLine !== '')
                         <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                             <dt class="text-slate-500">Adres</dt>
                             <dd class="mt-1 text-slate-900 sm:col-span-2 sm:mt-0">{{ $addressLine }}</dd>
                         </div>
                     @endif
-                    @if ($item->apartmentSubscription?->subscription_no)
+                    @if (! $summaryMode && $item->apartmentSubscription?->subscription_no)
                         <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                             <dt class="text-slate-500">Abonelik no</dt>
                             <dd class="mt-1 font-mono font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ $item->apartmentSubscription->subscription_no }}</dd>
@@ -99,6 +103,7 @@
                 <dt class="text-slate-500">Ödeme yöntemi</dt>
                 <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ $subscription->payment_method === 'kredi_kartı' ? 'Kredi kartı' : 'Havale / EFT' }}</dd>
             </div>
+            @unless ($summaryMode)
             <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-slate-500">Net tutar</dt>
                 <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ number_format((float) ($subscription->net_amount ?? $subscription->price), 2, ',', '.') }} ₺</dd>
@@ -107,6 +112,7 @@
                 <dt class="text-slate-500">KDV (%{{ number_format((float) $subscription->tax_rate, 2, ',', '.') }})</dt>
                 <dd class="mt-1 font-medium text-slate-900 sm:col-span-2 sm:mt-0">{{ number_format((float) $subscription->tax_amount, 2, ',', '.') }} ₺</dd>
             </div>
+            @endunless
             <div class="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt class="text-slate-500">Genel toplam</dt>
                 <dd class="mt-1 font-semibold text-slate-900 sm:col-span-2 sm:mt-0">{{ number_format((float) $subscription->price, 2, ',', '.') }} ₺</dd>
@@ -145,7 +151,7 @@
             <p class="border-t border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-800 sm:px-6">Ödeme bilgileriniz alınmıştır, admin onayı bekleniyor.</p>
         @endif
 
-        @if ($isHavale && $accounts->isNotEmpty())
+        @if ($isHavale && $accounts->isNotEmpty() && (! $summaryMode || $canSubmitProof))
             <div class="border-t border-slate-200 px-4 py-5 sm:px-6">
                 <h2 class="text-base font-semibold text-slate-900">Banka hesap bilgileri</h2>
                 <p class="mt-2 text-sm text-slate-600">Havale/EFT açıklama kısmına aşağıdaki sipariş numarasını yazmayı unutmayın.</p>
@@ -175,7 +181,7 @@
             </div>
         @endif
 
-        @if ($canCancel)
+        @if ($canCancel && ! $summaryMode)
             <div class="border-t border-slate-200 px-4 py-4 sm:px-6">
                 <form method="POST" action="{{ route('subscriber.subscriptions.cancel', $subscription) }}">
                     @csrf
@@ -185,8 +191,12 @@
         @endif
     </article>
 
-    @include('partials.billing-snapshot', ['subscription' => $subscription])
-    @include('partials.order-legal-acceptances', ['subscription' => $subscription])
+    @if ($summaryMode)
+        <a href="{{ route('subscriber.subscriptions.receipt', $subscription) }}" class="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">Tüm sipariş detayları</a>
+    @else
+        @include('partials.billing-snapshot', ['subscription' => $subscription])
+        @include('partials.order-legal-acceptances', ['subscription' => $subscription])
+    @endif
 
     @if ($canSubmitProof)
         @include('subscriber.subscriptions.partials.payment-info-modal', [
@@ -195,3 +205,30 @@
         ])
     @endif
 @endsection
+
+@section('setup_actions')
+    @if ($summaryMode && $canSubmitProof)
+        <button type="button" onclick="document.getElementById('payment-info-modal-{{ $subscription->id }}').classList.remove('hidden')" class="whitespace-nowrap rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600">Ödeme Gir</button>
+    @endif
+@endsection
+
+@if ($summaryMode)
+    @push('setup_styles')
+        <style>
+            #apartment-setup-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }
+            #apartment-setup-dialog > header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; flex-shrink: 0; gap: .5rem; padding: .75rem 1rem; }
+            #apartment-setup-dialog > header > div:first-child > div { margin-bottom: .25rem; }
+            #apartment-setup-dialog > header img { height: 1.5rem; }
+            #apartment-setup-dialog > header .text-xl { font-size: 1rem; }
+            #apartment-setup-title { font-size: 1rem; }
+            #apartment-setup-description { overflow-wrap: anywhere; }
+            #apartment-setup-dialog > main { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: .75rem 1rem; }
+            [data-receipt-summary] > dl > div { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); gap: .25rem .75rem; padding: .5rem .75rem; }
+            [data-receipt-summary] > dl > div > dd { margin-top: 0; grid-column: auto; overflow-wrap: anywhere; }
+            @media (max-width: 400px) {
+                #apartment-setup-dialog > header, #apartment-setup-dialog > main { padding-left: .75rem; padding-right: .75rem; }
+                #apartment-setup-dialog > header button, #apartment-setup-close { padding-left: .5rem; padding-right: .5rem; font-size: .75rem; }
+            }
+        </style>
+    @endpush
+@endif

@@ -36,7 +36,7 @@ class ManagementOfferController extends Controller
                 'accept_resident_data' => ['accepted'],
                 'accept_privacy' => ['accepted'],
             ], [
-                'accept_resident_data.accepted' => 'Devam etmek için daire sakini verisi bildirimini kabul edin.',
+                'accept_resident_data.accepted' => 'Devam etmek için kat maliki ve kiracı verileri bildirimini kabul edin.',
                 'accept_privacy.accepted' => 'Devam etmek için gizlilik ve KVKK aydınlatmasını kabul edin.',
             ]);
         }

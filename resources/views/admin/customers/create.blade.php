@@ -12,19 +12,24 @@
         @csrf
         <div>
             <label for="customer-name" class="block text-sm font-medium text-slate-700">Ad Soyad *</label>
-            <input id="customer-name" name="name" type="text" value="{{ old('name') }}" required maxlength="255" autocomplete="name" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
+            <input id="customer-name" name="name" maxlength="60" type="text" value="{{ old('name') }}" required autocomplete="name" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
             @error('name')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
         <div>
             <label for="customer-email" class="block text-sm font-medium text-slate-700">E-posta *</label>
-            <input id="customer-email" name="email" type="email" value="{{ old('email') }}" required maxlength="255" autocomplete="email" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
+            <input id="customer-email" name="email" maxlength="100" type="email" value="{{ old('email') }}" required autocomplete="email" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
             @error('email')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
         <div>
-            <label for="customer-phone" class="block text-sm font-medium text-slate-700">Telefon</label>
-            <input id="customer-phone" name="phone" type="tel" value="{{ old('phone') }}" inputmode="numeric" pattern="[1-9][0-9]{9}" maxlength="10" autocomplete="tel-national" placeholder="5551234567" aria-describedby="customer-phone-format" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
+            <label for="customer-phone" class="block text-sm font-medium text-slate-700">Telefon *</label>
+            <input id="customer-phone" required name="phone" type="tel" value="{{ old('phone') }}" inputmode="numeric" pattern="[1-9][0-9]{9}" maxlength="10" autocomplete="tel-national" placeholder="5551234567" aria-describedby="customer-phone-format" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
             <p id="customer-phone-format" class="mt-1 text-xs text-slate-500">Başında 0 olmadan 10 hane.</p>
             @error('phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+        </div>
+        <div>
+            <label for="customer-address" class="block text-sm font-medium text-slate-700">İletişim adresi *</label>
+            <textarea id="customer-address" name="address" required maxlength="400" rows="3" autocomplete="street-address" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">{{ old('address') }}</textarea>
+            @error('address')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
         <div>
             <label for="customer-quota" class="block text-sm font-medium text-slate-700">Apartman oluşturma limiti *</label>

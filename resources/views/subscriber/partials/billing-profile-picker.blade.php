@@ -20,6 +20,7 @@
                 @foreach ($profiles as $profile)
                     <option
                         value="{{ $profile->id }}"
+                        data-billing-party-type="{{ $profile->party_type }}"
                         data-billing-legal-name="{{ $profile->legal_name }}"
                         data-billing-identity-number="{{ $profile->identity_number }}"
                         data-billing-tax-office="{{ $profile->tax_office }}"
@@ -76,11 +77,23 @@
             <input name="billing_identity_number" value="{{ old('billing_identity_number') }}" placeholder="T.C. kimlik numarası" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">
             @error('billing_identity_number') <span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span> @enderror
         </label>
-        <label data-party-field="both" class="hidden text-sm font-medium text-slate-700" hidden>
-            Fatura adresi
-            <textarea name="billing_address" rows="2" placeholder="Faturada görünecek açık adres" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">{{ old('billing_address') }}</textarea>
+        <div data-party-field="both" class="hidden text-sm font-medium text-slate-700" hidden>
+            @if (filled($apartment?->address ?? null))
+                @php
+                    $apartmentBillingAddress = implode(', ', array_filter([
+                        $apartment->address,
+                        $apartment->district,
+                        $apartment->province,
+                    ], fn ($part) => filled($part)));
+                @endphp
+                <button type="button" data-use-apartment-address="{{ $apartmentBillingAddress }}" class="mb-2 text-sm font-semibold text-emerald-700 underline underline-offset-2">Apartman adresini kullan</button>
+            @endif
+            <label class="block">
+                Fatura adresi
+                <textarea name="billing_address" rows="2" placeholder="Faturada görünecek açık adres" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">{{ old('billing_address') }}</textarea>
+            </label>
             @error('billing_address') <span class="mt-1 block text-sm font-normal text-red-600">{{ $message }}</span> @enderror
-        </label>
+        </div>
         <label data-party-field="corporate" class="hidden text-sm font-medium text-slate-700" hidden>
             Vergi dairesi
             <input name="billing_tax_office" value="{{ old('billing_tax_office') }}" placeholder="Vergi dairesinin adı" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-normal">
@@ -93,6 +106,18 @@
     </div>
     @error('billing_profile_id') <div class="mt-2 text-sm text-red-600">{{ $message }}</div> @enderror
     @error('billing_mode') <div class="mt-2 text-sm text-red-600">{{ $message }}</div> @enderror
+
+    <section data-billing-summary class="mt-4 hidden min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4" hidden aria-labelledby="billing-summary-title">
+        <h3 id="billing-summary-title" class="text-sm font-semibold text-slate-900">Seçili fatura profili</h3>
+        <dl class="mt-3 space-y-2 text-sm">
+            @foreach (['party-type' => 'Fatura türü', 'legal-name' => 'Ad soyad / Unvan', 'identity-number' => 'Kimlik / Vergi no', 'tax-office' => 'Vergi dairesi', 'address' => 'Fatura adresi', 'email' => 'E-posta', 'phone' => 'Telefon'] as $key => $label)
+                <div data-summary-row="{{ $key }}" class="min-w-0" hidden>
+                    <dt data-summary-label="{{ $key }}" class="text-xs text-slate-500">{{ $label }}</dt>
+                    <dd data-summary-value="{{ $key }}" class="mt-0.5 break-words text-slate-800"></dd>
+                </div>
+            @endforeach
+        </dl>
+    </section>
 
     <script>
         (function (picker) {
@@ -118,14 +143,41 @@
                 const corporateTax = picker.querySelector('[data-corporate-tax]');
                 if (type === 'corporate' && corporateName && name) name.value = corporateName.value;
                 if (type === 'corporate' && corporateTax && identity) identity.value = corporateTax.value;
+                const summary = picker.querySelector('[data-billing-summary]');
+                const option = picker.querySelector('[name="billing_profile_id"] option:checked');
+                const showSummary = !isNew && !!option?.value;
+                summary.hidden = !showSummary;
+                summary.classList.toggle('hidden', !showSummary);
+                if (showSummary) {
+                    const read = key => option.getAttribute('data-billing-' + key)?.trim() || '';
+                    const partyType = read('party-type');
+                    const values = {
+                        'party-type': {individual: 'Bireysel', corporate: 'Kurumsal', other: 'Diğer'}[partyType] || '',
+                        'legal-name': read('legal-name'), 'identity-number': read('identity-number'),
+                        'tax-office': partyType === 'corporate' ? read('tax-office') : '',
+                        address: ['address', 'district', 'province', 'postal-code', 'country'].map(read).filter(Boolean).join(', '),
+                        email: read('email'), phone: read('phone'),
+                    };
+                    summary.querySelector('[data-summary-label="legal-name"]').textContent = partyType === 'corporate' ? 'Unvan' : 'Ad soyad';
+                    summary.querySelector('[data-summary-label="identity-number"]').textContent = partyType === 'corporate' ? 'Vergi no' : 'Kimlik no';
+                    Object.entries(values).forEach(([key, value]) => {
+                        summary.querySelector('[data-summary-row="' + key + '"]').hidden = !value;
+                        summary.querySelector('[data-summary-value="' + key + '"]').textContent = value;
+                    });
+                }
             };
-            picker.querySelectorAll('input[name="billing_mode"]').forEach(function (input) {
-                input.addEventListener('change', sync);
-            });
-            const party = picker.querySelector('[data-billing-party]');
-            if (party) party.addEventListener('change', sync);
+            picker.addEventListener('change', sync, true);
             picker.querySelectorAll('[data-corporate-name],[data-corporate-tax]').forEach(function (input) {
                 input.addEventListener('input', sync);
+            });
+            const apartmentAddressButton = picker.querySelector('[data-use-apartment-address]');
+            if (apartmentAddressButton) apartmentAddressButton.addEventListener('click', function () {
+                const address = picker.querySelector('[name="billing_address"]');
+                if (!address) return;
+                address.value = apartmentAddressButton.dataset.useApartmentAddress;
+                address.dispatchEvent(new Event('input', { bubbles: true }));
+                address.dispatchEvent(new Event('change', { bubbles: true }));
+                address.focus();
             });
             const form = picker.closest('form');
             if (form) form.addEventListener('submit', sync);

@@ -59,6 +59,11 @@ class UserFactory extends Factory
         return $this->state(fn () => ['bank_transfer_allowed' => true]);
     }
 
+    public function withPaymentContact(): static
+    {
+        return $this->state(fn () => ['phone' => '5551234567', 'address' => 'Test Mahallesi, Test Sokak No: 1']);
+    }
+
     public function withSubscription(?Package $package = null, string $period = 'monthly'): static
     {
         return $this->afterCreating(function (User $user) use ($package, $period) {

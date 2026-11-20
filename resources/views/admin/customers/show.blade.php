@@ -4,7 +4,7 @@
 
 @section('content')
     @php
-        $profileEditing = $errors->hasAny(['name', 'email', 'phone']) || session()->hasOldInput('email');
+        $profileEditing = $errors->hasAny(['name', 'email', 'phone', 'address']) || session()->hasOldInput('email');
         $quotaEditing = $errors->has('max_apartments') || session()->hasOldInput('max_apartments');
         $paymentEditing = $errors->has('bank_transfer_allowed') || session()->hasOldInput('bank_transfer_allowed');
         $membershipLabel = function ($role) {
@@ -85,18 +85,23 @@
                 @method('PATCH')
                 <label class="block text-sm text-slate-700">
                     Ad soyad
-                    <input type="text" name="name" data-saved-value="{{ $customer->name }}" value="{{ old('name', $customer->name) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                    <input type="text" name="name" maxlength="60" data-saved-value="{{ $customer->name }}" value="{{ old('name', $customer->name) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
                     @error('name')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
                 </label>
                 <label class="block text-sm text-slate-700">
                     E-posta
-                    <input type="email" name="email" data-saved-value="{{ $customer->email }}" value="{{ old('email', $customer->email) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                    <input type="email" name="email" maxlength="100" data-saved-value="{{ $customer->email }}" value="{{ old('email', $customer->email) }}" required class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
                     @error('email')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
                 </label>
                 <label class="block text-sm text-slate-700">
                     Telefon
-                    <input type="text" name="phone" data-saved-value="{{ $customer->phone }}" value="{{ old('phone', $customer->phone) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
+                    <input type="tel" name="phone" required inputmode="numeric" pattern="[1-9][0-9]{9}" maxlength="10" data-saved-value="{{ $customer->phone }}" value="{{ old('phone', $customer->phone) }}" placeholder="5551234567" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">
                     @error('phone')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
+                </label>
+                <label class="block text-sm text-slate-700">
+                    İletişim adresi
+                    <textarea name="address" required maxlength="400" rows="3" data-saved-value="{{ $customer->address }}" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-900">{{ old('address', $customer->address) }}</textarea>
+                    @error('address')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
                 </label>
                 <div class="text-sm">
                     <div class="text-slate-500">Kayıt tarihi</div>

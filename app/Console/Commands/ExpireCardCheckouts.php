@@ -26,7 +26,7 @@ class ExpireCardCheckouts extends Command
                         // token_expires_at includes a UI safety margin; it is not PayTR's actual deadline.
                         $expired = ($attempt?->submitted_at ?? $order->created_at)
                             ->lte(now()->subMinutes((int) config('paytr.payment_timeout_minutes', 30)));
-                        if ($expired) { $checkout->abandon($order); $count++; }
+                        if ($expired) { $checkout->abandon($order, expired: true); $count++; }
                     });
                 }
             });

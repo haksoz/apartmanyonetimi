@@ -206,6 +206,7 @@ class SubscriptionOrderTest extends TestCase
             'payment_method' => 'havale',
         ]);
         $account = BankAccount::factory()->create(['is_active' => true]);
+        $inactive = BankAccount::factory()->create(['is_active' => false, 'iban' => 'TR990000000000000000000001']);
 
         $this->actingAs($manager)
             ->get(route('subscriber.subscriptions.receipt', $subscription))
@@ -216,6 +217,10 @@ class SubscriptionOrderTest extends TestCase
             ->assertSeeText('Havale/EFT açıklama kısmına')
             ->assertSee('Ödeme Gir')
             ->assertDontSee('Sipariş no');
+        $this->get(route('subscriber.subscriptions.receipt', ['subscription' => $subscription, 'from' => 'dashboard']))
+            ->assertOk()->assertSee('Sipariş özeti')->assertSee($account->name)->assertSee($account->iban)
+            ->assertSee('Hesap sahibi:')->assertSee('IBAN kopyala')->assertSee($subscription->order_number)
+            ->assertDontSee($inactive->iban)->assertDontSee('Banka hesap bilgilerini göster');
     }
 
     public function test_receipt_page_highlights_the_apartment(): void

@@ -141,7 +141,7 @@ class Subscription extends Model
         }
 
         return $items
-            ->filter(fn (SubscriptionItem $item) => $item->status === SubscriptionItem::STATUS_PENDING && $item->ended_at === null)
+            ->filter(fn (SubscriptionItem $item) => $item->isPendingOrder())
             ->sortByDesc(fn (SubscriptionItem $item) => $item->id)
             ->first();
     }
@@ -149,6 +149,7 @@ class Subscription extends Model
     public function historyItems(): Collection
     {
         return $this->loadedItems()
+            ->filter(fn (SubscriptionItem $item) => $item->status !== SubscriptionItem::STATUS_PENDING || $item->isPendingOrder())
             ->sortByDesc(fn (SubscriptionItem $item) => sprintf(
                 '%010d-%010d',
                 $item->started_at?->getTimestamp() ?? 0,

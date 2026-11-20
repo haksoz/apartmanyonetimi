@@ -52,7 +52,7 @@ class LegalConsent
             self::MEMBERSHIP => 'Üyelik sözleşmesi',
             self::DISTANCE_SALES => 'Mesafeli satış sözleşmesi',
             self::PRE_INFORMATION => 'Ön bilgilendirme formu',
-            self::RESIDENT_DATA => 'Daire sakini verisi bildirimi',
+            self::RESIDENT_DATA => 'Kat maliki ve kiracı verileri bildirimi',
             self::PRIVACY => 'Gizlilik ve KVKK aydınlatması',
             default => $key,
         };
@@ -83,7 +83,7 @@ class LegalConsent
     public function residentDataMessages(): array
     {
         return [
-            'accept_resident_data.accepted' => 'Apartman açmak için daire sakini verisi bildirimini kabul edin.',
+            'accept_resident_data.accepted' => 'Apartman açmak için kat maliki ve kiracı verileri bildirimini kabul edin.',
             'accept_privacy.accepted' => 'Apartman açmak için gizlilik ve KVKK aydınlatmasını kabul edin.',
         ];
     }

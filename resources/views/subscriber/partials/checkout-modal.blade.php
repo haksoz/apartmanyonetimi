@@ -12,12 +12,12 @@
                                 <input type="hidden" name="apartment_ids[]" value="{{ $apartment->id }}">
 
 
-                                <div id="{{ $payModalId }}" data-pay-modal style="background: rgb(15 23 42 / .18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);" data-pay-step="{{ $payStep }}" data-checkout-close-url="{{ $checkoutCloseUrl }}" data-apartment-name="{{ $apartment->name }}" data-unit-count="{{ $apartment->unit_count }}" data-price-monthly="{{ $monthly['amount'] ?? '' }}" data-price-yearly="{{ $yearly['amount'] ?? '' }}" @class([
+                                <div id="{{ $payModalId }}" data-pay-modal data-timeout-seconds="{{ \App\Models\CheckoutJourney::FORM_TIMEOUT_SECONDS }}" data-timeout-deadline="{{ $checkoutJourney->last_seen_at->copy()->addSeconds(\App\Models\CheckoutJourney::FORM_TIMEOUT_SECONDS)->toIso8601String() }}" style="background: rgb(15 23 42 / .18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);" data-pay-step="{{ $payStep }}" data-checkout-close-url="{{ $checkoutCloseUrl }}" data-apartment-name="{{ $apartment->name }}" data-unit-count="{{ $apartment->unit_count }}" data-price-monthly="{{ $monthly['amount'] ?? '' }}" data-price-yearly="{{ $yearly['amount'] ?? '' }}" @class([
                                     'fixed inset-0 z-50 items-center justify-center bg-black/50 p-4',
                                     'flex' => true,
                                     'hidden' => false,
                                 ]) onclick="if (event.target === this) payStep(this, 'backdrop')">
-                                    <div class="flex max-h-[92dvh] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="{{ $payModalId }}-title">
+                                    <div data-pay-content class="flex max-h-[92dvh] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="{{ $payModalId }}-title">
                                         <header class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
                                             <div class="flex items-center gap-2"><img src="{{ asset('images/logo.png') }}" alt="" class="h-8 w-auto"><span class="text-lg font-bold"><span style="color:#336633">Aidat</span><span class="text-slate-400">Cep</span></span></div>
                                             <button type="button" onclick="return payStep(this, 'close')" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Kapat</button>
@@ -135,23 +135,21 @@
                                                     <p role="status" class="mt-4 text-sm text-slate-600">Kartla ödeme şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.</p>
                                                 @endif
                                                 @if ($cardEnabled)
-                                                    <fieldset data-card-payer @class(['mt-4 space-y-3', 'hidden' => $selectedMethod !== 'kredi_kartı']) @if ($selectedMethod !== 'kredi_kartı') hidden disabled @endif>
+                                                    <fieldset data-card-payer @class(['mt-4 space-y-2', 'hidden' => $selectedMethod !== 'kredi_kartı']) @if ($selectedMethod !== 'kredi_kartı') hidden disabled @endif>
                                                         <legend class="text-sm font-semibold">PayTR Ödeme İletişim Bilgileri</legend>
-                                                        @foreach (['payer_name' => ['Ad soyad', auth()->user()->name, 60], 'payer_email' => ['E-posta', auth()->user()->email, 100], 'payer_phone' => ['Telefon', auth()->user()->phone, 10], 'payer_address' => ['Adres', '', 400]] as $field => [$label, $default, $limit])
-                                                            <div>
-                                                                <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-700">
-                                                                    <label for="{{ $payModalId }}-{{ $field }}">{{ $label }} <span aria-hidden="true">*</span></label>
-                                                                    @if ($field === 'payer_address')
-                                                                        <button type="button" onclick="payUseBillingAddress(this)" class="text-xs font-semibold text-emerald-700 underline underline-offset-2">Fatura adresini kullan</button>
-                                                                    @endif
-                                                                </div>
-                                                                <input id="{{ $payModalId }}-{{ $field }}" name="{{ $field }}" type="{{ $field === 'payer_email' ? 'email' : ($field === 'payer_phone' ? 'tel' : 'text') }}" @if ($field === 'payer_phone') inputmode="numeric" pattern="[1-9][0-9]{9}" autocomplete="tel-national" placeholder="5551234567" title="Başında 0 olmadan 10 hane girin" @endif required aria-required="true" maxlength="{{ $limit }}" value="{{ old($field, $default) }}" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+                                                        <p class="text-xs text-slate-500">Bilgiler müşteri profilinizden alınır.</p>
+                                                        <dl class="flex flex-col gap-1 text-sm text-slate-700">
+                                                        @foreach (['payer_name' => ['Ad soyad', auth()->user()->name], 'payer_email' => ['E-posta', auth()->user()->email], 'payer_phone' => ['Telefon', auth()->user()->phone], 'payer_address' => ['İletişim adresi', auth()->user()->address]] as $field => [$label, $value])
+                                                            <div class="min-w-0 break-words">
+                                                                <dt @class(['sr-only' => $field === 'payer_name', 'inline text-slate-500' => $field !== 'payer_name'])>{{ $label }}:</dt>
+                                                                <dd class="inline">
+                                                                    <span @class(['font-semibold' => $field === 'payer_name', 'text-slate-500' => $field === 'payer_address'])>{{ filled($value) ? $value : $label.' eksik' }}</span>
+                                                                @if (blank($value))<p class="mt-1 text-xs text-amber-700">Bu bilgiyi Hesabım sayfasından tamamlayın.</p>@endif
                                                                 @error($field)<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                                                                @if ($field === 'payer_address')
-                                                                    <p data-payer-address-feedback role="status" aria-live="polite" class="mt-1 hidden text-xs text-slate-500" hidden></p>
-                                                                @endif
+                                                                </dd>
                                                             </div>
                                                         @endforeach
+                                                        </dl>
                                                     </fieldset>
                                                 @endif
                                                 <div class="mt-4 space-y-2 text-sm text-slate-600">
@@ -224,5 +222,16 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <style>[data-checkout-timeout]::backdrop { background: rgb(15 23 42 / .35); backdrop-filter: blur(2px); }</style>
+                                    <dialog data-checkout-timeout data-response-seconds="{{ \App\Models\CheckoutJourney::RENEWAL_RESPONSE_SECONDS }}" aria-labelledby="{{ $payModalId }}-timeout-title" aria-describedby="{{ $payModalId }}-timeout-description" class="rounded-2xl bg-white p-5 shadow-xl" style="position: fixed; inset: 0; margin: auto; width: min(24rem, calc(100vw - 2rem)); height: fit-content; max-height: calc(100dvh - 2rem); overflow-y: auto; border: 0;">
+                                        <h2 id="{{ $payModalId }}-timeout-title" class="text-lg font-semibold text-slate-900">Devam etmek ister misiniz?</h2>
+                                        <p id="{{ $payModalId }}-timeout-description" class="mt-2 text-sm text-slate-600">Bu aşamanın süresi doldu. Bilgilerinizi kaybetmeden devam etmek için süreyi uzatın. Yanıt vermezseniz işlem kapanacak.</p>
+                                        <p class="mt-3 text-sm text-slate-700">Kalan yanıt süresi: <strong data-timeout-countdown>{{ \App\Models\CheckoutJourney::RENEWAL_RESPONSE_SECONDS }}</strong> saniye</p>
+                                        <p data-timeout-error role="alert" class="mt-2 text-sm text-red-600" hidden></p>
+                                        <div class="mt-5 flex flex-wrap justify-end gap-3">
+                                            <button type="button" data-timeout-close class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">İşlemi kapat</button>
+                                            <button type="button" data-timeout-renew autofocus class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">2 dakika daha devam et</button>
+                                        </div>
+                                    </dialog>
                                 </div>
                             </form>

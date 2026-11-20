@@ -33,7 +33,7 @@ class PaytrIframeTest extends TestCase
 
     private function order(): UserSubscription
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withPaymentContact()->create();
         $apartment = Apartment::factory()->forUser($user)->create(['unit_count' => 10, 'setup_completed_at' => now()]);
         $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
         $checkout = app(SubscriptionCheckout::class);
@@ -116,7 +116,7 @@ class PaytrIframeTest extends TestCase
         $this->assertUnpaid($order);
     }
 
-    public function test_final_checkout_post_continues_pending_order_directly_into_iframe(): void
+    public function test_new_checkout_replaces_old_pending_card_order_and_duplicate_post_reuses_new_order(): void
     {
         $order = $this->order();
         $apartment = $order->items()->first()->apartment;
@@ -126,15 +126,17 @@ class PaytrIframeTest extends TestCase
             'checkout_token' => (string) \Illuminate\Support\Str::uuid(),
             'quote_signature' => app(\App\Support\CheckoutQuote::class)->signature($order->user, $apartment),
             'payer_name' => 'Ad Soyad', 'payer_email' => 'payer@example.com', 'payer_phone' => '5551112233', 'payer_address' => 'Adres', 'accept_sales' => 1, 'checkout_return' => 'dashboard'];
-        $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->post(route('subscriber.subscriptions.store'), $payload)
-            ->assertRedirect(route('subscriber.subscriptions.card', $order));
+        $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->post(route('subscriber.subscriptions.store'), $payload)->assertRedirect();
+        $new = UserSubscription::where('checkout_token', $payload['checkout_token'])->sole();
+        $this->assertNotSame($order->id, $new->id);
+        $this->assertSame('cancelled', $order->fresh()->status);
         $this->post(route('subscriber.subscriptions.store'), $payload)
-            ->assertRedirect(route('subscriber.subscriptions.card', $order));
-        $this->get(route('subscriber.subscriptions.card', $order))->assertOk()->assertSee('PayTR güvenli kart ödeme formu')
+            ->assertRedirect(route('subscriber.subscriptions.card', $new));
+        $this->get(route('subscriber.subscriptions.card', $new))->assertOk()->assertSee('PayTR güvenli kart ödeme formu')
             ->assertSee('id="apartment-setup-close" href="'.route('dashboard').'"', false);
         Http::assertSentCount(1);
-        $this->assertDatabaseCount('user_subscriptions', 1);
-        $this->assertUnpaid($order);
+        $this->assertDatabaseCount('user_subscriptions', 2);
+        $this->assertUnpaid($new);
     }
 
     public function test_missing_sale_acceptance_blocks_token_request(): void
@@ -408,7 +410,7 @@ class PaytrIframeTest extends TestCase
             ->assertOk()->assertSee('Yarım bırakıldı')->assertDontSee('Onayla ve aktif et');
     }
 
-    public function test_abandoned_submitted_attempt_cannot_be_reopened_or_charged_again(): void
+    public function test_abandoned_attempt_cannot_resume_but_new_checkout_can_start_with_new_reference(): void
     {
         $order = $this->order();
         Http::fake([StartIframe::ENDPOINT => Http::response(['status' => 'success', 'token' => 'valid-token-123'])]);
@@ -424,9 +426,10 @@ class PaytrIframeTest extends TestCase
             'checkout_token' => (string) \Illuminate\Support\Str::uuid(),
             'quote_signature' => app(\App\Support\CheckoutQuote::class)->signature($order->user, $apartment),
             'payer_name' => 'Ad Soyad', 'payer_email' => 'payer@example.com', 'payer_phone' => '5551112233', 'payer_address' => 'Adres', 'accept_sales' => 1];
-        $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasErrors('payment_method');
-        $this->assertDatabaseCount('user_subscriptions', 1);
-        Http::assertSentCount(1);
+        $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8'])->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('user_subscriptions', 2);
+        $this->assertSame('cancelled', $order->fresh()->status);
+        Http::assertSentCount(2);
     }
 
     public function test_late_success_after_exit_is_not_lost_and_becomes_a_real_visible_order_once(): void

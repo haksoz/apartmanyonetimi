@@ -29,6 +29,7 @@ class AdminManagerController extends Controller
                 },
                 'items.subscription.user',
                 'items.apartment',
+                'items' => fn ($query) => $query->visibleSubscriptionPeriod(),
             ])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
@@ -71,6 +72,7 @@ class AdminManagerController extends Controller
             ->withQueryString();
 
         $legacyItems = SubscriptionItem::query()
+            ->visibleSubscriptionPeriod()
             ->whereNull('apartment_subscription_id')
             ->with([
                 'subscription.user',

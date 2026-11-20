@@ -24,18 +24,18 @@ class ContactValidationTest extends TestCase
                 ->assertSessionHasErrors('phone');
             $this->assertNull($user->fresh()->phone);
         }
-        $this->patch(route('profile.update'), ['name' => $user->name, 'phone' => '5551234567'])
+        $this->patch(route('profile.update'), ['name' => $user->name, 'phone' => '5551234567', 'address' => 'Test adresi'])
             ->assertSessionHasNoErrors()->assertRedirect(route('profile.edit'));
         $this->assertSame('5551234567', $user->fresh()->phone);
     }
 
-    public function test_profile_phone_stays_optional_and_email_cannot_be_changed_by_injected_input(): void
+    public function test_profile_requires_phone_and_address_and_email_cannot_be_changed_by_injected_input(): void
     {
         $user = User::factory()->create(['phone' => '5551234567']);
         $email = $user->email;
         $this->actingAs($user)->patch(route('profile.update'), ['name' => $user->name, 'phone' => '', 'email' => 'not-an-email'])
-            ->assertSessionHasNoErrors()->assertRedirect();
-        $this->assertNull($user->fresh()->phone);
+            ->assertSessionHasErrors(['phone', 'address']);
+        $this->assertSame('5551234567', $user->fresh()->phone);
         $this->assertSame($email, $user->fresh()->email);
     }
 
@@ -43,7 +43,7 @@ class ContactValidationTest extends TestCase
     {
         config(['payments.card_enabled' => true]);
         Http::preventStrayRequests();
-        $user = User::factory()->create();
+        $user = User::factory()->withPaymentContact()->create();
         $apartment = Apartment::factory()->forUser($user)->create(['unit_count' => 10, 'setup_completed_at' => now()]);
         $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
         app(SubscriptionCheckout::class)->openFree($user, $apartment);
@@ -53,10 +53,12 @@ class ContactValidationTest extends TestCase
             + $this->billingSelection($user);
         $this->actingAs($user);
         foreach (['05551234567', '+905551234567', '555 1234567', '555123456', 'phone'] as $phone) {
+            $user->update(['phone' => $phone]);
             $this->post(route('subscriber.subscriptions.store'), array_replace($payload, ['payer_phone' => $phone]))
                 ->assertSessionHasErrors('payer_phone');
         }
         foreach (['not-an-email', 'user@', 'müşteri@example.com'] as $email) {
+            $user->update(['email' => $email]);
             $this->post(route('subscriber.subscriptions.store'), array_replace($payload, ['payer_email' => $email]))
                 ->assertSessionHasErrors('payer_email');
         }

@@ -104,6 +104,22 @@ class SubscriptionItem extends Model
         return $this->belongsTo(UserSubscription::class, 'subscription_id');
     }
 
+    public function isPendingOrder(): bool
+    {
+        $order = $this->subscription;
+
+        return $this->status === self::STATUS_PENDING && $this->ended_at === null
+            && $order?->status === UserSubscription::STATUS_PENDING
+            && ! $order->checkout_abandoned_at && $order->payment_method !== 'kredi_kartı';
+    }
+
+    public function scopeVisibleSubscriptionPeriod(Builder $query): Builder
+    {
+        // Unsettled card attempts belong to card transaction history, not subscription periods.
+        return $query->where(fn (Builder $query) => $query->where('status', '!=', self::STATUS_PENDING)
+            ->orWhereDoesntHave('subscription', fn (Builder $query) => $query->where('payment_method', 'kredi_kartı')));
+    }
+
     public function apartmentSubscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class, 'apartment_subscription_id');

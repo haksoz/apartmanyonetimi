@@ -204,6 +204,7 @@ class AidatCepAccountUserTest extends TestCase
             ->patch(route('profile.update'), [
                 'name' => 'Duzenlenmis Ad',
                 'phone' => '5559998877',
+                'address' => 'Test adresi',
             ])
             ->assertRedirect(route('profile.edit'));
 

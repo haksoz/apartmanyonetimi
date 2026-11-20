@@ -19,6 +19,10 @@ class SubscriberPanelTest extends TestCase
     {
         $user = User::factory()->withApartmentQuota(1)->create();
 
+        $consent = app(\App\Support\LegalConsent::class);
+        $consent->recordMembership($user, request());
+        $consent->recordPrivacy($user, request());
+
         $this->actingAs($user)->get(route('subscriber.dashboard'))
             ->assertOk()
             ->assertSee('id="first-apartment-dialog"', false)
@@ -30,6 +34,10 @@ class SubscriberPanelTest extends TestCase
     {
         $user = User::factory()->withApartmentQuota(1)->create(['role' => 'user']);
 
+        $consent = app(\App\Support\LegalConsent::class);
+        $consent->recordMembership($user, request());
+        $consent->recordPrivacy($user, request());
+
         $this->actingAs($user)->get(route('subscriber.dashboard'))
             ->assertOk()
             ->assertSee('id="first-apartment-dialog"', false);
@@ -39,11 +47,45 @@ class SubscriberPanelTest extends TestCase
     {
         $user = User::factory()->create();
 
+        $consent = app(\App\Support\LegalConsent::class);
+        $consent->recordMembership($user, request());
+        $consent->recordPrivacy($user, request());
+
         $this->actingAs($user)->get(route('subscriber.dashboard'))
             ->assertOk()
             ->assertSee('id="first-apartment-dialog"', false);
     }
 
+    public function test_missing_consents_are_requested_before_the_first_apartment_prompt(): void
+    {
+        $user = User::factory()->withApartmentQuota(1)->create();
+        $url = route('subscriber.dashboard');
+
+        $this->actingAs($user)->get($url)->assertOk()
+            ->assertSee('id="legal-consent-prompt"', false)
+            ->assertDontSee('id="first-apartment-dialog"', false);
+
+        $this->from($url)->post(route('legal.membership.accept.store'), [
+            'accept_membership' => 1,
+        ])->assertSessionHasErrors('accept_privacy');
+
+        $this->get($url)->assertOk()
+            ->assertSee('id="legal-consent-prompt"', false)
+            ->assertDontSee('id="first-apartment-dialog"', false);
+
+        app(\App\Support\LegalConsent::class)->recordMembership($user, request());
+        $this->get($url)->assertOk()
+            ->assertSee('id="legal-consent-prompt"', false)
+            ->assertDontSee('id="first-apartment-dialog"', false);
+
+        $this->from($url)->post(route('legal.membership.accept.store'), [
+            'accept_privacy' => 1,
+        ])->assertRedirect($url)->assertSessionHasNoErrors();
+
+        $this->get($url)->assertOk()
+            ->assertDontSee('id="legal-consent-prompt"', false)
+            ->assertSee('id="first-apartment-dialog"', false);
+    }
     public function test_resident_with_creation_room_is_not_prompted_to_create_an_apartment(): void
     {
         $user = User::factory()->withApartmentQuota(1)->create(['role' => 'user']);

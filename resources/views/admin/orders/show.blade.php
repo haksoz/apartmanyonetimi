@@ -71,7 +71,6 @@
         </div>
     </div>
 
-    @if (session('status'))<p class="mb-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('status') }}</p>@endif
     @if ($order->trashed())<p class="mb-4 rounded-xl bg-slate-100 p-4 text-sm text-slate-700">Bu sipariş pasif silinmiştir. Geçmiş kayıtları görüntülüyorsunuz.</p>@endif
     @if ($canCloseTest)
         <details class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4" @if (old('test_close_action') || $errors->hasAny(['test_close_reason', 'test_checkout'])) open @endif>

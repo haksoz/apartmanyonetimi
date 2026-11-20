@@ -20,6 +20,8 @@ class LegalConsentTest extends TestCase
         $payload = [
             'name' => 'Test Manager',
             'email' => 'manager@example.com',
+            'phone' => '5551234567',
+            'address' => 'Test adresi',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'human_answer' => 5,
@@ -173,7 +175,7 @@ class LegalConsentTest extends TestCase
 
         $this->get(route('legal.resident-data'))
             ->assertOk()
-            ->assertSee('Daire Sakini Verisi')
+            ->assertSee('Kat Maliki ve Kiracı Verileri Bildirimi')
             ->assertSee('Bu sayfa için içerik hazırlanmaktadır.');
     }
 

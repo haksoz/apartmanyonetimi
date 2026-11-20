@@ -22,6 +22,59 @@ class UnifiedCheckoutTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_dashboard_order_is_a_summary_dialog_and_list_details_are_a_full_page_despite_previous_origin(): void
+    {
+        [, $apartment, $payload] = $this->customer();
+        $payload['checkout_return'] = 'dashboard';
+        $created = $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasNoErrors();
+        $order = UserSubscription::sole();
+        $summaryUrl = route('subscriber.subscriptions.receipt', ['subscription' => $order, 'from' => 'dashboard']);
+        $created->assertRedirect($summaryUrl);
+        $this->get($summaryUrl)->assertOk()->assertViewHas('summaryMode', true)
+            ->assertSee('id="apartment-setup-dialog"', false)->assertDontSee('id="sidebar"', false)
+            ->assertSee('Sipariş özeti')->assertSee('Genel toplam')->assertSee('Ödeme Gir')
+            ->assertSee('Tüm sipariş detayları')->assertSee('href="'.route('dashboard').'"', false)
+            ->assertDontSee('Sipariş Anındaki Fatura Bilgileri')->assertDontSee('Sözleşme kabul kayıtları')->assertDontSee('Net tutar');
+        $this->get(route('subscriber.subscriptions.receipt', $order))->assertOk()->assertViewHas('summaryMode', false)
+            ->assertSee('id="sidebar"', false)->assertDontSee('id="apartment-setup-dialog"', false)
+            ->assertSee('Siparişlerime dön')->assertSee('Net tutar')->assertSee('Sipariş Anındaki Fatura Bilgileri')
+            ->assertSee('Sözleşme kabul kayıtları');
+        $this->get(route('subscriber.subscriptions.index'))->assertOk()
+            ->assertSee('href="'.route('subscriber.subscriptions.receipt', $order).'"', false);
+        $this->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id, 'from' => 'dashboard']))->assertRedirect($summaryUrl);
+    }
+
+    public function test_summary_payment_proof_stays_in_summary_and_both_receipt_views_reject_other_users(): void
+    {
+        [, , $payload] = $this->customer();
+        $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasNoErrors();
+        $order = UserSubscription::sole();
+        $summaryUrl = route('subscriber.subscriptions.receipt', ['subscription' => $order, 'from' => 'dashboard']);
+        $this->from($summaryUrl)->post(route('subscriber.subscriptions.payment-info', $order), [])
+            ->assertRedirect($summaryUrl)->assertSessionHasErrors('payment_info');
+        $this->get($summaryUrl)->assertOk()->assertSee('payment-info-modal-'.$order->id);
+        $this->from($summaryUrl)->post(route('subscriber.subscriptions.payment-info', $order), ['reference_code' => 'HVL-SUMMARY'])
+            ->assertRedirect($summaryUrl)->assertSessionHasNoErrors();
+        $this->get($summaryUrl)->assertOk()->assertSee('Onay bekliyor')->assertSee('HVL-SUMMARY')->assertDontSee('>Ödeme Gir<', false);
+        $this->actingAs(User::factory()->withBankTransfer()->create());
+        $this->get($summaryUrl)->assertForbidden();
+        $this->get(route('subscriber.subscriptions.receipt', $order))->assertForbidden();
+    }
+
+    public function test_havale_order_receipt_has_no_checkout_back_button_and_create_resumes_existing_order(): void
+    {
+        [, $apartment, $payload] = $this->customer();
+        $payload['payment_method'] = 'havale';
+        $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasNoErrors()->assertRedirect();
+        $order = UserSubscription::sole();
+        $this->assertNotNull($order->order_number);
+        $this->get(route('subscriber.subscriptions.receipt', $order))->assertOk()
+            ->assertSee($order->order_number)->assertSee('Ödeme bekliyor')->assertDontSee('history.back()', false);
+        $this->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]))
+            ->assertRedirect(route('subscriber.subscriptions.receipt', $order));
+        $this->assertDatabaseCount('user_subscriptions', 1);
+    }
+
     public function test_account_restriction_hides_card_option_and_blocks_forged_checkout(): void
     {
         [$user, $apartment, $payload] = $this->customer();
@@ -87,7 +140,7 @@ class UnifiedCheckoutTest extends TestCase
 
     private function customer(): array
     {
-        $user = User::factory()->withBankTransfer()->create();
+        $user = User::factory()->withBankTransfer()->withPaymentContact()->create();
         $apartment = Apartment::factory()->forUser($user)->create(['unit_count' => 10, 'setup_completed_at' => now()]);
         $apartment->members()->attach($user->id, ['role' => 'owner', 'is_active' => true]);
         app(SubscriptionCheckout::class)->openFree($user, $apartment);
@@ -244,18 +297,36 @@ class UnifiedCheckoutTest extends TestCase
         $this->assertDatabaseCount('legal_acceptances', 2);
     }
 
+    public function test_checkout_contact_is_read_only_and_comes_from_profile_instead_of_old_form_values(): void
+    {
+        config(['payments.card_enabled' => true]);
+        [$user, $apartment] = $this->customer();
+        $user->update(['address' => 'Müşteri iletişim adresi']);
+        $this->withSession(['_old_input' => ['payer_address' => 'FORGED-ADDRESS']])
+            ->get(route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id]))->assertOk()
+            ->assertSee('PayTR Ödeme İletişim Bilgileri')->assertSee('müşteri profilinizden alınır')
+            ->assertSee('Müşteri iletişim adresi')->assertDontSee('Güncellemek için')
+            ->assertDontSee('FORGED-ADDRESS')->assertDontSee('Fatura adresini kullan')
+            ->assertDontSee('name="payer_name"', false)->assertDontSee('name="payer_email"', false)
+            ->assertDontSee('name="payer_phone"', false)->assertDontSee('name="payer_address"', false);
+    }
+
     public function test_card_preparation_requires_payer_details_and_cannot_be_manually_settled_or_cancelled(): void
     {
         config(['payments.card_enabled' => true]);
-        [, , $payload] = $this->customer();
+        [$user, , $payload] = $this->customer();
+        $user->update(['phone' => null, 'address' => null]);
         $payload['payment_method'] = 'kredi_kartı';
-        $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasErrors(['payer_name', 'payer_email', 'payer_phone', 'payer_address']);
+        $this->post(route('subscriber.subscriptions.store'), $payload)->assertSessionHasErrors(['payer_phone', 'payer_address']);
         $this->assertDatabaseCount('user_subscriptions', 0);
+        $user->update(['phone' => '5551112233', 'address' => 'Profil adresi']);
         $payload += ['payer_name' => 'Ödeyen Kişi', 'payer_email' => 'payer@example.com', 'payer_phone' => '5551112233', 'payer_address' => 'Ödeme adresi'];
         $this->post(route('subscriber.subscriptions.store'), $payload)->assertRedirect();
         $attempt = SubscriptionPaymentAttempt::sole();
         $this->assertSame('paytr', $attempt->provider);
-        $this->assertSame('Ödeyen Kişi', $attempt->payer_snapshot['payer_name']);
+        $this->assertSame($user->name, $attempt->payer_snapshot['payer_name']);
+        $this->assertSame($user->email, $attempt->payer_snapshot['payer_email']);
+        $this->assertSame('Profil adresi', $attempt->payer_snapshot['payer_address']);
         $this->assertStringNotContainsString('payer@example.com', $attempt->getRawOriginal('payer_snapshot'));
         $order = UserSubscription::sole();
         $this->post(route('subscriber.subscriptions.cancel', $order))->assertSessionHasErrors('subscription');

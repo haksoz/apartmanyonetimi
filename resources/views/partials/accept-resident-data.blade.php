@@ -1,7 +1,7 @@
 <div class="space-y-2">
     <label class="flex cursor-pointer items-start gap-2 text-sm text-slate-600" data-consent-open="resident-data-dialog">
         <input type="checkbox" name="accept_resident_data" value="1" class="pointer-events-none mt-0.5" tabindex="-1" @checked(old('accept_resident_data')) required>
-        <span><strong class="font-bold text-slate-950">Daire sakini verisi bildirimini</strong> okudum, bu apartmandaki daire sakini bilgilerini girmeye yetkiliyim.</span>
+        <span><strong class="font-bold text-slate-950">Kat maliki ve kiracı verileri bildirimini</strong> okudum, bu apartmandaki kat maliki ve kiracı bilgilerini girmeye yetkiliyim.</span>
     </label>
     @error('accept_resident_data')
         <div class="text-sm text-red-600">{{ $message }}</div>
@@ -18,7 +18,7 @@
 
 <div id="resident-data-dialog" class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="resident-data-dialog-title">
     <div class="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white p-4 shadow-xl">
-        <h2 id="resident-data-dialog-title" class="text-base font-bold text-slate-950">Daire Sakini Verisi</h2>
+        <h2 id="resident-data-dialog-title" class="text-base font-bold text-slate-950">Kat Maliki ve Kiracı Verileri Bildirimi</h2>
         <div class="mt-3 overflow-y-auto text-sm leading-relaxed text-slate-600">
             @include('legal.content.resident-data')
         </div>

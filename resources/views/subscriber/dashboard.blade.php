@@ -49,7 +49,7 @@
         </section>
     @endif
 
-    @if ($apartments->isEmpty() && $showApartmentCreate && $canCreateApartment && $pendingQuoteRequests->isEmpty())
+    @if (! $hasPendingLegalConsent && $apartments->isEmpty() && $showApartmentCreate && $canCreateApartment && $pendingQuoteRequests->isEmpty())
         <dialog id="first-apartment-dialog" aria-labelledby="first-apartment-title" aria-describedby="first-apartment-description" class="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-2xl border-0 bg-white p-6 shadow-xl backdrop:bg-slate-950/50">
             <h2 id="first-apartment-title" class="text-xl font-bold text-slate-950">İlk apartmanınızı oluşturun</h2>
             <p id="first-apartment-description" class="mt-3 text-sm text-slate-600">Henüz yönettiğiniz bir apartman bulunmuyor. Apartman oluşturma hakkınız var; ilk apartmanınızı ekleyerek kuruluma başlayabilirsiniz.</p>

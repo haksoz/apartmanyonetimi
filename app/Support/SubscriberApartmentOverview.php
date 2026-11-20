@@ -102,6 +102,7 @@ class SubscriberApartmentOverview
     {
         return $items->first(function (SubscriptionItem $item) {
             return $item->subscription?->status === UserSubscription::STATUS_PENDING
+                && $item->subscription->payment_method !== 'kredi_kartı'
                 && ! $item->subscription->checkout_abandoned_at;
         });
     }

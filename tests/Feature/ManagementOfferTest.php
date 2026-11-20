@@ -58,7 +58,7 @@ class ManagementOfferTest extends TestCase
         $this->actingAs($member)
             ->get(route('management-offers.show', $offer))
             ->assertOk()
-            ->assertSee('Daire sakini verisi bildirimini');
+            ->assertSee('Kat maliki ve kiracı verileri bildirimini');
 
         $this->actingAs($member)
             ->post(route('management-offers.accept', $offer), [

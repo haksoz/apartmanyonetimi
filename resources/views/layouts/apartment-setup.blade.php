@@ -19,7 +19,7 @@
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-900">
     <dialog id="apartment-setup-dialog" aria-labelledby="apartment-setup-title" aria-describedby="apartment-setup-description" class="rounded-2xl bg-slate-50 shadow-xl">
-        <header class="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-200 bg-white p-4 sm:px-6">
+        <header class="sticky top-0 z-10 flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white p-4 sm:px-6">
             <div class="min-w-0">
                 <div class="mb-2 flex items-center gap-2">
                     <img src="{{ asset('images/logo.png') }}" alt="" class="h-8 w-auto">
@@ -28,7 +28,10 @@
                 <h1 id="apartment-setup-title" tabindex="-1" class="text-lg font-bold text-slate-950">@yield('setup_title', 'Apartman Kurulumu')</h1>
                 <p id="apartment-setup-description" class="mt-1 text-xs text-slate-500">@hasSection('setup_description') @yield('setup_description') @else {{ $apartment->name ?? 'Yeni apartman' }} · Kaydettiğiniz adımlara daha sonra devam edebilirsiniz. @endif</p>
             </div>
-            <a id="apartment-setup-close" href="@yield('setup_close_url', route('subscriber.dashboard'))" aria-label="Pencereyi kapat" class="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Kapat</a>
+            <div class="ml-auto flex shrink-0 items-center gap-2">
+                @yield('setup_actions')
+                <a id="apartment-setup-close" href="@yield('setup_close_url', route('subscriber.dashboard'))" aria-label="Pencereyi kapat" class="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Kapat</a>
+            </div>
         </header>
         <main class="p-4 sm:p-6">
             @yield('wizard_steps')

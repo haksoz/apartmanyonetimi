@@ -223,7 +223,7 @@ class DashboardSubscriptionTest extends TestCase
             ->assertSee('Gider belgesi yükleme ve rapor dışa aktarma');
     }
 
-    public function test_unfinished_card_payment_offers_resume_instead_of_admin_approval(): void
+    public function test_unfinished_card_payment_does_not_replace_dashboard_upgrade_action_with_pending_order(): void
     {
         $user = User::factory()->create();
         $apartment = $this->apartment($user);
@@ -233,14 +233,14 @@ class DashboardSubscriptionTest extends TestCase
         $attempt = $order->paymentAttempts()->create(['provider' => 'paytr', 'merchant_oid' => 'ACRESUME123',
             'amount_minor' => 15000, 'currency' => 'TRY', 'is_test' => true, 'status' => 'pending',
             'submitted_at' => now(), 'iframe_token' => 'test-token', 'token_expires_at' => now()->addMinutes(20)]);
-        $this->dashboard($user, $apartment)->assertSee('Kart ödemeniz henüz tamamlanmadı.')
-            ->assertSee('Ödeme durumunu görüntüle')->assertSee(route('subscriber.subscriptions.card-result', $order), false)
+        $this->dashboard($user, $apartment)->assertDontSee('Kart ödemeniz henüz tamamlanmadı.')
+            ->assertSee('Ücretli Kullanıma Geç')->assertDontSee(route('subscriber.subscriptions.card-result', $order), false)
             ->assertDontSee('onay bekliyor')->assertDontSee('Yenileme siparişiniz');
         $this->assertSame('pending', $order->fresh()->status);
         $this->assertFalse($order->fresh()->is_active);
         $this->assertDatabaseCount('subscription_payments', 0);
         $attempt->update(['status' => 'unknown', 'iframe_token' => null]);
-        $this->dashboard($user, $apartment)->assertSee('Ödeme durumunu görüntüle')
+        $this->dashboard($user, $apartment)->assertSee('Ücretli Kullanıma Geç')
             ->assertDontSee('Ödemeye devam et')->assertDontSee('onay bekliyor');
     }
 

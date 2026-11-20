@@ -22,9 +22,7 @@
                 default => '—',
             };
             $pendingOrderItem = $subscription->items
-                ->filter(fn ($item) => $item->status === \App\Models\SubscriptionItem::STATUS_PENDING
-                    && $item->ended_at === null
-                    && $item->subscription?->status === \App\Models\UserSubscription::STATUS_PENDING)
+                ->filter(fn ($item) => $item->isPendingOrder())
                 ->sortByDesc('id')
                 ->first();
             $started = $current?->started_at?->format('d.m.Y') ?? '—';

@@ -24,7 +24,7 @@
     </form>
     <div class="mt-5 flex flex-wrap gap-4 text-sm font-semibold">
         <a id="card-payment-new-checkout" href="{{ route('subscriber.subscriptions.create', ['apartment_id' => $subscription->items()->value('apartment_id'), 'from' => session('subscription_return.'.$subscription->id) === 'dashboard' ? 'dashboard' : 'subscriber']) }}" class="text-emerald-700 underline" target="_top" @if (! $paymentState['can_restart']) hidden @endif>Yeniden başla</a>
-        @if (!in_array($paymentState['state'], ['abandoned', 'screen_failed', 'screen_unavailable'], true))
+        @if (!in_array($paymentState['state'], ['abandoned', 'superseded', 'screen_failed', 'screen_unavailable'], true))
         <a href="{{ route('subscriber.subscriptions.receipt', $subscription) }}" class="text-emerald-700 underline" target="_top">Sipariş detayı</a>
         @else
         <a href="{{ route(session('subscription_return.'.$subscription->id) === 'dashboard' ? 'dashboard' : 'subscriber.dashboard') }}" class="text-slate-700 underline" target="_top">Panele dön</a>

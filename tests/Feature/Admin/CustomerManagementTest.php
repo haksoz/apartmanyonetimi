@@ -487,6 +487,7 @@ class CustomerManagementTest extends TestCase
                 'name' => 'Yeni Ad',
                 'email' => 'yeni-ad@example.com',
                 'phone' => '5551234567',
+                'address' => 'Müşteri adresi',
             ])
             ->assertRedirect(route('admin.customers.show', $customer))
             ->assertSessionHas('status', 'Müşteri bilgileri güncellendi.');

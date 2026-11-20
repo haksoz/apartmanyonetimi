@@ -21,7 +21,7 @@ class DashboardSubscription
         $pendingMessage = null;
         $pendingLinkLabel = 'Siparişi görüntüle';
         $pendingUrl = $pending && (int) $pending->user_id === $user->id
-            ? route('subscriber.subscriptions.receipt', $pending) : null;
+            ? route('subscriber.subscriptions.receipt', ['subscription' => $pending, 'from' => 'dashboard']) : null;
         if ($pending?->payment_method === 'kredi_kartı') {
             $paymentState = app(\App\Support\Paytr\PaymentState::class)->forOrder($pending);
             $pendingMessage = in_array($paymentState['state'], ['ready', 'failed'], true)
@@ -41,6 +41,7 @@ class DashboardSubscription
             'days' => $days,
             'expiring' => $active && $days !== null && $days <= 5,
             'pending' => $pending !== null,
+            'pending_approval' => $pending !== null && $pending->hasPaymentProof(),
             'pending_url' => $pendingUrl,
             'pending_message' => $pendingMessage,
             'pending_link_label' => $pendingLinkLabel,

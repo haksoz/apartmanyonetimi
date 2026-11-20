@@ -68,14 +68,23 @@ class HandleNotification
 
                 return true;
             }
-            if (! in_array($attempt->status, ['pending', 'unknown'], true) || ! $order->isPending()
+            $superseded = $order->status === 'cancelled' && \App\Models\CheckoutJourney::where('order_id', $order->id)
+                ->whereHas('events', fn ($query) => $query->where('type', 'superseded'))->exists();
+            if (! in_array($attempt->status, ['pending', 'unknown'], true) || (! $order->isPending() && ! $superseded)
                 || $order->payments()->withTrashed()->exists()) {
                 return $review('terminal_attempt_conflict');
             }
 
-            // A declined card ends this attempt. The unpaid order can be retried with a new merchant_oid.
+            if ($order->paymentAttempts()->whereKeyNot($attempt->id)->where(fn ($query) => $query
+                ->whereIn('status', ['pending', 'unknown', 'succeeded'])->orWhere('review_required', true))->exists()) {
+                return $review('another_unresolved_attempt');
+            }
+
+            // A verified failure closes this checkout; any retry starts a separate journey and merchant_oid.
             $attempt->update(['status' => 'failed', 'settled_at' => now()]);
-            if ($order->trashed()) {
+            if ($superseded) {
+                // Only the old financial attempt is resolved. The replacement checkout is independent.
+            } elseif ($order->trashed()) {
                 // Hiding an unpaid order must not prevent an authenticated failure from resolving it.
                 $unresolved = $order->paymentAttempts()->where(fn ($query) => $query
                     ->whereIn('status', ['pending', 'unknown', 'succeeded'])->orWhere('review_required', true))->exists();
@@ -87,8 +96,10 @@ class HandleNotification
                         'cancelled_by' => \App\Models\UserSubscription::CANCELLED_BY_SYSTEM, 'ended_at' => now()]);
                     \App\Support\ApartmentCoverage::sync($ids);
                 }
-            } elseif ($order->checkout_abandoned_at || $notification->failureCode === '6') {
-                app(AbandonCheckout::class)->abandon($order);
+            } else {
+                app(\App\Support\CancelSubscriptionOrder::class)->cancel($order,
+                    \App\Models\UserSubscription::CANCELLED_BY_SYSTEM,
+                    trim(($order->notes ?? '')."\nPayTR başarısız ödeme bildirimi alındı."));
             }
             $audit->fill(['outcome' => 'failed', 'reason' => null])->save();
 

@@ -17,6 +17,8 @@ class PaymentState
             $attempt?->token_failure_code && ! $attempt->iframe_token && $attempt->status === 'unknown' => 'screen_unavailable',
             $order->paymentAttempts()->where('review_required', true)->exists() => 'review',
             $attempt?->status === 'failed' && $notification !== null => 'failed',
+            $order->status === 'cancelled' && \App\Models\CheckoutJourney::where('order_id', $order->id)
+                ->whereHas('events', fn ($query) => $query->where('type', 'superseded'))->exists() => 'superseded',
             $order->checkout_abandoned_at !== null => 'abandoned',
             $order->status === 'cancelled' => 'cancelled',
             $attempt?->status === 'succeeded' && $order->payments()->withTrashed()->where('payment_attempt_id', $attempt->id)->exists() => 'paid',
@@ -34,6 +36,7 @@ class PaymentState
             'review' => 'Ödeme kontrol ediliyor',
             'abandoned' => 'Ödeme tamamlanmadı',
             'cancelled' => 'İşlem kapatıldı',
+            'superseded' => 'Önceki işlem kapatıldı',
         }, 'message' => match ($state) {
             'screen_failed' => 'Ödeme ekranı açılamadı. Lütfen daha sonra yeniden deneyin.',
             'screen_unavailable' => 'PayTR ödeme ekranı henüz açılamadı. Bağlantı sonucu doğrulanmadan yeni ödeme başlatılmayacak. Lütfen daha sonra durumunu kontrol edin.',
@@ -42,6 +45,7 @@ class PaymentState
             'failed' => $failure['message'],
             'review' => 'Ödemeniz kontrol ediliyor. Tekrar ödeme yapmayın; destek ekibiyle iletişime geçebilirsiniz.',
             'cancelled' => 'Bu sipariş iptal edilmiş.',
+            'superseded' => 'Yeni ödeme denemesi başlattığınız için bu ekran kapatıldı. Güncel işleminizden devam edin.',
             'waiting' => $attempt?->status === 'unknown' && ! $attempt->iframe_token
                 ? 'PayTR ödeme ekranı henüz açılamadı. İşlem durumu doğrulanmadan tekrar ödeme başlatılmayacak. Lütfen destek alın.'
                 : 'Ödeme sonucunuz bekleniyor. Tekrar ödeme yapmayın. Bildirim geldiğinde bu ekran güncellenecek.',

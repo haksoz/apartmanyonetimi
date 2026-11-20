@@ -305,13 +305,22 @@ class PaytrCallbackTest extends TestCase
         foreach ($cases as [$code, $title, $retry]) {
             $attempt = $this->attempt();
             $order = $attempt->subscription;
+            app(\App\Support\CheckoutJourneyTracking::class)->attach($order, null);
+            $journey = \App\Models\CheckoutJourney::where('order_id', $order->id)->sole();
             $this->send($this->payload($attempt, ['status' => 'failed', 'total_amount' => '0',
                 'failed_reason_code' => $code, 'failed_reason_msg' => 'Unsafe provider detail']))->assertOk();
+            $this->assertSame('Ödeme başarısız', $journey->fresh()->progress_label);
+            $this->assertSame('cancelled', $order->fresh()->status);
+            $this->assertNull($order->fresh()->order_number);
+            $this->assertSame(0, $order->payments()->count());
+            $this->actingAs(User::factory()->admin()->create())
+                ->get(route('admin.checkout-journeys.index', ['search' => $journey->reference, 'status' => 'failed']))->assertOk()
+                ->assertViewHas('journeys', fn ($rows) => $rows->total() === 1)->assertSee('Ödeme başarısız');
             $this->actingAs($order->user);
             $this->get(route('subscriber.subscriptions.card-status', $order))->assertOk()
                 ->assertJsonPath('state', 'failed')->assertJsonPath('title', $title)
-                ->assertJsonPath('can_start', $retry && $code !== '6')
-                ->assertJsonPath('can_restart', $code === '6');
+                ->assertJsonPath('can_start', false)
+                ->assertJsonPath('can_restart', $retry);
             $this->get(route('subscriber.subscriptions.card-result', $order))->assertOk()
                 ->assertSee($title)->assertDontSee('Unsafe provider detail');
         }
@@ -327,17 +336,118 @@ class PaytrCallbackTest extends TestCase
             ->assertJsonPath('state', 'review')->assertJsonPath('can_start', false)->assertJsonPath('can_restart', false);
     }
 
-    public function test_decline_ends_only_attempt_and_retry_has_a_new_oid(): void
+    public function test_new_checkout_keeps_old_history_and_accepts_late_failure_without_touching_replacement(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        $apartment = $order->items()->first()->apartment;
+        $new = app(SubscriptionCheckout::class)->openPending($order->user, collect([$apartment]),
+            'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertSame('pending', $attempt->fresh()->status);
+        $oldJourney = \App\Models\CheckoutJourney::where('order_id', $order->id)->sole();
+        $this->assertSame('Yeni denemeyle değiştirildi', $oldJourney->progress_label);
+        $this->actingAs($order->user)->get(route('subscriber.subscriptions.card-status', $order))->assertOk()
+            ->assertJsonPath('state', 'superseded')->assertJsonPath('can_start', false)->assertJsonPath('can_restart', false);
+        app(\App\Support\CheckoutJourneyTracking::class)->attach($new, null);
+        $newJourney = \App\Models\CheckoutJourney::where('order_id', $new->id)->sole();
+        $this->assertNotSame($oldJourney->reference, $newJourney->reference);
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.checkout-journeys.index', ['status' => 'superseded']))
+            ->assertOk()->assertSee($oldJourney->reference)->assertDontSee($newJourney->reference);
+        $payload = $this->payload($attempt, ['status' => 'failed', 'total_amount' => '0', 'failed_reason_code' => '6']);
+        $this->send($payload)->assertOk()->assertContent('OK');
+        $this->send($payload)->assertOk()->assertContent('OK');
+        $this->assertSame('failed', $attempt->fresh()->status);
+        $this->assertFalse($attempt->fresh()->review_required);
+        $this->assertSame('pending', $new->fresh()->status);
+        $this->assertSame('pending', $new->items()->first()->status);
+        $this->assertSame('Ödeme başarısız', $oldJourney->fresh()->progress_label);
+    }
+
+    public function test_late_success_for_replaced_attempt_is_audited_for_review_and_does_not_activate_either_checkout(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        $new = app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
+            'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
+        $this->send($this->payload($attempt))->assertStatus(409);
+        $this->assertTrue($attempt->fresh()->review_required);
+        $this->assertSame('success', $attempt->notifications()->sole()->provider_status);
+        $this->assertSame('review', $attempt->notifications()->sole()->outcome);
+        $this->assertSame('pending', $new->fresh()->status);
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertDatabaseCount('subscription_payments', 0);
+    }
+
+    public function test_another_customers_attempt_is_not_replaced_even_if_new_user_also_manages_apartment(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        $apartment = $order->items()->first()->apartment;
+        $other = User::factory()->create();
+        $apartment->members()->attach($other->id, ['role' => 'owner', 'is_active' => true]);
+        $profile = $other->billingProfiles()->create(['label' => 'Ev', 'party_type' => 'individual',
+            'legal_name' => 'Diğer kişi', 'address' => 'Adres', 'is_active' => true]);
+        try {
+            app(SubscriptionCheckout::class)->openPending($other, collect([$apartment]), 'monthly', 'kredi_kartı', $profile);
+            $this->fail('Another customer payment history must not be superseded.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('payment_method', $exception->errors());
+        }
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertNull($order->fresh()->checkout_abandoned_at);
+    }
+
+    public function test_invalid_new_billing_profile_does_not_close_previous_checkout(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        $profile = $order->user->billingProfiles()->first();
+        $profile->update(['is_active' => false]);
+        try {
+            app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
+                'monthly', 'kredi_kartı', $profile);
+            $this->fail('Invalid replacement must leave old checkout unchanged.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('billing_profile_id', $exception->errors());
+        }
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertNull($order->fresh()->checkout_abandoned_at);
+    }
+
+    public function test_reviewed_attempt_is_not_automatically_replaced(): void
+    {
+        $attempt = $this->attempt();
+        $attempt->update(['review_required' => true]);
+        $order = $attempt->subscription;
+        try {
+            app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
+                'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
+            $this->fail('Financial review must be resolved before replacement.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('payment_method', $exception->errors());
+        }
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertNull($order->fresh()->checkout_abandoned_at);
+    }
+
+    public function test_decline_closes_checkout_and_retry_has_a_new_checkout_and_oid(): void
     {
         $attempt = $this->attempt();
         $payload = $this->payload($attempt, ['status' => 'failed', 'total_amount' => '0', 'failed_reason_code' => '0', 'failed_reason_msg' => 'Never store this raw message']);
         $this->send($payload)->assertOk()->assertContent('OK');
         $this->send($payload)->assertOk()->assertContent('OK');
-        $this->assertUnpaid($attempt);
+        $this->assertSame(0, $attempt->subscription->payments()->count());
+        $this->assertSame('cancelled', $attempt->subscription->fresh()->status);
+        $this->assertSame('cancelled', $attempt->subscription->items()->first()->status);
         $this->assertSame('failed', $attempt->fresh()->status);
         $this->assertFalse($attempt->fresh()->review_required);
         $this->assertSame('0', SubscriptionPaymentNotification::sole()->failed_reason_code);
-        $retry = app(SubscriptionPaymentAttempts::class)->open($attempt->subscription);
+        $order = $attempt->subscription;
+        $new = app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
+            'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
+        $this->assertNotSame($order->id, $new->id);
+        $retry = app(SubscriptionPaymentAttempts::class)->open($new);
         $this->assertNotSame($attempt->merchant_oid, $retry->merchant_oid);
         $retry->update(['submitted_at' => now()]);
         $this->send($payload)->assertOk();
@@ -462,7 +572,7 @@ class PaytrCallbackTest extends TestCase
         app(CancelSubscriptionOrder::class)->cancel($attempt->subscription, UserSubscription::CANCELLED_BY_ADMIN);
     }
 
-    public function test_soft_deleting_pending_paytr_order_requires_password_and_keeps_duplicate_payment_guard(): void
+    public function test_soft_deleting_pending_paytr_order_requires_password_and_new_checkout_preserves_old_attempt(): void
     {
         $attempt = $this->attempt();
         $order = $attempt->subscription;
@@ -479,9 +589,11 @@ class PaytrCallbackTest extends TestCase
         $this->get(route('admin.orders.index'))->assertViewHas('orders', fn ($orders) => $orders->total() === 0);
         $this->get(route('subscriber.subscriptions.receipt', $order))->assertNotFound();
 
-        $this->expectException(ValidationException::class);
-        app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
+        $new = app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
             'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
+        $this->assertNotSame($new->id, $order->id);
+        $this->assertSoftDeleted($order);
+        $this->assertSame('pending', $attempt->fresh()->status);
     }
 
     public function test_admin_closes_deleted_test_order_and_can_start_again_while_late_success_requires_review(): void

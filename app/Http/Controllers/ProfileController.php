@@ -41,8 +41,9 @@ class ProfileController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
+            'name' => ['required', 'string', 'max:60'],
+            'phone' => ['required', 'string', 'regex:/^[1-9][0-9]{9}$/D'],
+            'address' => ['required', 'string', 'max:400'],
         ], [
             'phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
         ]);
@@ -50,11 +51,12 @@ class ProfileController extends Controller
         $request->user()->update([
             'name' => $validated['name'],
             'phone' => $validated['phone'] ?: null,
+            'address' => $validated['address'],
         ]);
 
         return redirect()
             ->route('profile.edit')
-            ->with('status', 'Ad ve telefon güncellendi.');
+            ->with('status', 'İletişim bilgileriniz güncellendi.');
     }
 
     public function openApartment(Request $request)
