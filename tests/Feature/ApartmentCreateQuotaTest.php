@@ -120,6 +120,51 @@ class ApartmentCreateQuotaTest extends TestCase
         $this->postCreate($user)->assertSessionHasErrors('name');
     }
 
+    public function test_positive_limit_promotes_a_member_without_changing_apartment_membership(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $member = User::factory()->create(['role' => User::ROLE_RESIDENT, 'activated_at' => now()]);
+        $owner = User::factory()->create();
+        $apartment = $this->apartment($owner, true, 'free');
+        $apartment->members()->attach($member->id, ['role' => 'member', 'is_active' => true]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.customers.quota.update', $member), ['max_apartments' => 1])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.customers.show', $member));
+
+        $this->assertSame(User::ROLE_MANAGER, $member->fresh()->role);
+        $this->assertSame(1, $member->fresh()->quotaOverride->max_apartments);
+        $this->assertDatabaseHas('apartment_user', [
+            'apartment_id' => $apartment->id,
+            'user_id' => $member->id,
+            'role' => 'member',
+            'is_active' => true,
+        ]);
+        $this->actingAs($admin)->get(route('admin.customers.index'))
+            ->assertSee($member->email);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.customers.quota.update', $member), ['max_apartments' => null])
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($member->fresh()->quotaOverride);
+        $this->assertSame(User::ROLE_MANAGER, $member->fresh()->role);
+    }
+
+    public function test_zero_limit_does_not_promote_a_member(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $member = User::factory()->create(['role' => User::ROLE_RESIDENT]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.customers.quota.update', $member), ['max_apartments' => 0])
+            ->assertSessionHasErrors('max_apartments');
+
+        $this->assertSame(User::ROLE_RESIDENT, $member->fresh()->role);
+        $this->assertNull($member->fresh()->quotaOverride);
+    }
+
     public function test_setup_renewal_can_open_a_new_apartment_while_the_quota_is_full(): void
     {
         $user = User::factory()->create();
@@ -174,12 +219,29 @@ class ApartmentCreateQuotaTest extends TestCase
         $this->assertNotNull(Apartment::query()->where('user_id', $user->id)->where('is_active', true)->where('name', 'Yeni Kurulum')->first());
     }
 
-    public function test_users_without_a_defined_limit_can_still_create(): void
+    public function test_users_without_a_defined_limit_cannot_create_even_with_an_open_request(): void
     {
-        $user = User::factory()->create();
-
-        $this->assertNull(app(UserApartmentQuota::class)->definedLimit($user));
-        $this->postCreate($user)->assertRedirect();
+        foreach (['user', User::ROLE_MANAGER] as $role) {
+            $user = User::factory()->create(['role' => $role]);
+            $this->actingAs($user)->withSession(['open_apartment_requested' => true]);
+            $this->assertFalse(app(UserApartmentQuota::class)->canCreate($user));
+            $this->actingAs($user)->post(route('apartments.store'), [
+                'name' => 'Izinsiz Apartman', 'address' => 'Adres', 'unit_count' => 4,
+                'account_opening_date' => now()->toDateString(),
+                'accept_resident_data' => 1, 'accept_privacy' => 1,
+            ])->assertSessionHasErrors('name');
+            $this->actingAs($user)->post(route('onboarding.store'), [
+                'name' => 'Izinsiz Kurulum', 'unit_count' => 4, 'manager_type' => 'external',
+                'accept_resident_data' => 1, 'accept_privacy' => 1,
+            ])->assertSessionHasErrors('name');
+            try {
+                \Illuminate\Support\Facades\DB::transaction(fn () => app(UserApartmentQuota::class)->assertCanCreate($user));
+                $this->fail('Limit olmadan oluşturma kontrolü geçmemeli.');
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                $this->assertArrayHasKey('name', $exception->errors());
+            }
+            $this->assertSame(0, $user->ownedApartments()->count());
+        }
     }
 
     private function limit(User $user, int $max): void

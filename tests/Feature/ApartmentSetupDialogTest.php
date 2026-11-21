@@ -23,7 +23,7 @@ class ApartmentSetupDialogTest extends TestCase
 
     public function test_setup_can_be_closed_and_resumed_from_the_panel_at_every_saved_step(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withApartmentQuota(1)->create();
         $this->actingAs($user);
         $this->assertSetupDialog(route('subscriber.apartments.create'));
         $this->post(route('subscriber.apartments.store'), [
@@ -58,7 +58,7 @@ class ApartmentSetupDialogTest extends TestCase
 
     public function test_quote_request_finishes_setup_and_returns_to_panel_without_reopening_a_dialog(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withApartmentQuota(1)->create();
         $this->actingAs($user)->get(route('subscriber.apartments.create'))->assertOk()
             ->assertDontSee('Talebiniz alınmıştır.')
             ->assertSee('Teklif talebi gönder');
@@ -87,7 +87,7 @@ class ApartmentSetupDialogTest extends TestCase
 
     public function test_invalid_step_one_stays_in_the_dialog_with_validation_errors(): void
     {
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->withApartmentQuota(1)->create())
             ->from(route('subscriber.apartments.create'))
             ->post(route('subscriber.apartments.store'), ['name' => 'Eksik Bilgi'])
             ->assertRedirect(route('subscriber.apartments.create'))

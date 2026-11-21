@@ -30,7 +30,7 @@ class PackageQuotaTest extends TestCase
     public function test_manager_can_create_first_apartment_onboarding(): void
     {
         $package = Package::factory()->create(['apartment_limit' => 1]);
-        $user = User::factory()->withSubscription($package)->create();
+        $user = User::factory()->withSubscription($package)->withApartmentQuota(1)->create();
 
         $response = $this->actingAs($user)
             ->post(route('onboarding.store'), [
@@ -48,7 +48,7 @@ class PackageQuotaTest extends TestCase
         $this->assertDatabaseCount('apartments', 1);
     }
 
-    public function test_manager_can_create_another_apartment_without_a_count_quota(): void
+    public function test_subscription_does_not_grant_creation_without_an_explicit_quota(): void
     {
         $package = Package::factory()->create(['apartment_limit' => 1]);
         $user = User::factory()->withSubscription($package)->create();
@@ -64,9 +64,9 @@ class PackageQuotaTest extends TestCase
                 'accept_resident_data' => '1',
                 'accept_privacy' => '1',
             ])
-            ->assertSessionHasNoErrors();
+            ->assertSessionHasErrors('name');
 
-        $this->assertDatabaseCount('apartments', 2);
+        $this->assertDatabaseCount('apartments', 1);
     }
 
     public function test_quota_override_allows_exceeding_package_limit(): void
@@ -95,7 +95,7 @@ class PackageQuotaTest extends TestCase
 
     public function test_onboarding_works_without_a_subscription(): void
     {
-        $user = User::factory()->create(['role' => 'manager']);
+        $user = User::factory()->withApartmentQuota(1)->create(['role' => 'manager']);
 
         $this->actingAs($user)
             ->post(route('onboarding.store'), [

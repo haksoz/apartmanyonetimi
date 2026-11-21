@@ -18,7 +18,7 @@ class ApartmentCreationTest extends TestCase
     public function test_manager_can_create_apartment_with_units_and_accounts(): void
     {
         $package = Package::factory()->create(['apartment_limit' => 5]);
-        $user = User::factory()->withSubscription($package)->create();
+        $user = User::factory()->withSubscription($package)->withApartmentQuota(5)->create();
         $existingApartment = Apartment::factory()->forUser($user)->create();
         $user->apartments()->attach($existingApartment->id, ['role' => 'owner', 'is_active' => true]);
 

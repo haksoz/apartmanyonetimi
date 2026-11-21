@@ -19,11 +19,7 @@ class ProfileController extends Controller
         $remainingApartments = null;
 
         if (! $user->isAdmin() && ! $user->managesBuilding()) {
-            if ($limit === null) {
-                $remainingApartments = $user->isSubscriber() ? null : ($managed === 0 ? 1 : 0);
-            } else {
-                $remainingApartments = max(0, $limit - $managed);
-            }
+            $remainingApartments = max(0, ($limit ?? 0) - $managed);
         }
 
         return view('profile.edit', [
@@ -61,6 +57,12 @@ class ProfileController extends Controller
 
     public function openApartment(Request $request)
     {
+        if (! app(UserApartmentQuota::class)->canCreate($request->user())) {
+            $request->session()->forget('open_apartment_requested');
+
+            return redirect()->route('profile.edit')->with('status', UserApartmentQuota::CONTACT_MESSAGE);
+        }
+
         $request->session()->put('open_apartment_requested', true);
 
         return redirect()->route('apartments.create');

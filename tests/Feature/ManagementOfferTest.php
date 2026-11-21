@@ -241,7 +241,7 @@ class ManagementOfferTest extends TestCase
             ->assertRedirect(route('apartments.create'));
     }
 
-    public function test_a_member_opens_an_apartment_only_from_the_account_page(): void
+    public function test_a_portal_member_needs_an_admin_defined_limit_to_open_an_apartment(): void
     {
         [$manager, $apartment] = $this->building();
         $member = $this->memberOf($apartment);
@@ -263,11 +263,24 @@ class ManagementOfferTest extends TestCase
             ->assertSeeInOrder([
                 'Onaylanan belgeler',
                 "AidatCep'te apartman yönetmek istiyorum",
-                'Ücretsiz 1 apartman oluşturabilir ve yönetebilirsiniz.',
+                UserApartmentQuota::CONTACT_MESSAGE,
             ]);
 
         $this->actingAs($member)
             ->post(route('profile.open-apartment'))
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionMissing('open_apartment_requested');
+
+        $this->actingAs($member)->withSession(['open_apartment_requested' => true])
+            ->get(route('apartments.create'))->assertOk()->assertDontSee('Apartman Adı');
+
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin)->patch(route('admin.customers.quota.update', $member), ['max_apartments' => 1])
+            ->assertSessionHasNoErrors();
+        $member->refresh();
+        $this->assertSame(User::ROLE_MANAGER, $member->role);
+
+        $this->actingAs($member)->post(route('profile.open-apartment'))
             ->assertRedirect(route('apartments.create'));
 
         $this->actingAs($member)
@@ -323,7 +336,8 @@ class ManagementOfferTest extends TestCase
         $this->post(route('login'), [
             'email' => 'ahmet@example.com',
             'password' => 'password',
-        ])->assertRedirect(route('apartments.create'));
+        ])->assertRedirect(route('profile.edit'))
+            ->assertSessionMissing('open_apartment_requested');
 
         $this->post(route('logout'));
 

@@ -138,14 +138,22 @@ class AdminCustomerController extends Controller
             'max_apartments' => ['nullable', 'integer', 'min:1', 'max:1000'],
         ]);
 
-        if ($validated['max_apartments'] === null || $validated['max_apartments'] === '') {
-            $customer->quotaOverride()?->delete();
-        } else {
+        DB::transaction(function () use ($customer, $validated) {
+            $customer = User::query()->whereKey($customer->id)->lockForUpdate()->firstOrFail();
+            $this->ensureCustomer($customer);
+
+            if ($validated['max_apartments'] === null || $validated['max_apartments'] === '') {
+                $customer->quotaOverride()->delete();
+
+                return;
+            }
+
             UserQuotaOverride::query()->updateOrCreate(
                 ['user_id' => $customer->id],
                 ['max_apartments' => (int) $validated['max_apartments']],
             );
-        }
+            $customer->update(['role' => User::ROLE_MANAGER]);
+        });
 
         return redirect()
             ->route('admin.customers.show', $customer)

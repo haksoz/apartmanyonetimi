@@ -43,7 +43,7 @@ class SubscriberPanelTest extends TestCase
             ->assertSee('id="first-apartment-dialog"', false);
     }
 
-    public function test_manager_without_a_defined_limit_gets_the_prompt(): void
+    public function test_manager_without_a_defined_limit_does_not_get_the_prompt(): void
     {
         $user = User::factory()->create();
 
@@ -53,7 +53,7 @@ class SubscriberPanelTest extends TestCase
 
         $this->actingAs($user)->get(route('subscriber.dashboard'))
             ->assertOk()
-            ->assertSee('id="first-apartment-dialog"', false);
+            ->assertDontSee('id="first-apartment-dialog"', false);
     }
 
     public function test_missing_consents_are_requested_before_the_first_apartment_prompt(): void

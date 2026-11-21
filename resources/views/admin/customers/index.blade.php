@@ -6,15 +6,15 @@
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-2xl font-bold text-slate-900">Müşteriler</h1>
-            <p class="text-sm text-slate-500">Ticari muhataplar. Diğer kişileri filtreyle açın.</p>
+            <p class="text-sm text-slate-500">Apartman yönetimi ve daire portalı hizmetlerini kullanan müşterileriniz.</p>
         </div>
         <a href="{{ route('admin.customers.create') }}" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Müşteri ekle</a>
     </div>
 
     @php
         $filters = [
-            'muhataplar' => 'Muhataplar',
-            'uyeler' => 'Üyeler',
+            'muhataplar' => 'Yönetim müşterileri',
+            'uyeler' => 'Portal müşterileri',
             'tumu' => 'Tümü',
         ];
         $showsCommerce = $filter === 'muhataplar';
@@ -28,6 +28,16 @@
             </a>
         @endforeach
     </div>
+
+    <p class="mb-4 text-sm text-slate-500">
+        @if ($filter === 'muhataplar')
+            Yönetici hesabı bulunan, apartman kurmuş veya yönetmiş ya da ticari işlem geçmişi olan müşteriler. Bu kişiler daire portalını da kullanabilir.
+        @elseif ($filter === 'uyeler')
+            Yönetim müşterisi olmayan, hesabını etkinleştirmiş portal müşterileri.
+        @else
+            Yönetim ve portal müşterileri ile henüz hesabını etkinleştirmemiş davetli hesapları.
+        @endif
+    </p>
 
     <div class="mb-6 rounded-xl border border-slate-200 bg-white p-4">
         <form method="GET" action="{{ route('admin.customers.index') }}" class="flex flex-wrap items-center gap-3">
@@ -59,7 +69,7 @@
                 <p class="mt-1 text-sm text-slate-600">
                     @if ($showsCommerce)
                         Apartman <span class="font-medium text-slate-900">{{ $customer->managed_apartment_count }}</span>
-                        / {{ $customer->quotaOverride?->max_apartments ?? 'sınırsız' }}
+                        / {{ $customer->quotaOverride?->max_apartments ?? 'Tanımlı değil' }}
                         <span class="text-slate-300"> · </span>
                         Bekleyen sipariş <span class="font-medium text-slate-900">{{ $customer->pending_order_count }}</span>
                     @else
@@ -111,7 +121,7 @@
                         </td>
                         <td class="px-4 py-3 text-slate-700">{{ $customer->phone ?: '-' }}</td>
                         @if ($showsCommerce)
-                            <td class="px-4 py-3 text-slate-700">{{ $customer->managed_apartment_count }} / {{ $customer->quotaOverride?->max_apartments ?? 'sınırsız' }}</td>
+                            <td class="px-4 py-3 text-slate-700">{{ $customer->managed_apartment_count }} / {{ $customer->quotaOverride?->max_apartments ?? 'Tanımlı değil' }}</td>
                             <td class="px-4 py-3 text-slate-700">{{ $customer->pending_order_count }}</td>
                         @else
                             @php

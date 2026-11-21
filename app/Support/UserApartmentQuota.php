@@ -14,8 +14,7 @@ class UserApartmentQuota
     public const CONTACT_MESSAGE = 'Yönetim hakkınız dolu. Başka bir apartmanın yöneticisi olmak için AidatCep ile iletişime geçin.';
 
     /**
-     * Tanımlı limit yoksa null döner. Bu, mevcut müşteriler için sınırsız demektir.
-     * Paket aboneliğindeki eski limit kullanılmaz; siparişi olmayan kullanıcıyı keser.
+     * Tanımlı limit yoksa null döner; yeni apartman oluşturma hakkı vermez.
      */
     public function definedLimit(User $user): ?int
     {
@@ -48,21 +47,9 @@ class UserApartmentQuota
             return true;
         }
 
-        if (session('open_apartment_requested') && $this->hasRoomForManagement($user)) {
-            return true;
-        }
-
         $max = $this->definedLimit($user);
 
-        if (! $user->isSubscriber()) {
-            return $max !== null && $this->currentCount($user) < $max;
-        }
-
-        if ($max === null) {
-            return true;
-        }
-
-        return $this->currentCount($user) < $max;
+        return $max !== null && $max > 0 && $this->currentCount($user) < $max;
     }
 
     /**
@@ -84,19 +71,7 @@ class UserApartmentQuota
 
         $max = $override ? (int) $override->max_apartments : null;
         $active = $this->ownerMembershipCount($locked, true);
-        $explicit = (bool) session('open_apartment_requested') && $this->room($locked, $max, $active);
-
-        if (! $locked->isSubscriber() && ! $explicit) {
-            if ($max === null || $active >= $max) {
-                throw ValidationException::withMessages([
-                    'name' => self::LIMIT_MESSAGE,
-                ]);
-            }
-
-            return;
-        }
-
-        if ($max !== null && $active >= $max) {
+        if ($max === null || $max <= 0 || $active >= $max) {
             throw ValidationException::withMessages([
                 'name' => self::LIMIT_MESSAGE,
             ]);

@@ -38,7 +38,7 @@
                 </div>
             @elseif ($showApartmentCreate && $apartmentLimit === null)
                 <div class="mb-4">
-                    <a href="{{ route('subscriber.apartments.create') }}" class="inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Yeni Apartman Oluştur</a>
+                    <p class="text-sm text-slate-600">Yeni apartman oluşturma limitiniz tanımlı değil. Apartman yönetmek için AidatCep ile iletişime geçin.</p>
                 </div>
             @endif
             @include('subscriber.partials.apartment-cards', ['showDetails' => true])

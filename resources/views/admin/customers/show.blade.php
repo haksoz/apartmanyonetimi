@@ -122,7 +122,7 @@
                 <h2 class="text-lg font-semibold text-slate-900">Aktif apartman limiti</h2>
                 <button type="button" data-edit-target="customer-quota-form" aria-controls="customer-quota-form-fields" aria-expanded="{{ $quotaEditing ? 'true' : 'false' }}" onclick="setCustomerEditing('customer-quota-form', true)" @class(['rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50', 'hidden' => $quotaEditing])>Düzelt</button>
             </div>
-            <p class="mt-1 text-sm text-slate-500">Yalnızca kabul edilmiş yönetici üyelikleri sayılır. Daire üyeliği ve pasif apartmanlar bu sayıya girmez. Boş bırakılırsa sınır yoktur.</p>
+            <p class="mt-1 text-sm text-slate-500">Yalnızca kabul edilmiş yönetici üyelikleri sayılır. Daire üyeliği ve pasif apartmanlar bu sayıya girmez. Boş bırakılırsa yeni apartman oluşturulamaz. Mevcut apartman erişimleri korunur.</p>
             <form id="customer-quota-form" data-customer-editor method="POST" action="{{ route('admin.customers.quota.update', $customer) }}" class="mt-4">
                 <fieldset id="customer-quota-form-fields" data-edit-fields @disabled(! $quotaEditing) class="min-w-0 flex flex-wrap items-end gap-3">
                     @csrf

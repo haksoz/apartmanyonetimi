@@ -141,7 +141,7 @@
     @unless ($user->isAdmin() || $user->managesBuilding())
         <div class="mt-4 max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 class="text-sm font-semibold text-slate-900">AidatCep'te apartman yönetmek istiyorum</h2>
-            <p class="mt-1 text-sm text-slate-500">Dairelerinizin bulunduğu apartmanlar dışında bir apartmanın yöneticisiyseniz ve AidatCep'i kullanarak bir apartman yönetmek istiyorsanız buradan kuruluma geçebilirsiniz.</p>
+            <p class="mt-1 text-sm text-slate-500">Dairelerinizin bulunduğu apartmanlar dışında bir apartmanı yönetmek istiyorsanız AidatCep ile iletişime geçerek apartman oluşturma limiti talep edebilirsiniz. Limitiniz tanımlandığında buradan kuruluma geçebilirsiniz.</p>
             @if ($remainingApartments === null)
                 <p class="mt-3 text-sm text-slate-700">Yeni apartman oluşturup yönetebilirsiniz.</p>
             @elseif ($remainingApartments > 0)

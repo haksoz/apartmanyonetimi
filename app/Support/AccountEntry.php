@@ -16,7 +16,7 @@ class AccountEntry
         if (session('open_apartment_requested')) {
             $quota = app(UserApartmentQuota::class);
 
-            if ($quota->canCreate($user) || $quota->hasRoomForManagement($user)) {
+            if ($quota->canCreate($user)) {
                 return redirect()->route('apartments.create');
             }
 
