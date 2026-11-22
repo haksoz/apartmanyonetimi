@@ -38,7 +38,7 @@ class LandingPageTest extends TestCase
         ]);
         $apartment->members()->attach($owner->id, ['role' => 'owner', 'is_active' => true]);
 
-        $quote = PriceBand::query()->where('is_quote', true)->where('is_active', true)->firstOrFail();
+        $quote = PriceBand::query()->where('per_unit', true)->where('is_active', true)->firstOrFail();
 
         $home = $this->get(route('landing'));
 
@@ -58,7 +58,7 @@ class LandingPageTest extends TestCase
         $home->assertDontSee('1.234,50');
         $home->assertDontSee('12.345,00');
         $home->assertDontSee($band->label);
-        $home->assertSee('1–100');
+        $home->assertSee('Tüm apartmanlarda');
         $home->assertDontSee('101–150');
         $home->assertDontSee('151 ve üzeri');
         $home->assertDontSee('sakin yönetimi');
@@ -78,9 +78,9 @@ class LandingPageTest extends TestCase
         $pricing->assertSee('12.345,00 ₺');
         $pricing->assertSee('Fiyatlara KDV dahil değildir.');
         $pricing->assertSee('101+ daire');
-        $pricing->assertSee('Özel Teklif');
-        $pricing->assertDontSee($quote->label);
-        $pricing->assertSee('1–100 daire');
+        $pricing->assertSee('Fiyat henüz tanımlanmadı');
+        $pricing->assertSee($quote->label);
+        $pricing->assertSee('Tüm daire sayıları için');
         $pricing->assertDontSee('101–150 daire ücretsiz açılamaz');
         $pricing->assertDontSee('99.999', false);
         $pricing->assertDontSee('88.888', false);
@@ -105,7 +105,7 @@ class LandingPageTest extends TestCase
         $this->get(route('faq'))
             ->assertOk()
             ->assertSee('Daire Sakini sisteme nasıl eklenir?')
-            ->assertSee('1–100 daireli')
+            ->assertSee('Tüm apartmanlarda')
             ->assertDontSee('Sakinler sisteme');
     }
 

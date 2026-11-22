@@ -64,7 +64,7 @@ class ApartmentResetTest extends TestCase
         $this->assertSoftDeleted($freeDue);
     }
 
-    public function test_never_paid_setup_renewal_stays_on_the_same_apartment_until_101(): void
+    public function test_never_paid_setup_renewal_stays_on_the_same_apartment_for_large_counts(): void
     {
         $this->acceptArchive();
         [$owner, $apartment] = $this->ownerApartment(10);
@@ -84,8 +84,8 @@ class ApartmentResetTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('status');
 
-        $this->assertSame(40, $apartment->fresh()->unit_count);
-        $this->assertSame(1, QuoteRequest::query()->where('unit_count', 120)->count());
+        $this->assertSame(120, $apartment->fresh()->unit_count);
+        $this->assertSame(0, QuoteRequest::query()->where('unit_count', 120)->count());
         $this->assertSame(1, Apartment::query()->count());
     }
 
@@ -187,17 +187,17 @@ class ApartmentResetTest extends TestCase
         $this->assertSame($order->price, $order->fresh()->price);
     }
 
-    public function test_one_hundred_one_units_always_goes_to_a_quote(): void
+    public function test_large_count_outside_paid_band_requires_new_apartment_confirmation(): void
     {
         $this->acceptArchive();
         [$owner, $apartment] = $this->ownerApartment(10);
         $this->paidPeriod($owner, $apartment, 10, 14, now()->subDay());
 
-        $this->postRenew($owner, $apartment, 101)->assertRedirect()->assertSessionHas('status');
+        $this->postRenew($owner, $apartment, 101)->assertRedirect()->assertSessionHasErrors();
 
         $this->assertSame(1, Apartment::query()->count());
         $this->assertSame(10, $apartment->fresh()->unit_count);
-        $this->assertSame(1, QuoteRequest::query()->where('unit_count', 101)->count());
+        $this->assertSame(0, QuoteRequest::query()->where('unit_count', 101)->count());
     }
 
     public function test_a_stranger_cannot_wipe_another_apartment(): void

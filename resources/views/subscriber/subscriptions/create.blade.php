@@ -53,7 +53,7 @@
                                 @else
                                     <p class="mt-1 text-sm text-slate-500">Bu apartmanın başka bir kullanıcı tarafından açılmış siparişi bulunuyor.</p>
                                 @endif
-                            @elseif ($apartment->unit_count > 100 || $apartment->monthly_quote['requires_quote'])
+                            @elseif ($apartment->monthly_quote['requires_quote'])
                                 <p class="mt-1 text-sm text-slate-500">{{ \App\Support\ApartmentCommercial::QUOTE_MESSAGE }}</p>
                             @elseif ($apartment->offer['record'])
                                 <a href="{{ route('subscriber.subscriptions.create', ['apartment_id' => $apartment->id, 'from' => $checkoutReturn]) }}" class="mt-2 inline-block rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">{{ $apartment->offer['action'] === 'upgrade' ? 'Ücretliye Geç' : 'Yenile' }}</a>

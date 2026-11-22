@@ -63,8 +63,7 @@
                 <label class="text-sm font-medium text-slate-700">Daire Sayısı</label>
                 <input type="number" id="unit-count" name="unit_count" value="{{ old('unit_count') }}" min="1" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" required>
                 @error('unit_count') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
-                <p class="mt-1 text-xs text-slate-500">1–100 daire ücretsiz açılır. 101 ve üzeri daire için özel teklif alınır.</p>
-                <p id="quote-notice" class="mt-3 hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanır. Talebinizi iletmek için “Teklif talebi gönder” düğmesini kullanın.</p>
+                <p class="mt-1 text-xs text-slate-500">Tüm apartmanlarda temel kullanım ücretsizdir. 101+ için ücretli abonelik daire başına hesaplanır.</p>
             </div>
             <div id="resident-consent">
                 @include('partials.accept-resident-data')
@@ -80,23 +79,7 @@
             <button id="create-apartment-submit" type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Oluştur</button>
         </div>
         <script>
-            (function () {
-                const count = document.getElementById('unit-count');
-                const notice = document.getElementById('quote-notice');
-                const resident = document.getElementById('resident-consent');
-                const submit = document.getElementById('create-apartment-submit');
-                if (!count || !notice || !resident) return;
-                const inputs = resident.querySelectorAll('input[type="checkbox"]');
-                const sync = function () {
-                    const quote = Number(count.value) >= 101;
-                    notice.classList.toggle('hidden', !quote);
-                    submit.textContent = quote ? 'Teklif talebi gönder' : 'Oluştur';
-                    resident.classList.toggle('hidden', quote);
-                    inputs.forEach(function (input) { input.required = !quote; });
-                };
-                count.addEventListener('input', sync);
-                sync();
-            })();
+
         </script>
     </form>
     @endif

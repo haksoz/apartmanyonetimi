@@ -9,13 +9,12 @@
                     $ownActive = $active && (int) $active->subscription->user_id === (int) auth()->id();
                     $ownPending = $pending && (int) $pending->subscription->user_id === (int) auth()->id();
                     $needsQuote = ($monthly['requires_quote'] ?? false) && ! $active;
-                    $quoteScale = (int) $apartment->unit_count > 100;
                     $canPurchase = (bool) $apartment->can_purchase;
                     $paidUntil = $apartment->commercial_coverage_end ?? $active?->expires_at;
                     $renewSoon = $active && $paidUntil && $paidUntil->copy()->startOfDay()->lessThanOrEqualTo(now()->startOfDay()->addDays(7));
                     $daysLeft = $renewSoon ? (int) now()->startOfDay()->diffInDays($paidUntil->copy()->startOfDay()) : null;
                     $proofSent = $ownPending && $pending->subscription?->hasPaymentProof();
-                    $showPay = $canPurchase && ! $quoteScale && ! $needsQuote && ! $pending;
+                    $showPay = $canPurchase && ! $needsQuote && ! $pending;
                     $payLabel = ($active || $expired) ? 'Yenile' : 'Ücretliye Geç';
                     $place = collect([$apartment->district, $apartment->province])->filter()->implode(' / ');
                     if ($place === '' && $apartment->address) {
@@ -27,9 +26,6 @@
                     if ($active) {
                         $statusLabel = 'AidatCep Ücretli Kullanım';
                         $statusClass = 'bg-emerald-50 text-emerald-800';
-                    } elseif ($quoteScale) {
-                        $statusLabel = 'Özel Teklif';
-                        $statusClass = 'bg-slate-100 text-slate-700';
                     } elseif ($expired) {
                         $statusLabel = 'Ücretli Kullanım Sona Erdi';
                         $statusClass = 'bg-red-50 text-red-700';
@@ -48,10 +44,7 @@
                     </div>
 
                     <div class="mt-4 flex-1 space-y-1 text-sm text-slate-600">
-                        @if ($quoteScale && ! $active && ! $pending)
-                            <p class="font-medium text-slate-800">Özel Teklif</p>
-                            <p>{{ \App\Support\ApartmentCommercial::QUOTE_MESSAGE }}</p>
-                        @elseif ($pending && ! $active && $ownPending && $proofSent)
+                        @if ($pending && ! $active && $ownPending && $proofSent)
                             <p>AidatCep Temel yönetim açık. (Ücretsiz Abonelik)</p>
                             <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
                                 Ödeme bilgileriniz alınmıştır, admin onayı bekleniyor.
@@ -85,7 +78,7 @@
                                 <p>Son bitiş {{ $expired->expires_at->format('d.m.Y') }}</p>
                             @endif
                         @elseif ($needsQuote)
-                            <p class="font-medium text-slate-800">Teklif gerekir</p>
+                            <p class="font-medium text-slate-800">Fiyat henüz tanımlanmadı</p>
                             <p>{{ $monthly['message'] }}</p>
                         @else
                             <p>AidatCep Temel yönetim açık. (Ücretsiz Abonelik)</p>
@@ -124,7 +117,7 @@
                             <p class="text-xs font-semibold text-emerald-800">AidatCep Ücretli Kullanım avantajları açık.</p>
                             @include('partials.paid-usage-benefits')
                         </div>
-                    @elseif (! $pending && ! $quoteScale && ! $needsQuote && isset($monthly['amount'], $yearly['amount']) && $monthly['amount'] !== null && $yearly['amount'] !== null)
+                    @elseif (! $pending && ! $needsQuote && isset($monthly['amount'], $yearly['amount']) && $monthly['amount'] !== null && $yearly['amount'] !== null)
                         <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
                             <p class="text-xs font-semibold text-emerald-800">AidatCep Ücretli Kullanım avantajlarından yararlanın.</p>
                             @include('partials.paid-usage-benefits')

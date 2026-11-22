@@ -18,10 +18,6 @@ class PriceQuote
             return $this->quoteResult(null, null, true, 'Bu daire sayısı için tanımlı bir fiyat bandı yok.');
         }
 
-        if ($unitCount > ApartmentCommercial::FREE_UNIT_LIMIT && ! $band->is_quote) {
-            return $this->quoteResult($band, null, true, '101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanır.');
-        }
-
         if ($band->is_quote) {
             $custom = $period === 'yearly'
                 ? $apartment?->custom_yearly_price
@@ -34,7 +30,11 @@ class PriceQuote
             return $this->quoteResult($band, round((float) $custom, 2), false, null);
         }
 
-        $list = $period === 'yearly' ? (float) $band->yearly_price : (float) $band->monthly_price;
+        $price = $period === 'yearly' ? $band->yearly_price : $band->monthly_price;
+        if ($price === null) {
+            return $this->quoteResult($band, null, true, 'Bu dönem için fiyat henüz tanımlanmamış.');
+        }
+        $list = (float) $price * ($band->per_unit ? $unitCount : 1);
         $priced = $this->applyCampaign($band, $list);
 
         $taxed = $this->tax->calculate($priced['amount']);

@@ -6,18 +6,29 @@ use App\Http\Controllers\Controller;
 use App\Models\Apartment;
 use App\Models\BankAccount;
 use App\Models\BillingProfile;
+use App\Models\CheckoutJourney;
 use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserSubscription;
-use App\Support\ApartmentCommercial;
-use App\Support\ApartmentCoverage;
-use App\Support\PriceQuote;
+use App\Support\CancelSubscriptionOrder;
+use App\Support\CheckoutJourneyTracking;
+use App\Support\CheckoutPaymentMethods;
+use App\Support\CheckoutQuote;
 use App\Support\LegalConsent;
+use App\Support\Paytr\PayerContact;
+use App\Support\Paytr\PaymentState;
+use App\Support\Paytr\StartIframe;
+use App\Support\PriceQuote;
+use App\Support\SubscriberApartmentOverview;
 use App\Support\SubscriptionCheckout;
+use App\Support\SubscriptionOrderLock;
+use App\Support\SubscriptionPaymentAttempts;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -82,7 +93,6 @@ class SubscriberSubscriptionController extends Controller
         $selectable = $apartments->filter(function (Apartment $apartment) {
             return $apartment->offer['action'] !== 'pending'
                 && $apartment->offer['record']
-                && (int) $apartment->unit_count <= 100
                 && ! ($apartment->monthly_quote['requires_quote'] ?? false);
         })->values();
 
@@ -90,6 +100,7 @@ class SubscriberSubscriptionController extends Controller
         $candidate = $requestedId ? $apartments->firstWhere('id', $requestedId) : ($apartments->count() === 1 ? $apartments->first() : null);
         if ($candidate?->offer['action'] === 'pending' && (int) $candidate->offer['order']->user_id === (int) auth()->id()) {
             session(['subscription_return.'.$candidate->offer['order']->id => $request->input('from') === 'dashboard' ? 'dashboard' : 'subscriber']);
+
             return redirect()->route('subscriber.subscriptions.receipt', array_filter([
                 'subscription' => $candidate->offer['order'],
                 'from' => $request->input('from') === 'dashboard' ? 'dashboard' : null,
@@ -102,11 +113,11 @@ class SubscriberSubscriptionController extends Controller
         }
 
         $checkoutApartment = $apartments->firstWhere('id', $selectedApartmentId);
-        $quoteSignature = $checkoutApartment ? app(\App\Support\CheckoutQuote::class)->signature($request->user(), $checkoutApartment) : null;
-        $coverageEnd = $checkoutApartment ? app(\App\Support\SubscriberApartmentOverview::class)->coverageFor($checkoutApartment)['end'] : null;
+        $quoteSignature = $checkoutApartment ? app(CheckoutQuote::class)->signature($request->user(), $checkoutApartment) : null;
+        $coverageEnd = $checkoutApartment ? app(SubscriberApartmentOverview::class)->coverageFor($checkoutApartment)['end'] : null;
 
         $checkoutJourney = $checkoutApartment
-            ? app(\App\Support\CheckoutJourneyTracking::class)->begin($request->user(), $checkoutApartment, old('checkout_journey'))
+            ? app(CheckoutJourneyTracking::class)->begin($request->user(), $checkoutApartment, old('checkout_journey'))
             : null;
 
         return view('subscriber.subscriptions.create', compact('apartments', 'billingProfiles', 'selectedBillingProfileId', 'selectedApartmentId', 'checkoutApartment', 'quoteSignature', 'coverageEnd', 'checkoutJourney'));
@@ -117,13 +128,13 @@ class SubscriberSubscriptionController extends Controller
         try {
             if ($request->input('payment_method') === 'kredi_kartı') {
                 // Client fields are not authoritative; checkout always uses the customer's profile.
-                $request->merge(\App\Support\Paytr\PayerContact::fromUser($request->user()->fresh()));
+                $request->merge(PayerContact::fromUser($request->user()->fresh()));
             }
             $validated = $request->validate([
                 'apartment_ids' => ['required', 'array', 'min:1', 'max:1'],
                 'apartment_ids.*' => ['integer'],
                 'period' => ['required', Rule::in(['monthly', 'yearly'])],
-                'payment_method' => ['required', Rule::in(app(\App\Support\CheckoutPaymentMethods::class)->forUser(auth()->user()))],
+                'payment_method' => ['required', Rule::in(app(CheckoutPaymentMethods::class)->forUser(auth()->user()))],
                 'checkout_token' => ['required_if:payment_method,kredi_kartı', 'nullable', 'uuid'],
                 'checkout_journey' => ['nullable', 'uuid'],
                 'quote_signature' => ['required_if:payment_method,kredi_kartı', 'nullable', 'string', 'size:64'],
@@ -169,7 +180,7 @@ class SubscriberSubscriptionController extends Controller
                 'billing_tax_office.required' => 'Vergi dairesi girin.',
             ]);
         } catch (ValidationException $exception) {
-            app(\App\Support\CheckoutJourneyTracking::class)->validationFailed($request->user(), $request->input('checkout_journey'), array_keys($exception->errors()));
+            app(CheckoutJourneyTracking::class)->validationFailed($request->user(), $request->input('checkout_journey'), array_keys($exception->errors()));
             throw $exception;
         }
 
@@ -184,21 +195,13 @@ class SubscriberSubscriptionController extends Controller
             ]);
         }
 
-        $oversized = $apartments->first(fn (Apartment $apartment) => (int) $apartment->unit_count > ApartmentCommercial::FREE_UNIT_LIMIT);
-
-        if ($oversized) {
-            throw ValidationException::withMessages([
-                'apartment_ids' => $oversized->name.' için özel teklif gerekir. Sipariş bu ekrandan açılamaz.',
-            ]);
-        }
-
         if ($validated['payment_method'] === 'kredi_kartı' && ($request->hasFile('receipt') || filled($validated['reference_code'] ?? null))) {
             throw ValidationException::withMessages([
                 'payment_method' => 'Kredi kartı siparişine dekont veya referans eklenemez.',
             ]);
         }
 
-        $fingerprintData = \Illuminate\Support\Arr::except($validated, ['checkout_token', 'quote_signature', 'receipt', 'checkout_journey']);
+        $fingerprintData = Arr::except($validated, ['checkout_token', 'quote_signature', 'receipt', 'checkout_journey']);
         $fingerprintData['receipt_hash'] = $request->hasFile('receipt') ? hash_file('sha256', $request->file('receipt')->getRealPath()) : null;
         $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_THROW_ON_ERROR));
         $receiptPath = null;
@@ -206,7 +209,7 @@ class SubscriberSubscriptionController extends Controller
             $subscription = DB::transaction(function () use ($checkout, $request, $user, $apartments, $validated, $fingerprint, &$receiptPath) {
                 $lockedUser = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
                 if ($validated['payment_method'] === 'kredi_kartı') {
-                    $validated = array_replace($validated, \App\Support\Paytr\PayerContact::validated($lockedUser));
+                    $validated = array_replace($validated, PayerContact::validated($lockedUser));
                 }
                 if ($validated['payment_method'] === 'havale' && ! $lockedUser->bank_transfer_allowed) {
                     throw ValidationException::withMessages(['payment_method' => 'Havale / EFT ile ödeme izniniz bulunmuyor.']);
@@ -219,6 +222,7 @@ class SubscriberSubscriptionController extends Controller
                     if ($replay->checkout_abandoned_at) {
                         throw ValidationException::withMessages(['checkout_token' => 'Bu ödeme girişimi kapatıldı. İşlemi yeniden başlatın.']);
                     }
+
                     return $replay;
                 }
 
@@ -228,7 +232,7 @@ class SubscriberSubscriptionController extends Controller
                 }
                 $apartment = $locked->first();
                 if (! empty($validated['checkout_journey'])) {
-                    $journey = \App\Models\CheckoutJourney::where('uuid', $validated['checkout_journey'])
+                    $journey = CheckoutJourney::where('uuid', $validated['checkout_journey'])
                         ->where('user_id', $user->id)->where('apartment_id', $apartment->id)->lockForUpdate()->first();
                     if ($journey?->isFormTimedOut() || $journey?->closed_at) {
                         throw ValidationException::withMessages(['checkout_journey' => 'Formun süresi doldu. Süreyi uzatarak devam edin.']);
@@ -244,10 +248,11 @@ class SubscriberSubscriptionController extends Controller
                     if ((int) $pending->subscription->user_id !== $user->id) {
                         throw ValidationException::withMessages(['apartment_ids' => 'Bu apartman için başka bir kullanıcının bekleyen siparişi bulunuyor.']);
                     }
+
                     return $pending->subscription;
                 }
                 if (filled($validated['quote_signature'] ?? null) && ! hash_equals(
-                    app(\App\Support\CheckoutQuote::class)->signature($user, $apartment), $validated['quote_signature']
+                    app(CheckoutQuote::class)->signature($user, $apartment), $validated['quote_signature']
                 )) {
                     throw ValidationException::withMessages(['quote_signature' => 'Fiyat, vergi veya sözleşme bilgisi değişti. Güncel tutarı ve sözleşmeleri yeniden kontrol edip onaylayın.']);
                 }
@@ -257,22 +262,22 @@ class SubscriberSubscriptionController extends Controller
                 }
                 $order = $checkout->openPending($user, $locked, $validated['period'], $validated['payment_method'], $billingProfile, $receiptPath, $validated['reference_code'] ?? null);
                 $order->update(['checkout_token' => $token, 'checkout_fingerprint' => $fingerprint]);
-                app(\App\Support\CheckoutJourneyTracking::class)->attach($order, $validated['checkout_journey'] ?? null);
+                app(CheckoutJourneyTracking::class)->attach($order, $validated['checkout_journey'] ?? null);
                 app(LegalConsent::class)->recordSale($user, $order, $request);
-                app(\App\Support\CheckoutJourneyTracking::class)->orderEvent($order->id, 'sale_accepted', []);
-                $attempt = app(\App\Support\SubscriptionPaymentAttempts::class)->open($order);
+                app(CheckoutJourneyTracking::class)->orderEvent($order->id, 'sale_accepted', []);
+                $attempt = app(SubscriptionPaymentAttempts::class)->open($order);
                 if ($validated['payment_method'] === 'kredi_kartı') {
-                    $attempt->update(['payer_snapshot' => \Illuminate\Support\Arr::only($validated, ['payer_name', 'payer_email', 'payer_phone', 'payer_address'])]);
+                    $attempt->update(['payer_snapshot' => Arr::only($validated, ['payer_name', 'payer_email', 'payer_phone', 'payer_address'])]);
                 }
 
                 return $order;
             });
         } catch (\Throwable $exception) {
             if ($exception instanceof ValidationException) {
-                app(\App\Support\CheckoutJourneyTracking::class)->validationFailed($request->user(), $request->input('checkout_journey'), array_keys($exception->errors()));
+                app(CheckoutJourneyTracking::class)->validationFailed($request->user(), $request->input('checkout_journey'), array_keys($exception->errors()));
             }
             if ($receiptPath) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($receiptPath);
+                Storage::disk('public')->delete($receiptPath);
             }
             throw $exception;
         }
@@ -286,7 +291,7 @@ class SubscriberSubscriptionController extends Controller
             'from' => $request->input('checkout_return') === 'dashboard' ? 'dashboard' : null]);
         if ($subscription->payment_method === 'kredi_kartı' && $subscription->isPending()) {
             try {
-                app(\App\Support\Paytr\StartIframe::class)->start($subscription, (string) $request->ip());
+                app(StartIframe::class)->start($subscription, (string) $request->ip());
 
                 return redirect()->route('subscriber.subscriptions.card', $subscription);
             } catch (ValidationException $exception) {
@@ -307,7 +312,7 @@ class SubscriberSubscriptionController extends Controller
 
         $subscription->load(['items.apartment', 'items.apartmentSubscription', 'package', 'legalAcceptances.legalDocumentVersion']);
         $cardPaymentState = $subscription->payment_method === 'kredi_kartı'
-            ? app(\App\Support\Paytr\PaymentState::class)->forOrder($subscription) : null;
+            ? app(PaymentState::class)->forOrder($subscription) : null;
         $accounts = BankAccount::active()->ordered()->get();
 
         $summaryMode = $request->query('from') === 'dashboard';
@@ -320,7 +325,7 @@ class SubscriberSubscriptionController extends Controller
         $this->authorizeSubscription($subscription);
 
         return DB::transaction(function () use ($request, $subscription) {
-            return $this->savePaymentInfo($request, \App\Support\SubscriptionOrderLock::acquire($subscription));
+            return $this->savePaymentInfo($request, SubscriptionOrderLock::acquire($subscription));
         });
     }
 
@@ -368,11 +373,11 @@ class SubscriberSubscriptionController extends Controller
         }
 
         if ($request->hasFile('receipt')) {
-            $data['receipt_path'] = $request->file('receipt')->store('receipts/' . auth()->id(), 'public');
+            $data['receipt_path'] = $request->file('receipt')->store('receipts/'.auth()->id(), 'public');
         }
 
         $subscription->update($data);
-        app(\App\Support\CheckoutJourneyTracking::class)->orderEvent($subscription->id, 'payment_proof', ['receipt_received' => (bool) $subscription->receipt_path, 'reference_received' => filled($subscription->receipt_reference)]);
+        app(CheckoutJourneyTracking::class)->orderEvent($subscription->id, 'payment_proof', ['receipt_received' => (bool) $subscription->receipt_path, 'reference_received' => filled($subscription->receipt_reference)]);
 
         return back()->with('status', 'Ödeme bilgileriniz başarıyla kaydedildi.');
     }
@@ -381,7 +386,7 @@ class SubscriberSubscriptionController extends Controller
     {
         $this->authorizeSubscription($subscription);
 
-        app(\App\Support\CancelSubscriptionOrder::class)->cancel($subscription, UserSubscription::CANCELLED_BY_CUSTOMER);
+        app(CancelSubscriptionOrder::class)->cancel($subscription, UserSubscription::CANCELLED_BY_CUSTOMER);
 
         return redirect()
             ->route('subscriber.subscriptions.create')

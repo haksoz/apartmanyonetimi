@@ -63,7 +63,7 @@
 <section class="py-16 px-4 sm:px-6 bg-white">
     <div class="max-w-6xl mx-auto">
         <h2 class="text-3xl font-extrabold text-slate-950">Ücretsiz temel kullanım</h2>
-        <p class="mt-3 max-w-2xl text-slate-600">Hesap oluşturmak ücretsizdir. Kayıt sırasında abonelik veya sipariş açılmaz. 1–100 daireli apartmanda temel kullanım süresizdir.</p>
+        <p class="mt-3 max-w-2xl text-slate-600">Hesap oluşturmak ücretsizdir. Kayıt sırasında abonelik veya sipariş açılmaz. Tüm apartmanlarda temel kullanım süresizdir.</p>
         <div class="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @foreach ([
                 ['Aidat takibi', 'Aidat kayıtlarını oluşturun ve dairelerin borç durumunu izleyin.'],

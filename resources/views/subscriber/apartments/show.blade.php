@@ -7,7 +7,6 @@
         $active = $apartment->commercial_active;
         $pending = $apartment->commercial_pending;
         $expired = $apartment->commercial_expired;
-        $quoteScale = (int) $apartment->unit_count > 100;
         $place = collect([$apartment->district, $apartment->province])->filter()->implode(' / ');
         $periodLabel = $active?->subscription?->notes === 'Tanımlı süre'
             ? 'Tanımlı süre'
@@ -15,9 +14,6 @@
         if ($active) {
             $statusLabel = 'AidatCep Ücretli Kullanım';
             $statusClass = 'bg-emerald-50 text-emerald-800';
-        } elseif ($quoteScale) {
-            $statusLabel = 'Özel Teklif';
-            $statusClass = 'bg-slate-100 text-slate-700';
         } elseif ($expired) {
             $statusLabel = 'Ücretli Kullanım Sona Erdi';
             $statusClass = 'bg-red-50 text-red-700';

@@ -9,22 +9,12 @@
         return number_format((float) $amount, 2, ',', '.').' ₺';
     };
     $publicRows = [];
-    $quoteAdded = false;
     foreach ($priceBands as $band) {
-        if ((int) $band->min_units > 100 || $band->is_quote) {
-            if (! $quoteAdded) {
-                $publicRows[] = ['label' => '101+ daire', 'monthly' => 'Özel Teklif', 'yearly' => 'Özel Teklif'];
-                $quoteAdded = true;
-            }
-            continue;
-        }
-        $label = ($band->max_units !== null && (int) $band->max_units > 100)
-            ? $band->min_units.'–100 daire'
-            : $band->label;
+        $suffix = $band->per_unit ? ' / daire' : ' / apartman';
         $publicRows[] = [
-            'label' => $label,
-            'monthly' => $band->monthly_price === null ? 'Özel Teklif' : $formatTariff($band->monthly_price),
-            'yearly' => $band->yearly_price === null ? 'Özel Teklif' : $formatTariff($band->yearly_price),
+            'label' => $band->label,
+            'monthly' => $band->monthly_price === null ? 'Fiyat henüz tanımlanmadı' : $formatTariff($band->monthly_price).$suffix,
+            'yearly' => $band->yearly_price === null ? 'Fiyat henüz tanımlanmadı' : $formatTariff($band->yearly_price).$suffix,
         ];
     }
 @endphp
@@ -40,12 +30,12 @@
         <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8 mb-8">
             <h2 class="text-xl font-bold text-slate-950">Temel Kullanım — Ücretsiz</h2>
             <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700">
-                <li>1–100 daire</li>
+                <li>Tüm daire sayıları için</li>
                 <li>Süresiz temel kullanım</li>
                 <li>Sipariş veya abonelik ücreti olmadan başlangıç</li>
                 <li>Temel aidat, tahsilat, gider ve yönetim özellikleri</li>
             </ul>
-            <p class="mt-4 text-sm text-slate-600">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanır. Tutar sitede gösterilmez.</p>
+            <p class="mt-4 text-sm text-slate-600">101+ daire için ücretli abonelik bedeli, ilgili dönemin daire başı fiyatı × daire sayısı olarak hesaplanır. Kampanya indirimi toplam net tutara uygulanır, ardından KDV eklenir.</p>
         </div>
 
         <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">

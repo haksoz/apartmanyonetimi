@@ -7,6 +7,7 @@ use App\Models\PriceBand;
 use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
+use App\Models\UserQuotaOverride;
 use App\Models\UserSubscription;
 use App\Support\CurrentApartment;
 use App\Support\FeatureGate;
@@ -230,18 +231,17 @@ class CommercialBillingTest extends TestCase
         $this->assertDatabaseCount('subscription_payments', 0);
     }
 
-    public function test_one_hundred_one_units_cannot_be_created_free(): void
+    public function test_one_hundred_one_units_can_be_created_free(): void
     {
         $user = User::factory()->withBankTransfer()->create();
 
         $this->actingAs($user)
             ->from(route('subscriber.apartments.create'))
             ->post(route('subscriber.apartments.store'), $this->payload('Yüz Bir', 101))
-            ->assertRedirect(route('subscriber.dashboard'))
-            ->assertSessionHas('status');
+            ->assertRedirect()->assertSessionHasNoErrors();
 
-        $this->assertDatabaseCount('apartments', 0);
-        $this->assertDatabaseCount('quote_requests', 1);
+        $this->assertDatabaseHas('apartments', ['name' => 'Yüz Bir', 'billing_plan' => 'free']);
+        $this->assertDatabaseCount('quote_requests', 0);
     }
 
     public function test_one_hundred_one_units_do_not_open_a_paid_order(): void
@@ -252,14 +252,14 @@ class CommercialBillingTest extends TestCase
             ->post(route('subscriber.apartments.store'), $this->payload('Ücretli Blok', 101, true))
             ->assertRedirect();
 
-        $this->assertDatabaseMissing('apartments', ['name' => 'Ücretli Blok']);
-        $this->assertDatabaseCount('quote_requests', 1);
-        $this->assertSame(0, Subscription::query()->count());
+        $this->assertDatabaseHas('apartments', ['name' => 'Ücretli Blok', 'billing_plan' => 'free']);
+        $this->assertDatabaseCount('quote_requests', 0);
+        $this->assertSame(1, Subscription::query()->count());
         $this->assertSame(0, UserSubscription::query()->count());
-        $this->assertSame(0, SubscriptionItem::query()->count());
+        $this->assertSame(1, SubscriptionItem::query()->count());
     }
 
-    public function test_same_user_can_keep_a_free_apartment_and_a_quote_request(): void
+    public function test_same_user_can_keep_small_and_large_free_apartments(): void
     {
         $user = User::factory()->withBankTransfer()->create();
 
@@ -267,8 +267,8 @@ class CommercialBillingTest extends TestCase
         $this->actingAs($user)->post(route('subscriber.apartments.store'), $this->payload('Ücretli Blok', 101, true));
 
         $this->assertDatabaseHas('apartments', ['name' => 'Ücretsiz Blok', 'billing_plan' => 'free']);
-        $this->assertDatabaseMissing('apartments', ['name' => 'Ücretli Blok']);
-        $this->assertDatabaseHas('quote_requests', ['apartment_name' => 'Ücretli Blok', 'unit_count' => 101]);
+        $this->assertDatabaseHas('apartments', ['name' => 'Ücretli Blok', 'billing_plan' => 'free']);
+        $this->assertDatabaseCount('quote_requests', 0);
     }
 
     public function test_item_amount_does_not_change_when_the_apartment_is_renamed(): void
@@ -355,6 +355,14 @@ class CommercialBillingTest extends TestCase
         $user->apartments()->attach($apartment->id, ['role' => 'owner', 'is_active' => true]);
 
         return $apartment;
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        User::created(function (User $user) {
+            UserQuotaOverride::firstOrCreate(['user_id' => $user->id], ['max_apartments' => 5]);
+        });
     }
 
     private function payload(string $name, int $unitCount, bool $paid = false): array

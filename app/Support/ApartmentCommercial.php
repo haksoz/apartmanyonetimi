@@ -10,15 +10,6 @@ class ApartmentCommercial
 
     public function assess(int $unitCount): array
     {
-        if ($unitCount > self::FREE_UNIT_LIMIT) {
-            return [
-                'allowed' => false,
-                'plan' => null,
-                'quote' => true,
-                'message' => self::QUOTE_MESSAGE,
-            ];
-        }
-
         return [
             'allowed' => true,
             'plan' => 'free',

@@ -58,7 +58,6 @@
                 <input type="number" id="unit-count" name="unit_count" value="{{ old('unit_count', $apartment->unit_count) }}" min="1" max="500" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" required>
                 @error('unit_count') <div class="mt-1 text-sm text-red-600">{{ $message }}</div> @enderror
                 <p class="mt-1 text-xs text-slate-500">Aynı ücret diliminde abonelik bu apartmanda kalır. Dilim değişirse eski apartman pasife alınır.</p>
-                <p id="quote-notice" class="mt-3 hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">101 ve üzeri daireli apartmanlar için özel fiyatlandırma uygulanmaktadır. Talebiniz alınmıştır. Temsilcimiz sizinle iletişime geçerek size özel teklifinizi paylaşacaktır.</p>
             </div>
             @error('accept_new_free_apartment')
                 <div class="rounded-xl border border-amber-200 bg-amber-50 p-3">
@@ -102,21 +101,7 @@
             <button class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Devam</button>
         </div>
         <script>
-            (function () {
-                const count = document.getElementById('unit-count');
-                const notice = document.getElementById('quote-notice');
-                const resident = document.getElementById('resident-consent');
-                if (!count || !notice || !resident) return;
-                const inputs = resident.querySelectorAll('input[type="checkbox"]');
-                const sync = function () {
-                    const quote = Number(count.value) >= 101;
-                    notice.classList.toggle('hidden', !quote);
-                    resident.classList.toggle('hidden', quote);
-                    inputs.forEach(function (input) { input.required = !quote; });
-                };
-                count.addEventListener('input', sync);
-                sync();
-            })();
+
         </script>
     </form>
 @endsection

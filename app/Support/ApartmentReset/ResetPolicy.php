@@ -4,7 +4,6 @@ namespace App\Support\ApartmentReset;
 
 use App\Models\Apartment;
 use App\Models\SubscriptionItem;
-use App\Support\ApartmentCommercial;
 
 class ResetPolicy
 {
@@ -23,14 +22,10 @@ class ResetPolicy
      */
     public function decide(Apartment $apartment, int $unitCount): array
     {
-        if ($unitCount > ApartmentCommercial::FREE_UNIT_LIMIT) {
-            return $this->result(self::QUOTE, false, null, null);
-        }
-
         $limit = $this->commercialLimit($apartment);
 
         if ($limit === null) {
-            return $this->result(self::SAME_APARTMENT, false, 1, ApartmentCommercial::FREE_UNIT_LIMIT);
+            return $this->result(self::SAME_APARTMENT, false, 1, 500);
         }
 
         $paid = $this->paidItem($apartment);
@@ -103,6 +98,10 @@ class ResetPolicy
 
     private function outsidePaidBand(SubscriptionItem $item, int $unitCount): bool
     {
+        if ($item->band_max_units === null && $unitCount > (int) $item->unit_count) {
+            return true;
+        }
+
         $min = $item->band_min_units !== null ? (int) $item->band_min_units : 1;
 
         if ($unitCount < $min) {
@@ -120,7 +119,7 @@ class ResetPolicy
     {
         $bandMax = $item->band_max_units !== null ? (int) $item->band_max_units : (int) $item->unit_count;
 
-        return min($bandMax, ApartmentCommercial::FREE_UNIT_LIMIT);
+        return $bandMax;
     }
 
     /**

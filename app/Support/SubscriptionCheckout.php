@@ -9,6 +9,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Support\Paytr\SupersedeCheckout;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,7 @@ class SubscriptionCheckout
             if ($managed !== $lockedApartments->count()) {
                 throw ValidationException::withMessages(['apartment_ids' => 'Apartman yönetim yetkiniz değişti.']);
             }
+
             return $this->createPending($user, $lockedApartments, $period, $paymentMethod, $billingProfile, $receiptPath, $reference);
         });
     }
@@ -61,7 +63,7 @@ class SubscriptionCheckout
         $totalNet = 0.0;
         $totalTax = 0.0;
 
-        app(\App\Support\Paytr\SupersedeCheckout::class)->replacePending($user, $apartments->pluck('id'));
+        app(SupersedeCheckout::class)->replacePending($user, $apartments->pluck('id'));
 
         $blocked = SubscriptionItem::query()
             ->whereIn('apartment_id', $apartments->pluck('id'))
@@ -283,7 +285,7 @@ class SubscriptionCheckout
         $monthly = null;
 
         if ($band && ! $band->is_quote && $band->monthly_price !== null) {
-            $monthly = (float) $band->monthly_price;
+            $monthly = (float) $band->monthly_price * ($band->per_unit ? (int) $apartment->unit_count : 1);
         } elseif ($band?->is_quote && $apartment->custom_monthly_price !== null) {
             $monthly = (float) $apartment->custom_monthly_price;
         }

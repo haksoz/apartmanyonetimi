@@ -33,14 +33,14 @@ class AdminCommercialController extends Controller
 
         SystemSetting::query()->firstOrCreate([], ['trial_duration_months' => 2])->update($validated);
 
-        return back()->with('status', 'Abonelik KDV oranı güncellendi.');
+        return $this->saved($request, 'commercial-tax');
     }
 
     public function updateBand(Request $request, PriceBand $band)
     {
         $validated = $request->validate([
-            'monthly_price' => ['nullable', 'numeric', 'min:0'],
-            'yearly_price' => ['nullable', 'numeric', 'min:0'],
+            'monthly_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'yearly_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -50,7 +50,7 @@ class AdminCommercialController extends Controller
             'is_active' => $request->boolean('is_active'),
         ]);
 
-        return back()->with('status', $band->label.' bandı güncellendi.');
+        return $this->saved($request, 'price-band-'.$band->id);
     }
 
     public function storeCampaign(Request $request)
@@ -63,17 +63,19 @@ class AdminCommercialController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'price_band_id' => ['nullable', 'integer', 'exists:price_bands,id'],
             'percent_off' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'amount_off' => ['nullable', 'numeric', 'min:0'],
+            'amount_off' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
         ]);
 
-        PriceCampaign::create([
+        $campaign = PriceCampaign::create([
             ...$validated,
             'is_active' => true,
         ]);
 
-        return back()->with('status', 'Kampanya eklendi.');
+        return $this->saved($request, 'commercial-campaign', [
+            'campaign' => $campaign->name.' · '.($campaign->band?->label ?? 'Tüm bantlar').' · Aktif',
+        ]);
     }
 
     public function updateFeature(Request $request, Feature $feature)
@@ -84,6 +86,16 @@ class AdminCommercialController extends Controller
 
         $feature->update($validated);
 
-        return back()->with('status', $feature->name.' erişimi güncellendi.');
+        return $this->saved($request, 'commercial-feature-'.$feature->id);
     }
+    private function saved(Request $request, string $form, array $data = [])
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Kaydedildi', ...$data]);
+        }
+
+        return redirect()->to(route('admin.commercial.index').'#'.$form)
+            ->with('commercial_saved', $form);
+    }
+
 }
