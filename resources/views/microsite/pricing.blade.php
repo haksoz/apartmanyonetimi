@@ -24,18 +24,17 @@
 <main class="pt-32 pb-20 px-4 sm:px-6">
     <div class="max-w-4xl mx-auto">
         <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-950 mb-3">Fiyatlandırma</h1>
-        <p class="text-slate-500 text-lg mb-3">Ücretli abonelik bedeli, apartmanınızdaki daire sayısına göre belirlenir.</p>
+        <p class="text-slate-500 text-lg mb-3">Ücretli abonelik bedeli, apartmanınızdaki daire sayısına ve seçilen abonelik dönemine göre belirlenir.</p>
         <p class="mb-10 text-sm font-medium text-slate-600">Fiyatlara KDV dahil değildir.</p>
 
         <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8 mb-8">
             <h2 class="text-xl font-bold text-slate-950">Temel Kullanım — Ücretsiz</h2>
             <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700">
-                <li>Tüm daire sayıları için</li>
-                <li>Süresiz temel kullanım</li>
-                <li>Sipariş veya abonelik ücreti olmadan başlangıç</li>
+                <li>Her müşteri için 1 apartman yönetimi</li>
+                <li>Daire sayısı sınırı olmadan kullanım</li>
+                <li>Süresiz ve abonelik ücreti olmadan temel kullanım</li>
                 <li>Temel aidat, tahsilat, gider ve yönetim özellikleri</li>
             </ul>
-            <p class="mt-4 text-sm text-slate-600">101+ daire için ücretli abonelik bedeli, ilgili dönemin daire başı fiyatı × daire sayısı olarak hesaplanır. Kampanya indirimi toplam net tutara uygulanır, ardından KDV eklenir.</p>
         </div>
 
         <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
@@ -67,10 +66,11 @@
 
         <ul class="mt-8 list-disc space-y-2 pl-5 text-sm text-slate-600">
             <li>Ücret, apartmanın daire sayısına göre belirlenir.</li>
+            <li>101 ve üzeri daireli apartmanlarda birim fiyat toplam daire sayısına uygulanır. Özel teklif alınması gerekmez.</li>
             <li>Ücretli abonelik aylık veya yıllık olarak seçilebilir.</li>
-            <li>Her apartman ayrı abonelik ve ayrı sipariş üzerinden ücretlendirilir.</li>
+            <li>Her apartmanın ücretli abonelik ve sipariş işlemleri ayrı yürütülür.</li>
             <li>Yenileme, yeni bir sipariş oluşturularak yapılır.</li>
-            <li>Bu tablo bir apartmanın ücretli abonelik tarifesidir. Ek apartman limiti için ayrı fiyat yayımlanmaz. Birden fazla apartman için <a href="mailto:info@aidatcep.com" class="font-semibold text-emerald-800 underline">info@aidatcep.com</a> adresinden iletişime geçin.</li>
+            <li>Birden fazla apartman yönetmek isteyen müşterilerimiz <a href="mailto:info@aidatcep.com" class="font-semibold text-emerald-800 underline">info@aidatcep.com</a> adresinden bizimle iletişime geçebilir.</li>
         </ul>
 
         <h2 class="mt-14 text-2xl font-extrabold text-slate-950 mb-4">Ödeme</h2>

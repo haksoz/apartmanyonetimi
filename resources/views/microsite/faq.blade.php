@@ -12,7 +12,7 @@
         <div class="divide-y divide-slate-200 border-y border-slate-200">
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">AidatCep ücretsiz mi?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Hesap oluşturmak ücretsizdir ve kayıt sırasında sipariş açılmaz. Tüm apartmanlarda temel kullanım süresizdir. Ayrıntılı tarife <a href="{{ route('pricing') }}" class="font-semibold text-emerald-700 hover:text-emerald-800">fiyatlandırma</a> sayfasındadır.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Evet. Bir apartman için daire sayısı sınırı olmadan temel özellikleri süresiz ve ücretsiz kullanabilirsiniz. Gelişmiş özellikler için ücretli abonelik seçeneklerimiz bulunmaktadır. Ayrıntılı tarife <a href="{{ route('pricing') }}" class="font-semibold text-emerald-700 hover:text-emerald-800">fiyatlandırma</a> sayfasındadır.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Ücretsiz kullanımda hangi özellikleri kullanabilirim?</summary>
@@ -20,19 +20,19 @@
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Ücretli abonelik ne zaman gerekir?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Otomatik aidat planı, giderin dairelere dağıtılması, metrekare ve pay dağıtımı, belge yükleme, PDF/Excel dışa aktarma ve gelişmiş raporlar için ilgili apartmanda ücretli abonelik gerekir. 101+ daireli apartmanlarda da temel kullanım ücretsizdir.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Otomatik aidat planı, giderin dairelere dağıtılması, metrekare ve pay dağıtımı, belge yükleme, PDF/Excel dışa aktarma ve gelişmiş raporlar için ilgili apartmanda ücretli abonelik gerekir.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Ücret nasıl belirleniyor?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Ücret, apartmanın daire sayısının girdiği banta göre belirlenir. Siparişte aylık veya yıllık dönem seçilir. 101+ daire için toplam bedel, dönemlik daire başı fiyatı ile daire sayısı çarpılarak hesaplanır. Güncel tutarlar <a href="{{ route('pricing') }}" class="font-semibold text-emerald-700 hover:text-emerald-800">fiyatlandırma</a> sayfasındadır.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Ücretli abonelik bedeli apartmanın daire sayısına ve seçilen abonelik dönemine göre belirlenir. 101 ve üzeri daireli apartmanlarda daire başına birim fiyat uygulanır. Güncel ücretler <a href="{{ route('pricing') }}" class="font-semibold text-emerald-700 hover:text-emerald-800">fiyatlandırma</a> sayfasındadır.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Birden fazla apartman yönetebilir miyim?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">AidatCep'e bir apartmanınızla ücretsiz başlayın. Birden fazla apartman yönetmeniz gerekiyorsa <a href="mailto:info@aidatcep.com" class="font-semibold text-emerald-800 underline">info@aidatcep.com</a> veya <a href="tel:+902163774000" class="font-semibold text-emerald-800 underline">+90 216 377 4000</a> üzerinden bizimle iletişime geçin; ihtiyacınıza uygun kullanım limitini birlikte değerlendirelim. Ek apartman için sitede ayrı bir fiyat yayımlanmaz. Bir apartmanın ücretli aboneliği, daire sayısına göre ayrıca belirlenir.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Evet. Birden fazla apartmanı aynı hesabınız üzerinden yönetebilirsiniz. Ek apartman oluşturma talepleriniz için <a href="mailto:info@aidatcep.com" class="font-semibold text-emerald-800 underline">info@aidatcep.com</a> adresinden bizimle iletişime geçebilirsiniz.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Her apartman için ayrı mı ödeme yapılır?</summary>
-                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Evet. Her apartmanın aboneliği ve siparişi ayrıdır. Bir sipariş tek apartmana aittir.</p>
+                <p class="mt-2 text-sm text-slate-600 leading-relaxed">Her apartmanın ücretli abonelik ve sipariş işlemleri ayrı yürütülür. Bir ücretli abonelik siparişi tek apartmana aittir.</p>
             </details>
             <details class="group py-4">
                 <summary class="cursor-pointer font-semibold text-slate-900">Aylık ve yıllık abonelik seçenekleri var mı?</summary>

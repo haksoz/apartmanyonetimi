@@ -23,7 +23,7 @@
                 <a href="{{ route('login') }}" class="inline-flex justify-center rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-base font-semibold text-slate-700 hover:bg-slate-50">Giriş Yap</a>
             </div>
             <p class="mt-5 text-sm text-slate-600 leading-relaxed">
-                Bir apartmanınızla ücretsiz başlayın. Birden fazla apartman için
+                Bir apartmanınızla ücretsiz başlayın. Temel kullanımı daire sayısı sınırı olmadan süresiz sürdürün. Birden fazla apartman için
                 <a href="mailto:info@aidatcep.com" class="font-semibold text-emerald-800 underline">bizimle iletişime geçin</a>.
             </p>
         </div>
@@ -63,7 +63,7 @@
 <section class="py-16 px-4 sm:px-6 bg-white">
     <div class="max-w-6xl mx-auto">
         <h2 class="text-3xl font-extrabold text-slate-950">Ücretsiz temel kullanım</h2>
-        <p class="mt-3 max-w-2xl text-slate-600">Hesap oluşturmak ücretsizdir. Kayıt sırasında abonelik veya sipariş açılmaz. Tüm apartmanlarda temel kullanım süresizdir.</p>
+        <p class="mt-3 max-w-2xl text-slate-600">Hesap oluşturmak ücretsizdir. Her müşteri başlangıçta bir apartman oluşturma hakkına sahiptir. Bir apartman için temel kullanım, daire sayısı sınırı olmadan süresiz ve ücretsizdir. Kayıt sırasında ücretli abonelik veya sipariş açılmaz.</p>
         <div class="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @foreach ([
                 ['Aidat takibi', 'Aidat kayıtlarını oluşturun ve dairelerin borç durumunu izleyin.'],
@@ -85,7 +85,7 @@
 <section class="py-16 px-4 sm:px-6 bg-slate-50">
     <div class="max-w-6xl mx-auto">
         <h2 class="text-3xl font-extrabold text-slate-950">Ücretli abonelik</h2>
-        <p class="mt-3 max-w-2xl text-slate-600">Bu araçlar, ilgili apartmanın ücretli aboneliği onaylandığında açılır. Tarife daire sayısına göredir.</p>
+        <p class="mt-3 max-w-2xl text-slate-600">Bu araçlar, ilgili apartmanın ücretli aboneliği onaylandığında açılır. Tarife daire sayısına ve seçilen abonelik dönemine göredir. Her apartmanın ücretli abonelik ve sipariş işlemleri ayrı yürütülür.</p>
         <div class="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @foreach ([
                 ['Otomatik aidat planlama', 'Aidat planı tanımlayın ve dönemsel tahakkuku plandan üretin.'],
