@@ -413,6 +413,7 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth'])->group(fu
     });
 
     Route::middleware('subscriber.commerce')->group(function () {
+        Route::patch('checkout-contact', [\App\Http\Controllers\Subscriber\CheckoutContactController::class, 'update'])->middleware('throttle:20,1')->name('checkout-contact.update');
         Route::post('checkout-journeys/{uuid}/events', [\App\Http\Controllers\Subscriber\CheckoutJourneyController::class, 'store'])->middleware('throttle:120,1')->name('checkout-journeys.events');
         Route::get('billing-profiles', [SubscriberBillingProfileController::class, 'index'])->name('billing-profiles.index');
         Route::get('billing-profiles/create', [SubscriberBillingProfileController::class, 'create'])->name('billing-profiles.create');

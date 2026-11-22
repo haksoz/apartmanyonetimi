@@ -126,6 +126,11 @@
                 }
                 if (action === 'submit') {
                     const payer = modal.querySelector('[data-card-payer]');
+                    const completion = payer?.querySelector('[data-contact-completion]');
+                    if (payer && !payer.disabled && completion && !completion.hidden) {
+                        payToggleContactEditor(completion, true);
+                        return false;
+                    }
                     if (payer && !payer.disabled) {
                         const invalid = Array.from(payer.querySelectorAll('input')).find(input => !input.checkValidity());
                         if (invalid) {
@@ -207,6 +212,71 @@
                     delete modal.dataset.billingSaving;
                     button.disabled = false;
                     button.textContent = originalText;
+                }
+            }
+            function payToggleContactEditor(node, open) {
+                const completion = node.closest('[data-contact-completion]');
+                const modal = node.closest('[data-pay-modal]');
+                if (!completion || modal.dataset.contactSaving) return;
+                if (open && window.payCheckoutTimers?.ensure(modal) === false) return;
+                const editor = completion.querySelector('[data-contact-editor]');
+                editor.hidden = !open;
+                completion.querySelector('[data-contact-open]').hidden = open;
+                if (open) editor.querySelector('[data-contact-field]')?.focus();
+            }
+            async function paySaveCheckoutContact(button) {
+                const completion = button.closest('[data-contact-completion]');
+                const modal = button.closest('[data-pay-modal]');
+                if (!completion || modal.dataset.contactSaving || window.payCheckoutTimers?.ensure(modal) === false) return;
+                const editor = completion.querySelector('[data-contact-editor]');
+                const inputs = Array.from(editor.querySelectorAll('[data-contact-field]'));
+                const invalid = inputs.find(input => !input.checkValidity());
+                if (invalid) { invalid.reportValidity(); return; }
+                const form = modal.closest('form');
+                const payload = {checkout_journey: form.querySelector('[name="checkout_journey"]').value};
+                inputs.forEach(input => {payload[input.dataset.contactField] = input.value;});
+                const error = editor.querySelector('[data-contact-save-error]');
+                const submit = modal.querySelector('[data-checkout-submit]');
+                const submitWasDisabled = submit.disabled;
+                modal.dataset.contactSaving = '1';
+                error.hidden = true;
+                button.disabled = true;
+                submit.disabled = true;
+                button.textContent = 'Kaydediliyor…';
+                try {
+                    const response = await fetch(completion.dataset.contactSaveUrl, {
+                        method: 'PATCH', credentials: 'same-origin',
+                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value},
+                        body: JSON.stringify(payload),
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        if (result.renewal_required) window.payCheckoutTimers?.expire(modal);
+                        const message = response.status === 422 ? Object.values(result.errors || {}).flat().join(' ')
+                            : response.status === 409 ? result.message : null;
+                        throw Object.assign(new Error('contact_save_failed'), {userMessage: message});
+                    }
+                    Object.entries(result.contact).forEach(([field, value]) => {
+                        const label = modal.querySelector('[data-contact-value="' + field + '"]');
+                        if (label) label.textContent = value || '';
+                    });
+                    ['payer_phone', 'payer_address'].forEach(field => {
+                        modal.querySelectorAll('[data-contact-missing="' + field + '"], [data-contact-error="' + field + '"], [data-checkout-error-field="' + field + '"]').forEach(node => {node.hidden = true;});
+                    });
+                    const errors = modal.querySelector('[data-checkout-errors]');
+                    if (errors && Array.from(errors.querySelectorAll('li')).every(node => node.hidden)) errors.hidden = true;
+                    inputs.forEach(input => {input.disabled = true;});
+                    completion.hidden = true;
+                    modal.querySelector('[data-contact-saved]').hidden = false;
+                    window.payCheckoutTimers?.touch(modal);
+                } catch (failure) {
+                    error.textContent = failure.userMessage || 'İletişim bilgileri kaydedilemedi. Lütfen tekrar deneyin.';
+                    error.hidden = false;
+                } finally {
+                    delete modal.dataset.contactSaving;
+                    button.disabled = false;
+                    submit.disabled = submitWasDisabled;
+                    button.textContent = 'Kaydet ve devam et';
                 }
             }
             function payLegalText(value) {
@@ -343,6 +413,11 @@
         const modal = document.querySelector('[data-pay-modal]:not([hidden])');
         if (!modal) return;
         if (modal.querySelector('[data-checkout-timeout]')?.open) return;
+        if (event.key === 'Enter' && event.target.matches('[data-contact-field]') && event.target.tagName !== 'TEXTAREA') {
+            event.preventDefault();
+            paySaveCheckoutContact(event.target.closest('[data-contact-editor]').querySelector('[data-contact-save]'));
+            return;
+        }
         if (event.key === 'Escape') { event.preventDefault(); payStep(modal, 'backdrop'); return; }
         if (event.key === 'Tab') {
             const controls = Array.from(modal.querySelectorAll('a,button,input,select,textarea')).filter(node => !node.disabled && node.offsetParent !== null && node.tabIndex >= 0);

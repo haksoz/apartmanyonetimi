@@ -28,4 +28,15 @@ final class PayerContact
             'payer_phone.regex' => 'Hesabım sayfasındaki telefonu başında 0 olmadan 10 hane olarak düzeltin.',
         ], ['payer_name' => 'ad soyad', 'payer_email' => 'e-posta', 'payer_phone' => 'telefon', 'payer_address' => 'adres'])->validate();
     }
+
+    public static function fieldsToComplete(User $user): array
+    {
+        $fields = [];
+        foreach (['phone', 'address'] as $field) {
+            $key = 'payer_'.$field;
+            if (Validator::make([$key => $user->{$field}], [$key => self::rules()[$key]])->fails()) $fields[] = $field;
+        }
+
+        return $fields;
+    }
 }

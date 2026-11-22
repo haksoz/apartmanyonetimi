@@ -2,6 +2,7 @@
     $cardEnabled = app(\App\Support\Paytr\Access::class)->canStart(auth()->user());
     $paymentMethods = app(\App\Support\CheckoutPaymentMethods::class)->forUser(auth()->user());
     $selectedMethod = in_array(old('payment_method'), $paymentMethods, true) ? old('payment_method') : ($paymentMethods[0] ?? null);
+    $contactFieldsToComplete = \App\Support\Paytr\PayerContact::fieldsToComplete(auth()->user());
 @endphp
                             <form novalidate method="POST" action="{{ route('subscriber.subscriptions.store') }}" onsubmit="return payStep(this.querySelector('[data-pay-modal]'), 'submit')">
                                 @csrf
@@ -23,7 +24,7 @@
                                             <button type="button" onclick="return payStep(this, 'close')" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Kapat</button>
                                         </header>
                                         @if ($errors->any())
-                                            <ul role="alert" class="shrink-0 list-inside list-disc px-5 py-2 text-sm text-red-600">@foreach ($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul>
+                                            <ul data-checkout-errors role="alert" class="shrink-0 list-inside list-disc px-5 py-2 text-sm text-red-600">@foreach ($errors->messages() as $field => $messages)@foreach ($messages as $message)<li data-checkout-error-field="{{ $field }}">{{ $message }}</li>@endforeach @endforeach</ul>
                                         @endif
                                         <div data-pay-panel="plan" @class([
                                             'min-h-0 flex-1 flex-col overflow-hidden',
@@ -143,13 +144,20 @@
                                                             <div class="min-w-0 break-words">
                                                                 <dt @class(['sr-only' => $field === 'payer_name', 'inline text-slate-500' => $field !== 'payer_name'])>{{ $label }}:</dt>
                                                                 <dd class="inline">
-                                                                    <span @class(['font-semibold' => $field === 'payer_name', 'text-slate-500' => $field === 'payer_address'])>{{ filled($value) ? $value : $label.' eksik' }}</span>
-                                                                @if (blank($value))<p class="mt-1 text-xs text-amber-700">Bu bilgiyi Hesabım sayfasından tamamlayın.</p>@endif
-                                                                @error($field)<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                                                                    <span data-contact-value="{{ $field }}" @class(['font-semibold' => $field === 'payer_name', 'text-slate-500' => $field === 'payer_address'])>{{ filled($value) ? $value : $label.' eksik' }}</span>
+                                                                @if (in_array(str_replace('payer_', '', $field), $contactFieldsToComplete, true))
+                                                                    <p data-contact-missing="{{ $field }}" class="mt-1 text-xs text-amber-700">Bu bilgiyi aşağıdaki butondan tamamlayabilirsiniz.</p>
+                                                                @elseif (blank($value))
+                                                                    <p class="mt-1 text-xs text-amber-700">Bu bilgiyi <a href="{{ route('profile.edit') }}" class="underline">Hesabım</a> sayfasından tamamlayın.</p>
+                                                                @endif
+                                                                @error($field)<p data-contact-error="{{ $field }}" class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                                                                 </dd>
                                                             </div>
                                                         @endforeach
                                                         </dl>
+                                                        @if ($contactFieldsToComplete !== [])
+                                                            @include('subscriber.partials.checkout-contact-editor')
+                                                        @endif
                                                     </fieldset>
                                                 @endif
                                                 <div class="mt-4 space-y-2 text-sm text-slate-600">
