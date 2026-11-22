@@ -109,11 +109,11 @@
 
     <section data-billing-summary class="mt-4 hidden min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4" hidden aria-labelledby="billing-summary-title">
         <h3 id="billing-summary-title" class="text-sm font-semibold text-slate-900">Seçili fatura profili</h3>
-        <dl class="mt-3 space-y-2 text-sm">
+        <dl class="mt-3 space-y-1 text-sm">
             @foreach (['party-type' => 'Fatura türü', 'legal-name' => 'Ad soyad / Unvan', 'identity-number' => 'Kimlik / Vergi no', 'tax-office' => 'Vergi dairesi', 'address' => 'Fatura adresi', 'email' => 'E-posta', 'phone' => 'Telefon'] as $key => $label)
                 <div data-summary-row="{{ $key }}" class="min-w-0" hidden>
-                    <dt data-summary-label="{{ $key }}" class="text-xs text-slate-500">{{ $label }}</dt>
-                    <dd data-summary-value="{{ $key }}" class="mt-0.5 break-words text-slate-800"></dd>
+                    <dt @class(['text-slate-500', 'inline' => $key !== 'address'])><span data-summary-label="{{ $key }}">{{ $label }}</span>:</dt>
+                    <dd data-summary-value="{{ $key }}" @class(['break-words text-slate-800', 'inline' => $key !== 'address', 'mt-0.5' => $key === 'address'])></dd>
                 </div>
             @endforeach
         </dl>

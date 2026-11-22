@@ -47,7 +47,7 @@
         @forelse ($orders as $order)
             <article class="rounded-xl border border-slate-200 bg-white px-3 py-2">
                 <div class="flex flex-wrap items-baseline gap-2">
-                    <p class="font-mono font-semibold text-slate-900">{{ $order->order_number ?: '—' }}</p>
+                    <p class="font-mono font-semibold text-slate-900">@include('admin.orders.partials.number-with-apartment', ['order' => $order])</p>
                     <p class="text-xs text-slate-500">{{ $order->created_at?->format('d.m.Y') ?? '—' }}</p>
                     <p class="text-sm text-slate-700">{{ number_format((float) $order->price, 2, ',', '.') }} ₺</p>
                 </div>
@@ -84,7 +84,7 @@
                 @forelse ($orders as $order)
                     <tr class="hover:bg-slate-50">
                         <td class="px-4 py-3">
-                            <div class="font-mono font-medium text-slate-900">{{ $order->order_number ?: '—' }}</div>
+                            <div class="font-mono font-medium text-slate-900">@include('admin.orders.partials.number-with-apartment', ['order' => $order])</div>
                             <div class="text-xs text-slate-500">@include('admin.orders.partials.service-summary', ['order' => $order])</div>
                         </td>
                         <td class="whitespace-nowrap px-4 py-3 text-slate-700">{{ number_format((float) $order->price, 2, ',', '.') }} ₺</td>
