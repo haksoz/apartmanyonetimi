@@ -62,12 +62,31 @@ class SubscriberCardPaymentController extends Controller
     public function abandon(Request $request, UserSubscription $subscription, \App\Support\Paytr\AbandonCheckout $checkout)
     {
         $this->owned($subscription);
+        $data = $request->validate(['reason' => ['nullable', \Illuminate\Validation\Rule::in(['timeout', 'timeout_dismissed'])]]);
         $checkout->abandon($subscription);
         $subscription->refresh();
+        if ($subscription->checkout_abandoned_at && isset($data['reason'])) {
+            $type = $data['reason'] === 'timeout' ? 'card_timeout_closed' : 'card_timeout_dismissed';
+            foreach (\App\Models\CheckoutJourney::where('order_id', $subscription->id)->get() as $journey) {
+                $journey->events()->firstOrCreate(['type' => $type], ['source' => 'browser', 'details' => []]);
+            }
+        }
         $redirect = $subscription->status === UserSubscription::STATUS_ACTIVE
             ? route('subscriber.subscriptions.receipt', $subscription)
             : route(session('subscription_return.'.$subscription->id) === 'dashboard' ? 'dashboard' : 'subscriber.dashboard');
 
         return $request->expectsJson() ? response()->json(['redirect' => $redirect]) : redirect($redirect);
+    }
+
+    public function timer(Request $request, UserSubscription $subscription, PaymentState $states)
+    {
+        $this->owned($subscription);
+        $data = $request->validate(['type' => ['required', \Illuminate\Validation\Rule::in(['card_timeout_prompt', 'card_timeout_renewed'])]]);
+        if ($states->forOrder($subscription)['state'] !== 'ready') {
+            return response()->json(['redirect' => route('subscriber.subscriptions.card-result', $subscription)], 409);
+        }
+        app(\App\Support\CheckoutJourneyTracking::class)->orderEvent($subscription->id, $data['type'], []);
+
+        return response()->noContent();
     }
 }

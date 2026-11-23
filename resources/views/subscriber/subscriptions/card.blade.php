@@ -38,6 +38,23 @@
         <img src="{{ asset('images/paytr-logo.svg') }}" alt="PayTR" width="88" height="15" class="paytr-payment-brand">
     </section>
     <iframe src="https://www.paytr.com/odeme/guvenli/{{ rawurlencode($attempt->iframe_token) }}" id="paytriframe" title="PayTR güvenli kart ödeme formu" style="width:100%;min-height:640px;border:0" scrolling="no" referrerpolicy="no-referrer"></iframe>
+    <dialog id="paytr-timeout" aria-labelledby="paytr-timeout-title" aria-describedby="paytr-timeout-description"
+        data-duration-seconds="180" data-response-seconds="20" data-attempt-id="{{ $attempt->id }}"
+        data-provider-deadline="{{ $attempt->token_expires_at->toIso8601String() }}"
+        data-event-url="{{ route('subscriber.subscriptions.card-timer', $subscription) }}"
+        data-result-url="{{ route('subscriber.subscriptions.card-result', $subscription) }}"
+        style="position:fixed;inset:0;margin:auto;width:min(26rem,calc(100% - 2rem));max-height:calc(100dvh - 2rem);padding:24px;border:0;border-radius:16px;box-shadow:0 20px 60px #0003">
+        <h2 id="paytr-timeout-title" class="text-lg font-semibold text-slate-900">Ödemeye devam etmek istiyor musunuz?</h2>
+        <p id="paytr-timeout-description" class="mt-3 text-sm text-slate-600">3 dakikalık ekran süresi doldu. Devam etmek için süreyi uzatın. Yanıt vermezseniz bu ekran kapanır. Başlamış bir ödeme iptal edilmez; sonucu ayrıca işlenir.</p>
+        <p class="mt-3 text-sm text-slate-500">Kalan yanıt süresi: <strong data-card-countdown>20</strong> saniye</p>
+        <p data-card-timeout-error role="alert" class="mt-3 text-sm text-red-600" hidden></p>
+        <div class="mt-5 flex flex-wrap justify-end gap-3">
+            <button type="button" data-card-timeout-close class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">İşlemi kapat</button>
+            <button type="button" data-card-timeout-renew class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">3 dakika uzat</button>
+        </div>
+    </dialog>
+    <style>#paytr-timeout::backdrop { background: rgb(15 23 42 / .25); backdrop-filter: blur(4px); }</style>
+    <script src="{{ asset('js/paytr-screen-timeout.js') }}?v={{ filemtime(public_path('js/paytr-screen-timeout.js')) }}" defer></script>
     <script src="https://www.paytr.com/js/iframeResizer.min.js"></script>
     <script>if (typeof iFrameResize === 'function') iFrameResize({}, '#paytriframe');</script>
     <script>
@@ -49,9 +66,10 @@
                 const response = await fetch(@json(route('subscriber.subscriptions.card-status', $subscription)), {headers: {'Accept': 'application/json'}, credentials: 'same-origin', cache: 'no-store'});
                 if (response.ok) {
                     const result = await response.json();
-                    if (['abandoned', 'superseded', 'cancelled', 'review', 'paid', 'failed'].includes(result.state)) {
+                    if (['abandoned', 'superseded', 'cancelled', 'review', 'paid', 'failed', 'waiting'].includes(result.state)) {
                         paymentScreenLeft = true;
                         document.getElementById('payment-exit-form').dataset.exitSent = '1';
+                        window.dispatchEvent(new Event('payment-screen-exited'));
                         window.location.replace(@json(route('subscriber.subscriptions.card-result', $subscription)));
                         return;
                     }
@@ -60,6 +78,10 @@
             setTimeout(checkPaymentScreen, 5000);
         };
         setTimeout(checkPaymentScreen, 5000);
+        window.addEventListener('payment-screen-exited', () => {
+            paymentScreenLeft = true;
+            document.getElementById('paytriframe')?.remove();
+        });
         window.addEventListener('pagehide', () => {
             paymentScreenLeft = true;
             const form = document.getElementById('payment-exit-form');

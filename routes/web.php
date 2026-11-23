@@ -433,6 +433,7 @@ Route::prefix('subscriber')->name('subscriber.')->middleware(['auth'])->group(fu
             Route::post('{subscription}/card', [SubscriberCardPaymentController::class, 'start'])->middleware('throttle:10,1')->name('card.start');
             Route::get('{subscription}/card', [SubscriberCardPaymentController::class, 'show'])->name('card');
             Route::post('{subscription}/card-abandon', [SubscriberCardPaymentController::class, 'abandon'])->name('card-abandon');
+            Route::post('{subscription}/card-timer', [SubscriberCardPaymentController::class, 'timer'])->middleware('throttle:10,1')->name('card-timer');
             Route::get('{subscription}/card-result', [SubscriberCardPaymentController::class, 'result'])->name('card-result');
             Route::get('{subscription}/card-status', [SubscriberCardPaymentController::class, 'status'])->middleware('throttle:30,1')->name('card-status');
             Route::post('{subscription}/cancel', [SubscriberSubscriptionController::class, 'cancel'])->name('cancel');

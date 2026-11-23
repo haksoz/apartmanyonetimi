@@ -55,24 +55,30 @@
             const confirmClose = @json($__env->hasSection('setup_confirm_close'));
             const closeMessage = @json(trim($__env->yieldContent('setup_close_message', 'İşlemi tamamlamadan çıkmak istiyor musunuz?')));
             let exitBusy = false;
-            const finishClose = async () => {
-                if (exitBusy) return;
+            const finishClose = async (reason = null) => {
+                if (exitBusy) return false;
                 const form = document.getElementById('payment-exit-form');
                 if (!form) { window.location.assign(document.getElementById('apartment-setup-close').href); return; }
                 exitBusy = true;
                 try {
-                    const response = await fetch(form.action, {method: 'POST', body: new FormData(form), headers: {'Accept': 'application/json'}, credentials: 'same-origin'});
+                    const data = new FormData(form);
+                    if (reason) data.set('reason', reason);
+                    const response = await fetch(form.action, {method: 'POST', body: data, headers: {'Accept': 'application/json'}, credentials: 'same-origin'});
                     if (!response.ok) throw new Error('exit_failed');
                     const result = await response.json();
                     form.dataset.exitSent = '1';
+                    window.dispatchEvent(new Event('payment-screen-exited'));
                     window.location.assign(result.redirect);
+                    return true;
                 } catch (_) {
                     const error = document.getElementById('payment-exit-error');
                     error.textContent = 'Çıkış kaydedilemedi. Lütfen tekrar deneyin.';
                     error.hidden = false;
                     exitBusy = false;
+                    return false;
                 }
             };
+            if (document.getElementById('payment-exit-form')) window.payCardExit = finishClose;
             document.getElementById('apartment-setup-close').addEventListener('click', event => {
                 if (confirmClose) {
                     event.preventDefault();

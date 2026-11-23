@@ -480,6 +480,62 @@ class PaytrIframeTest extends TestCase
         $this->assertNull($otherOrder->fresh()->checkout_abandoned_at);
     }
 
+    public function test_card_screen_uses_three_minutes_and_records_renewal_without_extending_paytr_token(): void
+    {
+        $order = $this->order();
+        app(\App\Support\CheckoutJourneyTracking::class)->attach($order, null);
+        Http::fake([StartIframe::ENDPOINT => Http::response(['status' => 'success', 'token' => 'valid-token-123'])]);
+        $attempt = $this->start($order);
+        $expiry = $attempt->token_expires_at->toIso8601String();
+        $this->get(route('subscriber.subscriptions.card', $order))->assertOk()
+            ->assertSee('data-duration-seconds="180"', false)->assertSee('data-response-seconds="20"', false)
+            ->assertSee('3 dakika uzat')->assertSee('js/paytr-screen-timeout.js');
+        foreach (['card_timeout_prompt', 'card_timeout_renewed'] as $type) {
+            $this->postJson(route('subscriber.subscriptions.card-timer', $order), ['type' => $type])->assertNoContent();
+            $this->assertDatabaseHas('checkout_journey_events', ['type' => $type]);
+        }
+        $this->assertSame($expiry, $attempt->fresh()->token_expires_at->toIso8601String());
+        $this->assertNull($order->fresh()->checkout_abandoned_at);
+        $this->assertUnpaid($order);
+        Http::assertSentCount(1);
+    }
+
+    public function test_card_screen_timeout_records_exit_once_and_late_success_still_activates(): void
+    {
+        $order = $this->order();
+        app(\App\Support\CheckoutJourneyTracking::class)->attach($order, null);
+        Http::fake([StartIframe::ENDPOINT => Http::response(['status' => 'success', 'token' => 'valid-token-123'])]);
+        $attempt = $this->start($order);
+        foreach ([1, 2] as $_) {
+            $this->postJson(route('subscriber.subscriptions.card-abandon', $order), ['reason' => 'timeout'])->assertOk();
+        }
+        $this->assertNotNull($order->fresh()->checkout_abandoned_at);
+        $this->assertSame(1, \App\Models\CheckoutJourneyEvent::where('type', 'card_timeout_closed')->count());
+        $this->assertSame('pending', $attempt->fresh()->status);
+        $this->assertUnpaid($order);
+        $this->postJson(route('subscriber.subscriptions.card-timer', $order), ['type' => 'card_timeout_renewed'])->assertStatus(409);
+        $this->post(route('payments.paytr.callback'), $this->callbackPayload($attempt, 'success'))->assertOk()->assertContent('OK');
+        $this->assertTrue($order->fresh()->is_active);
+        $this->assertNull($order->fresh()->checkout_abandoned_at);
+        $this->assertDatabaseCount('subscription_payments', 1);
+    }
+
+    public function test_card_timer_events_are_owned_validated_and_reject_expired_provider_tokens(): void
+    {
+        $order = $this->order();
+        Http::fake([StartIframe::ENDPOINT => Http::response(['status' => 'success', 'token' => 'valid-token-123'])]);
+        $this->start($order);
+        $this->postJson(route('subscriber.subscriptions.card-timer', $order), ['type' => 'paid'])->assertUnprocessable();
+        $this->postJson(route('subscriber.subscriptions.card-abandon', $order), ['reason' => 'paid'])->assertUnprocessable();
+        $this->actingAs(User::factory()->withPaymentContact()->create());
+        $this->postJson(route('subscriber.subscriptions.card-timer', $order), ['type' => 'card_timeout_renewed'])->assertForbidden();
+        $this->actingAs($order->user);
+        $this->travel(31)->minutes();
+        $this->postJson(route('subscriber.subscriptions.card-timer', $order), ['type' => 'card_timeout_renewed'])
+            ->assertStatus(409)->assertJsonPath('redirect', route('subscriber.subscriptions.card-result', $order));
+        $this->assertDatabaseMissing('checkout_journey_events', ['type' => 'card_timeout_renewed']);
+    }
+
     public function test_expiry_uses_paytr_deadline_instead_of_the_early_iframe_display_cutoff(): void
     {
         $this->freezeTime();

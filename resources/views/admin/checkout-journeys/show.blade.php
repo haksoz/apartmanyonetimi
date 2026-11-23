@@ -17,7 +17,7 @@
                 $details = $event->details ?? [];
                 $eventStage = $details['stage'] ?? match ($event->type) {
                     'billing_saved' => 'billing',
-                    'card_screen', 'card_expired' => 'payment',
+                    'card_screen', 'card_expired', 'card_timeout_prompt', 'card_timeout_renewed', 'card_timeout_closed', 'card_timeout_dismissed' => 'payment',
                     default => null,
                 };
                 if ($event->source === 'browser' && $eventStage) {
@@ -48,6 +48,10 @@
                     'closed' => 'Kullanıcı çıktı',
                     'timed_out' => 'Süre doldu',
                     'timeout_prompt' => 'Süre uzatma penceresi görüntülendi',
+                    'card_timeout_prompt' => 'PayTR ekranında 3 dakikalık süre doldu; devam sorusu görüntülendi',
+                    'card_timeout_renewed' => 'Kullanıcı PayTR ekranı süresini 3 dakika uzattı',
+                    'card_timeout_closed' => 'PayTR devam sorusuna yanıt verilmedi; ödeme ekranından çıkıldı',
+                    'card_timeout_dismissed' => 'Kullanıcı PayTR devam sorusundan işlemi kapattı',
                     'timeout_dismissed' => 'Kullanıcı süre uzatma penceresinden işlemi kapattı',
                     'renewed' => 'Süre uzatıldı',
                     default => null,

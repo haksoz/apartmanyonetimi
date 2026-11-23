@@ -86,6 +86,7 @@ class AdminCustomerController extends Controller
             'max_apartments' => ['required', 'integer', 'min:1', 'max:1000'],
             'is_test_customer' => ['sometimes', 'boolean'],
         ], [
+            'password.confirmed' => 'Girdiğiniz parolalar eşleşmiyor. Lütfen her iki alana da aynı parolayı girin.',
             'phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
             'email.unique' => 'Bu e-posta adresiyle kayıtlı bir hesap var. Mevcut müşteri kaydını kullanın.',
         ]);
