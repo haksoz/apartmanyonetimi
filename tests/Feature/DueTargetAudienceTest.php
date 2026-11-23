@@ -81,49 +81,35 @@ class DueTargetAudienceTest extends TestCase
         $this->assertSame($type, $due->fresh()->due_type->value);
     }
 
-    public function test_individual_create_uses_debt_type_cards_and_preserves_selected_account(): void
+    public function test_individual_create_selects_type_before_form_and_preserves_account(): void
     {
         [$apartment, $unit, $owner] = $this->fixture();
-        $this->get(route('dues.create'))->assertOk()
-            ->assertSee('Birebir Borçlandırma')->assertSee('Borç Türü')
-            ->assertDontSee('Borçlandırma Kapsamı')
-            ->assertDontSee('type="radio" name="target_audience"', false)
-            ->assertSee('Toplu dağıtım veya otomatik kiracı/kat maliki değişikliği yapılmaz.')
-            ->assertViewHas('selectedDueType', 'aidat');
+        $this->get(route('dues.create'))->assertOk()->assertViewIs('dues.select-type')
+            ->assertSee('Borç Türünü Seçin')->assertSee('data-due-picker-type="aidat"', false);
         foreach (['aidat', 'malik_payi'] as $type) {
             $this->get(route('dues.create', ['account_id' => $owner->id, 'due_type' => $type]))
-                ->assertOk()->assertSee('Birebir Borçlandırma')
+                ->assertOk()->assertViewIs('dues.create')
                 ->assertViewHas('selectedAccountId', (string) $owner->id)
                 ->assertViewHas('selectedDueType', $type)
+                ->assertSee('type="hidden" name="due_type" value="'.$type.'"', false)
+                ->assertDontSee('type="radio" name="due_type"', false)
                 ->assertSee('name="account_id" value="'.$owner->id.'"', false);
         }
     }
 
-    public function test_cards_restore_type_and_disable_malik_payi_for_locked_tenant(): void
+    public function test_selection_survives_validation_and_tenant_cannot_choose_owner_share(): void
     {
         [$apartment, $unit, $owner] = $this->fixture();
-        foreach (['aidat', 'malik_payi'] as $type) {
-            $html = $this->get(route('dues.create', ['due_type' => $type]))->assertOk()->getContent();
-            $xpath = $this->xpath($html);
-            $radios = $xpath->query('//input[@type="radio" and @name="due_type"]');
-            $this->assertSame(2, $radios->length);
-            foreach ($radios as $radio) {
-                $this->assertTrue($radio->hasAttribute('required'));
-                $this->assertSame($type === $radio->getAttribute('value'), $radio->hasAttribute('checked'));
-            }
-            $this->assertSame(0, $xpath->query('//select[@name="due_type"]')->length);
-        }
-        $html = $this->withSession(['_old_input' => ['due_type' => 'malik_payi']])
-            ->get(route('dues.create'))->assertOk()->getContent();
-        $this->assertTrue($this->xpath($html)->query('//input[@name="due_type" and @value="malik_payi"]')->item(0)->hasAttribute('checked'));
+        $this->withSession(['_old_input' => ['due_type' => 'malik_payi']])
+            ->get(route('dues.create'))->assertOk()->assertViewHas('selectedDueType', 'malik_payi')
+            ->assertSee('type="hidden" name="due_type" value="malik_payi"', false);
         $tenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'type' => 'tenant', 'name' => 'Tenant', 'is_active' => true]);
-        $html = $this->withSession(['_old_input' => []])->get(route('dues.create', ['account_id' => $tenant->id]))
-            ->assertOk()->assertSee('Kiracı hesabına Kat Maliki Payı yazılamaz.')->getContent();
-        $xpath = $this->xpath($html);
-        $this->assertTrue($xpath->query('//input[@name="due_type" and @value="malik_payi"]')->item(0)->hasAttribute('disabled'));
-        $this->assertTrue($xpath->query('//input[@name="due_type" and @value="aidat"]')->item(0)->hasAttribute('checked'));
-        $this->assertSame((string) $tenant->id, $xpath->query('//input[@id="locked-account-id"]')->item(0)->getAttribute('value'));
+        $this->withSession(['_old_input' => []])->get(route('dues.create', ['account_id' => $tenant->id]))
+            ->assertOk()->assertViewIs('dues.select-type')->assertViewHas('pickerTenant', true)
+            ->assertSee('Kiracı hesabına Kat Maliki Payı yazılamaz.');
+        $this->getJson(route('dues.create', ['account_id' => $tenant->id, 'due_type' => 'malik_payi']))
+            ->assertUnprocessable()->assertJsonValidationErrors('account_id');
     }
 
     public function test_both_entry_buttons_link_directly_to_individual_create(): void

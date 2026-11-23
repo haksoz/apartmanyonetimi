@@ -102,10 +102,37 @@ class ExpenseRelationTest extends TestCase
         $this->assertEquals(300, $expense->transactions()->where('type', 'credit')->sole()->amount);
     }
 
+    public function test_create_requires_type_selection_and_filters_categories(): void
+    {
+        $this->get(route('expenses.index'))->assertOk()->assertSee('Gider Türünü Seçin');
+        $this->get(route('expenses.create'))->assertOk()->assertViewIs('expenses.select-type');
+        $this->get(route('expenses.create', ['expense_relation' => 'invalid']))
+            ->assertOk()->assertViewIs('expenses.select-type');
+
+        $this->category->update(['expense_relations' => ['aidat', 'malik_payi']]);
+        $operating = Category::create(['apartment_id' => $this->apartment->id, 'name' => 'Sadece ortak',
+            'is_active' => true, 'allow_expense' => true, 'expense_relations' => ['aidat']]);
+        $owner = Category::create(['apartment_id' => $this->apartment->id, 'name' => 'Sadece malik',
+            'is_active' => true, 'allow_expense' => true, 'expense_relations' => ['malik_payi']]);
+        foreach (['aidat' => $operating, 'malik_payi' => $owner] as $relation => $category) {
+            $this->get(route('expenses.create', ['expense_relation' => $relation, 'account_id' => $this->supplier->id]))
+                ->assertOk()->assertViewIs('expenses.create')
+                ->assertViewHas('categories', fn ($categories) => collect($categories->modelKeys())->sort()->values()->all() === collect([$this->category->id, $category->id])->sort()->values()->all())
+                ->assertViewHas('selectedAccountId', (string) $this->supplier->id)
+                ->assertSee('name="expense_relation" value="'.$relation.'"', false)
+                ->assertDontSee('Gideri İlişkilendir');
+        }
+        $this->from(route('expenses.create', ['expense_relation' => 'malik_payi']))
+            ->post(route('expenses.store'), $this->payload(['expense_relation' => 'malik_payi', 'amount' => 0]))
+            ->assertSessionHasErrors('amount');
+        $this->get(route('expenses.create', ['expense_relation' => 'aidat']))
+            ->assertOk()->assertViewHas('selectedRelation', 'malik_payi');
+    }
+
     public function test_category_default_is_used_for_new_expenses_and_explicit_selection_wins(): void
     {
         $this->category->update(['expense_relations' => ['aidat']]);
-        $this->get(route('expenses.create'))->assertOk()->assertSee('data-expense-relation="aidat"', false);
+        $this->get(route('expenses.create', ['expense_relation' => 'aidat']))->assertOk()->assertSee('Ortak Kullanım Gideri');
         $this->post(route('expenses.store'), $this->payload())->assertSessionHasNoErrors();
         $expense = Expense::latest('id')->firstOrFail();
         $this->assertSame(ExpenseRelation::Aidat, $expense->expense_relation);
@@ -113,7 +140,7 @@ class ExpenseRelationTest extends TestCase
         $this->assertSame(ExpenseRelation::MalikPayi, Expense::latest('id')->firstOrFail()->expense_relation);
         $this->category->update(['expense_relations' => []]);
         $this->assertSame(ExpenseRelation::Aidat, $expense->fresh()->expense_relation);
-        $this->get(route('expenses.edit', $expense))->assertOk()->assertSee('const preserveInitial = true;', false);
+        $this->get(route('expenses.edit', $expense))->assertOk()->assertSee('syncCategories(true);', false);
     }
 
     public function test_category_with_both_relations_does_not_arbitrarily_choose_for_expense(): void
@@ -132,17 +159,17 @@ class ExpenseRelationTest extends TestCase
     #[TestWith(['malik_payi'])]
     public function test_creation_stores_relation_without_creating_dues(string $relation): void
     {
-        $this->get(route('expenses.create'))->assertOk()
-            ->assertSeeInOrder(['for="amount"', 'for="description"', 'id="expense_relation"'], false)
-            ->assertSee('Ayrıntılı rapor alabilmek için gider ilişkisini oluşturun.')
-            ->assertSee('İşletme Gideri')
-            ->assertSee('Apartmanın günlük işleyişi, kullanımı ve düzenli giderleri.')
-            ->assertSee('Kat Maliki Gideri')
-            ->assertSee('Kat maliklerinin karşılaması öngörülen giderler.')
-            ->assertSee('type="radio" name="expense_relation"', false)
-            ->assertDontSee('<select id="expense_relation"', false);
         $this->post(route('expenses.store'), $this->payload(['expense_relation' => $relation]))->assertRedirect();
         $expense = Expense::sole();
+        $this->get(route('expenses.edit', $expense))->assertOk()
+            ->assertSee('Gider Türü')->assertDontSee('Gideri İlişkilendir')
+            ->assertSee('Ortak Kullanım Gideri')->assertDontSee('İşletme Gideri')
+            ->assertSee('Temizlik, elektrik, su vb. ortak kullanım ve düzenli işletim giderleri.')
+            ->assertSee('Demirbaş, yenileme vb. kat maliklerinin karşılayacağı giderler.')
+            ->assertSee('Bu seçim tek başına borçlandırma oluşturmaz.')
+            ->assertSeeInOrder(['id="expense_relation"', 'for="account_id"', 'for="category_id"'], false)
+            ->assertSee('name="expense_relation" value="'.$relation.'"', false);
+
         $this->assertSame($relation, $expense->expense_relation->value);
         $this->assertEquals(600, $expense->remaining_amount);
         $this->assertDatabaseCount('dues', 0);
@@ -247,7 +274,7 @@ class ExpenseRelationTest extends TestCase
                 file_put_contents($path, $bytes);
                 $book = IOFactory::load($path);
                 $sheet = $book->getActiveSheet();
-                $this->assertSame('Gider İlişkisi: İşletme Gideri', $sheet->getCell('A3')->getValue());
+                $this->assertSame('Gider İlişkisi: Ortak Kullanım Gideri', $sheet->getCell('A3')->getValue());
                 if ($report === 'income-expense') {
                     $this->assertEquals(300, $sheet->getCell('B5')->getValue());
                     $this->assertEquals(400, $sheet->getCell('C5')->getValue());

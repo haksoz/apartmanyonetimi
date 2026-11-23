@@ -86,7 +86,7 @@ class DueTypeTargetingTest extends TestCase
         $this->assertNull($response->json("accounts.{$tenant->id}.aidat"));
         $this->assertNotEmpty($response->json("accounts.{$tenant->id}.malik_payi"));
         $this->assertNull($response->json("accounts.{$owner->id}.malik_payi"));
-        $this->get(route('dues.create', ['account_id' => $owner->id]))->assertOk()
+        $this->get(route('dues.create', ['account_id' => $owner->id, 'due_type' => 'aidat']))->assertOk()
             ->assertSee('Hesap uygunluğu kontrol edilemedi.')
             ->assertSee('loadEligibility', false)
             ->assertDontSee('name="target_audience"', false);

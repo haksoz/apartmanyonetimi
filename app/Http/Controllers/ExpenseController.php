@@ -212,6 +212,11 @@ class ExpenseController extends Controller
 
 
 
+        $selectedRelation = $request->old('expense_relation', $request->query('expense_relation'));
+        if (! in_array($selectedRelation, ['aidat', 'malik_payi'], true)) {
+            return view('expenses.select-type');
+        }
+
         $accounts = Account::query()
 
             ->where('apartment_id', $apartment->id)
@@ -231,6 +236,7 @@ class ExpenseController extends Controller
 
 
         $categories = $this->categories($apartment->id, Category::TYPE_EXPENSE);
+        $categories = $categories->filter(fn ($category) => in_array($selectedRelation, $category->expense_relations ?? [], true));
 
 
 
@@ -258,7 +264,7 @@ class ExpenseController extends Controller
 
         $submissionToken = (string) Str::uuid();
 
-        return view('expenses.create', compact('apartment', 'accounts', 'categories', 'cashBoxes', 'selectedAccountId', 'accountCategoryMap', 'submissionToken'));
+        return view('expenses.create', compact('apartment', 'accounts', 'categories', 'cashBoxes', 'selectedAccountId', 'accountCategoryMap', 'submissionToken', 'selectedRelation'));
 
     }
 

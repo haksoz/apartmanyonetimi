@@ -164,7 +164,7 @@ class ExpensePageTest extends TestCase
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
-            ->get(route('expenses.create'))
+            ->get(route('expenses.create', ['expense_relation' => 'aidat']))
             ->assertStatus(200)
             ->assertSee('Gider Ekle')
             ->assertSee($account->name)

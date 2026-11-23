@@ -38,10 +38,11 @@ class CategoryOrderingTest extends TestCase
             );
         }
         foreach (['dues.create', 'dues.batch.create'] as $route) {
-            $this->get(route($route))->assertOk()
-                ->assertViewHas('categories', fn ($options) => $options->pluck('id')->all() === $ids);
+            $aidatIds = $categories->reverse()->filter(fn ($category) => $category->allow_aidat)->pluck('id')->values()->all();
+            $this->get(route($route, ['due_type' => 'aidat']))->assertOk()
+                ->assertViewHas('categories', fn ($options) => $options->pluck('id')->all() === $aidatIds);
         }
-        $this->get(route('dues.batch.create'))->assertOk()
+        $this->get(route('dues.batch.create', ['due_type' => 'aidat']))->assertOk()
             ->assertViewHas('expenseCategories', fn ($options) => $options->pluck('id')->all() === $expenseIds);
         $ownerShareIds = $categories->reverse()->filter(fn ($category) => $category->allow_malik_payi)->pluck('id')->values()->all();
         $this->get(route('assessment-plans.create'))->assertOk()

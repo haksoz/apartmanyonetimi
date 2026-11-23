@@ -140,21 +140,12 @@
         <div id="fixed-fields" class="rounded-2xl bg-white p-5 shadow-sm space-y-4 @if(old('source_type', $initialSource) !== 'fixed') hidden @endif">
             <div id="fixed-type-slot">
                 <div id="batch-type-fields" class="grid gap-4">
-                    <fieldset id="due_type">
-                        <legend class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></legend>
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            @foreach ($dueTypes as $t)
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="due_type" value="{{ $t['value'] }}" required class="peer sr-only" @checked(old('due_type', 'aidat') === $t['value'])>
-                                    <span class="block h-full rounded-xl border-2 border-slate-200 p-4 transition-all hover:bg-sky-50 peer-checked:border-sky-500 peer-checked:bg-sky-50 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-600 peer-focus-visible:ring-offset-2">
-                                        <span class="block text-sm font-semibold text-slate-800">{{ $t['label'] }}</span>
-                                        <span class="mt-1 block text-xs text-slate-600">{{ $t['value'] === 'aidat' ? 'Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.' : 'Sadece kat malikleri: borç doğrudan kat malikine yansıtılır.' }}</span>
-                                    </span>
-                                </label>
-                            @endforeach
-                        </div>
-                        @error('due_type')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-                    </fieldset>
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                        <input type="hidden" name="due_type" value="{{ $selectedDueType }}">
+                        <p class="text-sm font-semibold text-emerald-800">{{ \App\Enums\DueType::from($selectedDueType)->label() }}</p>
+                        <p class="mt-1 text-xs text-emerald-700">{{ $selectedDueType === 'aidat' ? 'Apartmanın ortak kullanım ve düzenli giderleri için borçlandırma.' : 'Demirbaş, yenileme ve benzeri işler için kat maliklerine borçlandırma.' }}</p>
+                        @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
+                    </div>
 
                     <div id="category-field">
                         <label for="category_id" class="mb-2 block text-sm font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
@@ -245,7 +236,7 @@
             {{-- Target Audience Selection --}}
             <div class="mb-4">
                 <label class="mb-2 block text-sm font-medium text-slate-600">Borçlanacak Kişiler</label>
-                <p id="target-audience-summary" aria-live="polite" class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{{ old('due_type', 'aidat') === 'malik_payi' ? 'Sadece kat malikleri borçlandırılır.' : 'Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.' }}</p>
+                <p id="target-audience-summary" aria-live="polite" class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{{ $selectedDueType === 'malik_payi' ? 'Sadece kat malikleri borçlandırılır.' : 'Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.' }}</p>
                 <p class="mt-2 text-xs text-slate-500">Borç türüne göre otomatik belirlenir.</p>
             </div>
 
@@ -656,7 +647,7 @@
 
             // Auto-populate description based on period and category
             const typeInputs = document.querySelectorAll('input[name="due_type"]');
-            const selectedDueType = () => document.querySelector('input[name="due_type"]:checked')?.value || '';
+            const selectedDueType = () => document.querySelector('input[type="hidden"][name="due_type"]')?.value || '';
             const dueTypeLabels = @json(collect($dueTypes)->pluck('label', 'value'));
             const targetAudienceSummary = document.getElementById('target-audience-summary');
             const syncTargetAudience = () => {

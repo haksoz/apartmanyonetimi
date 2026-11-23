@@ -668,6 +668,8 @@
                 }
             });
         </script>
+        @include('expenses._type-modal')
+        @include('dues._batch-method-picker')
         @include('partials.legal-consent-prompt')
         @include('partials.portal-offer-prompt')
     @endauth

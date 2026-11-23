@@ -82,7 +82,7 @@ class DuePageTest extends TestCase
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
-            ->get(route('dues.create', ['account_id' => $account->id]))
+            ->get(route('dues.create', ['account_id' => $account->id, 'due_type' => 'aidat']))
             ->assertOk()
             ->assertSee('Daire 01')
             ->assertSee('Salih Sayan (Kat Maliki)', false)
@@ -94,11 +94,11 @@ class DuePageTest extends TestCase
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
-            ->get(route('dues.create'))
+            ->get(route('dues.create', ['due_type' => 'aidat']))
             ->assertOk()
             ->assertSee('Aidatlar')
             ->assertSee(route('dues.index'), false)
-            ->assertSee('text-lg font-semibold text-slate-800">Birebir Borçlandırma', false)
+            ->assertSee('text-lg font-semibold text-slate-800">Aidat Borçlandır', false)
             ->assertSee('Tek hesaba birebir borçlandırma oluşturun.')
             ->assertSee('Geri')
             ->assertSee('history.back()', false)
@@ -1535,7 +1535,7 @@ class DuePageTest extends TestCase
         $inactive = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'type' => Account::TYPE_TENANT, 'name' => 'Hidden Former Tenant', 'is_active' => false]);
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
-        $this->get(route('dues.create'))->assertOk()
+        $this->get(route('dues.create', ['due_type' => 'aidat']))->assertOk()
             ->assertViewHas('accounts', fn ($accounts) => $accounts->contains('id', $active->id)
                 && ! $accounts->contains('id', $inactive->id))
             ->assertDontSee('Hidden Former Tenant');
@@ -1608,17 +1608,26 @@ class DuePageTest extends TestCase
         Category::createDefaultsFor($apartment->id);
         $apartment->refresh();
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
-        $this->get(route('dues.batch.create'))->assertOk()
-            ->assertSee('Sadece kat malikleri: borç doğrudan kat malikine yansıtılır.')
+        $this->get(route('dues.create'))->assertOk()->assertViewIs('dues.select-type')
+            ->assertSee('data-due-picker-type="aidat"', false)
+            ->assertSee('data-due-picker-type="malik_payi"', false);
+        $this->get(route('dues.create', ['account_id' => $tenant->id]))
+            ->assertOk()->assertViewHas('pickerTenant', true);
+        $this->get(route('dues.batch.create'))->assertOk()->assertViewIs('dues.select-type')
+            ->assertSee('data-due-picker-method="expenses"', false);
+        $this->get(route('dues.create', ['due_type' => 'malik_payi']))->assertOk()
+            ->assertViewHas('accounts', fn ($accounts) => $accounts->contains('id', $owner->id) && ! $accounts->contains('id', $tenant->id))
+            ->assertViewHas('categories', fn ($categories) => $categories->every(fn ($category) => $category->allow_malik_payi));
+        $this->get(route('dues.batch.create', ['due_type' => 'aidat']))->assertOk()
+            ->assertSee('Apartmanın ortak kullanım ve düzenli giderleri için borçlandırma.')
             ->assertSee('Kiracı öncelikli: varsa kiracı, yoksa kat maliki borçlandırılır.')
-            ->assertSee('type="radio" name="due_type" value="aidat"', false)
-            ->assertSee('type="radio" name="due_type" value="malik_payi"', false)
-            ->assertSee('peer-checked:border-sky-500', false)
+            ->assertSee('type="hidden" name="due_type" value="aidat"', false)
+            ->assertDontSee('type="radio" name="due_type"', false)
             ->assertDontSee('<select id="due_type"', false)
             ->assertDontSee('type="radio" name="target_audience"', false);
 
         foreach (['fixed' => 'Sabit Tutar', 'manual' => 'Tutardan Hesapla', 'expenses' => 'Giderden Hesapla'] as $source => $label) {
-            $this->get(route('dues.batch.create', ['source_type' => $source]))->assertOk()
+            $this->get(route('dues.batch.create', ['source_type' => $source, 'due_type' => 'aidat']))->assertOk()
                 ->assertSee('id="batch-source-options" class="hidden md:flex', false)
                 ->assertSee('name="source_type" value="'.$source.'" class="peer sr-only" checked', false)
                 ->assertSee($label);
@@ -1673,7 +1682,7 @@ class DuePageTest extends TestCase
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
-            ->get(route('dues.create'))
+            ->get(route('dues.create', ['due_type' => 'aidat']))
             ->assertOk()
             ->assertSee('id="category-field"', false)
             ->assertSee('Gelir Kalemi')

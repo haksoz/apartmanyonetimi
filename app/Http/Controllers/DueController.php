@@ -175,14 +175,20 @@ class DueController extends Controller
                 ->whereIn('type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
                 ->when($request->query('due_type') === DueType::MalikPayi->value, fn ($query) => $query->where('type', Account::TYPE_OWNER)))],
         ]);
-        $selectedDueType = $request->query('due_type', DueType::Aidat->value);
+        $selectedDueType = $request->old('due_type', $request->query('due_type'));
+        if (! in_array($selectedDueType, DueType::values(), true)) {
+            $pickerTenant = Account::whereKey($request->query('account_id'))->where('apartment_id', $apartment->id)
+                ->where('type', Account::TYPE_TENANT)->exists();
+            return view('dues.select-type', compact('pickerTenant'));
+        }
 
         $dueTypes = DueType::options();
-        $categories = $this->selectableDueCategories($apartment->id);
+        $categories = $this->selectableDueCategories($apartment->id)
+            ->filter(fn ($category) => $category->{DueType::from($selectedDueType)->categoryPermission()});
         $accounts = Account::query()
             ->where('accounts.apartment_id', $apartment->id)
             ->where('accounts.is_active', true)
-            ->whereIn('accounts.type', [Account::TYPE_OWNER, Account::TYPE_TENANT])
+            ->whereIn('accounts.type', $selectedDueType === 'malik_payi' ? [Account::TYPE_OWNER] : [Account::TYPE_OWNER, Account::TYPE_TENANT])
             ->with('unit')
             ->leftJoin('units', 'accounts.unit_id', '=', 'units.id')
             ->orderByRaw('units.unit_no IS NULL, CAST(units.unit_no AS UNSIGNED)')
@@ -219,7 +225,7 @@ class DueController extends Controller
         return response()->json(['accounts' => $result]);
     }
 
-    public function createBatch(CurrentApartment $currentApartment)
+    public function createBatch(CurrentApartment $currentApartment, Request $request)
     {
         $apartment = $this->resolveApartment($currentApartment);
 
@@ -227,8 +233,14 @@ class DueController extends Controller
             return $apartment;
         }
 
+        $selectedDueType = $request->old('due_type', $request->query('due_type'));
+        if (! in_array($selectedDueType, DueType::values(), true)) {
+            return view('dues.select-type');
+        }
+
         $dueTypes = DueType::batchOptions();
-        $categories = $this->selectableDueCategories($apartment->id);
+        $categories = $this->selectableDueCategories($apartment->id)
+            ->filter(fn ($category) => $category->{DueType::from($selectedDueType)->categoryPermission()});
         $expenseCategories = Category::query()
             ->where('apartment_id', $apartment->id)
             ->where('allow_expense', true)
@@ -270,7 +282,7 @@ class DueController extends Controller
             $expensesByCategory[$category->id] = $categoryExpenses;
         }
 
-        return view('dues.batch-create', compact('apartment', 'dueTypes', 'categories', 'expenseCategories', 'units', 'unitsData', 'expensesByPeriod', 'expensesByCategory'));
+        return view('dues.batch-create', compact('apartment', 'dueTypes', 'categories', 'expenseCategories', 'units', 'unitsData', 'expensesByPeriod', 'expensesByCategory', 'selectedDueType'));
     }
 
     public function getExpensesForPeriod(Request $request, CurrentApartment $currentApartment)

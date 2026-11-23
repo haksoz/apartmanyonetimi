@@ -35,7 +35,7 @@
         @if ($tab['key'] === 'due')
             @include('dues._create-menu', ['dueMenuAccount' => $account])
         @else
-        <a href="{{ $tab['url'] }}"
+        <a href="{{ $tab['url'] }}" data-due-account-type="{{ $tab['key'] === 'due' ? $account->type : '' }}"
            class="min-h-[3.5rem] sm:min-h-0 inline-flex items-center justify-center rounded-2xl sm:rounded-xl px-5 text-xs sm:text-sm sm:px-4 sm:py-2.5 font-semibold text-white {{ $tab['color'] }} {{ $active === $tab['key'] ? 'ring-2 ring-offset-2 ring-slate-950' : '' }}">
             {{ $tab['label'] }}
         </a>
@@ -59,7 +59,7 @@
         @endif
 
         @foreach ($tabs as $tab)
-            <a href="{{ $tab['url'] }}"
+            <a href="{{ $tab['url'] }}" data-due-account-type="{{ $tab['key'] === 'due' ? $account->type : '' }}"
                class="flex w-full items-center justify-start rounded-xl border border-slate-300 px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 {{ $active === $tab['key'] ? 'ring-2 ring-offset-2 ring-slate-950' : '' }}">
                 {{ $tab['label'] }}
             </a>

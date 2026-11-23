@@ -5,7 +5,7 @@
 @section('content')
     @php
         $selectedAccount = $accounts->firstWhere('id', (int) old('account_id', $selectedAccountId ?? 0));
-        $individualTitle = 'Birebir Borçlandırma';
+        $individualTitle = \App\Enums\DueType::from($selectedDueType)->label().' Borçlandır';
         $lockedAccount = $accounts->firstWhere('id', (int) ($selectedAccountId ?? 0));
         $selectedDueType = $lockedAccount?->type === \App\Models\Account::TYPE_TENANT ? 'aidat' : old('due_type', $selectedDueType);
     @endphp
@@ -46,24 +46,12 @@
             @endif
 
             <div class="grid gap-5 md:grid-cols-2 {{ $selectedAccount ? 'mt-5 border-t border-slate-100 pt-5' : '' }}">
-                <fieldset class="md:col-span-2">
-                    <legend class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></legend>
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        @foreach ($dueTypes as $t)
-                            @php($blocked = $t['value'] === 'malik_payi' && $lockedAccount?->type === \App\Models\Account::TYPE_TENANT)
-                            <label class="cursor-pointer has-[:disabled]:cursor-not-allowed">
-                                <input type="radio" name="due_type" value="{{ $t['value'] }}" required class="peer sr-only" @checked($selectedDueType === $t['value']) @disabled($blocked)>
-                                <span class="block h-full rounded-xl border-2 border-slate-200 p-4 transition-all peer-checked:border-sky-500 peer-checked:bg-sky-50 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-600 peer-focus-visible:ring-offset-2 peer-disabled:opacity-50 peer-enabled:hover:bg-sky-50">
-                                    <span class="block text-sm font-semibold text-slate-800">{{ $t['label'] }}</span>
-                                    <span class="mt-1 block text-xs text-slate-600">{{ $t['value'] === 'aidat' ? 'İlgili dönemde kiracı varsa yalnızca kiracıya; yoksa kat malikine borç yazılır.' : 'Yalnızca seçtiğiniz kat maliki hesabına Kat Maliki Payı türünde borç yazılır.' }}</span>
-                                    @if ($blocked)<span class="mt-2 block text-xs font-medium text-amber-700">Kiracı hesabına Kat Maliki Payı yazılamaz. Kat malikinin hesap sayfasından ilerleyin.</span>@endif
-                                </span>
-                            </label>
-                        @endforeach
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 md:col-span-2">
+                        <input type="hidden" name="due_type" value="{{ $selectedDueType }}">
+                        <p class="text-sm font-semibold text-emerald-800">{{ \App\Enums\DueType::from($selectedDueType)->label() }}</p>
+                        <p class="mt-1 text-xs text-emerald-700">{{ $selectedDueType === 'aidat' ? 'Apartmanın ortak kullanım ve düzenli giderleri için borçlandırma.' : 'Demirbaş, yenileme ve benzeri işler için kat maliklerine borçlandırma.' }}</p>
+                        @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                     </div>
-                    <p class="mt-3 text-xs text-slate-500">Bu işlem yalnızca seçilen hesabı borçlandırır. Toplu dağıtım veya otomatik kiracı/kat maliki değişikliği yapılmaz.</p>
-                    @error('due_type')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                </fieldset>
                 <div class="min-w-0">
                     <label for="account_id" class="mb-2 block text-sm font-medium text-slate-600">Borçlandırılacak Hesap</label>
                     <select id="account_id" name="{{ $lockedAccount ? null : 'account_id' }}" required
@@ -130,7 +118,7 @@
     <script>
         (() => {
             const typeInputs = document.querySelectorAll('input[name="due_type"]');
-            const selectedDueType = () => document.querySelector('input[name="due_type"]:checked')?.value || '';
+            const selectedDueType = () => document.querySelector('input[type="hidden"][name="due_type"]')?.value || '';
             const dueTypeLabels = @json(collect($dueTypes)->pluck('label', 'value'));
             const accountSelect = document.getElementById('account_id');
             const accountOptions = Array.from(accountSelect.options);

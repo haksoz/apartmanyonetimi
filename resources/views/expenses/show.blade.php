@@ -183,7 +183,7 @@
                     </div>
 
                     <div class="flex items-center justify-between gap-3 bg-white px-4 py-3">
-                        <div class="text-xs text-slate-500">Gider İlişkisi</div>
+                        <div class="text-xs text-slate-500">Gider Türü</div>
                         <div class="font-semibold text-slate-900 text-right">{{ $expense->expense_relation->label() }}</div>
                     </div>
 

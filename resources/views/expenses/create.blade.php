@@ -27,10 +27,13 @@
 
     <form id="expense-create-form" method="POST" action="{{ route('expenses.store') }}" enctype="multipart/form-data" class="space-y-4">
         @csrf
+        <input type="hidden" name="expense_relation" value="{{ $selectedRelation }}">
         <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
 
         <div class="rounded-2xl bg-white p-6 shadow-sm">
             <h1 class="text-2xl font-bold text-slate-950">Gider Ekle</h1>
+            <p class="mt-2 text-sm font-semibold text-sky-700">{{ $selectedRelation === 'aidat' ? 'Ortak Kullanım Gideri' : 'Kat Maliki Gideri' }}</p>
+            @error('expense_relation')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             <p class="mt-1 text-sm text-slate-500">{{ $apartment->name }} için yeni gider kaydı oluşturun.</p>
 
             <div class="mt-5 grid gap-5 border-t border-slate-100 pt-5 md:grid-cols-2">
@@ -53,9 +56,12 @@
                     <select id="category_id" name="category_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Kategori seçin</option>
                         @foreach ($categories as $category)
-                            <option data-expense-relation="{{ $category->suggested_expense_relation->value ?? 'unassigned' }}" value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
+                            <option value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
                         @endforeach
                     </select>
+                    @if ($categories->isEmpty())
+                        <p class="mt-2 text-sm text-amber-700">Bu gider türüne uygun aktif kategori bulunamadı. Kategoriler ekranından gider türüne uygun bir kategori tanımlayın.</p>
+                    @endif
                     @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
@@ -83,7 +89,7 @@
                     @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
-                @include('expenses._relation-field')
+
             </div>
         </div>
 
@@ -282,7 +288,7 @@
                         <select name="default_category_id" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                             <option value="">Kategori seçin</option>
                             @foreach ($categories as $category)
-                                <option data-expense-relation="{{ $category->suggested_expense_relation->value ?? 'unassigned' }}" value="{{ $category->id }}">{{ $category->name }}</option>
+                                <option value="{{ $category->id }}">{{ $category->name }}</option>
                             @endforeach
                         </select>
                     </div>

@@ -21,7 +21,7 @@
         <svg class="h-5 w-5 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
         <div class="text-sm text-amber-800">
             <span class="font-semibold">Bu gider ödenmiştir.</span>
-            Tutar, hesap ve ödeme durumu değiştirilemez. Yalnızca açıklama, dönem ve tarih bilgileri düzenlenebilir.
+            Tutar, hesap ve ödeme durumu değiştirilemez. Gider türü, kategori, açıklama ve tarih bilgileri düzenlenebilir.
         </div>
     </div>
     @endif
@@ -29,6 +29,10 @@
     <form method="POST" action="{{ route('expenses.update', $expense) }}" enctype="multipart/form-data" class="space-y-4">
         @csrf
         @method('PUT')
+
+        <div class="rounded-2xl bg-white p-6 shadow-sm">
+            @include('expenses._relation-field')
+        </div>
 
         {{-- Hesap & Gider Bilgisi --}}
         <div class="rounded-2xl bg-white p-6 shadow-sm">
@@ -45,7 +49,7 @@
                     <select id="category_id" name="category_id" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                         <option value="">Kategori seçin</option>
                         @foreach ($categories as $category)
-                            <option data-expense-relation="{{ $category->suggested_expense_relation->value ?? 'unassigned' }}" value="{{ $category->id }}" @selected((string) old('category_id', $expense->category_id) === (string) $category->id)>{{ $category->name }}</option>
+                            <option data-expense-relations="{{ implode(',', $category->expense_relations ?? []) }}" value="{{ $category->id }}" @selected((string) old('category_id', $expense->category_id) === (string) $category->id)>{{ $category->name }}</option>
                         @endforeach
                     </select>
                     @error('category_id')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -69,7 +73,6 @@
                     @error('description')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
 
-                @include('expenses._relation-field')
             </div>
         </div>
 
