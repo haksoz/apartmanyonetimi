@@ -16,6 +16,7 @@ final class VerifiedNotification
         public readonly ?string $paymentType,
         public readonly bool $isTest,
         public readonly ?string $failureCode,
+        public readonly bool $hasTestMode = true,
     ) {}
 
     public static function verify(array $payload): self
@@ -49,22 +50,33 @@ final class VerifiedNotification
         return new self($data['merchant_oid'], $data['status'], (int) $data['total_amount'],
             isset($data['payment_amount']) ? (int) $data['payment_amount'] : null,
             $data['currency'] ?? null, $data['payment_type'] ?? null,
-            ($data['test_mode'] ?? '0') === '1', $data['failed_reason_code'] ?? null);
+            ($data['test_mode'] ?? '0') === '1', $data['failed_reason_code'] ?? null, isset($data['test_mode']));
     }
 
-    public function mismatchReason(SubscriptionPaymentAttempt $attempt): ?string
+    /** Reprocess only an audit previously persisted AFTER signature verification, never a browser payload. */
+    public static function recordedFailure(\App\Models\SubscriptionPaymentNotification $audit): self
+    {
+        if ($audit->provider_status !== 'failed' || ! $audit->exists) {
+            throw new \InvalidArgumentException('Only recorded failed notifications can be reprocessed.');
+        }
+        return new self($audit->attempt->merchant_oid, 'failed', $audit->total_amount_minor,
+            $audit->payment_amount_minor, $audit->reported_currency, $audit->reported_payment_type,
+            (bool) $audit->reported_test_mode, $audit->failed_reason_code);
+    }
+
+    public function mismatchReason(SubscriptionPaymentAttempt $attempt, bool $recoverMissingFailureFields = false): ?string
     {
         // Only merchant_oid, status and total_amount are authenticated by PayTR's HMAC.
         // The local attempt is authoritative; unsigned metadata can only reject a result.
         return match (true) {
             $attempt->provider !== 'paytr', $attempt->merchant_oid !== $this->merchantOid => 'attempt_mismatch',
-            $attempt->review_required => 'review_required',
+            $attempt->review_required && ! $recoverMissingFailureFields => 'review_required',
             $attempt->submitted_at === null => 'attempt_not_submitted',
-            $attempt->currency !== 'TRY', $this->currency !== 'TL' => 'currency_mismatch',
-            $this->paymentType !== 'card' => 'payment_type_mismatch',
-            $this->isTest !== $attempt->is_test => 'test_mode_mismatch',
-            $attempt->is_test && ! app(Access::class)->canSettleTest($attempt->subscription->user) => 'test_settlement_disabled',
-            $this->paymentAmount !== $attempt->amount_minor => 'payment_amount_mismatch',
+            $attempt->currency !== 'TRY', ($this->status === 'success' || $this->currency !== null) && $this->currency !== 'TL' => 'currency_mismatch',
+            ($this->status === 'success' || $this->paymentType !== null) && $this->paymentType !== 'card' => 'payment_type_mismatch',
+            ($this->status === 'success' || $this->hasTestMode) && $this->isTest !== $attempt->is_test => 'test_mode_mismatch',
+            $this->status === 'success' && $attempt->is_test && ! app(Access::class)->canSettleTest($attempt->subscription->user) => 'test_settlement_disabled',
+            ($this->status === 'success' || $this->paymentAmount !== null) && $this->paymentAmount !== $attempt->amount_minor => 'payment_amount_mismatch',
             $this->status === 'success' && ($this->totalAmount !== $attempt->amount_minor || $attempt->amount_minor <= 0) => 'total_amount_mismatch',
             default => null,
         };

@@ -15,21 +15,21 @@ class HandleNotification
 {
     public function __construct(private FinalizeSubscriptionPayment $finalize) {}
 
-    public function handle(VerifiedNotification $notification): bool
+    public function handle(VerifiedNotification $notification, bool $countDelivery = true): bool
     {
         $attempt = SubscriptionPaymentAttempt::where('merchant_oid', $notification->merchantOid)->where('provider', 'paytr')->first();
         if (! $attempt) {
             throw new CallbackRejected(404, 'Payment attempt not found.');
         }
 
-        return DB::transaction(function () use ($attempt, $notification) {
+        return DB::transaction(function () use ($attempt, $notification, $countDelivery) {
             $order = SubscriptionOrderLock::acquire($attempt->subscription);
             $attempt = $order->paymentAttempts()->whereKey($attempt->id)->lockForUpdate()->firstOrFail();
             $attributes = $notification->auditAttributes();
             $fingerprint = hash('sha256', $attempt->id.'|'.json_encode($attributes, JSON_THROW_ON_ERROR));
             $audit = SubscriptionPaymentNotification::firstOrNew(['fingerprint' => $fingerprint]);
             $audit->fill($attributes + ['payment_attempt_id' => $attempt->id]);
-            $audit->deliveries = $audit->exists ? $audit->deliveries + 1 : 1;
+            $audit->deliveries = $audit->exists ? $audit->deliveries + ($countDelivery ? 1 : 0) : 1;
 
             $review = function (string $reason) use ($attempt, $audit): bool {
                 if ($reason === 'review_required' && $audit->exists && $audit->reason) {
@@ -57,7 +57,8 @@ class HandleNotification
                 return true;
             }
 
-            if ($reason = $notification->mismatchReason($attempt)) {
+            $recover = $this->canRecoverMissingFailureFields($attempt);
+            if ($reason = $notification->mismatchReason($attempt, $recover)) {
                 return $review($reason);
             }
             if ($order->payment_method !== 'kredi_kartı' || PaymentAmount::minor($order->price) !== $attempt->amount_minor) {
@@ -81,7 +82,11 @@ class HandleNotification
             }
 
             // A verified failure closes this checkout; any retry starts a separate journey and merchant_oid.
-            $attempt->update(['status' => 'failed', 'settled_at' => now()]);
+            $attempt->update(['status' => 'failed', 'settled_at' => now(), 'review_required' => false]);
+            if ($recover) {
+                $attempt->notifications()->where('outcome', 'review')->update(['outcome' => 'resolved', 'reason' => 'missing_failure_fields_resolved']);
+                app(\App\Support\CheckoutJourneyTracking::class)->orderEvent($order->id, 'failure_review_resolved', ['attempt_id' => $attempt->id]);
+            }
             if ($superseded) {
                 // Only the old financial attempt is resolved. The replacement checkout is independent.
             } elseif ($order->trashed()) {
@@ -105,5 +110,20 @@ class HandleNotification
 
             return true;
         }, 3);
+    }
+
+    public function canRecoverMissingFailureFields(SubscriptionPaymentAttempt $attempt): bool
+    {
+        if (! $attempt->review_required || ! in_array($attempt->status, ['pending', 'unknown'], true)) return false;
+        $audits = $attempt->notifications()->get();
+        return $audits->isNotEmpty() && $audits->every(fn ($audit) => $audit->provider_status === 'failed'
+            && $audit->outcome === 'review'
+            && VerifiedNotification::recordedFailure($audit)->mismatchReason($attempt, true) === null
+            && match ($audit->reason) {
+                'currency_mismatch' => $audit->reported_currency === null,
+                'payment_amount_mismatch' => $audit->payment_amount_minor === null,
+                'payment_type_mismatch' => $audit->reported_payment_type === null,
+                default => false,
+            });
     }
 }

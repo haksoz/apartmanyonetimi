@@ -49,6 +49,7 @@
                     'timed_out' => 'Süre doldu',
                     'timeout_prompt' => 'Süre uzatma penceresi görüntülendi',
                     'card_timeout_prompt' => 'PayTR ekranında 3 dakikalık süre doldu; devam sorusu görüntülendi',
+                    'failure_review_resolved' => 'Eksik başarısız bildirim alanlarından kaynaklanan inceleme giderildi',
                     'card_timeout_renewed' => 'Kullanıcı PayTR ekranı süresini 3 dakika uzattı',
                     'card_timeout_closed' => 'PayTR devam sorusuna yanıt verilmedi; ödeme ekranından çıkıldı',
                     'card_timeout_dismissed' => 'Kullanıcı PayTR devam sorusundan işlemi kapattı',

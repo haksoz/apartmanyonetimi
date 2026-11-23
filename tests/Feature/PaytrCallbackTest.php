@@ -108,6 +108,109 @@ class PaytrCallbackTest extends TestCase
         $this->assertSame($reference, $attempt->fresh()->transaction_number);
     }
 
+    public function test_signed_failure_without_optional_details_closes_abandoned_checkout_and_acknowledges_replays(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        app(\App\Support\Paytr\AbandonCheckout::class)->abandon($order);
+        $payload = $this->payload($attempt, ['status' => 'failed', 'total_amount' => '0', 'failed_reason_code' => '6']);
+        unset($payload['currency'], $payload['payment_amount'], $payload['payment_type'], $payload['test_mode']);
+        config(['paytr.allow_test_settlement' => false]);
+        $this->send($payload)->assertOk()->assertContent('OK');
+        $this->send($payload)->assertOk()->assertContent('OK');
+        $this->assertSame('failed', $attempt->fresh()->status);
+        $this->assertFalse($attempt->fresh()->review_required);
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertDatabaseCount('subscription_payments', 0);
+        $this->assertSame(2, $attempt->notifications()->sole()->deliveries);
+        $this->assertSame('duplicate', $attempt->notifications()->sole()->outcome);
+    }
+
+    private function legacyMissingFailureReview(SubscriptionPaymentAttempt $attempt): array
+    {
+        $payload = $this->payload($attempt, ['status' => 'failed', 'total_amount' => '0', 'failed_reason_code' => '6']);
+        unset($payload['currency'], $payload['payment_amount']);
+        $verified = \App\Support\Paytr\VerifiedNotification::verify($payload);
+        $attributes = $verified->auditAttributes();
+        $attempt->update(['status' => 'unknown', 'review_required' => true]);
+        $attempt->notifications()->create($attributes + [
+            'fingerprint' => hash('sha256', $attempt->id.'|'.json_encode($attributes, JSON_THROW_ON_ERROR)),
+            'outcome' => 'review', 'reason' => 'currency_mismatch', 'deliveries' => 13,
+        ]);
+        return $payload;
+    }
+
+    public function test_redelivery_resolves_only_missing_failure_field_review_and_preserves_replacement(): void
+    {
+        $attempt = $this->attempt();
+        $order = $attempt->subscription;
+        $new = app(SubscriptionCheckout::class)->openPending($order->user, collect([$order->items()->first()->apartment]),
+            'monthly', 'kredi_kartı', $order->user->billingProfiles()->first());
+        $payload = $this->legacyMissingFailureReview($attempt);
+        $this->send($payload)->assertOk()->assertContent('OK');
+        $this->assertSame('failed', $attempt->fresh()->status);
+        $this->assertFalse($attempt->fresh()->review_required);
+        $this->assertSame('pending', $new->fresh()->status);
+        $this->assertSame(14, $attempt->notifications()->sole()->deliveries);
+        $this->assertSame('failed', $attempt->notifications()->sole()->outcome);
+        $this->assertDatabaseHas('checkout_journey_events', ['type' => 'failure_review_resolved']);
+        $this->assertDatabaseCount('subscription_payments', 0);
+    }
+
+    public function test_repair_command_dry_run_and_apply_reprocess_recorded_verified_failure_without_inventing_delivery(): void
+    {
+        $attempt = $this->attempt();
+        $this->legacyMissingFailureReview($attempt);
+        $this->artisan('paytr:resolve-failed-notifications', ['--attempt' => $attempt->id])->assertSuccessful();
+        $this->assertTrue($attempt->fresh()->review_required);
+        $this->artisan('paytr:resolve-failed-notifications', ['--attempt' => $attempt->id, '--apply' => true])->assertSuccessful();
+        $this->assertSame('failed', $attempt->fresh()->status);
+        $this->assertFalse($attempt->fresh()->review_required);
+        $this->assertSame(13, $attempt->notifications()->sole()->deliveries);
+        $this->assertSame('failed', $attempt->notifications()->sole()->outcome);
+        $this->assertSame('cancelled', $attempt->subscription->fresh()->status);
+        $this->artisan('paytr:resolve-failed-notifications', ['--attempt' => $attempt->id, '--apply' => true])->assertSuccessful();
+        $this->assertDatabaseCount('subscription_payments', 0);
+    }
+
+    public function test_failure_repair_never_releases_success_conflicts_or_present_mismatching_metadata(): void
+    {
+        foreach ([['currency' => 'USD'], ['payment_amount' => '1'], ['payment_type' => 'eft']] as $override) {
+            $attempt = $this->attempt();
+            $payload = $this->payload($attempt, ['status' => 'failed', 'total_amount' => '0'] + $override);
+            $this->send($payload)->assertStatus(409);
+            $this->artisan('paytr:resolve-failed-notifications', ['--attempt' => $attempt->id, '--apply' => true])->assertSuccessful();
+            $this->assertTrue($attempt->fresh()->review_required);
+            $this->assertSame('unknown', $attempt->fresh()->status);
+        }
+        $attempt = $this->attempt();
+        $payload = $this->legacyMissingFailureReview($attempt);
+        $this->send($this->payload($attempt))->assertStatus(409);
+        $this->send($payload)->assertStatus(409);
+        $this->artisan('paytr:resolve-failed-notifications', ['--attempt' => $attempt->id, '--apply' => true])->assertSuccessful();
+        $this->assertTrue($attempt->fresh()->review_required);
+        $this->assertDatabaseCount('subscription_payments', 0);
+    }
+
+    public function test_missing_success_metadata_still_requires_review_and_bad_failure_signature_does_not_change_state(): void
+    {
+        foreach (['currency', 'payment_amount', 'payment_type'] as $field) {
+            $attempt = $this->attempt();
+            $payload = $this->payload($attempt);
+            unset($payload[$field]);
+            $this->send($payload)->assertStatus(409);
+            $this->assertTrue($attempt->fresh()->review_required);
+        }
+        $attempt = $this->attempt();
+        $payload = $this->payload($attempt, ['status' => 'failed', 'total_amount' => '0']);
+        unset($payload['currency'], $payload['payment_amount']);
+        $payload['hash'] = str_repeat('x', 44);
+        $this->send($payload)->assertForbidden();
+        $this->assertSame('pending', $attempt->fresh()->status);
+        $this->assertFalse($attempt->fresh()->review_required);
+        $this->assertDatabaseCount('subscription_payments', 0);
+    }
+
     public function test_failed_card_checkout_stays_unnumbered_and_legacy_order_number_is_preserved(): void
     {
         $failed = $this->attempt();
