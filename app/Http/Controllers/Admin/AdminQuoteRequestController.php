@@ -11,7 +11,7 @@ class AdminQuoteRequestController extends Controller
 {
     public function index()
     {
-        $requests = QuoteRequest::query()
+        $requests = QuoteRequest::query()->tap([\App\Support\AdminTestData::class, 'apply'])
             ->with('user')
             ->latest()
             ->paginate(30);

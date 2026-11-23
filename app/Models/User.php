@@ -58,6 +58,7 @@ class User extends Authenticatable implements CanResetPasswordContract
             'activated_at' => 'datetime',
             'password' => 'hashed',
             'bank_transfer_allowed' => 'boolean',
+            'is_test_customer' => 'boolean',
         ];
     }
 

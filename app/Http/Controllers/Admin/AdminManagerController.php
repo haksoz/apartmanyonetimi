@@ -21,7 +21,7 @@ class AdminManagerController extends Controller
     {
         $search = $request->query('search');
 
-        $subscriptions = Subscription::query()
+        $subscriptions = Subscription::query()->tap([\App\Support\AdminTestData::class, 'apply'])
             ->with([
                 'apartment.members' => function ($query) {
                     $query->where('apartment_user.role', 'owner')
@@ -71,7 +71,7 @@ class AdminManagerController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $legacyItems = SubscriptionItem::query()
+        $legacyItems = SubscriptionItem::query()->tap([\App\Support\AdminTestData::class, 'apply'])
             ->visibleSubscriptionPeriod()
             ->whereNull('apartment_subscription_id')
             ->with([

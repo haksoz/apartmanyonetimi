@@ -13,7 +13,7 @@ class AdminDashboardController extends Controller
 {
     public function __invoke(Request $request)
     {
-        $customerCount = User::query()
+        $customerCount = User::query()->tap([\App\Support\AdminTestData::class, 'apply'])
             ->whereNotIn('role', User::adminRoles())
             ->whereNotNull('activated_at')
             ->where(function ($query) {
@@ -28,8 +28,8 @@ class AdminDashboardController extends Controller
                     ->orWhereHas('subscriptions', fn ($query) => $query->withTrashed()->commercial());
             })
             ->count();
-        $subscriptionCount = Subscription::count();
-        $orders = UserSubscription::query()->commercial()->visibleInOrderList();
+        $subscriptionCount = Subscription::query()->tap([\App\Support\AdminTestData::class, 'apply'])->count();
+        $orders = UserSubscription::query()->tap([\App\Support\AdminTestData::class, 'apply'])->commercial()->visibleInOrderList();
         $orderCount = (clone $orders)->count();
         $pendingOrderCount = (clone $orders)->where('status', UserSubscription::STATUS_PENDING)
             ->whereNull('checkout_abandoned_at')->count();
@@ -54,7 +54,7 @@ class AdminDashboardController extends Controller
         ];
         foreach ($windows as $key => [$from, $to, $period]) {
             $cutoff = now()->addDays($to);
-            $query = Subscription::query()
+            $query = Subscription::query()->tap([\App\Support\AdminTestData::class, 'apply'])
                 ->whereHas('items', function ($query) use ($paidPeriod, $cutoff, $from, $period) {
                     $paidPeriod($query)->where('started_at', '<=', now())
                         ->whereNotNull('expires_at')->where('expires_at', '<=', $cutoff);

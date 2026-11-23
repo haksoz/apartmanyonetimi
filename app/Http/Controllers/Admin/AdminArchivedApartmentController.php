@@ -9,7 +9,7 @@ class AdminArchivedApartmentController extends Controller
 {
     public function index()
     {
-        $apartments = Apartment::query()
+        $apartments = Apartment::query()->tap([\App\Support\AdminTestData::class, 'apply'])
             ->where('is_active', false)
             ->with('user')
             ->withCount(['units', 'accounts'])

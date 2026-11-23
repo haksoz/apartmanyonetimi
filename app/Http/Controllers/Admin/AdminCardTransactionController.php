@@ -16,7 +16,7 @@ class AdminCardTransactionController extends Controller
         $statuses = ['pending' => 'Sonuç bekleniyor', 'unknown' => 'Sonuç belirsiz', 'succeeded' => 'Başarılı', 'failed' => 'Başarısız', 'cancelled' => 'Kapatıldı'];
         $transactionMatch = [];
         preg_match('/^ODM-(\d{2})-(\d{6,})$/iD', $search, $transactionMatch);
-        $attempts = SubscriptionPaymentAttempt::query()->where('provider', 'paytr')
+        $attempts = SubscriptionPaymentAttempt::query()->tap([\App\Support\AdminTestData::class, 'apply'])->where('provider', 'paytr')
             ->with(['subscription.user'])->withCount('notifications')
             ->when($search !== '', function ($query) use ($search, $transactionMatch) {
                 $query->where(function ($query) use ($search, $transactionMatch) {

@@ -56,7 +56,7 @@
         @forelse ($customers as $customer)
             <article class="rounded-xl border border-slate-200 bg-white px-3 py-2">
                 <div class="flex flex-wrap items-baseline gap-2">
-                    <p class="font-semibold text-slate-900">{{ $customer->name ?: '—' }}</p>
+                    <p class="font-semibold text-slate-900">{{ $customer->name ?: '—' }} @if($customer->is_test_customer)<span class="ml-1 rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">Test müşterisi</span>@endif</p>
                     @if ($customer->deactivated_at)
                         <p class="text-xs font-semibold text-slate-500">Pasif</p>
                     @endif
@@ -113,7 +113,7 @@
                 @forelse ($customers as $customer)
                     <tr class="hover:bg-slate-50">
                         <td class="px-4 py-3">
-                            <div class="font-medium text-slate-900">{{ $customer->name ?: '—' }}</div>
+                            <div class="font-medium text-slate-900">{{ $customer->name ?: '—' }} @if($customer->is_test_customer)<span class="ml-1 rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">Test müşterisi</span>@endif</div>
                             <div class="text-xs text-slate-500">{{ $customer->email ?: '—' }}</div>
                             @if ($customer->deactivated_at)
                                 <div class="mt-1 text-xs font-semibold text-slate-500">Pasif</div>

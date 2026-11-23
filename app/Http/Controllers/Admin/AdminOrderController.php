@@ -22,7 +22,7 @@ class AdminOrderController extends Controller
             UserSubscription::STATUS_CANCELLED,
         ];
 
-        $orders = UserSubscription::query()
+        $orders = UserSubscription::query()->tap([\App\Support\AdminTestData::class, 'apply'])
             ->when($status === 'deleted', fn ($query) => $query->onlyTrashed())
             ->commercial()
             ->when(! in_array($status, ['abandoned', 'deleted'], true), fn ($query) => $query->visibleInOrderList())

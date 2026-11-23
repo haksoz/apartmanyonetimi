@@ -14,7 +14,7 @@ class AdminApartmentController extends Controller
     {
         $search = trim((string) $request->query('search', ''));
         $status = (string) $request->query('status', '');
-        $apartments = Apartment::query()
+        $apartments = Apartment::query()->tap([\App\Support\AdminTestData::class, 'apply'])
             ->with(['managers', 'subscriptions' => fn ($query) => $query->orderByDesc('id')])
             ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('is_active', $status === 'active'))
             ->when($search !== '', function ($query) use ($search) {

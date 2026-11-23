@@ -9,7 +9,7 @@ class AdminDataOperationController extends Controller
 {
     public function index()
     {
-        $operations = ApartmentDataOperation::query()
+        $operations = ApartmentDataOperation::query()->tap([\App\Support\AdminTestData::class, 'apply'])
             ->with('user')
             ->latest('id')
             ->paginate(30);

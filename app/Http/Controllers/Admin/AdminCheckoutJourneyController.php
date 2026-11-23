@@ -14,7 +14,7 @@ class AdminCheckoutJourneyController extends Controller
         $status = (string) $request->query('status', '');
         $method = (string) $request->query('method', '');
         $customerId = $request->integer('customer');
-        $journeys = CheckoutJourney::with(['user', 'apartment', 'order.paymentAttempts'])
+        $journeys = CheckoutJourney::with(['user', 'apartment', 'order.paymentAttempts'])->tap([\App\Support\AdminTestData::class, 'apply'])
             ->when($customerId > 0, fn ($query) => $query->where('user_id', $customerId))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {

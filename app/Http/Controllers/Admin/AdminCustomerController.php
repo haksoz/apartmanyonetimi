@@ -28,7 +28,7 @@ class AdminCustomerController extends Controller
             $filter = 'muhataplar';
         }
 
-        $customers = User::query()
+        $customers = User::query()->tap([\App\Support\AdminTestData::class, 'apply'])
             ->whereNotIn('role', User::adminRoles())
             ->with('quotaOverride')
             ->withCount([
@@ -84,6 +84,7 @@ class AdminCustomerController extends Controller
             'address' => ['required', 'string', 'max:400'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'max_apartments' => ['required', 'integer', 'min:1', 'max:1000'],
+            'is_test_customer' => ['sometimes', 'boolean'],
         ], [
             'phone.regex' => 'Telefonu başında 0 olmadan 10 hane girin. Örnek: 5551234567.',
             'email.unique' => 'Bu e-posta adresiyle kayıtlı bir hesap var. Mevcut müşteri kaydını kullanın.',
@@ -99,6 +100,8 @@ class AdminCustomerController extends Controller
                 'role' => User::ROLE_MANAGER,
                 'activated_at' => now(),
             ]);
+            $customer->is_test_customer = (bool) ($validated['is_test_customer'] ?? false);
+            $customer->save();
             $customer->quotaOverride()->create(['max_apartments' => (int) $validated['max_apartments']]);
 
             return $customer;
@@ -128,6 +131,16 @@ class AdminCustomerController extends Controller
         return redirect()
             ->route('admin.customers.show', $customer)
             ->with('status', 'Müşteri bilgileri güncellendi.');
+    }
+
+    public function updateTestStatus(Request $request, User $customer)
+    {
+        $this->ensureCustomer($customer);
+        $validated = $request->validate(['is_test_customer' => ['required', 'boolean']]);
+        $customer->is_test_customer = (bool) $validated['is_test_customer'];
+        $customer->save();
+
+        return redirect()->route('admin.customers.show', $customer)->with('status', 'Müşterinin test durumu güncellendi.');
     }
 
     public function updateQuota(Request $request, User $customer)

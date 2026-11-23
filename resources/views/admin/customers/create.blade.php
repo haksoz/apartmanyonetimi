@@ -47,6 +47,12 @@
                 <input id="customer-password-confirmation" name="password_confirmation" type="password" required minlength="8" autocomplete="new-password" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm">
             </div>
         </div>
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" name="is_test_customer" value="1" @checked(old('is_test_customer'))>
+            Test müşterisi
+        </label>
+        <p class="text-xs text-slate-500">Bağlı kayıtlar Tanımlamalar bölümündeki test verileri ayarına göre listelenir. PayTR ödeme modu değişmez.</p>
+        @error('is_test_customer')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
         <div class="flex flex-wrap items-center gap-4 pt-2">
             <button type="submit" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Müşteriyi oluştur</button>
             <a href="{{ route('admin.customers.index') }}" class="text-sm font-semibold text-slate-600">Vazgeç</a>
