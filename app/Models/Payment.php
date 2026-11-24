@@ -12,7 +12,13 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class Payment extends Model
 {
     use HasReferenceNumber;
+    public function scopeWithoutOpening($query)
+    {
+        return $query->where($this->qualifyColumn('is_opening'), false);
+    }
+
     protected $fillable = [
+        'is_opening',
         'apartment_id',
         'account_id',
         'reference_number',
@@ -25,6 +31,7 @@ class Payment extends Model
     ];
 
     protected $casts = [
+        'is_opening' => 'boolean',
         'amount' => 'decimal:2',
         'unallocated_amount' => 'decimal:2',
         'payment_date' => 'date',

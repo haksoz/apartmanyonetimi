@@ -7,14 +7,14 @@
 @section('content')
 
     @php
-        $dueTitle = $due->description ?: 'Aidat';
+        $dueTitle = $due->is_opening ? 'Hesap Açılış Bakiyesi' : ($due->description ?: 'Aidat');
     @endphp
 
     {{-- Header --}}
     <div class="mb-3 flex flex-row items-center justify-between gap-2 min-w-0 sm:gap-3">
         <div class="min-w-0 flex-1">
             <h1 class="text-2xl font-bold text-slate-950">
-                Aidat
+                {{ $due->is_opening ? 'Açılış Borcu' : 'Aidat' }}
             </h1>
         </div>
 
@@ -32,6 +32,9 @@
                         <svg class="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                     </summary>
                     <div class="absolute right-0 top-full z-20 mt-2 flex w-40 flex-col gap-2 rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200">
+                @if ($due->is_opening)
+                    <a href="{{ route('accounts.edit', $due->account_id) }}#opening-balance" class="flex w-full items-center justify-start rounded-xl border border-slate-300 px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50">Açılış Bakiyesini Yönet</a>
+                @else
                 <a href="{{ route('dues.edit', $due) }}" class="flex w-full items-center justify-start text-left rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Düzenle</a>
 
                 @if (! in_array($due->status, ['paid', 'partial']) && $transferableAccounts->isNotEmpty())
@@ -46,6 +49,7 @@
                         @method('DELETE')
                         <button type="submit" class="flex w-full items-center justify-start text-left rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Sil</button>
                     </form>
+                @endif
                 @endif
                     </div>
                 </details>
@@ -116,7 +120,7 @@
                         <div class="text-xs text-slate-500">Borç Türü</div>
                         <div class="text-right font-semibold text-slate-900">
                             {{ $due->due_type_label }}
-                            <span class="text-xs font-normal text-slate-500">({{ $due->targeting_rule_label }})</span>
+                            @unless ($due->is_opening)<span class="text-xs font-normal text-slate-500">({{ $due->targeting_rule_label }})</span>@endunless
                         </div>
                     </div>
 
@@ -167,7 +171,7 @@
 
     <div class="rounded-2xl bg-white p-4 md:p-6 shadow-sm mb-6">
 
-        <h2 class="text-lg font-semibold text-slate-950 mb-4">Aidat İçin Yapılan Tahsilatlar</h2>
+        <h2 class="text-lg font-semibold text-slate-950 mb-4">{{ $due->is_opening ? 'Açılış Borcu İçin Yapılan Tahsilatlar' : 'Aidat İçin Yapılan Tahsilatlar' }}</h2>
 
         @if ($due->allocations->isEmpty())
 
@@ -259,20 +263,20 @@
 
             @foreach ($due->allocations as $allocation)
                 @php
-                    $canDeletePayment = $allocation->payment->allocations_count === 1
+                    $canDeletePayment = ! $allocation->payment->is_opening && $allocation->payment->allocations_count === 1
                         && round((float) $allocation->payment->amount, 2) === round((float) $allocation->amount, 2);
                 @endphp
 
                 <div id="revert-allocation-modal-{{ $allocation->id }}" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
                     <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-xl">
-                        <h3 class="text-lg font-semibold text-slate-900 mb-1">Aidat Kapamayı Geri Al</h3>
+                        <h3 class="text-lg font-semibold text-slate-900 mb-1">{{ $due->is_opening ? 'Açılış Borcu Kapamayı Geri Al' : 'Aidat Kapamayı Geri Al' }}</h3>
                         <p class="text-sm text-slate-500 mb-4">
                             {{ $allocation->payment->reference_number ?? '#'.$allocation->payment->id }} —
                             {{ number_format($allocation->payment->amount, 2, ',', '.') }} TL
                         </p>
 
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 mb-4">
-                            <div class="text-xs text-slate-500 mb-1">BU AİDATA TAHŞİS EDİLEN</div>
+                            <div class="text-xs text-slate-500 mb-1">{{ $due->is_opening ? 'BU AÇILIŞ BORCUNA TAHSİS EDİLEN' : 'BU AİDATA TAHŞİS EDİLEN' }}</div>
                             <div class="text-sm font-semibold text-slate-900">{{ number_format($allocation->amount, 2, ',', '.') }} TL</div>
                         </div>
 
@@ -299,7 +303,7 @@
                             </form>
 
                             @unless ($canDeletePayment)
-                                <p class="text-xs text-amber-600">Bu tahsilat bu aidatı birebir kapatmadığından silinemez; yalnızca aidat kapamayı geri alabilirsiniz.</p>
+                                <p class="text-xs text-amber-600">{{ $allocation->payment->is_opening ? 'Açılış alacağı buradan silinemez; yalnızca eşleştirmeyi geri alabilirsiniz.' : ($due->is_opening ? 'Bu tahsilat bu açılış borcunu birebir kapatmadığından silinemez; yalnızca kapamayı geri alabilirsiniz.' : 'Bu tahsilat bu aidatı birebir kapatmadığından silinemez; yalnızca aidat kapamayı geri alabilirsiniz.') }}</p>
                             @endunless
 
                             <button type="button" onclick="document.getElementById('revert-allocation-modal-{{ $allocation->id }}').classList.add('hidden')"
@@ -321,7 +325,7 @@
 
     </div>
 
-    @if ($due->allocations->isNotEmpty())
+    @if (! $due->is_opening && $due->allocations->isNotEmpty())
         <div id="delete-due-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
             <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 shadow-xl">
                 <h3 class="text-lg font-semibold text-slate-900 mb-1">Aidatı Sil</h3>

@@ -102,10 +102,10 @@ class DashboardController extends Controller
         }
 
         // Toplam gider (tüm zamanlar)
-        $totalExpenses = (float) Expense::where('apartment_id', $id)->sum('amount');
+        $totalExpenses = (float) Expense::withoutOpening()->where('apartment_id', $id)->sum('amount');
 
         // Gider kategorileri (tüm zamanlar) — category_id ilişkisi önce, yoksa eski string sütunu
-        $expenseByCategory = Expense::where('expenses.apartment_id', $id)
+        $expenseByCategory = Expense::withoutOpening()->where('expenses.apartment_id', $id)
             ->leftJoin('categories', function ($join) {
                 $join->on('categories.id', '=', 'expenses.category_id')
                      ->whereNull('categories.deleted_at');
@@ -117,8 +117,8 @@ class DashboardController extends Controller
             ->pluck('total', 'cat');
 
         // Gider ödeme durumu (tüm zamanlar)
-        $expensePaid   = (float) Expense::where('apartment_id', $id)->where('is_paid', true)->sum('amount');
-        $expenseUnpaid = (float) Expense::where('apartment_id', $id)->where('is_paid', false)->sum('amount');
+        $expensePaid   = (float) Expense::withoutOpening()->where('apartment_id', $id)->where('is_paid', true)->sum('amount');
+        $expenseUnpaid = (float) Expense::withoutOpening()->where('apartment_id', $id)->where('is_paid', false)->sum('amount');
 
         // Kasa
         $cashIncome  = (float) CashTransaction::where('apartment_id', $id)->where('type', 'income')->sum('amount');
@@ -126,7 +126,7 @@ class DashboardController extends Controller
         $cashBalance = $cashIncome - $cashExpense;
 
         // Son 6 ay aylık aidat tahakkuku
-        $monthlyDues = Due::where('apartment_id', $id)
+        $monthlyDues = Due::withoutOpening()->where('apartment_id', $id)
             ->where('created_at', '>=', now()->subMonths(5)->startOfMonth())
             ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, SUM(amount) as total")
             ->groupBy('month')
@@ -134,7 +134,7 @@ class DashboardController extends Controller
             ->pluck('total', 'month');
 
         // Son 6 ay aylık gider
-        $monthlyExpenses = Expense::where('apartment_id', $id)
+        $monthlyExpenses = Expense::withoutOpening()->where('apartment_id', $id)
             ->where('expense_date', '>=', now()->subMonths(5)->startOfMonth())
             ->selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as month, SUM(amount) as total")
             ->groupBy('month')

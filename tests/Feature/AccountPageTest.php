@@ -209,7 +209,8 @@ class AccountPageTest extends TestCase
         $this->assertSame('Açılış bakiyesi', $transaction->description);
         $this->assertSame('250.50', $transaction->amount);
         $this->assertSame('2026-10-01', $transaction->transaction_date->format('Y-m-d'));
-        $this->assertNull($transaction->transactionable_type);
+        $this->assertSame(\App\Models\Expense::class, $transaction->transactionable_type);
+        $this->assertTrue($transaction->is_opening);
         $this->assertSame(1, AccountTransaction::where('account_id', $account->id)->count());
         $this->assertDatabaseMissing('cash_transactions', [
             'account_id' => $account->id,
@@ -258,7 +259,7 @@ class AccountPageTest extends TestCase
             ->put(route('accounts.update', $account), [
                 'type' => Account::TYPE_SUPPLIER,
                 'name' => 'Yeni Ünvan',
-                'balance' => 100,
+                'balance' => 0,
                 'account_opening_date' => '2026-05-04',
                 'is_active' => '1',
             ])
@@ -310,9 +311,9 @@ class AccountPageTest extends TestCase
 
         $this->assertDatabaseHas('account_transactions', [
             'id' => $opening->id,
-            'transaction_date' => '2026-03-15',
             'amount' => 250,
         ]);
+        $this->assertSame('2026-03-15', $opening->fresh()->transaction_date->toDateString());
     }
 
     public function test_tenant_opening_date_must_stay_between_previous_exit_and_first_activity(): void
@@ -1073,7 +1074,7 @@ class AccountPageTest extends TestCase
             ->get(route('accounts.statement', $query))
             ->assertOk()
             ->assertSee('26 kayıt')
-            ->assertSee('Dönem Açılış Bakiyesi')
+            ->assertSee('Devreden Bakiye')
             ->assertSee('250,00 ₺')
             ->assertSee('260,00 ₺')
             ->assertDontSee('>Tür</th>', false)
@@ -1089,7 +1090,7 @@ class AccountPageTest extends TestCase
             ->assertSee('260,00 ₺')
             ->assertSee('>TOPLAM</td>', false)
             ->assertSee('Önceki')
-            ->assertDontSee('Dönem Açılış Bakiyesi')
+            ->assertDontSee('Devreden Bakiye')
             ->assertDontSee('Hareket 0')
             ->assertDontSee('Previous')
             ->assertDontSee('Next');

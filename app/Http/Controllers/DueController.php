@@ -57,9 +57,9 @@ class DueController extends Controller
         $filterSearch  = $request->query('search');
         $filterUnitId  = $request->query('unit_id');
         $request->validate([
-            'due_type' => ['nullable', Rule::in(DueType::values())],
+            'due_type' => ['nullable', Rule::in([...DueType::values(), 'opening'])],
             'plan' => ['nullable', 'regex:/^(aidat|assessment):[1-9][0-9]*$/'],
-            'source' => ['nullable', Rule::in(['plan', 'assessment', 'batch', 'manual', 'import'])],
+            'source' => ['nullable', Rule::in(['plan', 'assessment', 'batch', 'manual', 'import', 'opening'])],
             'status' => ['nullable', Rule::in(['open', 'unpaid', 'partial', 'paid', 'overdue'])],
         ]);
         $filterDueType = $request->query('due_type');
@@ -84,7 +84,7 @@ class DueController extends Controller
                 \App\Support\DueSearch::apply($q, (string) $filterSearch);
             })
             ->when($filterPeriod, fn ($q) => $q->forMonth($filterPeriod))
-            ->when($filterDueType, fn ($q) => $q->where('due_type', $filterDueType))
+            ->forListType($filterDueType)
             ->when($filterPlan, fn ($q) => $q->whereHas('batch', fn ($b) => $b->where($planType === 'aidat' ? 'due_plan_id' : 'assessment_plan_id', $planId)))
             ->when($filterStatus,  fn ($q) => $this->applyStatusFilter($q, $filterStatus))
             ->when($filterBatchId, fn ($q) => $q->where('due_batch_id', $filterBatchId))
@@ -94,7 +94,8 @@ class DueController extends Controller
             ->when($filterSource === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b
                 ->whereNull('due_plan_id')->whereNull('assessment_plan_id')
                 ->where('source_type', '!=', DueBatch::SOURCE_INDIVIDUAL)))
-            ->when($filterSource === 'manual', fn ($q) => $q->where('is_imported', false)
+            ->when($filterSource === 'opening', fn ($q) => $q->where('is_opening', true))
+            ->when($filterSource === 'manual', fn ($q) => $q->withoutOpening()->where('is_imported', false)
                 ->where(function ($manual) {
                     $manual->whereNull('due_batch_id')
                         ->orWhereHas('batch', fn ($batch) => $batch->where('source_type', DueBatch::SOURCE_INDIVIDUAL));
@@ -144,7 +145,7 @@ class DueController extends Controller
             }
         }
         $selectedPlan = $planOptions->firstWhere('value', $filterPlan);
-        $dueTypeOptions = DueType::options();
+        $dueTypeOptions = [...DueType::options(), ['value' => 'opening', 'label' => 'Hesap Açılış Bakiyesi']];
         $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterDueType', 'filterPlan', 'showImported');
 
         $hasImported = Due::query()
@@ -262,7 +263,7 @@ class DueController extends Controller
         ]);
 
         // Get all expenses grouped by period for JavaScript calculation (SQLite compatible)
-        $expensesByPeriod = Expense::query()
+        $expensesByPeriod = Expense::withoutOpening()
             ->where('apartment_id', $apartment->id)
             ->selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as period, SUM(amount) as total")
             ->groupBy('period')
@@ -272,7 +273,7 @@ class DueController extends Controller
         // Get category-wise expenses for filtered calculation
         $expensesByCategory = [];
         foreach ($expenseCategories as $category) {
-            $categoryExpenses = Expense::query()
+            $categoryExpenses = Expense::withoutOpening()
                 ->where('apartment_id', $apartment->id)
                 ->where('category_id', $category->id)
                 ->selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as period, SUM(amount) as total")
@@ -298,7 +299,7 @@ class DueController extends Controller
             $periodStart = \Carbon\Carbon::parse($period . '-01')->startOfMonth();
             $periodEnd = $periodStart->copy()->endOfMonth();
 
-            $expenses = Expense::query()
+            $expenses = Expense::withoutOpening()
                 ->where('apartment_id', $apartment->id)
                 ->whereDate('expense_date', '>=', $periodStart)
                 ->whereDate('expense_date', '<=', $periodEnd)
@@ -556,7 +557,7 @@ class DueController extends Controller
 
         $unitId = $due->unit_id ?: $due->account?->unit_id;
 
-        $transferableAccounts = $unitId
+        $transferableAccounts = ! $due->is_opening && $unitId
             ? Account::query()
                 ->where('apartment_id', $due->apartment_id)
                 ->where('unit_id', $unitId)
@@ -581,6 +582,11 @@ class DueController extends Controller
             return $response;
         }
 
+        if ($due->is_opening) {
+            return redirect()->route('accounts.edit', $due->account_id)->withFragment('opening-balance');
+        }
+
+
         $due->load('allocations');
         $dueTypes = DueType::options();
         $categories = $this->selectableDueCategories($due->apartment_id, $due->category_id);
@@ -601,6 +607,11 @@ class DueController extends Controller
         if ($response = $this->authorizeDue($currentApartment, $due)) {
             return $response;
         }
+
+        if ($due->is_opening) {
+            return redirect()->route('accounts.edit', $due->account_id)->withFragment('opening-balance')->with('error', 'Açılış bakiyesini hesap düzenleme ekranından değiştirin.');
+        }
+
 
         $request->mergeIfMissing(['due_type' => $due->due_type->value]);
         $validated = $request->validate([
@@ -700,6 +711,11 @@ class DueController extends Controller
             return $response;
         }
 
+        if ($due->is_opening) {
+            return redirect()->route('accounts.edit', $due->account_id)->withFragment('opening-balance')->with('error', 'Açılış bakiyesini hesap düzenleme ekranından değiştirin.');
+        }
+
+
         if ($due->allocations()->exists()) {
             return redirect()->route('dues.show', $due)->with('error', 'Bu aidatı kapatan tahsilatlar olduğu için silinemez.');
         }
@@ -721,7 +737,7 @@ class DueController extends Controller
             return redirect()->route('dues.index')->with('error', 'Silinecek kayıt seçilmedi.');
         }
 
-        $dues = Due::query()
+        $dues = Due::withoutOpening()
             ->whereIn('id', $ids)
             ->where('apartment_id', $apartment->id)
             ->whereNotIn('status', ['paid', 'partial'])
@@ -985,14 +1001,14 @@ class DueController extends Controller
 
         // If specific expenses are selected, sum only those
         if (!empty($selectedExpenseIds)) {
-            return (float) Expense::query()
+            return (float) Expense::withoutOpening()
                 ->where('apartment_id', $apartmentId)
                 ->whereIn('id', $selectedExpenseIds)
                 ->sum('amount');
         }
 
         // Otherwise sum all expenses for the period
-        return (float) Expense::query()
+        return (float) Expense::withoutOpening()
             ->where('apartment_id', $apartmentId)
             ->whereYear('expense_date', substr($validated['source_period'], 0, 4))->whereMonth('expense_date', substr($validated['source_period'], 5, 2))
             ->sum('amount');
@@ -1044,6 +1060,11 @@ class DueController extends Controller
     {
         if ($response = $this->authorizeDue($currentApartment, $due)) {
             return $response;
+        }
+
+        if ($due->is_opening) {
+            return redirect()->route('accounts.edit', $due->account_id)->withFragment('opening-balance')
+                ->with('error', 'Açılış borcu başka hesaba aktarılamaz. Açılış bakiyesini kendi hesabından yönetin.');
         }
 
         if (in_array($due->status, ['paid', 'partial'])) {
@@ -1115,9 +1136,15 @@ class DueController extends Controller
     {
         $apartment = $currentApartment->getFor(auth()->user());
 
+        $request->validate([
+            'due_type' => ['nullable', Rule::in([...DueType::values(), 'opening'])],
+            'source' => ['nullable', Rule::in(['plan', 'assessment', 'batch', 'manual', 'import', 'opening'])],
+            'plan' => ['nullable', 'regex:/^(aidat|assessment):[1-9][0-9]*$/'],
+        ]);
+        [$planType, $planId] = $request->query('plan') ? explode(':', $request->query('plan')) : [null, null];
         $sortBy        = in_array($request->query('sort_by'), ['created_at','unit_id','due_date','amount','status']) ? $request->query('sort_by') : 'created_at';
         $sortDirection = in_array($request->query('sort_direction'), ['asc','desc']) ? $request->query('sort_direction') : 'desc';
-        $showImported  = $request->boolean('show_imported', false);
+        $showImported  = $request->boolean('show_imported', false) || $request->query('source') === 'import';
 
         $dues = Due::query()
             ->with(['account', 'unit', 'category', 'batch.plan'])
@@ -1127,6 +1154,8 @@ class DueController extends Controller
                   ->orWhereHas('unit',  fn ($u) => $u->where('unit_no', 'like', '%'.$request->query('search').'%'))
                   ->orWhere('description', 'like', '%'.$request->query('search').'%');
             }))
+            ->forListType($request->query('due_type'))
+            ->when($planId, fn ($q) => $q->whereHas('batch', fn ($batch) => $batch->where($planType === 'aidat' ? 'due_plan_id' : 'assessment_plan_id', $planId)))
             ->when($request->query('period'),       fn ($q) => $q->forMonth($request->query('period')))
             ->when($request->query('status'),       fn ($q) => $this->applyStatusFilter($q, $request->query('status')))
             ->when($request->query('batch_id'),     fn ($q) => $q->where('due_batch_id', $request->query('batch_id')))
@@ -1135,7 +1164,10 @@ class DueController extends Controller
             ->when($request->query('source') === 'batch',  fn ($q) => $q->whereHas('batch', fn ($b) => $b
                 ->whereNull('due_plan_id')->whereNull('assessment_plan_id')
                 ->where('source_type', '!=', DueBatch::SOURCE_INDIVIDUAL)))
-            ->when($request->query('source') === 'manual', fn ($q) => $q->where('is_imported', false)
+            ->when($request->query('source') === 'opening', fn ($q) => $q->where('is_opening', true))
+            ->when($request->query('source') === 'assessment', fn ($q) => $q->whereHas('batch', fn ($batch) => $batch->whereNotNull('assessment_plan_id')))
+            ->when($request->query('source') === 'import', fn ($q) => $q->where('is_imported', true))
+            ->when($request->query('source') === 'manual', fn ($q) => $q->withoutOpening()->where('is_imported', false)
                 ->where(function ($manual) {
                     $manual->whereNull('due_batch_id')
                         ->orWhereHas('batch', fn ($batch) => $batch->where('source_type', DueBatch::SOURCE_INDIVIDUAL));
@@ -1177,7 +1209,7 @@ class DueController extends Controller
         foreach ($dues as $due) {
             $sheet->setCellValue('A'.$row, $due->unit ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-');
             $sheet->setCellValue('B'.$row, $due->account?->name ?? '-');
-            $sheet->setCellValue('C'.$row, $due->category?->name ?? '-');
+            $sheet->setCellValue('C'.$row, $due->is_opening ? $due->due_type_label : ($due->category?->name ?? '-'));
             $sheet->setCellValue('D'.$row, $due->description ?? '-');
             $sheet->setCellValue('E'.$row, $due->created_at_manual
                 ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y')

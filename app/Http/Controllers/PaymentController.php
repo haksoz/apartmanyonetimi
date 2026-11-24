@@ -318,6 +318,11 @@ class PaymentController extends Controller
             abort(404);
         }
 
+        if ($payment->is_opening) {
+            return redirect()->route('accounts.edit', $payment->account_id)->with('error', 'Açılış bakiyesini hesap düzenleme ekranından değiştirin.');
+        }
+
+
         $payment->load(['account', 'allocations.due']);
 
         $cashBoxes = CashBox::query()
@@ -341,6 +346,11 @@ class PaymentController extends Controller
         if (! $apartment || $payment->apartment_id !== $apartment->id) {
             abort(404);
         }
+
+        if ($payment->is_opening) {
+            return redirect()->route('accounts.edit', $payment->account_id)->with('error', 'Açılış bakiyesini hesap düzenleme ekranından değiştirin.');
+        }
+
 
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -415,6 +425,11 @@ class PaymentController extends Controller
         if (! $apartment || $payment->apartment_id !== $apartment->id) {
             abort(404);
         }
+
+        if ($payment->is_opening) {
+            return redirect()->route('accounts.edit', $payment->account_id)->with('error', 'Açılış bakiyesini hesap düzenleme ekranından değiştirin.');
+        }
+
 
         $accountId = $payment->account_id;
 

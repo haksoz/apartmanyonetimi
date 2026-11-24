@@ -616,6 +616,10 @@ class ExpenseController extends Controller
     {
 
         $expense = $this->findExpense($id);
+        if ($expense->is_opening) {
+            return redirect()->route('accounts.edit', $expense->account_id)->with('error', 'Açılış bakiyesini hesap düzenleme ekranından değiştirin.');
+        }
+
 
         $accounts = $this->supplierAccounts($expense->apartment_id, $expense->account_id);
 
@@ -640,6 +644,10 @@ class ExpenseController extends Controller
     {
 
         $expense = $this->findExpense($id);
+        if ($expense->is_opening) {
+            return redirect()->route('accounts.edit', $expense->account_id)->with('error', 'Açılış bakiyesini hesap düzenleme ekranından değiştirin.');
+        }
+
 
         $validated = $this->validateExpense($request, $expense->apartment_id, $expense->category_id);
 
@@ -726,6 +734,10 @@ class ExpenseController extends Controller
     {
 
         $expense = $this->findExpense($id);
+        if ($expense->is_opening) {
+            return redirect()->route('accounts.edit', $expense->account_id)->with('error', 'Açılış bakiyesini hesap düzenleme ekranından değiştirin.');
+        }
+
 
 
 
@@ -948,6 +960,12 @@ class ExpenseController extends Controller
 
 
             $paymentIds = $expense->paymentAllocations()->pluck('payment_id')->unique();
+            if ($expense->is_opening || Payment::whereIn('id', $paymentIds)->where('is_opening', true)->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'payment' => 'Açılış bakiyesi silinemez. Önce ödeme eşleştirme ekranından ilgili tahsisleri kaldırın.',
+                ]);
+            }
+
 
             if ($paymentIds->isNotEmpty()) {
 

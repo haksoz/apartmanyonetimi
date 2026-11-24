@@ -50,7 +50,22 @@ class Due extends Model
     {
         return $query->whereRaw('DATE(COALESCE(dues.created_at_manual, dues.created_at)) < ?', [$date]);
     }
+    public function scopeForListType($query, ?string $type)
+    {
+        if ($type === 'opening') {
+            return $query->where($this->qualifyColumn('is_opening'), true);
+        }
+
+        return $query->when($type, fn ($q) => $q->withoutOpening()->where('due_type', $type));
+    }
+
+    public function scopeWithoutOpening($query)
+    {
+        return $query->where($this->qualifyColumn('is_opening'), false);
+    }
+
     protected $fillable = [
+        'is_opening',
         'apartment_id',
         'due_batch_id',
         'unit_id',
@@ -69,6 +84,7 @@ class Due extends Model
     ];
 
     protected $casts = [
+        'is_opening' => 'boolean',
         'amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
         'due_date' => 'date',
@@ -93,6 +109,10 @@ class Due extends Model
 
     public function getTargetingRuleLabelAttribute(): string
     {
+        if ($this->is_opening) {
+            return '—';
+        }
+
         return match ($this->due_type) {
             DueType::Aidat => 'Kiracı Öncelikli',
             DueType::MalikPayi => 'Sadece Kat Maliki',
@@ -127,11 +147,15 @@ class Due extends Model
 
     public function getDueTypeLabelAttribute(): string
     {
-        return $this->due_type?->label() ?? '-';
+        return $this->is_opening ? 'Hesap Açılış Bakiyesi' : ($this->due_type?->label() ?? '-');
     }
 
     public function getSourceLabelAttribute(): string
     {
+        if ($this->is_opening) {
+            return 'Açılış bakiyesi';
+        }
+
         if ($this->is_imported) {
             return 'İçe Aktarma';
         }

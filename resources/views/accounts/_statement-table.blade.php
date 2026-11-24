@@ -25,7 +25,7 @@
                 @if($dateFrom && $transactions->onFirstPage())
                     <tr class="bg-slate-50">
                         <td class="px-4 py-3 font-medium text-slate-500">{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }}</td>
-                        <td class="px-4 py-3 font-medium text-slate-500">Dönem Açılış Bakiyesi</td>
+                        <td class="px-4 py-3 font-medium text-slate-500">Devreden Bakiye</td>
                         <td class="px-4 py-3 text-right text-red-500">{{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' ₺' : '' }}</td>
                         <td class="px-4 py-3 text-right text-emerald-600">{{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' ₺' : '' }}</td>
                         <td class="px-4 py-3 text-right font-medium {{ $openingBalance > 0 ? 'text-red-500' : ($openingBalance < 0 ? 'text-emerald-600' : 'text-slate-400') }}">
@@ -48,8 +48,8 @@
                         @if($detailUrl) onclick="window.location.href='{{ $detailUrl }}'" @endif>
                         <td class="whitespace-nowrap px-4 py-3 text-slate-600">{{ $tx->transaction_date?->format('d.m.Y') ?? '-' }}</td>
                         <td class="px-4 py-3 text-slate-700">
-                            {{ $tx->description ?: '-' }}
-                            @if($tx->transactionable instanceof \App\Models\Due && $tx->transactionable->due_type)
+                            {{ $tx->is_opening ? 'Hesap Açılış Bakiyesi' : ($tx->description ?: '-') }}
+                            @if(! $tx->is_opening && $tx->transactionable instanceof \App\Models\Due && $tx->transactionable->due_type)
                                 <span class="ml-1 text-xs text-slate-400">· {{ $tx->transactionable->due_type->label() }}</span>
                             @endif
                         </td>

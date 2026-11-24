@@ -32,7 +32,7 @@ class AidatPeriodReconciliation
         $periodDate = Carbon::parse($period.'-01');
         $category = $plan->category ?: $this->categoryFor($plan->apartment);
         $targetAccounts = $this->targetAccounts($plan, $periodDate);
-        $completedAccountIds = Due::query()
+        $completedAccountIds = Due::withoutOpening()
             ->where('apartment_id', $plan->apartment_id)
             ->forMonth($period)
             ->where('due_type', DueType::Aidat->value)
@@ -91,7 +91,7 @@ class AidatPeriodReconciliation
     {
         $category = $this->categoryFor($apartment);
 
-        $query = Due::query()
+        $query = Due::withoutOpening()
             ->where('apartment_id', $apartment->id)
             ->where('account_id', $accountId)
             ->forMonth($period)

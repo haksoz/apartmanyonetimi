@@ -14,7 +14,13 @@ class Expense extends Model
 {
     use SoftDeletes, HasReferenceNumber;
 
+    public function scopeWithoutOpening($query)
+    {
+        return $query->where($this->qualifyColumn('is_opening'), false);
+    }
+
     protected $fillable = [
+        'is_opening',
         'apartment_id',
         'expense_plan_id',
         'plan_occurrence_key',
@@ -35,6 +41,7 @@ class Expense extends Model
     ];
 
     protected $casts = [
+        'is_opening' => 'boolean',
         'expense_relation' => \App\Enums\ExpenseRelation::class,
         'amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',

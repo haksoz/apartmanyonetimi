@@ -11,6 +11,7 @@ use App\Models\Account;
 class AccountTransaction extends Model
 {
     protected $fillable = [
+        'is_opening',
         'apartment_id',
         'account_id',
         'transactionable_type',
@@ -23,6 +24,7 @@ class AccountTransaction extends Model
     ];
 
     protected $casts = [
+        'is_opening' => 'boolean',
         'amount' => 'decimal:2',
         'transaction_date' => 'date',
     ];

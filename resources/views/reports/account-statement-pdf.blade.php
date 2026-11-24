@@ -27,7 +27,7 @@
             @if($dateFrom && isset($openingBalance))
                 <tr class="row-opening">
                     <td>{{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }}</td>
-                    <td>Dönem Açılış Bakiyesi</td>
+                    <td>Devreden Bakiye</td>
                     <td class="text-right text-red">{{ $openingBalance < 0 ? number_format(abs($openingBalance), 2, ',', '.') . ' TL' : '—' }}</td>
                     <td class="text-right text-green">{{ $openingBalance > 0 ? number_format($openingBalance, 2, ',', '.') . ' TL' : '—' }}</td>
                     <td class="text-right {{ $openingBalance < 0 ? 'text-red' : ($openingBalance > 0 ? 'text-green' : 'text-muted') }}">
@@ -39,7 +39,7 @@
             @forelse($transactions as $tx)
                 <tr>
                     <td>{{ $tx->transaction_date?->format('d.m.Y') ?? '-' }}</td>
-                    <td>{{ $tx->description ?? '-' }}@if($tx->transactionable instanceof \App\Models\Due && $tx->transactionable->due_type) · {{ $tx->transactionable->due_type->label() }}@endif</td>
+                    <td>{{ $tx->is_opening ? 'Hesap Açılış Bakiyesi' : ($tx->description ?? '-') }}@if(! $tx->is_opening && $tx->transactionable instanceof \App\Models\Due && $tx->transactionable->due_type) · {{ $tx->transactionable->due_type->label() }}@endif</td>
                     <td class="text-right text-red">{{ $tx->type === 'debit' ? number_format($tx->amount, 2, ',', '.') . ' TL' : '—' }}</td>
                     <td class="text-right text-green">{{ $tx->type === 'credit' ? number_format($tx->amount, 2, ',', '.') . ' TL' : '—' }}</td>
                     <td class="text-right {{ $tx->running_balance < 0 ? 'text-red' : ($tx->running_balance > 0 ? 'text-green' : 'text-muted') }}">

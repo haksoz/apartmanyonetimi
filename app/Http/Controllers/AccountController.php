@@ -666,7 +666,7 @@ class AccountController extends Controller
         $row = 7;
         $sheet->setCellValue('A' . $row, \Carbon\Carbon::parse($dateFrom)->format('d.m.Y'));
         $sheet->setCellValue('B' . $row, '—');
-        $sheet->setCellValue('C' . $row, 'Dönem Açılış Bakiyesi');
+        $sheet->setCellValue('C' . $row, 'Devreden Bakiye');
         $sheet->setCellValue('D' . $row, $openingBalance > 0 ? $openingBalance : 0);
         $sheet->setCellValue('E' . $row, $openingBalance < 0 ? abs($openingBalance) : 0);
         $sheet->setCellValue('F' . $row, $openingBalance);
@@ -676,7 +676,9 @@ class AccountController extends Controller
         $row = 8;
         foreach ($transactions as $t) {
             $desc = $t->description ?? '';
-            if ($t->transactionable_type === Payment::class) {
+            if ($t->is_opening) {
+                $desc = 'Hesap Açılış Bakiyesi';
+            } elseif ($t->transactionable_type === Payment::class) {
                 $desc = 'Ödeme' . ($t->description ? ' - ' . $t->description : '');
             } elseif ($t->transactionable_type === Due::class) {
                 $desc = 'Aidat' . ($t->description ? ' - ' . $t->description : '');
@@ -856,15 +858,22 @@ class AccountController extends Controller
             ->get();
 
         $openingTransaction = $account->transactions()
-            ->where('description', 'Açılış bakiyesi')
-            ->whereNull('transactionable_type')
+            ->where(fn ($q) => $q->where('is_opening', true)->orWhere(fn ($q) => $q->where('description', 'Açılış bakiyesi')->whereNull('transactionable_type')))
             ->orderBy('id')
             ->first();
+
+        $openingSource = $openingTransaction?->transactionable;
+        $openingLocked = $openingSource instanceof Expense
+            ? $openingSource->paymentAllocations()->exists()
+            : ($openingSource?->allocations()->exists() ?? false);
+        $openingRemaining = (float) ($openingSource instanceof Payment
+            ? $openingSource->unallocated_amount
+            : ($openingSource?->remaining_amount ?? $openingTransaction?->amount ?? 0));
 
         $firstActivityDate = $account->firstActivityDate();
         $previousTenantMoveOutDate = $account->previousTenantMoveOutDate();
 
-        return view('accounts.edit', compact('account', 'apartment', 'units', 'categories', 'openingTransaction', 'firstActivityDate', 'previousTenantMoveOutDate'));
+        return view('accounts.edit', compact('account', 'apartment', 'units', 'categories', 'openingTransaction', 'openingLocked', 'openingRemaining', 'firstActivityDate', 'previousTenantMoveOutDate'));
     }
 
     /**
@@ -906,9 +915,12 @@ class AccountController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'is_active' => ['nullable', 'boolean'],
             'move_in_date' => ['nullable', 'date'],
+            'balance' => ['nullable', 'numeric', 'in:0'],
+            'opening_side' => ['prohibited'],
             'account_opening_date' => [
                 'nullable',
                 'date',
+                Rule::requiredIf(fn () => $account->transactions()->where('is_opening', true)->exists()),
                 ...(($firstActivityDate = $account->firstActivityDate()) ? ['before_or_equal:'.$firstActivityDate] : []),
                 ...(($previousTenantMoveOutDate = $account->previousTenantMoveOutDate()) ? ['after_or_equal:'.$previousTenantMoveOutDate] : []),
             ],
@@ -935,6 +947,9 @@ class AccountController extends Controller
         ], [
             'unit_id.required_if' => 'Kat maliki ve kiracı hesapları için daire seçimi zorunludur.',
             'name.required'        => 'Ad Soyad / Ünvan zorunludur.',
+            'balance.in' => 'Açılış bakiyesini ayrı Açılış Bakiyesi bölümünden kaydedin.',
+            'opening_side.prohibited' => 'Açılış bakiyesini ayrı Açılış Bakiyesi bölümünden kaydedin.',
+            'account_opening_date.required' => 'Açılış bakiyesi bulunan hesabın açılış tarihi boş bırakılamaz.',
             'account_opening_date.before_or_equal' => 'Hesap açılış tarihi ilk hareket tarihinden daha geç olamaz.',
             'account_opening_date.after_or_equal' => 'Kiracı giriş tarihi önceki kiracının çıkış tarihinden daha erken olamaz.',
         ]);
@@ -1022,11 +1037,22 @@ class AccountController extends Controller
                 $linkedUser->update(['email' => $validated['email']]);
             }
 
-            if (! empty($validated['account_opening_date'])) {
-                $account->transactions()
-                    ->where('description', 'Açılış bakiyesi')
-                    ->whereNull('transactionable_type')
-                    ->update(['transaction_date' => $validated['account_opening_date']]);
+            if ($account->wasChanged('account_opening_date')) {
+                $opening = $account->transactions()->where(fn ($q) => $q->where('is_opening', true)
+                    ->orWhere(fn ($q) => $q->whereNull('transactionable_type')->where('description', 'Açılış bakiyesi')))->first();
+                if ($opening) {
+                    try {
+                        $this->postOpeningBalance($account, [
+                            'balance' => $opening->amount,
+                            'opening_side' => $opening->type,
+                            'account_opening_date' => $validated['account_opening_date'],
+                        ]);
+                    } catch (\Illuminate\Validation\ValidationException $exception) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'account_opening_date' => $exception->validator->errors()->first(),
+                        ]);
+                    }
+                }
             }
 
             if ($account->type === Account::TYPE_TENANT && $account->unit_id) {
@@ -2328,23 +2354,54 @@ class AccountController extends Controller
             ->with('status', count($expenseIds) . ' gider ödemesi başarıyla kaydedildi.');
     }
 
-    /**
-     * Açılış bakiyesini tek cari hareket olarak yazar. Kasa, aidat, gider veya ödeme üretmez.
-     */
-    private function postOpeningBalance(Account $account, array $validated): void
+    public function updateOpeningBalance(Request $request, Account $account, CurrentApartment $currentApartment)
     {
-        $amount = round(abs((float) ($validated['balance'] ?? 0)), 2);
-        if ($amount < 0.01) {
-            return;
+        $apartment = $currentApartment->getFor($request->user());
+        abort_unless($apartment && $account->apartment_id === $apartment->id, 404);
+        $validated = $request->validateWithBag('openingBalance', [
+            'balance' => ['required', 'numeric', 'min:0.01'],
+            'opening_side' => ['required', Rule::in(['debit', 'credit'])],
+        ], [
+            'balance.min' => 'Tutar sıfırdan büyük olmalıdır. Açılışı silmek için Açılış Bakiyesini Kaldır işlemini kullanın.',
+            'opening_side.required' => 'Borç veya alacak seçin.',
+        ]);
+        try {
+            DB::transaction(function () use ($account, $validated) {
+                $account = Account::whereKey($account->id)->lockForUpdate()->firstOrFail();
+                if (! $account->account_opening_date) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'balance' => 'Önce hesap bilgilerinden hesap açılış tarihini kaydedin.',
+                    ]);
+                }
+                $this->postOpeningBalance($account, $validated + [
+                    'account_opening_date' => $account->account_opening_date->toDateString(),
+                ]);
+            });
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            throw $exception->errorBag('openingBalance');
         }
 
-        AccountTransaction::create([
-            'apartment_id' => $account->apartment_id,
-            'account_id' => $account->id,
-            'type' => $validated['opening_side'],
-            'description' => 'Açılış bakiyesi',
-            'amount' => $amount,
-            'transaction_date' => $validated['account_opening_date'],
-        ]);
+        return redirect()->route('accounts.edit', $account)->with('status', 'Açılış bakiyesi kaydedildi.');
+    }
+
+    public function destroyOpeningBalance(Request $request, Account $account, CurrentApartment $currentApartment)
+    {
+        $apartment = $currentApartment->getFor($request->user());
+        abort_unless($apartment && $account->apartment_id === $apartment->id, 404);
+        try {
+            app(\App\Support\AccountOpeningBalance::class)->save($account, 0, null, null);
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            throw $exception->errorBag('openingBalance');
+        }
+
+        return redirect()->route('accounts.edit', $account)->with('status', 'Açılış bakiyesi kaldırıldı. Hesap sıfır açılış bakiyesiyle devam ediyor.');
+    }
+
+    private function postOpeningBalance(Account $account, array $validated): void
+    {
+        app(\App\Support\AccountOpeningBalance::class)->save(
+            $account, (float) ($validated['balance'] ?? 0), $validated['opening_side'] ?? null,
+            $validated['account_opening_date'] ?? null,
+        );
     }
 }

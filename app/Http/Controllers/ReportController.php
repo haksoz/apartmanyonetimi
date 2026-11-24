@@ -208,7 +208,7 @@ class ReportController extends Controller
         $dateTo = $periodData['dateTo'];
         $id       = $apartment->id;
 
-        $incomeQuery = Payment::where('payments.apartment_id', $id)
+        $incomeQuery = Payment::withoutOpening()->where('payments.apartment_id', $id)
             ->whereHas('account', fn ($query) => $query->where('type', '!=', Account::TYPE_SUPPLIER));
         $incomeAmount = 'payments.amount';
         if ($expenseRelation !== 'all') {
@@ -238,13 +238,13 @@ class ReportController extends Controller
             ->groupByRaw('SUBSTR(payment_date, 1, 4)')->pluck('total', 'year');
         $openingIncome = (float) $historicalIncome->sum();
 
-        $expenses = Expense::where('apartment_id', $id)->forRelation($expenseRelation)
+        $expenses = Expense::withoutOpening()->where('apartment_id', $id)->forRelation($expenseRelation)
             ->whereDate('expense_date', '>=', $dateFrom)->whereDate('expense_date', '<=', $dateTo)
             ->get(['expense_date', 'amount'])
             ->groupBy(fn ($expense) => $expense->expense_date->format('Y-m'))
             ->map(fn ($group) => $group->sum('amount'));
 
-        $historicalExpense = Expense::where('apartment_id', $id)->forRelation($expenseRelation)
+        $historicalExpense = Expense::withoutOpening()->where('apartment_id', $id)->forRelation($expenseRelation)
             ->whereDate('expense_date', '<', $dateFrom)
             ->selectRaw('SUBSTR(expense_date, 1, 4) as year, SUM(amount) as total')
             ->groupByRaw('SUBSTR(expense_date, 1, 4)')->pluck('total', 'year');
@@ -286,7 +286,7 @@ class ReportController extends Controller
         $closingBalance = $openingBalance + $totalIncome - $totalExpense;
 
         $allocatedByType = DB::table('payment_allocations')
-            ->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')
+            ->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')->where('payments.is_opening', false)
             ->join('accounts', 'accounts.id', '=', 'payments.account_id')
             ->join('dues', 'dues.id', '=', 'payment_allocations.due_id')
             ->where('payments.apartment_id', $id)
@@ -1148,7 +1148,7 @@ class ReportController extends Controller
             ? Carbon::create($year, $month, 1)->endOfMonth()->toDateString()
             : Carbon::create($year, 12, 31)->toDateString();
 
-        return Due::where('apartment_id', $apartmentId)
+        return Due::withoutOpening()->where('apartment_id', $apartmentId)
             ->when($dueType !== 'all', fn ($query) => $query->where('due_type', $dueType))
             ->recordDatesBetween($from, $to);
     }
@@ -1169,8 +1169,8 @@ class ReportController extends Controller
         $collectedDues= (float) $this->annualDueQuery($id, $year, $filterDueType)->sum(DB::raw('amount - remaining_amount'));
         $pendingDues  = $totalDues - $collectedDues;
 
-        $totalExpenses = (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->sum('amount');
-        $paidExpenses  = (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->where('is_paid', true)->sum('amount');
+        $totalExpenses = (float) Expense::withoutOpening()->where('apartment_id', $id)->whereYear('expense_date', $year)->sum('amount');
+        $paidExpenses  = (float) Expense::withoutOpening()->where('apartment_id', $id)->whereYear('expense_date', $year)->where('is_paid', true)->sum('amount');
         $unpaidExpenses= $totalExpenses - $paidExpenses;
 
         $cashIn  = (float) CashTransaction::where('apartment_id', $id)->whereYear('transaction_date', $year)->where('type', 'income')->sum('amount');
@@ -1182,13 +1182,13 @@ class ReportController extends Controller
             $monthlyData[$m] = [
                 'dues'     => (float) $this->annualDueQuery($id, $year, $filterDueType, $m)->sum('amount'),
                 'payments' => $filterDueType === 'all'
-                    ? (float) Payment::where('apartment_id', $id)->whereYear('payment_date', $year)->whereMonth('payment_date', $m)->sum('amount')
-                    : (float) DB::table('payment_allocations')->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')->join('dues', 'dues.id', '=', 'payment_allocations.due_id')->where('payments.apartment_id', $id)->where('dues.due_type', $filterDueType)->whereYear('payments.payment_date', $year)->whereMonth('payments.payment_date', $m)->sum('payment_allocations.amount'),
-                'expenses' => (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->whereMonth('expense_date', $m)->sum('amount'),
+                    ? (float) Payment::withoutOpening()->where('apartment_id', $id)->whereYear('payment_date', $year)->whereMonth('payment_date', $m)->sum('amount')
+                    : (float) DB::table('payment_allocations')->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')->where('payments.is_opening', false)->join('dues', 'dues.id', '=', 'payment_allocations.due_id')->where('payments.apartment_id', $id)->where('dues.due_type', $filterDueType)->whereYear('payments.payment_date', $year)->whereMonth('payments.payment_date', $m)->sum('payment_allocations.amount'),
+                'expenses' => (float) Expense::withoutOpening()->where('apartment_id', $id)->whereYear('expense_date', $year)->whereMonth('expense_date', $m)->sum('amount'),
             ];
         }
 
-        $expenseByCategory = Expense::where('expenses.apartment_id', $id)
+        $expenseByCategory = Expense::withoutOpening()->where('expenses.apartment_id', $id)
             ->whereYear('expense_date', $year)
             ->leftJoin('categories', fn($j) => $j->on('categories.id', '=', 'expenses.category_id')->whereNull('categories.deleted_at'))
             ->selectRaw("COALESCE(NULLIF(categories.name,''), NULLIF(expenses.category,''), 'Diğer') as cat, SUM(expenses.amount) as total")
@@ -1220,8 +1220,8 @@ class ReportController extends Controller
         $totalDues    = (float) $this->annualDueQuery($id, $year, $filterDueType)->sum('amount');
         $collectedDues= (float) $this->annualDueQuery($id, $year, $filterDueType)->sum(DB::raw('amount - remaining_amount'));
         $pendingDues  = $totalDues - $collectedDues;
-        $totalExpenses = (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->sum('amount');
-        $paidExpenses  = (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->where('is_paid', true)->sum('amount');
+        $totalExpenses = (float) Expense::withoutOpening()->where('apartment_id', $id)->whereYear('expense_date', $year)->sum('amount');
+        $paidExpenses  = (float) Expense::withoutOpening()->where('apartment_id', $id)->whereYear('expense_date', $year)->where('is_paid', true)->sum('amount');
         $unpaidExpenses= $totalExpenses - $paidExpenses;
         $cashIn  = (float) CashTransaction::where('apartment_id', $id)->whereYear('transaction_date', $year)->where('type', 'income')->sum('amount');
         $cashOut = (float) CashTransaction::where('apartment_id', $id)->whereYear('transaction_date', $year)->where('type', 'expense')->sum('amount');
@@ -1230,12 +1230,12 @@ class ReportController extends Controller
             $monthlyData[$m] = [
                 'dues'     => (float) $this->annualDueQuery($id, $year, $filterDueType, $m)->sum('amount'),
                 'payments' => $filterDueType === 'all'
-                    ? (float) Payment::where('apartment_id', $id)->whereYear('payment_date', $year)->whereMonth('payment_date', $m)->sum('amount')
-                    : (float) DB::table('payment_allocations')->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')->join('dues', 'dues.id', '=', 'payment_allocations.due_id')->where('payments.apartment_id', $id)->where('dues.due_type', $filterDueType)->whereYear('payments.payment_date', $year)->whereMonth('payments.payment_date', $m)->sum('payment_allocations.amount'),
-                'expenses' => (float) Expense::where('apartment_id', $id)->whereYear('expense_date', $year)->whereMonth('expense_date', $m)->sum('amount'),
+                    ? (float) Payment::withoutOpening()->where('apartment_id', $id)->whereYear('payment_date', $year)->whereMonth('payment_date', $m)->sum('amount')
+                    : (float) DB::table('payment_allocations')->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')->where('payments.is_opening', false)->join('dues', 'dues.id', '=', 'payment_allocations.due_id')->where('payments.apartment_id', $id)->where('dues.due_type', $filterDueType)->whereYear('payments.payment_date', $year)->whereMonth('payments.payment_date', $m)->sum('payment_allocations.amount'),
+                'expenses' => (float) Expense::withoutOpening()->where('apartment_id', $id)->whereYear('expense_date', $year)->whereMonth('expense_date', $m)->sum('amount'),
             ];
         }
-        $expenseByCategory = Expense::where('expenses.apartment_id', $id)
+        $expenseByCategory = Expense::withoutOpening()->where('expenses.apartment_id', $id)
             ->whereYear('expense_date', $year)
             ->leftJoin('categories', fn($j) => $j->on('categories.id', '=', 'expenses.category_id')->whereNull('categories.deleted_at'))
             ->selectRaw("COALESCE(NULLIF(categories.name,''), NULLIF(expenses.category,''), 'Diğer') as cat, SUM(expenses.amount) as total")
@@ -1308,7 +1308,7 @@ class ReportController extends Controller
             ->get();
 
         $rows = $categories->map(function ($cat) use ($id, $year) {
-            $actual = (float) Expense::where('apartment_id', $id)
+            $actual = (float) Expense::withoutOpening()->where('apartment_id', $id)
                 ->where('category_id', $cat->id)
                 ->whereYear('expense_date', $year)
                 ->sum('amount');
@@ -1322,7 +1322,7 @@ class ReportController extends Controller
         })->filter(fn($r) => $r['actual'] > 0);
 
         // Kategorisiz giderler
-        $uncategorized = (float) Expense::where('apartment_id', $id)
+        $uncategorized = (float) Expense::withoutOpening()->where('apartment_id', $id)
             ->whereNull('category_id')
             ->whereYear('expense_date', $year)
             ->sum('amount');
@@ -1350,10 +1350,10 @@ class ReportController extends Controller
                 ->orWhereHas('expenses'))
             ->get();
         $rows = $categories->map(function ($cat) use ($id, $year) {
-            $actual = (float) Expense::where('apartment_id', $id)->where('category_id', $cat->id)->whereYear('expense_date', $year)->sum('amount');
+            $actual = (float) Expense::withoutOpening()->where('apartment_id', $id)->where('category_id', $cat->id)->whereYear('expense_date', $year)->sum('amount');
             return ['category' => $cat->name, 'budget' => 0, 'actual' => $actual, 'variance' => -$actual, 'pct' => 0];
         })->filter(fn($r) => $r['actual'] > 0);
-        $uncategorized = (float) Expense::where('apartment_id', $id)->whereNull('category_id')->whereYear('expense_date', $year)->sum('amount');
+        $uncategorized = (float) Expense::withoutOpening()->where('apartment_id', $id)->whereNull('category_id')->whereYear('expense_date', $year)->sum('amount');
         if ($uncategorized > 0) $rows->push(['category' => 'Diğer / Kategorisiz', 'budget' => 0, 'actual' => $uncategorized, 'variance' => -$uncategorized, 'pct' => 0]);
         $totalActual = $rows->sum('actual');
 
@@ -1503,8 +1503,8 @@ class ReportController extends Controller
         })->values();
 
         $getDueMonth = fn ($due) => $due->period;
-        $selectedByAccount = $allDues->filter(fn ($due) => $getDueMonth($due) >= $selectedMonthStr && $getDueMonth($due) <= $monthEnd)->groupBy('account_id');
-        $pastByAccount = $allDues->filter(fn ($due) => $getDueMonth($due) < $selectedMonthStr)->groupBy('account_id');
+        $selectedByAccount = $allDues->filter(fn ($due) => ! $due->is_opening && $getDueMonth($due) >= $selectedMonthStr && $getDueMonth($due) <= $monthEnd)->groupBy('account_id');
+        $pastByAccount = $allDues->filter(fn ($due) => $due->is_opening || $getDueMonth($due) < $selectedMonthStr)->groupBy('account_id');
         if ($onlyPeriodResidents) {
             $residentAccounts = collect();
             foreach ($reportMonths as $residentMonth) {
@@ -1771,7 +1771,7 @@ class ReportController extends Controller
         $dateTo = $periodData['dateTo'];
         $basis = $request->input('basis') === 'category' ? 'category' : 'description';
 
-        $expenses = Expense::with('categoryRelation')->forRelation($expenseRelation)
+        $expenses = Expense::withoutOpening()->with('categoryRelation')->forRelation($expenseRelation)
             ->where('apartment_id', $apartment->id)
             ->whereDate('expense_date', '>=', $dateFrom)
             ->whereDate('expense_date', '<=', $dateTo)

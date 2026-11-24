@@ -211,6 +211,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('accounts/bulk-import/confirm', [AccountController::class, 'bulkImportConfirm'])->name('accounts.bulk-import-confirm');
 
         Route::resource('accounts', AccountController::class);
+        Route::put('accounts/{account}/opening-balance', [AccountController::class, 'updateOpeningBalance'])->name('accounts.opening-balance.update');
+        Route::delete('accounts/{account}/opening-balance', [AccountController::class, 'destroyOpeningBalance'])->name('accounts.opening-balance.destroy');
         Route::get('accounts/{id}/statement', [AccountController::class, 'statement'])->name('accounts.statement');
         Route::get('accounts/{id}/statement/export/{type}', [AccountController::class, 'statementExport'])->middleware('feature.export')->name('accounts.statement.export');
 

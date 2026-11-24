@@ -91,7 +91,7 @@
 
     @php
         $statusLabels = ['open' => 'Tüm Açık Borçlar', 'unpaid' => 'Vadesi Gelmemiş', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
-        $sourceLabels = ['plan' => 'Aidat Planı', 'assessment' => 'Taksitli Borç Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel', 'import' => 'İçe Aktarma'];
+        $sourceLabels = ['plan' => 'Aidat Planı', 'assessment' => 'Taksitli Borç Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel', 'import' => 'İçe Aktarma', 'opening' => 'Açılış bakiyesi'];
     @endphp
 
     @if ($activeFilterCount > 0)
@@ -99,7 +99,7 @@
             <span class="text-xs font-medium text-slate-500">Aktif filtreler:</span>
             @if ($filters['filterDueType'])
                 <a href="{{ route('dues.index', request()->except(['due_type', 'page'])) }}" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ \App\Enums\DueType::from($filters['filterDueType'])->label() }} <span>&times;</span>
+                    {{ $filters['filterDueType'] === 'opening' ? 'Hesap Açılış Bakiyesi' : \App\Enums\DueType::from($filters['filterDueType'])->label() }} <span>&times;</span>
                 </a>
             @endif
             @if ($filters['filterPlan'])
@@ -230,6 +230,7 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">Kaynak</label>
                         <select id="filter-source" name="source" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
                             <option value="">Tüm Kaynaklar</option>
+                            <option value="opening" @selected($filters['filterSource'] === 'opening')>Açılış bakiyesi</option>
                             <option value="plan"   {{ $filters['filterSource'] === 'plan'   ? 'selected' : '' }}>Aidat Planı</option>
                             <option value="assessment" @selected($filters['filterSource'] === 'assessment')>Taksitli Borç Planı</option>
                             <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
@@ -313,11 +314,11 @@
                     @endphp
                     <tr class="hover:bg-slate-50 transition-colors cursor-pointer" data-id="{{ $due->id }}" onclick="window.location.href='{{ route('dues.show', $due) }}'">
                         <td class="px-4 py-4" onclick="event.stopPropagation()">
-                            <input type="checkbox" class="row-check rounded border-slate-300 text-slate-700 cursor-pointer" value="{{ $due->id }}" data-status="{{ $due->status }}">
+                            @unless ($due->is_opening)<input type="checkbox" class="row-check rounded border-slate-300 text-slate-700 cursor-pointer" value="{{ $due->id }}" data-status="{{ $due->status }}">@endunless
                         </td>
                         <td class="px-5 py-4">
                             <div class="text-slate-900 font-medium">
-                                {{ $due->description ?: '-' }}
+                                {{ $due->is_opening ? 'Hesap Açılış Bakiyesi' : ($due->description ?: '-') }}
                                 @if ($due->is_imported)
                                     <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
                                 @endif
@@ -411,7 +412,7 @@
                 {{-- Parça 1: Bilgiler --}}
                 <a href="{{ route('dues.show', $due) }}" class="block">
                     <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0 flex-1 text-base font-bold text-slate-900 break-words">{{ $due->description }}</div>
+                        <div class="min-w-0 flex-1 text-base font-bold text-slate-900 break-words">{{ $due->is_opening ? 'Hesap Açılış Bakiyesi' : $due->description }}</div>
                         <span class="shrink-0 pt-0.5 text-xs text-slate-500 tabular-nums" aria-label="Oluşturulma tarihi">{{ $due->created_at_manual ? \Carbon\Carbon::parse($due->created_at_manual)->format('d.m.Y') : $due->created_at->format('d.m.Y') }}</span>
                     </div>
                     <div class="text-sm font-semibold text-slate-900 mt-1 break-words">

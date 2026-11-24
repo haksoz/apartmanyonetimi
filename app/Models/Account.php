@@ -148,6 +148,7 @@ class Account extends Model
     {
         // Opening balance entries move with the opening date and are not a fixed boundary.
         $date = $this->transactions()
+            ->where('is_opening', false)
             ->where(fn ($query) => $query
                 ->whereNotNull('transactionable_type')
                 ->orWhereNull('description')

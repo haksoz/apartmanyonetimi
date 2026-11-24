@@ -14,6 +14,8 @@
         'formTitle' => 'Hesap Düzenle',
     ])
 
+    @include('accounts._opening-balance')
+
     {{-- Tehlikeli İşlemler --}}
     <div class="mt-6 rounded-2xl border border-red-200 bg-red-50/40 p-4 md:p-6">
         <h3 class="text-sm font-semibold text-red-700 mb-1">Tehlikeli İşlemler</h3>

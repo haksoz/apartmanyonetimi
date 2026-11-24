@@ -102,54 +102,42 @@
                     $openingValue = old('account_opening_date', $existingOpening ?: ($account ? null : now()->toDateString()));
                 @endphp
                 <label for="account_opening_date" class="mb-2 block text-sm font-medium text-slate-600">{{ $openingLabel }}</label>
-                <input id="account_opening_date" name="account_opening_date" type="date" value="{{ $openingValue }}" @if ($firstActivityDate ?? null) max="{{ $firstActivityDate }}" @endif @if ($previousTenantMoveOutDate ?? null) min="{{ $previousTenantMoveOutDate }}" @endif class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <input id="account_opening_date" name="account_opening_date" type="date" @readonly($openingLocked ?? false) value="{{ $openingValue }}" @if ($firstActivityDate ?? null) max="{{ $firstActivityDate }}" @endif @if ($previousTenantMoveOutDate ?? null) min="{{ $previousTenantMoveOutDate }}" @endif class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 @if ($firstActivityDate ?? null)
                     <p class="mt-2 text-xs text-slate-500">İlk hareket tarihi: {{ \Carbon\Carbon::parse($firstActivityDate)->format('d.m.Y') }}. Daha geç bir tarih seçilemez.</p>
                 @endif
                 @if ($previousTenantMoveOutDate ?? null)
                     <p class="mt-2 text-xs text-slate-500">Önceki kiracının çıkış tarihi: {{ \Carbon\Carbon::parse($previousTenantMoveOutDate)->format('d.m.Y') }}. Daha erken bir tarih seçilemez.</p>
                 @endif
+                @if ($openingLocked ?? false)
+                    <p class="mt-2 text-xs text-amber-700">Açılış bakiyesi eşleştirildiği için bu tarih kilitlidir. Değiştirmek için önce açılışa bağlı eşleştirmeleri kaldırın.</p>
+                @endif
                 @error('account_opening_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
+            @unless ($account)
             <div>
                 <label for="balance" class="mb-2 block text-sm font-medium text-slate-600">Açılış Bakiyesi</label>
-                @if ($account)
-                    @php
-                        $openingTransaction = $openingTransaction ?? null;
-                        $openingAmount = $openingTransaction ? number_format((float) $openingTransaction->amount, 2, ',', '.') : null;
-                        $openingSide = $openingTransaction?->type === 'debit' ? 'Borç' : ($openingTransaction?->type === 'credit' ? 'Alacak' : null);
-                    @endphp
-                    <div class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                        @if ($openingTransaction)
-                            {{ $openingAmount }} TL · {{ $openingSide }}
-                        @else
-                            Hareket yok
-                        @endif
-                        <span class="mt-1 block text-xs text-slate-400">Açılış bakiyesi kayıt sırasında bir kez yazılır. Sonraki düzeltme hesap hareketinden yapılır.</span>
-                    </div>
-                @else
-                    <input id="balance" name="balance" type="number" min="0" step="0.01" value="{{ old('balance', 0) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
-                    @error('balance')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-                @endif
+                <input id="balance" name="balance" type="number" min="0" step="0.01" value="{{ old('balance', ($openingTransaction ?? null)?->amount ?? 0) }}" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <p class="mt-2 text-xs text-slate-500">Geçmişten devreden tutardır; kasayı etkilemez. Mevcut kapatma ekranlarından eşleştirilir.</p>
+                @error('balance')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
-
-            @unless ($account)
-                <div id="account-opening-side" class="md:col-span-2 {{ abs((float) old('balance', 0)) >= 0.01 ? '' : 'hidden' }}">
+                <div id="account-opening-side" class="md:col-span-2 {{ abs((float) old('balance', ($openingTransaction ?? null)?->amount ?? 0)) >= 0.01 ? '' : 'hidden' }}">
                     <p class="mb-2 text-sm font-medium text-slate-600">Girilen bakiye borç mu, alacak mı?</p>
                     <div class="grid grid-cols-2 gap-3">
                         <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm has-[:checked]:border-slate-950 has-[:checked]:bg-slate-50">
-                            <input type="radio" name="opening_side" value="debit" @checked(old('opening_side') === 'debit') class="h-4 w-4">
+                            <input type="radio" name="opening_side" value="debit" @checked(old('opening_side', ($openingTransaction ?? null)?->type) === 'debit') class="h-4 w-4">
                             Borç
                         </label>
                         <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm has-[:checked]:border-slate-950 has-[:checked]:bg-slate-50">
-                            <input type="radio" name="opening_side" value="credit" @checked(old('opening_side') === 'credit') class="h-4 w-4">
+                            <input type="radio" name="opening_side" value="credit" @checked(old('opening_side', ($openingTransaction ?? null)?->type) === 'credit') class="h-4 w-4">
                             Alacak
                         </label>
                     </div>
                     <p class="mt-2 text-xs text-slate-400">Borç: hesap bize borçlu. Alacak: biz hesaba borçluyuz.</p>
                     @error('opening_side')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
+
             @endunless
 
             <div class="md:col-span-2">
