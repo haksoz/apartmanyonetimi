@@ -48,7 +48,7 @@ class BulkImportGuard
 
         return 'İçe aktarılanlar silinemez. İçe aktarma yapıldıktan sonra bu apartmanda işlem girilmiş: '
             .implode(', ', $found)
-            .'. Bu işlemler dururken devir kayıtlarını silmek bakiyeyi bozar.';
+            .'. Bu işlemler dururken içe aktarma kayıtlarını silmek bakiyeyi bozar.';
     }
 
     public function redirectIfDeleteBlocked(Apartment $apartment): ?RedirectResponse

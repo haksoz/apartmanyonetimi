@@ -267,7 +267,7 @@
                         <td class="px-4 py-3 text-slate-700 whitespace-nowrap">${exp.expense_date}</td>
                         <td class="px-4 py-3 text-slate-700">
                             ${exp.description}
-                            ${exp.is_imported ? '<span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>' : ''}
+                            ${exp.is_imported ? '<span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>' : ''}
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-slate-900 whitespace-nowrap">${exp.remaining_amount.toLocaleString('tr-TR', {minimumFractionDigits:2,maximumFractionDigits:2})} TL</td>
                         <td class="px-4 py-3 text-right">

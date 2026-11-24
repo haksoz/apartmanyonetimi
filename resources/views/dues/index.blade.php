@@ -1,6 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $periodLabel = $filters['filterPeriod'] ? \Carbon\Carbon::parse($filters['filterPeriod'].'-01')->locale('tr')->translatedFormat('F Y') : 'Tüm Dönemler';
+        if ($filters['filterPeriodEnd'] && $filters['filterPeriodEnd'] !== $filters['filterPeriod']) {
+            $periodLabel .= ' – '.\Carbon\Carbon::parse($filters['filterPeriodEnd'].'-01')->locale('tr')->translatedFormat('F Y');
+        }
+    @endphp
     {{-- Header Section --}}
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -36,6 +42,7 @@
             @endif
             @if ($filters['filterPeriod'])
                 <input type="hidden" name="period" value="{{ $filters['filterPeriod'] }}">
+                <input type="hidden" name="period_end" value="{{ $filters['filterPeriodEnd'] }}">
             @endif
             @if ($filters['filterStatus'])
                 <input type="hidden" name="status" value="{{ $filters['filterStatus'] }}">
@@ -45,9 +52,6 @@
             @endif
             @if ($filters['filterUnitId'])
                 <input type="hidden" name="unit_id" value="{{ $filters['filterUnitId'] }}">
-            @endif
-            @if ($showImported)
-                <input type="hidden" name="show_imported" value="1">
             @endif
             @if ($sortBy !== 'created_at')
                 <input type="hidden" name="sort_by" value="{{ $sortBy }}">
@@ -74,7 +78,6 @@
             if ($filters['filterStatus']) $activeFilterCount++;
             if ($filters['filterSource']) $activeFilterCount++;
             if ($filters['filterUnitId']) $activeFilterCount++;
-            if ($showImported) $activeFilterCount++;
         @endphp
 
         <button type="button" onclick="openFilterModal()"
@@ -116,9 +119,9 @@
                 </a>
             @endif
             @if ($filters['filterPeriod'])
-                <a href="{{ route('dues.index', request()->except('period')) }}"
+                <a href="{{ route('dues.index', request()->except(['period', 'period_end', 'page'])) }}"
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ \Carbon\Carbon::parse($filters['filterPeriod'] . '-01')->format('m/Y') }}
+                    {{ $periodLabel }}
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif
@@ -142,13 +145,6 @@
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
                     {{ $sourceLabels[$filters['filterSource']] ?? $filters['filterSource'] }}
                     <span class="text-slate-500">&times;</span>
-                </a>
-            @endif
-            @if ($showImported)
-                <a href="{{ route('dues.index', request()->except('show_imported')) }}"
-                   class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
-                    Devir Öncesi
-                    <span class="text-blue-500">&times;</span>
                 </a>
             @endif
             <a href="{{ route('dues.index', request()->only(['search', 'sort_by', 'sort_direction', 'from'])) }}"
@@ -199,8 +195,9 @@
                     <div>
                         <label id="dues-period-label" class="block text-sm font-medium text-slate-700 mb-1.5">Tarih/Dönem</label>
                         <input type="hidden" id="dues-period" name="period" value="{{ $filters['filterPeriod'] }}">
+                        <input type="hidden" id="dues-period-end" name="period_end" value="{{ $filters['filterPeriodEnd'] }}">
                         <button type="button" id="dues-period-open" aria-haspopup="dialog" aria-labelledby="dues-period-label dues-period-text" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-left text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
-                            <span id="dues-period-text">{{ $filters['filterPeriod'] ? \Carbon\Carbon::parse($filters['filterPeriod'].'-01')->locale('tr')->translatedFormat('F Y') : 'Tüm Dönemler' }}</span>
+                            <span id="dues-period-text">{{ $periodLabel }}</span>
                         </button>
                     </div>
 
@@ -249,13 +246,6 @@
                         </select>
                     </div>
 
-                    @if ($hasImported)
-                        <label class="flex items-center justify-between cursor-pointer select-none">
-                            <span class="text-sm font-medium text-slate-700">Devir Öncesini Göster</span>
-                            <input type="checkbox" name="show_imported" value="1" role="switch" class="peer sr-only" {{ $showImported ? 'checked' : '' }}>
-                            <span aria-hidden="true" class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full bg-slate-200 transition-colors peer-checked:bg-slate-950 peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-slate-300 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5"></span>
-                        </label>
-                    @endif
                 </div>
 
                 <div class="mt-6 flex items-center gap-3 pt-4 border-t border-slate-100">
@@ -320,7 +310,7 @@
                             <div class="text-slate-900 font-medium">
                                 {{ $due->is_opening ? 'Hesap Açılış Bakiyesi' : ($due->description ?: '-') }}
                                 @if ($due->is_imported)
-                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                                 @endif
                             </div>
                             @if ($due->account)
@@ -429,7 +419,7 @@
                     @endif
                     @if ($due->is_imported)
                         <div class="mt-1.5">
-                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                         </div>
                     @endif
                 </a>
@@ -489,7 +479,7 @@
     @endif
 
     @include('dues._payment_modal', ['cashBoxes' => $cashBoxes])
-    @include('components.period-picker', ['periodPickerId' => 'dues'])
+    @include('components.period-picker', ['periodPickerId' => 'dues', 'periodPickerRange' => true])
 
     <script>
         var selectedIds = new Set();
@@ -568,8 +558,7 @@
             var form = document.getElementById('filter-form');
             form.querySelectorAll('select').forEach(function (el) { el.value = ''; });
             document.getElementById('dues-period').value = '';
-            var cb = form.querySelector('input[name="show_imported"]');
-            if (cb) cb.checked = false;
+            document.getElementById('dues-period-end').value = '';
             form.submit();
         }
 
@@ -592,10 +581,11 @@
         })();
 
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && !document.getElementById('dues-period-dialog').open) closeFilterModal();
+            if (e.key === 'Escape' && !document.querySelector('dialog[open]')) closeFilterModal();
         });
 
         // Tekli aidat tahsilatı popup
     </script>
+    @include('components.filter-select-picker')
     @include('dues._payment_modal_script')
 @endsection

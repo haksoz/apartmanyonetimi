@@ -165,7 +165,7 @@
 
                             <input type="checkbox" id="show-imported-dues" class="rounded">
 
-                            Devir Öncesini Göster ({{ $importedDues->count() }})
+                            İçe Aktarılanları Göster ({{ $importedDues->count() }})
 
                         </label>
 
@@ -287,7 +287,7 @@
 
                             @endforeach
 
-                            {{-- Devir Öncesi Aidatlar (toggle ile gösterilir) --}}
+                            {{-- İçe Aktarma Aidatlar (toggle ile gösterilir) --}}
 
                             @foreach ($importedDues as $due)
 
@@ -311,7 +311,7 @@
 
                                         {{ $due->description ?: 'Aidat' }}
 
-                                        <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                        <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
 
                                     </td>
 
@@ -418,7 +418,7 @@
                                         <div class="text-xs text-slate-500">{{ $due->due_date->format('d.m.Y') }}</div>
                                         <div class="text-sm text-slate-700 truncate">
                                             {{ \Illuminate\Support\Str::limit($due->description ?: 'Aidat', 30) }}
-                                            <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                            <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                                         </div>
                                     </div>
                                 </div>
@@ -548,7 +548,7 @@
 
                             <input type="checkbox" id="show-imported-payments" class="rounded">
 
-                            Devir Öncesini Göster ({{ $importedPayments->count() }})
+                            İçe Aktarılanları Göster ({{ $importedPayments->count() }})
 
                         </label>
 
@@ -649,7 +649,7 @@
 
                                     {{ $payment->description ?: 'Ödeme' }}
 
-                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
 
                                 </td>
 
@@ -706,7 +706,7 @@
                                     <div class="text-xs text-slate-500">{{ $payment->payment_date?->format('d.m.Y') ?? '-' }}</div>
                                     <div class="text-sm text-slate-700 truncate">
                                         {{ \Illuminate\Support\Str::limit($payment->description ?: 'Ödeme', 30) }}
-                                        <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                        <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                                     </div>
                                 </div>
                             </div>
@@ -842,7 +842,7 @@
 
                             <input type="checkbox" id="show-imported-supplier-payments" class="rounded">
 
-                            Devir Öncesini Göster ({{ $importedPayments->count() }})
+                            İçe Aktarılanları Göster ({{ $importedPayments->count() }})
 
                         </label>
 
@@ -943,7 +943,7 @@
 
                                     {{ $payment->description ?: 'Ödeme' }}
 
-                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
 
                                 </td>
 
@@ -1164,7 +1164,7 @@
 
 
 
-        // Devir Öncesi toggle — DOMContentLoaded ile bağla (ödemeler bölümü bu script'ten sonra render edilir)
+        // İçe Aktarma toggle — DOMContentLoaded ile bağla (ödemeler bölümü bu script'ten sonra render edilir)
 
         document.addEventListener('DOMContentLoaded', function() {
 
@@ -1931,7 +1931,7 @@
 
                                     @endif
 
-                                    <div class="text-xs {{ $isPartial ? 'text-blue-500' : 'text-blue-700' }}">Devir Öncesi</div>
+                                    <div class="text-xs {{ $isPartial ? 'text-blue-500' : 'text-blue-700' }}">İçe Aktarma</div>
 
                                 </div>
 

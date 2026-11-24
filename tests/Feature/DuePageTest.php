@@ -20,6 +20,34 @@ class DuePageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_dues_period_range_spans_years_and_includes_month_boundaries(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Dönem testi', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER, 'name' => 'Test Hesabı']);
+        foreach (['2025-11-30', '2025-12-01', '2026-01-31', '2026-02-01'] as $date) {
+            Due::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'account_id' => $account->id,
+                'due_type' => \App\Enums\DueType::Aidat, 'created_at_manual' => $date,
+                'description' => $date, 'amount' => 100, 'remaining_amount' => 100,
+                'status' => 'unpaid', 'is_imported' => true]);
+        }
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $this->get(route('dues.index', ['period' => '2025-12', 'period_end' => '2026-01', 'from' => 'menu']))
+            ->assertOk()->assertSee('Aralık 2025 – Ocak 2026')
+            ->assertViewHas('dues', fn ($rows) => $rows->total() === 2)
+            ->assertSee('name="period_end" value="2026-01"', false)
+            ->assertSee('filter-select-dialog')->assertSee('2025-12-01')->assertSee('2026-01-31')
+            ->assertDontSee('2025-11-30')->assertDontSee('2026-02-01');
+        $this->get(route('dues.index', ['period' => '2025-12']))->assertOk()
+            ->assertViewHas('dues', fn ($rows) => $rows->total() === 1);
+        $this->get(route('dues.index', ['period' => '2026-02', 'period_end' => '2026-01']))
+            ->assertSessionHasErrors('period_end');
+    }
+
+
     public function test_dues_index_opens_empty_for_selected_apartment(): void
     {
         $user = User::factory()->create();
@@ -149,7 +177,7 @@ class DuePageTest extends TestCase
             ]))
             ->assertStatus(200)
             ->assertSee('Ocak 2026 aidatı')
-            ->assertSee('name="show_imported" value="1"', false)
+            ->assertDontSee('name="show_imported"', false)
             ->assertSee('name="unit_id" value="' . $unit->id . '"', false)
             ->assertDontSee('name="account_type"', false)
             ->assertSee('name="sort_by" value="amount"', false)
@@ -169,7 +197,7 @@ class DuePageTest extends TestCase
             ->assertSee('Ocak 2026 aidatı');
     }
 
-    public function test_show_imported_switch_includes_imported_dues_only_when_enabled(): void
+    public function test_index_always_includes_imported_dues_with_database_pagination(): void
     {
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Devir Testi', 'unit_count' => 1]);
@@ -177,19 +205,21 @@ class DuePageTest extends TestCase
         $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
         $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
             'type' => Account::TYPE_OWNER, 'name' => 'Test Hesabı']);
-        foreach ([false, true] as $imported) {
+        foreach (range(0, 25) as $row) {
+            $imported = $row % 2 === 0;
             Due::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'account_id' => $account->id,
                 'due_type' => \App\Enums\DueType::Aidat, 'created_at_manual' => '2026-01-01',
                 'amount' => 100, 'remaining_amount' => 100, 'status' => 'unpaid', 'is_imported' => $imported]);
         }
         $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
         foreach ([[] , ['show_imported' => '1'], ['show_imported' => '0'], []] as $query) {
-            $enabled = ($query['show_imported'] ?? '0') === '1';
             $this->get(route('dues.index', $query))->assertOk()
-                ->assertViewHas('showImported', $enabled)
-                ->assertViewHas('dues', fn ($dues) => $dues->total() === ($enabled ? 2 : 1)
-                    && ($enabled || $dues->every(fn ($due) => ! $due->is_imported)));
+                ->assertDontSee('name="show_imported"', false)
+                ->assertViewHas('dues', fn ($dues) => $dues->total() === 26
+                    && $dues->count() === 25 && $dues->contains('is_imported', true));
         }
+        $this->get(route('dues.index', ['page' => 2]))->assertOk()
+            ->assertViewHas('dues', fn ($dues) => $dues->total() === 26 && $dues->count() === 1);
     }
 
     public function test_status_filter_matches_computed_status(): void

@@ -20,6 +20,30 @@ class ExpensePageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_expense_month_range_includes_boundaries_and_preserves_single_month_links(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Dönem testi', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $supplier = Account::create(['apartment_id' => $apartment->id, 'type' => 'supplier', 'name' => 'Tedarikçi']);
+        foreach (['2025-11-30', '2025-12-01', '2026-01-31', '2026-02-01'] as $date) {
+            Expense::create(['apartment_id' => $apartment->id, 'account_id' => $supplier->id,
+                'category' => 'Temizlik', 'amount' => 100, 'expense_date' => $date,
+                'description' => $date, 'is_imported' => true]);
+        }
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $this->get(route('expenses.index', ['period' => '2025-12', 'period_end' => '2026-01']))
+            ->assertOk()->assertSee('Aralık 2025 – Ocak 2026')
+            ->assertViewHas('expenses', fn ($rows) => $rows->total() === 2)
+            ->assertSee('2025-12-01')->assertSee('2026-01-31')
+            ->assertDontSee('2025-11-30')->assertDontSee('2026-02-01');
+        $this->get(route('expenses.index', ['period' => '2025-12']))->assertOk()
+            ->assertViewHas('expenses', fn ($rows) => $rows->total() === 1);
+        $this->get(route('expenses.index', ['period' => '2026-02', 'period_end' => '2026-01']))
+            ->assertSessionHasErrors('period_end');
+        $this->get(route('expenses.index', ['period' => 'invalid']))->assertSessionHasErrors('period');
+    }
+
     public function test_expenses_index_opens_empty_for_selected_apartment(): void
     {
         $user = User::factory()->create();
@@ -682,6 +706,7 @@ class ExpensePageTest extends TestCase
                 'account_id' => $supplier->id,
                 'category' => 'Temizlik',
                 'description' => 'Gider '.$day,
+                'is_imported' => $day % 2 === 0,
                 'amount' => 100,
                 'expense_date' => now()->parse('2026-01-01')->addDays($day)->toDateString(),
             ]);

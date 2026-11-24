@@ -1402,7 +1402,7 @@ class AccountController extends Controller
             $debitRaw = $row[6] ?? 0;
 
             if (empty($accountName) || $accountName === '-' || $accountName === '—') {
-                $accountName = 'Devir Öncesi Tedarikçi';
+                $accountName = 'İçe Aktarma Tedarikçi';
             }
 
             // Tarih parse
@@ -1670,8 +1670,8 @@ class AccountController extends Controller
 
         DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $debtSelections, &$categories, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
             $cashBox = CashBox::firstOrCreate(
-                ['apartment_id' => $apartment->id, 'name' => 'Devir Öncesi Kasası'],
-                ['is_active' => true, 'description' => 'Devir Öncesi Kasası — import işlemleri için otomatik oluşturuldu.'],
+                ['apartment_id' => $apartment->id, 'name' => 'İçe Aktarma Kasası'],
+                ['is_active' => true, 'description' => 'İçe Aktarma Kasası — import işlemleri için otomatik oluşturuldu.'],
             );
             $newDebtCategories = [];
             // 1. Hesapları oluştur veya eşleştir
@@ -1818,7 +1818,7 @@ class AccountController extends Controller
                             'apartment_id'     => $apartment->id,
                             'account_id'       => $accountId,
                             'category_id'      => $category?->id,
-                            'description'      => $t['description'] ?: 'Devir Öncesi',
+                            'description'      => $t['description'] ?: 'İçe Aktarma',
                             'amount'           => $t['credit'],
                             'paid_amount'      => 0,
                             'remaining_amount' => $t['credit'],
@@ -1833,7 +1833,7 @@ class AccountController extends Controller
                             'transactionable_type' => Expense::class,
                             'transactionable_id' => $expense->id,
                             'transaction_date' => $t['date'],
-                            'description' => $t['description'] ?: 'Devir Öncesi',
+                            'description' => $t['description'] ?: 'İçe Aktarma',
                             'type' => 'credit',
                             'amount' => $t['credit'],
                             'is_imported' => true,

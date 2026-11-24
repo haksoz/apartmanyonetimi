@@ -8,8 +8,7 @@
             <button type="button" data-expense-status="{{ $value }}" aria-pressed="false" class="min-w-0 whitespace-nowrap rounded-xl border border-slate-200 px-1 py-3 text-xs sm:text-sm hover:bg-slate-50 aria-pressed:border-emerald-600 aria-pressed:bg-emerald-50 aria-pressed:font-semibold aria-pressed:text-emerald-700">{{ $label }}</button>
         @endforeach
     </div>
-    <p class="mt-3 text-xs text-slate-500">Birden fazla durum seçebilirsiniz. Seçim yapılmazsa tüm durumlar gösterilir.</p>
-    <button type="button" id="expense-status-apply" class="mt-4 w-full rounded-xl bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white">Uygula</button>
+    <p class="mt-3 text-xs text-slate-500">Duruma dokunduğunuzda seçiminiz kaydedilir. Listeyi güncellemek için filtredeki Uygula düğmesini kullanın.</p>
     <button type="button" id="expense-status-clear" class="mt-4 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold hover:bg-slate-50">Tüm Durumlar</button>
 </dialog>
 <script>
@@ -29,6 +28,7 @@
             if (selected.has(value)) selected.delete(value);
             else selected.add(value);
             refresh();
+            commit();
         }));
         const commit = () => {
             const chosen = buttons.filter(button => selected.has(button.dataset.expenseStatus));
@@ -42,7 +42,6 @@
             document.getElementById('expense-status-text').textContent = chosen.map(button => button.textContent.trim()).join(', ') || 'Tüm Durumlar';
             dialog.close();
         };
-        document.getElementById('expense-status-apply').addEventListener('click', commit);
         document.getElementById('expense-status-clear').addEventListener('click', () => { selected.clear(); commit(); });
         document.getElementById('expense-status-close').addEventListener('click', () => dialog.close());
         dialog.addEventListener('keydown', event => { if (event.key === 'Escape') event.stopPropagation(); });

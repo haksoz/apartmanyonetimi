@@ -1,6 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $periodLabel = $filters['filterPeriod'] ? \Carbon\Carbon::parse($filters['filterPeriod'].'-01')->locale('tr')->translatedFormat('F Y') : 'Tüm Dönemler';
+        if ($filters['filterPeriodEnd'] && $filters['filterPeriodEnd'] !== $filters['filterPeriod']) {
+            $periodLabel .= ' – '.\Carbon\Carbon::parse($filters['filterPeriodEnd'].'-01')->locale('tr')->translatedFormat('F Y');
+        }
+    @endphp
     {{-- Header Section --}}
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -20,15 +26,13 @@
         <form method="GET" action="{{ route('expenses.index') }}" class="flex gap-2 flex-1 min-w-0">
             @if ($filters['filterPeriod'])
                 <input type="hidden" name="period" value="{{ $filters['filterPeriod'] }}">
+                <input type="hidden" name="period_end" value="{{ $filters['filterPeriodEnd'] }}">
             @endif
             @foreach ($filters['filterStatus'] as $status)
                 <input type="hidden" name="status[]" value="{{ $status }}">
             @endforeach
             @if ($filters['filterCategory'])
                 <input type="hidden" name="category" value="{{ $filters['filterCategory'] }}">
-            @endif
-            @if ($showImported)
-                <input type="hidden" name="show_imported" value="1">
             @endif
             @if ($sortBy !== 'expense_date')
                 <input type="hidden" name="sort_by" value="{{ $sortBy }}">
@@ -51,7 +55,6 @@
             if ($filters['filterPeriod']) $activeFilterCount++;
             if ($filters['filterStatus']) $activeFilterCount++;
             if ($filters['filterCategory']) $activeFilterCount++;
-            if ($showImported) $activeFilterCount++;
         @endphp
 
         <button type="button" onclick="openFilterModal()"
@@ -75,9 +78,9 @@
         <div class="mb-4 flex flex-wrap items-center gap-2">
             <span class="text-xs font-medium text-slate-500">Aktif filtreler:</span>
             @if ($filters['filterPeriod'])
-                <a href="{{ route('expenses.index', request()->except('period')) }}"
+                <a href="{{ route('expenses.index', request()->except(['period', 'period_end', 'page'])) }}"
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ \Carbon\Carbon::parse($filters['filterPeriod'] . '-01')->format('m/Y') }}
+                    {{ $periodLabel }}
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif
@@ -93,13 +96,6 @@
                    class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
                     {{ $activeCategory }}
                     <span class="text-slate-500">&times;</span>
-                </a>
-            @endif
-            @if ($showImported)
-                <a href="{{ route('expenses.index', request()->except('show_imported')) }}"
-                   class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
-                    Devir Öncesi
-                    <span class="text-blue-500">&times;</span>
                 </a>
             @endif
             <a href="{{ route('expenses.index', request()->only(['search', 'sort_by', 'sort_direction'])) }}"
@@ -137,9 +133,10 @@
                     <div>
                         <label id="expense-period-label" class="block text-sm font-medium text-slate-700 mb-1.5">Tarih/Dönem</label>
                         <input type="hidden" id="expense-period" name="period" value="{{ $filters['filterPeriod'] }}">
+                        <input type="hidden" id="expense-period-end" name="period_end" value="{{ $filters['filterPeriodEnd'] }}">
                         <button type="button" id="expense-period-open" aria-haspopup="dialog" aria-labelledby="expense-period-label expense-period-text"
                             class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-left text-base focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
-                            <span id="expense-period-text">{{ $filters['filterPeriod'] ? \Carbon\Carbon::parse($filters['filterPeriod'].'-01')->locale('tr')->translatedFormat('F Y') : 'Tüm Dönemler' }}</span>
+                            <span id="expense-period-text">{{ $periodLabel }}</span>
                         </button>
                     </div>
 
@@ -157,22 +154,15 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Kategori</label>
-                        <select name="category" class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white sm:py-2 sm:text-sm">
-                            <option value="">Tüm Kategoriler</option>
-                            @foreach ($categories as $id => $name)
-                                <option value="{{ $id }}" @selected((string)$filters['filterCategory'] === (string)$id)>{{ $name }}</option>
-                            @endforeach
-                        </select>
+                        <label id="expense-category-label" class="block text-sm font-medium text-slate-700 mb-1.5">Kategori</label>
+                        <input type="hidden" id="expense-category" name="category" value="{{ $filters['filterCategory'] }}">
+                        <button type="button" id="expense-category-open" aria-haspopup="dialog" aria-labelledby="expense-category-label expense-category-text"
+                            class="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-300 bg-white px-3 py-3 text-left text-base transition hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 sm:py-2 sm:text-sm">
+                            <span id="expense-category-text" class="truncate">{{ $activeCategory ?: 'Tüm Kategoriler' }}</span>
+                            <svg class="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                        </button>
                     </div>
 
-                    @if ($hasImported)
-                        <label class="flex items-center justify-between cursor-pointer select-none">
-                            <span class="text-sm font-medium text-slate-700">Devir Öncesini Göster</span>
-                            <input type="checkbox" name="show_imported" value="1" role="switch" class="peer sr-only" {{ $showImported ? 'checked' : '' }}>
-                            <span aria-hidden="true" class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full bg-slate-200 transition-colors peer-checked:bg-slate-950 peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-slate-300 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5"></span>
-                        </label>
-                    @endif
                 </div>
 
                 <div class="mt-6 flex items-center gap-3 pt-4 border-t border-slate-100">
@@ -228,7 +218,7 @@
                             <div class="text-slate-900 font-medium">
                                 {{ $expense->description ?? '-' }}
                                 @if ($expense->is_imported)
-                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                                 @endif
                             </div>
                             @if ($expense->account)
@@ -311,7 +301,7 @@
                     @endif
                     @if ($expense->is_imported)
                         <div class="mt-1.5">
-                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                            <span class="inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                         </div>
                     @endif
                 </a>
@@ -359,8 +349,9 @@
     @endif
 
     @include('expenses._payment_modal', ['cashBoxes' => $cashBoxes])
-    @include('components.period-picker', ['periodPickerId' => 'expense'])
+    @include('components.period-picker', ['periodPickerId' => 'expense', 'periodPickerRange' => true])
     @include('expenses._status-picker')
+    @include('expenses._category-picker')
 
     <script>
         function openFilterModal() {
@@ -373,16 +364,15 @@
 
         function resetFilters() {
             var form = document.getElementById('filter-form');
-            form.querySelectorAll('select').forEach(function (el) { el.value = ''; });
+            document.getElementById('expense-category').value = '';
             document.getElementById('expense-period').value = '';
+            document.getElementById('expense-period-end').value = '';
             document.getElementById('expense-status-inputs').replaceChildren();
-            var cb = form.querySelector('input[name="show_imported"]');
-            if (cb) cb.checked = false;
             form.submit();
         }
 
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && !document.getElementById('expense-period-dialog').open && !document.getElementById('expense-status-dialog').open) closeFilterModal();
+            if (e.key === 'Escape' && !document.getElementById('expense-period-dialog').open && !document.getElementById('expense-status-dialog').open && !document.getElementById('expense-category-dialog').open) closeFilterModal();
         });
 
     </script>

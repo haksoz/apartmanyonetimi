@@ -93,13 +93,13 @@ class BulkImportGuardTest extends TestCase
         $account = Account::create([
             'apartment_id' => $apartment->id,
             'type' => Account::TYPE_SUPPLIER,
-            'name' => 'Devir Öncesi Tedarikçi',
+            'name' => 'İçe Aktarma Tedarikçi',
         ]);
         $imported = AccountTransaction::create([
             'apartment_id' => $apartment->id,
             'account_id' => $account->id,
             'type' => 'credit',
-            'description' => 'Devir Öncesi',
+            'description' => 'İçe Aktarma',
             'amount' => 80,
             'transaction_date' => '2024-01-01',
             'is_imported' => true,

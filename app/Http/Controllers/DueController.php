@@ -57,16 +57,17 @@ class DueController extends Controller
         $filterSearch  = $request->query('search');
         $filterUnitId  = $request->query('unit_id');
         $request->validate([
+            'period' => ['nullable', 'required_with:period_end', 'date_format:Y-m'],
+            'period_end' => ['nullable', 'date_format:Y-m', 'after_or_equal:period'],
             'due_type' => ['nullable', Rule::in([...DueType::values(), 'opening'])],
             'plan' => ['nullable', 'regex:/^(aidat|assessment):[1-9][0-9]*$/'],
             'source' => ['nullable', Rule::in(['plan', 'assessment', 'batch', 'manual', 'import', 'opening'])],
             'status' => ['nullable', Rule::in(['open', 'unpaid', 'partial', 'paid', 'overdue'])],
         ]);
+        $filterPeriodEnd = $filterPeriod ? ($request->query('period_end') ?: $filterPeriod) : null;
         $filterDueType = $request->query('due_type');
         $filterPlan = $request->query('plan');
         [$planType, $planId] = $filterPlan ? explode(':', $filterPlan) : [null, null];
-        $showImported = $request->boolean('show_imported', false);
-        $includeImported = $showImported || $filterSource === 'import';
 
         $isOwner = $this->isOwnerOf($apartment);
 
@@ -83,7 +84,9 @@ class DueController extends Controller
             ->when($filterSearch, function ($q) use ($filterSearch) {
                 \App\Support\DueSearch::apply($q, (string) $filterSearch);
             })
-            ->when($filterPeriod, fn ($q) => $q->forMonth($filterPeriod))
+            ->when($filterPeriod, fn ($q) => $q->recordDatesBetween(
+                \Carbon\Carbon::parse($filterPeriod.'-01')->startOfMonth()->toDateString(),
+                \Carbon\Carbon::parse($filterPeriodEnd.'-01')->endOfMonth()->toDateString()))
             ->forListType($filterDueType)
             ->when($filterPlan, fn ($q) => $q->whereHas('batch', fn ($b) => $b->where($planType === 'aidat' ? 'due_plan_id' : 'assessment_plan_id', $planId)))
             ->when($filterStatus,  fn ($q) => $this->applyStatusFilter($q, $filterStatus))
@@ -100,18 +103,17 @@ class DueController extends Controller
                     $manual->whereNull('due_batch_id')
                         ->orWhereHas('batch', fn ($batch) => $batch->where('source_type', DueBatch::SOURCE_INDIVIDUAL));
                 }))
-            ->when($filterSource === 'import', fn ($q) => $q->where('is_imported', true))
-            ->when(! $includeImported, fn ($q) => $q->where('is_imported', false));
+            ->when($filterSource === 'import', fn ($q) => $q->where('is_imported', true));
 
         if ($sortBy === 'unit_id') {
-            $dues->orderByRaw('unit_id IS NULL, unit_id ' . $sortDirection);
+            $dues->orderByRaw('unit_id IS NULL, unit_id ' . $sortDirection)->orderBy('dues.id');
         } elseif ($sortBy === 'created_at') {
             $dues->orderByRaw('DATE(COALESCE(created_at_manual, created_at)) ' . $sortDirection)
                 ->orderByRaw('unit_id IS NULL')
                 ->orderByRaw('(SELECT CAST(units.unit_no AS UNSIGNED) FROM units WHERE units.id = dues.unit_id) ASC')
                 ->orderBy('dues.id');
         } else {
-            $dues->orderBy($sortBy, $sortDirection);
+            $dues->orderBy($sortBy, $sortDirection)->orderBy('dues.id');
         }
 
         $dues = $dues->paginate(25)->withQueryString();
@@ -131,7 +133,7 @@ class DueController extends Controller
         $planOptions = collect();
         if ($apartment) {
             $visibleBatches = DueBatch::query()->where('apartment_id', $apartment->id)
-                ->whereHas('dues', fn ($dueQuery) => $dueQuery->when(! $includeImported, fn ($query) => $query->where('is_imported', false)))
+                ->whereHas('dues')
                 ->when($memberAccountIds !== null, fn ($q) => $q->whereHas('dues', fn ($d) => $d->whereIn('account_id', $memberAccountIds)));
             foreach (DuePlan::where('apartment_id', $apartment->id)
                 ->whereIn('id', (clone $visibleBatches)->whereNotNull('due_plan_id')->select('due_plan_id'))
@@ -146,15 +148,9 @@ class DueController extends Controller
         }
         $selectedPlan = $planOptions->firstWhere('value', $filterPlan);
         $dueTypeOptions = [...DueType::options(), ['value' => 'opening', 'label' => 'Hesap Açılış Bakiyesi']];
-        $filters = compact('filterPeriod', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterDueType', 'filterPlan', 'showImported');
+        $filters = compact('filterPeriod', 'filterPeriodEnd', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterDueType', 'filterPlan');
 
-        $hasImported = Due::query()
-            ->when($apartment, fn ($q) => $q->where('dues.apartment_id', $apartment->id))
-            ->when($memberAccountIds, fn ($q) => $q->whereIn('account_id', $memberAccountIds))
-            ->where('is_imported', true)
-            ->exists();
-
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'cashBoxes', 'showImported', 'hasImported', 'planOptions', 'selectedPlan', 'dueTypeOptions'));
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'cashBoxes', 'planOptions', 'selectedPlan', 'dueTypeOptions'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)

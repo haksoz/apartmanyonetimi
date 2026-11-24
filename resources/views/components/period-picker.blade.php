@@ -15,6 +15,9 @@
             <button type="button" data-period-month="{{ $index + 1 }}" aria-pressed="false" class="rounded-xl border border-slate-200 px-2 py-3 text-sm hover:bg-slate-50 aria-pressed:border-emerald-600 aria-pressed:bg-emerald-50 aria-pressed:font-semibold aria-pressed:text-emerald-700">{{ $label }}</button>
         @endforeach
     </div>
+    @if ($periodPickerRange ?? false)
+        <p class="mt-3 text-xs text-slate-500">Önce başlangıç, sonra bitiş ayına dokunun. Tek ay için aynı aya iki kez dokunabilirsiniz.</p>
+    @endif
     <p data-period-selection class="mt-3 text-sm font-medium text-emerald-700" aria-live="polite"></p>
     <button type="button" data-period-apply class="mt-4 w-full rounded-xl bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white">Uygula</button>
     <button type="button" data-period-current class="mt-4 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold hover:bg-slate-50">Bu Ay</button>
@@ -28,21 +31,26 @@
         const year = dialog.querySelector('[data-period-year]');
         const buttons = [...dialog.querySelectorAll('[data-period-month]')];
         const current = @json(now()->format('Y-m'));
-        let selected;
+        const range = @json($periodPickerRange ?? false);
+        const endInput = document.getElementById(`${prefix}-period-end`);
+        let selected, selectedEnd, awaitingEnd = false;
         const label = value => value ? `${buttons[Number(value.slice(5)) - 1].textContent} ${Number(value.slice(0, 4))}` : 'Tüm Dönemler';
         const refresh = () => {
-            dialog.querySelector('[data-period-selection]').textContent = label(selected);
+            dialog.querySelector('[data-period-selection]').textContent = label(selected) + (range && selectedEnd && selectedEnd !== selected ? ' – ' + label(selectedEnd) : '') + (awaitingEnd ? ' · Bitiş ayını seçin' : '');
             dialog.querySelector('[data-period-previous]').disabled = Number(year.value) <= 1;
             dialog.querySelector('[data-period-next]').disabled = Number(year.value) >= 9999;
-            buttons.forEach(button => button.setAttribute('aria-pressed', selected === `${String(year.value).padStart(4, '0')}-${button.dataset.periodMonth.padStart(2, '0')}` ? 'true' : 'false'));
+            buttons.forEach(button => button.setAttribute('aria-pressed', selected <= `${String(year.value).padStart(4, '0')}-${button.dataset.periodMonth.padStart(2, '0')}` && (selectedEnd || selected) >= `${String(year.value).padStart(4, '0')}-${button.dataset.periodMonth.padStart(2, '0')}` ? 'true' : 'false'));
         };
         const commit = value => {
             input.value = value;
-            document.getElementById(`${prefix}-period-text`).textContent = label(value);
+            if (range) endInput.value = value ? (selectedEnd || value) : '';
+            document.getElementById(`${prefix}-period-text`).textContent = label(value) + (range && value && endInput.value !== value ? ' – ' + label(endInput.value) : '');
             dialog.close();
         };
         document.getElementById(`${prefix}-period-open`).addEventListener('click', () => {
             selected = input.value;
+            selectedEnd = range ? endInput.value : selected;
+            awaitingEnd = false;
             year.value = Number((selected || current).slice(0, 4));
             refresh();
             dialog.showModal();
@@ -53,11 +61,19 @@
         dialog.querySelector('[data-period-next]').addEventListener('click', () => { if (year.reportValidity()) { year.stepUp(); refresh(); } });
         buttons.forEach(button => button.addEventListener('click', () => {
             if (!year.reportValidity()) return;
-            selected = `${String(year.value).padStart(4, '0')}-${button.dataset.periodMonth.padStart(2, '0')}`;
+            const chosen = `${String(year.value).padStart(4, '0')}-${button.dataset.periodMonth.padStart(2, '0')}`;
+            if (range && awaitingEnd) {
+                selectedEnd = chosen;
+                if (selectedEnd < selected) [selected, selectedEnd] = [selectedEnd, selected];
+                awaitingEnd = false;
+            } else {
+                selected = selectedEnd = chosen;
+                awaitingEnd = range;
+            }
             refresh();
         }));
         dialog.querySelector('[data-period-apply]').addEventListener('click', () => commit(selected));
-        dialog.querySelector('[data-period-current]').addEventListener('click', () => commit(current));
+        dialog.querySelector('[data-period-current]').addEventListener('click', () => { selectedEnd = current; commit(current); });
         dialog.querySelector('[data-period-clear]').addEventListener('click', () => commit(''));
         dialog.addEventListener('keydown', event => { if (event.key === 'Escape') event.stopPropagation(); });
         dialog.addEventListener('click', event => {

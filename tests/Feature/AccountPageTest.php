@@ -745,7 +745,7 @@ class AccountPageTest extends TestCase
             ->get(route('accounts.show', $tenant))
             ->assertStatus(200)
             ->assertSee('Borç Devri')
-            ->assertSee('Devir Öncesi');
+            ->assertSee('İçe Aktarma');
     }
 
     public function test_partial_due_is_shown_but_disabled_in_transfer_modal(): void

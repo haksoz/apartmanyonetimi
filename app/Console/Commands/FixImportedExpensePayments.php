@@ -49,10 +49,10 @@ class FixImportedExpensePayments extends Command
         DB::transaction(function () use ($expenses, $dryRun, &$fixed, &$errors, $bar) {
             foreach ($expenses as $expense) {
                 try {
-                    // Devir Öncesi Kasası'nı bul veya oluştur
+                    // İçe Aktarma Kasası'nı bul veya oluştur
                     $cashBox = CashBox::firstOrCreate(
-                        ['apartment_id' => $expense->apartment_id, 'name' => 'Devir Öncesi Kasası'],
-                        ['is_active' => true, 'description' => 'Devir Öncesi Kasası — gider import işlemleri için otomatik oluşturuldu.']
+                        ['apartment_id' => $expense->apartment_id, 'name' => 'İçe Aktarma Kasası'],
+                        ['is_active' => true, 'description' => 'İçe Aktarma Kasası — gider import işlemleri için otomatik oluşturuldu.']
                     );
 
                     // Eski CashTransaction'ları bul (payment_id = null olanlar)
@@ -70,7 +70,7 @@ class FixImportedExpensePayments extends Command
                                 'unallocated_amount' => 0,
                                 'payment_date' => $cashTx->transaction_date,
                                 'method' => null,
-                                'description' => 'Devir Öncesi: ' . $expense->description,
+                                'description' => 'İçe Aktarma: ' . $expense->description,
                             ]);
 
                             // 2. PaymentAllocation oluştur

@@ -135,7 +135,7 @@
                                 <div class="font-medium text-slate-900">
                                     {{ $due->description ?: 'Aidat' }}
                                     @if ($due->is_imported)
-                                        <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                        <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                                     @endif
                                 </div>
                                 <div class="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
@@ -190,7 +190,7 @@
                                     <div class="text-slate-700">
                                         {{ $payment->description ?: 'Tahsilat' }}
                                         @if ($payment->is_imported)
-                                            <span class="ml-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                            <span class="ml-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                                         @endif
                                     </div>
                                 </div>

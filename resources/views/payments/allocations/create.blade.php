@@ -61,7 +61,7 @@
             @if ($hasImportedDues)
                 <div class="flex items-center gap-3">
                     <button type="button" id="toggle-imported" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                        Devir Öncesi Göster
+                        İçe Aktarılanları Göster
                     </button>
                     <span id="imported-count" class="text-xs text-slate-500"></span>
                 </div>
@@ -231,17 +231,17 @@
 
                     // Initially hide imported rows
                     importedRows.forEach(row => row.style.display = 'none');
-                    countSpan.textContent = `${importedCount} devir öncesi gizli`;
+                    countSpan.textContent = `${importedCount} içe aktarma kaydı gizli`;
 
                     toggleBtn.addEventListener('click', function(){
                         showImported = !showImported;
                         importedRows.forEach(row => {
                             row.style.display = showImported ? '' : 'none';
                         });
-                        toggleBtn.textContent = showImported ? 'Devir Öncesi Gizle' : 'Devir Öncesi Göster';
+                        toggleBtn.textContent = showImported ? 'İçe Aktarılanları Gizle' : 'İçe Aktarılanları Göster';
                         countSpan.textContent = showImported
-                            ? `${importedCount} devir öncesi gösteriliyor, ${normalCount} normal`
-                            : `${importedCount} devir öncesi gizli, ${normalCount} normal gösteriliyor`;
+                            ? `${importedCount} içe aktarma kaydı gösteriliyor, ${normalCount} normal`
+                            : `${importedCount} içe aktarma kaydı gizli, ${normalCount} normal gösteriliyor`;
                     });
                 }
             })();

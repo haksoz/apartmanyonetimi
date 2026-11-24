@@ -62,7 +62,7 @@
             @if ($hasImportedExpenses)
                 <div class="flex items-center gap-3">
                     <button type="button" id="toggle-imported" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                        Devir Öncesi Göster
+                        İçe Aktarılanları Göster
                     </button>
                     <span id="imported-count" class="text-xs text-slate-500"></span>
                 </div>
@@ -86,7 +86,7 @@
                             <td class="px-5 py-4 text-slate-700">
                                 {{ $expense->description ?: $expense->category }}
                                 @if ($expense->is_imported)
-                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">Devir Öncesi</span>
+                                    <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                                 @endif
                             </td>
                             <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($expense->remaining_amount, 2, ',', '.') }} TL</td>
@@ -220,7 +220,7 @@
                     updateSummary();
                 });
 
-                // Devir Öncesi toggle
+                // İçe Aktarma toggle
                 const toggleBtn = document.getElementById('toggle-imported');
                 const countSpan = document.getElementById('imported-count');
                 if (toggleBtn) {
@@ -229,13 +229,13 @@
                     const importedCount = importedRows.length;
 
                     importedRows.forEach(row => row.style.display = 'none');
-                    countSpan.textContent = `${importedCount} devir öncesi gizli`;
+                    countSpan.textContent = `${importedCount} içe aktarma kaydı gizli`;
 
                     toggleBtn.addEventListener('click', function(){
                         showImported = !showImported;
                         importedRows.forEach(row => row.style.display = showImported ? '' : 'none');
-                        toggleBtn.textContent = showImported ? 'Devir Öncesi Gizle' : 'Devir Öncesi Göster';
-                        countSpan.textContent = showImported ? `${importedCount} devir öncesi gösteriliyor` : `${importedCount} devir öncesi gizli`;
+                        toggleBtn.textContent = showImported ? 'İçe Aktarılanları Gizle' : 'İçe Aktarılanları Göster';
+                        countSpan.textContent = showImported ? `${importedCount} içe aktarma kaydı gösteriliyor` : `${importedCount} içe aktarma kaydı gizli`;
                     });
                 }
             })();

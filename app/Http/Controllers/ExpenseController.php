@@ -91,11 +91,16 @@ class ExpenseController extends Controller
         $filterStatus = array_values(array_intersect(['paid', 'overdue', 'pending'],
             (array) $request->query('status', [])));
         $filterCategory = $request->query('category');
+        $request->validate([
+            'period' => ['nullable', 'required_with:period_end', 'date_format:Y-m'],
+            'period_end' => ['nullable', 'date_format:Y-m', 'after_or_equal:period'],
+        ]);
         $filterPeriod   = $request->query('period');
+        $filterPeriodEnd = $filterPeriod ? ($request->query('period_end') ?: $filterPeriod) : null;
 
         $filterSearch   = $request->query('search');
 
-        $showImported   = $request->query('show_imported', false);
+
 
 
 
@@ -119,11 +124,12 @@ class ExpenseController extends Controller
 
             }))
 
-            ->when($filterPeriod, function ($q) use ($filterPeriod) {
+            ->when($filterPeriod, function ($q) use ($filterPeriod, $filterPeriodEnd) {
                 $start = \Carbon\Carbon::parse($filterPeriod . '-01')->startOfMonth();
-                $end   = \Carbon\Carbon::parse($filterPeriod . '-01')->endOfMonth();
+                $end   = \Carbon\Carbon::parse($filterPeriodEnd . '-01')->startOfMonth()->addMonth();
 
-                $q->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()]);
+                $q->where('expense_date', '>=', $start->toDateString())
+                    ->where('expense_date', '<', $end->toDateString());
             })
 
             ->when($filterStatus, fn ($q) => $q->where(function ($statuses) use ($filterStatus) {
@@ -144,9 +150,10 @@ class ExpenseController extends Controller
 
             ->when($filterCategory, fn ($q) => $q->where('category_id', $filterCategory))
 
-            ->when(! $showImported, fn ($q) => $q->where('is_imported', false))
+
 
             ->orderBy($sortBy, $sortDirection)
+            ->orderBy('id', $sortDirection)
 
             ->paginate(25)->withQueryString();
 
@@ -169,14 +176,9 @@ class ExpenseController extends Controller
                 ->get()
             : collect();
 
-        $filters = compact('filterPeriod', 'filterStatus', 'filterCategory', 'filterSearch');
+        $filters = compact('filterPeriod', 'filterPeriodEnd', 'filterStatus', 'filterCategory', 'filterSearch');
 
-        // Check if there are any imported expenses for this apartment
-        $hasImported = Expense::where('apartment_id', $apartment->id)
-            ->where('is_imported', true)
-            ->exists();
-
-        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'cashBoxes', 'isOwner', 'hasImported', 'showImported'));
+        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'cashBoxes', 'isOwner'));
 
     }
 
