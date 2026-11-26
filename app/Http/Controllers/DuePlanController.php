@@ -134,6 +134,87 @@ class DuePlanController extends Controller
         return $periods;
     }
 
+    private function inspectionSummary(DuePlan $plan, string $period): array
+    {
+        $date = Carbon::createFromFormat('!Y-m', $period);
+        abort_unless($this->periodWithinPlan($plan, $date), 404);
+        $calculation = app(AidatPlanSummary::class)->period($plan, $period);
+        $dues = Due::withoutOpening()->where('apartment_id', $plan->apartment_id)->forMonth($period)
+            ->where('due_type', 'aidat')->where('category_id', $calculation['category']->id)
+            ->whereHas('batch', fn ($q) => $q->where('due_plan_id', $plan->id))->with('account')->get();
+        $targets = $calculation['target_accounts']->keyBy(fn ($item) => $item['unit']->id);
+        $units = Unit::where('apartment_id', $plan->apartment_id)->orderBy('unit_no')->get();
+        $rows = $units->map(function ($unit) use ($targets, $dues, $calculation) {
+            $target = $targets->get($unit->id);
+            $expected = $target ? (int) round($calculation['snapshot'][$unit->id] * 100) : null;
+            $matches = $dues->where('unit_id', $unit->id);
+            $due = $target ? $matches->firstWhere('account_id', $target['account']->id) : $matches->first();
+            return ['unit_id' => $unit->id, 'label' => ($unit->block ? $unit->block.' / ' : '').$unit->unit_no,
+                'account_id' => $target ? $target['account']->id : $due?->account_id,
+                'account_name' => $target ? $target['account']->name : $due?->account?->name,
+                'expected_cents' => $expected, 'due_id' => $due?->id,
+                'actual_cents' => $due ? (int) round($due->amount * 100) : null,
+                'missing' => $target !== null && ! $due,
+                'note' => $target ? null : 'Plan kapsamında borçlandırılacak uygun hesap veya dağıtım bilgisi yok'];
+        })->all();
+        $missing = count(array_filter($rows, fn ($row) => $row['missing']));
+        $canComplete = $plan->is_active && $period <= now()->format('Y-m') && ! $plan->skipsPeriod($period) && $missing > 0;
+        return ['period' => $period, 'plan_id' => $plan->id, 'expected_count' => $targets->count(),
+            'existing_count' => count($calculation['completed_account_ids']), 'missing_count' => $missing,
+            'expected_cents' => (int) round($calculation['source_amount'] * 100), 'actual_cents' => (int) round($dues->sum('amount') * 100),
+            'missing_cents' => array_sum(array_map(fn ($row) => $row['missing'] ? $row['expected_cents'] : 0, $rows)),
+            'can_complete' => $canComplete, 'active' => $plan->is_active, 'skipped' => $plan->skipsPeriod($period),
+            'category_id' => $calculation['category']->id, 'rows' => $rows];
+    }
+
+    private function inspectionView(Request $request, DuePlan $plan, string $period, array $inspection, bool $changed = false)
+    {
+        $token = (string) Str::uuid();
+        $request->session()->put('aidat_period_review.'.$plan->id.'.'.$period, ['token' => $token,
+            'apartment_id' => $plan->apartment_id, 'user_id' => auth()->id(), 'fingerprint' => hash('sha256', json_encode($inspection)),
+            'expires_at' => now()->addMinutes(30)->timestamp]);
+        return view('due-plans.period-detail', compact('plan', 'period', 'inspection', 'token', 'changed'));
+    }
+
+    public function periodDetail(Request $request, CurrentApartment $currentApartment, DuePlan $duePlan, string $period)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) { return $apartment; }
+        abort_unless($duePlan->apartment_id === $apartment->id, 404);
+        return $this->inspectionView($request, $duePlan, $period, $this->inspectionSummary($duePlan, $period));
+    }
+
+    public function completeInspectedPeriod(Request $request, CurrentApartment $currentApartment, DuePlan $duePlan, string $period)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) { return $apartment; }
+        abort_unless($duePlan->apartment_id === $apartment->id, 404);
+        $selection = $request->validate(['unit_id' => ['nullable', 'integer', 'min:1']]);
+        $unitId = isset($selection['unit_id']) ? (int) $selection['unit_id'] : null;
+        $key = 'aidat_period_review.'.$duePlan->id.'.'.$period;
+        $pending = $request->session()->get($key);
+        abort_unless($pending && is_string($request->input('confirmation_token')) && hash_equals($pending['token'], $request->input('confirmation_token'))
+            && $pending['user_id'] === auth()->id() && $pending['apartment_id'] === $apartment->id && $pending['expires_at'] >= now()->timestamp, 419);
+        return DB::transaction(function () use ($request, $duePlan, $period, $key, $pending, $unitId) {
+            $plan = DuePlan::whereKey($duePlan->id)->lockForUpdate()->firstOrFail();
+            $inspection = $this->inspectionSummary($plan, $period);
+            if (! $inspection['can_complete'] || ! hash_equals($pending['fingerprint'], hash('sha256', json_encode($inspection)))) {
+                return $this->inspectionView($request, $plan, $period, $inspection, true);
+            }
+            if ($unitId !== null) {
+                $row = collect($inspection['rows'])->firstWhere('unit_id', $unitId);
+                abort_unless($row, 404);
+                if (! $row['missing']) {
+                    return redirect()->route('due-plans.period-detail', ['duePlan' => $plan->id, 'period' => $period])->with('status', 'Bu daire için oluşturulacak eksik aidat yok.');
+                }
+            }
+            $count = $this->createLockedPeriod($plan, $period, null, true, $unitId);
+            $request->session()->forget($key);
+            return redirect()->route('due-plans.period-detail', ['duePlan' => $plan->id, 'period' => $period])
+                ->with('status', "$count eksik aidat oluşturuldu. Mevcut borçlar korundu.");
+        });
+    }
+
     public function create(CurrentApartment $currentApartment)
     {
         return redirect()->route('due-plans.index', ['year' => now()->year, 'new' => 1]);
@@ -470,7 +551,7 @@ class DuePlanController extends Controller
         });
     }
 
-    private function createLockedPeriod(DuePlan $duePlan, string $period, ?string $customDescription, bool $allowPartial): int
+    private function createLockedPeriod(DuePlan $duePlan, string $period, ?string $customDescription, bool $allowPartial, ?int $unitId = null): int
     {
         if ($period > now()->format('Y-m')) {
             return 0;
@@ -489,7 +570,7 @@ class DuePlanController extends Controller
         }
 
         $reconciliation = app(AidatPlanSummary::class)->period($duePlan, $period);
-        $unitAccounts = $reconciliation['missing_accounts']->all();
+        $unitAccounts = $reconciliation['missing_accounts']->when($unitId !== null, fn ($items) => $items->filter(fn ($item) => $item['unit']->id === $unitId))->all();
 
         if (empty($unitAccounts) || (! $allowPartial && ! empty($reconciliation['completed_account_ids']))) {
             return 0;

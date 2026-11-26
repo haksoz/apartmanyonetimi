@@ -276,9 +276,8 @@ class ApartmentWizardController extends Controller
             'type' => Category::TYPE_ALL,
             'is_active' => true,
             'is_system' => false,
-            ...collect(array_keys(Category::USAGE_PERMISSIONS))
-                ->mapWithKeys(fn ($permission) => [$permission => $request->boolean($permission)])
-                ->all(),
+            ...\App\Support\CategoryUsage::attributes(collect(array_keys(Category::USAGE_PERMISSIONS))
+                ->mapWithKeys(fn ($permission) => [$permission => $request->boolean($permission)])->all()),
         ]);
 
         return redirect()->route('apartments.wizard.categories', $apartment)->with('status', 'Kategori eklendi.');

@@ -7,13 +7,13 @@
             @error('name')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
         @isset($plan)
-            <div><p class="mb-2 text-sm font-medium text-slate-600">Borç Türü</p><p class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{{ $plan->due_type->label() }}</p></div>
+            <div><p class="mb-2 text-sm font-medium text-slate-600">Borç Türü</p><p class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{{ \App\Models\AssessmentPlan::debtTypeLabel($plan->due_type) }}</p></div>
         @else
             <div>
                 <label for="due_type" class="mb-2 block text-sm font-medium text-slate-600">Borç Türü <span class="text-red-500">*</span></label>
                 <select id="due_type" name="due_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
                     @foreach (\App\Models\AssessmentPlan::debtTypes() as $type)
-                        <option value="{{ $type->value }}" data-selects-category="{{ $type->selectsCategory() ? '1' : '0' }}" selected>{{ $type->label() }}</option>
+                        <option value="{{ $type->value }}" data-selects-category="{{ $type->selectsCategory() ? '1' : '0' }}" @selected(old('due_type', 'malik_payi') === $type->value)>{{ \App\Models\AssessmentPlan::debtTypeLabel($type) }}</option>
                     @endforeach
                 </select>
                 @error('due_type')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
@@ -94,8 +94,8 @@
             </div>
             <div class="md:col-span-2">
                 <p class="mb-2 text-sm font-medium text-slate-600">Borçlanacak Kişiler</p>
-                <p class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Sadece Kat Malikleri</p>
-                <p class="mt-2 text-xs text-slate-500">Kat Maliki Payı borçları yalnızca kat maliklerine dağıtılır.</p>
+                <p id="assessment-target-summary" class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{{ old('due_type', 'malik_payi') === 'aidat' ? 'İlgili dönemde kiracı varsa kiracıya, yoksa kat malikine borçlandırılır.' : 'Sadece Kat Malikleri' }}</p>
+                <p class="mt-2 text-xs text-slate-500">Borçlanacak hesap seçilen borç türüne ve taksit dönemine göre belirlenir.</p>
             </div>
         @endisset
     </div>

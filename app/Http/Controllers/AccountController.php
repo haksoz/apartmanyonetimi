@@ -1830,7 +1830,7 @@ class AccountController extends Controller
                             if (!$category) {
                                 $category = Category::firstOrCreate(
                                     ['apartment_id' => $apartment->id, 'name' => trim($catName)],
-                                    ['type' => Category::TYPE_EXPENSE, 'is_active' => true, 'allow_expense' => true]
+                                    ['type' => Category::TYPE_EXPENSE, 'is_active' => true, ...\App\Support\CategoryUsage::attributes(['allow_aidat' => true, 'allow_malik_payi' => true, 'allow_expense' => true])]
                                 );
                                 if (!$categories->contains('id', $category->id)) {
                                     $categories->push($category);

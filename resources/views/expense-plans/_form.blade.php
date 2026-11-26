@@ -63,17 +63,17 @@
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
     <h2 class="mb-4 text-sm font-semibold text-slate-700">Takvim</h2>
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 [&>div]:min-w-0">
                 <div>
-                    <label for="start_date" class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-medium text-slate-600">Başlangıç Tarihi
+                    <label for="start_date" class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm font-medium text-slate-600">Başlangıç Ayı
                         @isset($plan)<span class="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">Değiştirilemez</span>@endisset
                     </label>
-                    <input id="start_date" name="start_date" @readonly(isset($plan)) type="date" value="{{ isset($plan) ? $plan->start_date->toDateString() : old('start_date', now()->startOfMonth()->toDateString()) }}" required @class(['w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none', 'cursor-not-allowed bg-slate-100 text-slate-500' => isset($plan)])>
+                    <input id="start_date" name="start_date" @readonly(isset($plan)) type="month" value="{{ isset($plan) ? $plan->start_date->format('Y-m') : substr(old('start_date', now()->format('Y-m')), 0, 7) }}" required @class(['w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none', 'cursor-not-allowed bg-slate-100 text-slate-500' => isset($plan)])>
                     @error('start_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
                 <div>
-                    <label for="end_date" class="mb-2 block text-sm font-medium text-slate-600">Bitiş Tarihi <span id="end-date-hint" class="font-normal text-slate-400">(opsiyonel)</span></label>
-                    <input id="end_date" name="end_date" type="date" value="{{ old('end_date', isset($plan) ? $plan->end_date?->toDateString() : '') }}"  class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                    <label for="end_date" class="mb-2 block text-sm font-medium text-slate-600">Bitiş Ayı <span id="end-date-hint" class="font-normal text-slate-400">(opsiyonel)</span></label>
+                    <input id="end_date" name="end_date" type="month" value="{{ substr(old('end_date', isset($plan) ? $plan->end_date?->format('Y-m') : '') ?? '', 0, 7) }}"  class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                     @error('end_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
                 </div>
                 <div>

@@ -195,6 +195,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
 
     // Yönetici zorunlu
     Route::middleware('owner')->group(function () {
+        Route::post('plan-reminders/dismiss', [\App\Http\Controllers\PlanReminderController::class, 'dismiss'])->name('plan-reminders.dismiss');
 
         Route::resource('apartments', ApartmentController::class)->except(['create', 'store']);
         Route::post('apartments/{apartment}/destroy-all', [ApartmentController::class, 'destroyAll'])->name('apartments.destroy-all');
@@ -276,6 +277,8 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('financial-plans/select-type', [FinancialPlanController::class, 'selectType'])->name('financial-plans.select-type');
 
         Route::middleware('feature:auto_dues')->group(function () {
+            Route::get('due-plans/{duePlan}/periods/{period}', [DuePlanController::class, 'periodDetail'])->where('period', '[0-9]{4}-(0[1-9]|1[0-2])')->name('due-plans.period-detail');
+            Route::post('due-plans/{duePlan}/periods/{period}/complete', [DuePlanController::class, 'completeInspectedPeriod'])->where('period', '[0-9]{4}-(0[1-9]|1[0-2])')->name('due-plans.period-complete');
             Route::post('due-plans/{duePlan}/generate-month', [DuePlanController::class, 'generateMonth'])->name('due-plans.generate-month');
             Route::post('due-plans/{duePlan}/regenerate-period', [DuePlanController::class, 'regeneratePeriod'])->name('due-plans.regenerate-period');
             Route::post('due-plans/{duePlan}/confirm-past-periods', [DuePlanController::class, 'confirmPastPeriods'])->name('due-plans.confirm-past-periods');
@@ -300,6 +303,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
             Route::post('assessment-plans', [AssessmentPlanController::class, 'store'])->name('assessment-plans.store');
             Route::post('assessment-plans/confirm', [AssessmentPlanController::class, 'confirm'])->block(60, 10)->name('assessment-plans.confirm');
             Route::get('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'show'])->name('assessment-plans.show');
+            Route::get('assessment-plans/{assessmentPlan}/installments/{installment}', [AssessmentPlanController::class, 'installmentDetail'])->name('assessment-plans.installment-detail');
             Route::post('assessment-plans/{assessmentPlan}/installments/{installment}/regenerate', [AssessmentPlanController::class, 'regenerateInstallment'])->name('assessment-plans.regenerate-installment');
             Route::put('assessment-plans/{assessmentPlan}', [AssessmentPlanController::class, 'update'])->name('assessment-plans.update');
             Route::patch('assessment-plans/{assessmentPlan}/deactivate', [AssessmentPlanController::class, 'deactivate'])->name('assessment-plans.deactivate');

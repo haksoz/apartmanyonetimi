@@ -1,7 +1,11 @@
-@php($demirbas = $category?->exists && $category->isDemirbasCategory())
-@php($relationLocked = $category?->exists && $category->isExpenseRelationLocked())
-@php($locked = $category?->exists && $category->isLocked())
-@php($expenseEnabled = ($locked || $demirbas) ? (bool) $category->allow_expense : (session()->hasOldInput() ? (bool) old('allow_expense', false) : (bool) ($category?->allow_expense ?? false)))
+@php
+    $demirbas = $category?->exists && $category->isDemirbasCategory();
+    $relationLocked = $category?->exists && $category->isExpenseRelationLocked();
+    $locked = $category?->exists && $category->isLocked();
+    $usageValues = collect(array_keys(\App\Models\Category::USAGE_PERMISSIONS))->mapWithKeys(fn ($key) => [$key =>
+        ($locked || ($demirbas && $key !== 'allow_aidat')) ? (bool) $category->{$key}
+        : (session()->hasOldInput() ? (bool) old($key, false) : (bool) ($category?->{$key} ?? false))])->all();
+@endphp
 <form method="POST" action="{{ $action }}" class="max-w-2xl rounded-2xl bg-white p-6 shadow-sm">
     @csrf
     @if ($method !== 'POST')
@@ -18,65 +22,31 @@
         <fieldset>
             <legend class="mb-2 text-sm font-semibold text-slate-700">Kullanım Alanları</legend>
             <div class="grid gap-3 sm:grid-cols-2">
-                @foreach (['allow_aidat' => 'Aidat Borçlandırmalarında Göster', 'allow_malik_payi' => 'Kat Maliki Payı Borçlandırmalarında Göster', 'allow_expense' => 'Gider Girişinde Göster'] as $key => $label)
+                @foreach (\App\Support\CategoryUsage::LABELS as $key => $label)
                     <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
-                        <input type="checkbox" name="{{ $key }}" value="1" @checked($key === 'allow_expense' ? $expenseEnabled : old($key, $category?->{$key} ?? false)) @disabled($locked || ($demirbas && $key !== 'allow_aidat')) class="rounded border-slate-300">
+                        <input type="checkbox" name="{{ $key }}" value="1" @checked($usageValues[$key]) @disabled($locked || ($demirbas && $key !== 'allow_aidat')) class="rounded border-slate-300">
                         {{ $label }}
                     </label>
                 @endforeach
             </div>
         </fieldset>
 
-        <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
-            <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $category?->is_active ?? true)) @disabled($locked || $demirbas) class="rounded border-slate-300">
-            Aktif kategori
-        </label>
+        @include('components.category-usage-info', ['usageValues' => $usageValues, 'fixedRelations' => $relationLocked ? ($category->expense_relations ?? []) : null])
 
-        @if(!($locked || $demirbas) || $expenseEnabled)
-        <div id="category-expense-relation-field" @if(!$expenseEnabled) hidden @endif>
-            <div class="mb-2 text-sm font-semibold text-slate-700" id="category-expense-relations-label">Gider Türleri</div>
-            @php($selectedRelations = old('expense_relations', session()->hasOldInput('expense_relations_present') ? [] : ($category?->expense_relations ?? [])))
-            @php($selectedRelations = is_array($selectedRelations) ? $selectedRelations : [])
-            <input type="hidden" name="expense_relations_present" value="1">
-            <div class="grid gap-3 sm:grid-cols-2" role="group" aria-labelledby="category-expense-relations-label">
-                @foreach([\App\Enums\ExpenseRelation::Aidat, \App\Enums\ExpenseRelation::MalikPayi] as $relation)
-                    <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
-                        <input type="checkbox" name="expense_relations[]" value="{{ $relation->value }}" @checked(in_array($relation->value, $selectedRelations, true)) @disabled($relationLocked || !$expenseEnabled) class="rounded border-slate-300">
-                        {{ $relation->label() }}
-                    </label>
-                @endforeach
-            </div>
-            <p class="mt-2 text-xs text-slate-500">Bu kategorinin ilgili olduğu gider türlerini seçin. Tek tür seçilirse gider girişinde otomatik önerilir; iki tür seçilirse gideri eklerken seçim yapılır. Mevcut giderler değişmez.</p>
-            @error('expense_relations')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-            @error('expense_relations.*')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
-        </div>
-
+        @if($category?->exists)
+        <fieldset>
+            <legend class="mb-2 text-sm font-semibold text-slate-700">Kategori Durumu</legend>
+            <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
+                <input type="checkbox" name="is_active" value="1" @checked(($locked || $demirbas) ? $category->is_active : old('is_active', $category->is_active)) @disabled($locked || $demirbas) class="rounded border-slate-300">Aktif kategori
+            </label>
+            @error('is_active')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+        </fieldset>
         @endif
         <div class="flex items-center gap-3">
-            @unless($locked && ($relationLocked || !$expenseEnabled))
+            @unless($locked && ($relationLocked || !$category->allow_expense))
                 <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">{{ $buttonText }}</button>
             @endunless
             <a href="{{ route('categories.index') }}" class="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Geri</a>
         </div>
     </div>
 </form>
-
-<script>
-    (() => {
-        const field = document.getElementById('category-expense-relation-field');
-        if (!field) return;
-        const form = field.closest('form');
-        const expense = form.querySelector('[name="allow_expense"]');
-        const relations = Array.from(field.querySelectorAll('[name="expense_relations[]"]'));
-        const relationLocked = @json($relationLocked);
-        const refresh = () => {
-            field.hidden = !expense.checked;
-            relations.forEach(relation => {
-                relation.disabled = !expense.checked || relationLocked;
-                if (!expense.checked) relation.checked = false;
-            });
-        };
-        expense.addEventListener('change', refresh);
-        refresh();
-    })();
-</script>

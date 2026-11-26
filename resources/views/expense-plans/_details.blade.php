@@ -8,8 +8,8 @@
         'Hesap / Tedarikçi' => $plan->account?->name,
         'Kategori' => $plan->category?->name,
         'Aylık Tutar' => number_format((float) $plan->amount, 2, ',', '.').' ₺',
-        'Başlangıç Tarihi' => $plan->start_date->format('d.m.Y'),
-        'Bitiş Tarihi' => $plan->end_date?->format('d.m.Y') ?? 'Süresiz',
+        'Başlangıç Ayı' => $plan->start_date->locale('tr')->isoFormat('MMMM YYYY'),
+        'Bitiş Ayı' => $plan->end_date?->locale('tr')->isoFormat('MMMM YYYY') ?? 'Süresiz',
         'Gider Oluşturma Yöntemi' => $plan->generation_mode === 'create_all_now' ? 'Tümünü şimdi oluştur' : 'Zamanı geldikçe oluştur',
         'Oluşturma Günü' => 'Her ayın '.$plan->generate_day.'. günü',
         'Vade' => $plan->due_days === null ? 'Vadesiz' : ($plan->due_days === 0 ? 'Aynı gün' : $plan->due_days.' gün'),
@@ -48,7 +48,7 @@
                 Son ödeme tarihi, oluşturma tarihinden <strong class="font-medium text-slate-900">{{ $plan->due_days }} gün sonradır.</strong>
             @endif
         </p>
-        <p class="text-xs text-slate-500">Dönem: {{ $plan->start_date->format('d.m.Y') }} – {{ $plan->end_date?->format('d.m.Y') ?? 'Süresiz' }}</p>
+        <p class="text-xs text-slate-500">Dönem: {{ $plan->start_date->locale('tr')->isoFormat('MMMM YYYY') }} – {{ $plan->end_date?->locale('tr')->isoFormat('MMMM YYYY') ?? 'Süresiz' }}</p>
         <details class="border-t border-slate-100 pt-2">
             <summary class="cursor-pointer text-xs font-medium text-slate-600">Gider açıklaması örneği</summary>
             <p class="mt-2 text-sm">{{ $description.($suffix !== '' ? ' '.$suffix : '') }}</p>

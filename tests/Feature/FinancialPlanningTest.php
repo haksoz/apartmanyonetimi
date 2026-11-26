@@ -443,7 +443,7 @@ class FinancialPlanningTest extends TestCase
             ->get(route('assessment-plans.create'))
             ->assertOk()
             ->assertSee('Sadece Kat Malikleri')
-            ->assertSee('Kat Maliki Payı borçları yalnızca kat maliklerine dağıtılır.')
+            ->assertSee('Borçlanacak hesap seçilen borç türüne ve taksit dönemine göre belirlenir.')
             ->assertDontSee('name="target_audience"', false);
 
         $preview = $this->post(route('assessment-plans.store'), [
@@ -507,15 +507,15 @@ class FinancialPlanningTest extends TestCase
         $this->travelBack();
     }
 
-    public function test_assessment_plan_only_accepts_malik_payi(): void
+    public function test_assessment_plan_accepts_aidat_and_malik_payi_only(): void
     {
         [$user, $apartment] = $this->setupApartment();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         $this->get(route('assessment-plans.create'))->assertOk()
-            ->assertDontSee('<option value="aidat"', false)
+            ->assertSee('<option value="aidat"', false)->assertSee('Aidat (Daire Sakini)')
             ->assertDontSee('<option value="masraf_yansitma"', false)
             ->assertSee('<option value="malik_payi"', false);
-        foreach (['aidat', 'masraf_yansitma', 'ceza', 'faiz'] as $type) {
+        foreach (['masraf_yansitma', 'ceza', 'faiz'] as $type) {
             $this->post(route('assessment-plans.store'), $this->assessmentPayload(['due_type' => $type]))
                 ->assertSessionHasErrors('due_type');
         }
@@ -684,12 +684,37 @@ class FinancialPlanningTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_assessment_installment_detail_shows_missing_debts_without_writing_and_scopes_access(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $preview = $this->post(route('assessment-plans.store'), $this->assessmentPayload())->assertOk();
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $inst = $plan->installments()->firstOrFail();
+        app(AssessmentPlanGenerator::class)->generateInstallment($plan, $inst);
+        $line = $inst->lines()->with('due')->firstOrFail();
+        $line->due->delete();
+        $before = Due::count();
+        $url = route('assessment-plans.installment-detail', [$plan, $inst]);
+        $this->get($url)->assertOk()->assertSee('Planlanan Tutar')->assertSee('Eksik Borçları Oluştur')->assertSee('Malik 2');
+        $this->assertSame($before, Due::count());
+        $this->get(route('assessment-plans.show', $plan))->assertOk()->assertSee($url, false);
+        $otherPlan = $plan->replicate();
+        $otherPlan->save();
+        $this->get(route('assessment-plans.installment-detail', [$otherPlan, $inst]))->assertNotFound();
+        $other = Apartment::create(['user_id' => $user->id, 'name' => 'Başka', 'unit_count' => 1]);
+        $other->members()->attach($user->id, ['role' => 'owner']);
+        $this->grantPaidFeatures($other);
+        $this->withSession([CurrentApartment::SESSION_KEY => $other->id])->get($url)->assertNotFound();
+    }
+
     public function test_assessment_debt_type_and_category_are_applied_to_every_generated_debt(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
         [$user, $apartment] = $this->setupApartment();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
-        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Isınma', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true]);
+        $category = Category::create(['apartment_id' => $apartment->id, 'name' => 'Isınma', 'type' => Category::TYPE_ALL, 'is_active' => true, 'allow_malik_payi' => true, 'allow_aidat' => true]);
         foreach (AssessmentPlan::debtTypes() as $type) {
             $payload = $this->assessmentPayload([
                 'name' => $type->label().' Planı', 'due_type' => $type->value,
@@ -721,7 +746,7 @@ class FinancialPlanningTest extends TestCase
         [$user, $apartment] = $this->setupApartment();
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
         $payload = $this->assessmentPayload();
-        foreach (['aidat', 'ceza', 'faiz', 'invalid', ''] as $type) {
+        foreach (['ceza', 'faiz', 'invalid', ''] as $type) {
             $this->post(route('assessment-plans.store'), [...$payload, 'due_type' => $type])->assertSessionHasErrors('due_type');
         }
         $this->post(route('assessment-plans.store'), [...$payload, 'category_mode' => 'existing'])->assertSessionHasErrors('category_id');
@@ -766,6 +791,10 @@ class FinancialPlanningTest extends TestCase
         $this->assertTrue($category->allow_malik_payi);
         $this->assertTrue($category->allow_expense);
         $this->assertFalse($category->allow_aidat);
+        $this->assertSame(['malik_payi'], $category->expense_relations);
+        $this->assertSame(\App\Enums\ExpenseRelation::MalikPayi, $category->suggested_expense_relation);
+        $this->get(route('expenses.create', ['expense_relation' => 'malik_payi']))->assertOk()->assertViewHas('categories', fn ($categories) => $categories->contains('id', $category->id));
+        $this->get(route('expenses.create', ['expense_relation' => 'aidat']))->assertOk()->assertViewHas('categories', fn ($categories) => ! $categories->contains('id', $category->id));
         $this->assertSame(0, Due::where('category_id', '!=', $category->id)->count());
         $this->get(route('expense-plans.create'))->assertOk()->assertViewHas('categories', fn ($categories) => $categories->contains('id', $category->id));
         $this->saveAssessmentPlanUpdate($plan, ['name' => 'Yeni Plan Adı', 'generate_day' => 5, 'is_active' => 1])->assertRedirect();
@@ -1310,6 +1339,30 @@ class FinancialPlanningTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_expense_plan_calendar_accepts_months_and_preserves_generation_days(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])->actingAs($user);
+        $payload = [...$this->expensePlanPayload($apartment), 'start_date' => '2028-02', 'end_date' => '2028-02'];
+        $this->get(route('expense-plans.create'))->assertOk()->assertSee('type="month"', false)->assertSee('Başlangıç Ayı')->assertSee('id="end_date" name="end_date" type="month"', false);
+        $preview = $this->post(route('expense-plans.store'), $payload)->assertOk();
+        $this->assertSame('2028-02-01', $preview->viewData('proposed')->start_date->toDateString());
+        $this->assertSame('2028-02-29', $preview->viewData('proposed')->end_date->toDateString());
+        $this->post(route('expense-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $plan = ExpensePlan::firstOrFail();
+        $this->assertSame(5, $plan->generate_day);
+        $this->assertSame(15, $plan->due_days);
+        $this->assertSame(1, Expense::where('expense_plan_id', $plan->id)->count());
+        $edit = $this->put(route('expense-plans.update', $plan), [...$payload, 'end_date' => '2028-03'])->assertOk();
+        $this->assertSame('2028-03-31', $edit->viewData('proposed')->end_date->toDateString());
+        $this->get(route('expense-plans.show', ['expensePlan' => $plan, 'edit' => 1]))->assertOk()->assertSee('value="2028-02"', false);
+        $this->post(route('expense-plans.store'), [...$payload, 'end_date' => '2028-01'])->assertSessionHasErrors('end_date');
+        $this->post(route('expense-plans.store'), [...$payload, 'start_date' => '2028-13'])->assertSessionHasErrors('start_date');
+        $this->post(route('expense-plans.store'), [...$payload, 'end_date' => '', 'generation_mode' => 'create_all_now'])->assertSessionHasErrors('end_date');
+        $open = $this->post(route('expense-plans.store'), [...$payload, 'end_date' => '', 'generation_mode' => 'on_schedule'])->assertOk();
+        $this->assertNull($open->viewData('proposed')->end_date);
+    }
+
     private function expensePlanPayload(Apartment $apartment): array
     {
         $supplier = Account::create([
@@ -1580,5 +1633,127 @@ class FinancialPlanningTest extends TestCase
             ->assertSessionHasNoErrors();
         $this->assertSame(12, $scheduled->expenses()->count());
         $this->travelBack();
+    }
+    public function test_plan_month_inspection_lists_debts_and_completes_only_missing_records(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-20 12:00:00'));
+        [$user, $apartment, $units] = $this->setupApartment();
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $plan = DuePlan::create(['apartment_id' => $apartment->id, 'category_id' => $apartment->default_aidat_category_id, 'name' => 'Aidat Kararı',
+            'plan_year' => 2026, 'amount_type' => 'monthly', 'monthly_amount' => 1000, 'distribution_type' => 'equal', 'due_day' => 20, 'generate_day' => 1, 'is_active' => true]);
+        app(\App\Http\Controllers\DuePlanController::class)->createDuesForPeriod($plan, '2026-11');
+        $deleted = Due::first();
+        $this->delete(route('dues.destroy', $deleted))->assertRedirect();
+        $survivor = Due::first();
+        $survivor->update(['status' => 'paid', 'remaining_amount' => 0]);
+        $before = $survivor->fresh()->getAttributes();
+        $url = route('due-plans.period-detail', ['duePlan' => $plan->id, 'period' => '2026-11']);
+        $detail = $this->get($url)->assertOk()->assertSee('Planlı Aidatlar')->assertSee('Eksik Aidatları Oluştur');
+        $this->assertSame(1, $detail->viewData('inspection')['missing_count']);
+        $this->assertSame(50000, $detail->viewData('inspection')['missing_cents']);
+        $this->assertSame(1, Due::count());
+        $this->get(route('due-plans.index', ['year' => 2026, 'plan_id' => $plan->id]))->assertOk()->assertSee($url, false);
+        $token = $detail->viewData('token');
+        $completeUrl = route('due-plans.period-complete', ['duePlan' => $plan->id, 'period' => '2026-11']);
+        $this->post($completeUrl, ['confirmation_token' => $token, 'monthly_amount' => 99999])->assertRedirect($url);
+        $this->assertEquals(2, Due::count());
+        $this->assertEquals(1000, Due::sum('amount'));
+        $this->assertEquals($before, $survivor->fresh()->getAttributes());
+        $this->assertEquals($apartment->default_aidat_category_id, Due::where('unit_id', $deleted->unit_id)->first()->category_id);
+        $this->post($completeUrl, ['confirmation_token' => $token])->assertStatus(419);
+        $this->get($url)->assertOk()->assertDontSee('Eksik Aidatları Oluştur')->assertSee('kayıtları tamamlandı');
+    }
+
+    public function test_plan_month_completion_refreshes_changed_preview_and_blocks_restricted_periods(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-20 12:00:00'));
+        [$user, $apartment] = $this->setupApartment();
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $plan = DuePlan::create(['apartment_id' => $apartment->id, 'category_id' => $apartment->default_aidat_category_id, 'name' => 'Aidat Kararı',
+            'plan_year' => 2026, 'amount_type' => 'monthly', 'monthly_amount' => 1000, 'distribution_type' => 'equal', 'due_day' => 20, 'generate_day' => 1, 'is_active' => true]);
+        $params = ['duePlan' => $plan->id, 'period' => '2026-11'];
+        $detail = $this->get(route('due-plans.period-detail', $params))->assertOk();
+        $plan->update(['monthly_amount' => 2000]);
+        $changed = $this->post(route('due-plans.period-complete', $params), ['confirmation_token' => $detail->viewData('token')])->assertOk()->assertViewHas('changed', true);
+        $this->assertEquals(0, Due::count());
+        $this->post(route('due-plans.period-complete', $params), ['confirmation_token' => $changed->viewData('token')])->assertRedirect();
+        $this->assertEquals(2000, Due::sum('amount'));
+        $this->get(route('due-plans.period-detail', ['duePlan' => $plan->id, 'period' => '2026-12']))->assertOk()->assertViewHas('inspection', fn ($summary) => ! $summary['can_complete']);
+        $plan->update(['skipped_periods' => ['2026-10']]);
+        $this->get(route('due-plans.period-detail', ['duePlan' => $plan->id, 'period' => '2026-10']))->assertOk()->assertViewHas('inspection', fn ($summary) => ! $summary['can_complete']);
+        $plan->update(['is_active' => false]);
+        $this->get(route('due-plans.period-detail', ['duePlan' => $plan->id, 'period' => '2026-09']))->assertOk()->assertViewHas('inspection', fn ($summary) => ! $summary['can_complete']);
+        $this->get(route('due-plans.period-detail', ['duePlan' => $plan->id, 'period' => '2025-11']))->assertNotFound();
+        $this->get(route('due-plans.period-detail', ['duePlan' => $plan->id, 'period' => '2026-13']))->assertNotFound();
+        [$otherUser, $other] = $this->setupApartment();
+        $this->actingAs($otherUser)->withSession([CurrentApartment::SESSION_KEY => $other->id]);
+        $this->get(route('due-plans.period-detail', $params))->assertNotFound();
+        $this->post(route('due-plans.period-complete', $params))->assertNotFound();
+    }
+    public function test_plan_month_can_complete_one_missing_unit_without_redistributing_amounts(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-20 12:00:00'));
+        [$user, $apartment, $units] = $this->setupApartment();
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $plan = DuePlan::create(['apartment_id' => $apartment->id, 'category_id' => $apartment->default_aidat_category_id, 'name' => 'Aidat Kararı',
+            'plan_year' => 2026, 'amount_type' => 'monthly', 'monthly_amount' => 1000, 'distribution_type' => 'equal', 'due_day' => 20, 'generate_day' => 1, 'is_active' => true]);
+        $params = ['duePlan' => $plan->id, 'period' => '2026-11'];
+        $detail = $this->get(route('due-plans.period-detail', $params))->assertOk()->assertSee('İşlem')->assertSee('Tamamla');
+        $this->post(route('due-plans.period-complete', $params), ['confirmation_token' => $detail->viewData('token'), 'unit_id' => $units[0]->id])->assertRedirect();
+        $this->assertEquals(1, Due::count());
+        $this->assertDatabaseHas('dues', ['unit_id' => $units[0]->id, 'amount' => 500]);
+        $this->assertDatabaseMissing('dues', ['unit_id' => $units[1]->id]);
+        $detail = $this->get(route('due-plans.period-detail', $params))->assertOk();
+        $this->post(route('due-plans.period-complete', $params), ['confirmation_token' => $detail->viewData('token'), 'unit_id' => 999999])->assertNotFound();
+        $this->post(route('due-plans.period-complete', $params), ['confirmation_token' => $detail->viewData('token'), 'unit_id' => $units[0]->id])->assertRedirect();
+        $this->assertEquals(1, Due::count());
+        $this->post(route('due-plans.period-complete', $params), ['confirmation_token' => $detail->viewData('token'), 'unit_id' => $units[1]->id])->assertRedirect();
+        $this->assertEquals(2, Due::count());
+        $this->assertEquals(1000, Due::sum('amount'));
+    }
+    public function test_assessment_aidat_category_and_tenant_priority_follow_selected_debt_type(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        [$user, $apartment, $units] = $this->setupApartment();
+        $tenant = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $units[0]->id, 'type' => 'tenant', 'name' => 'Daire Sakini', 'is_active' => true]);
+        \App\Models\TenantAssignment::create(['apartment_id' => $apartment->id, 'unit_id' => $units[0]->id, 'account_id' => $tenant->id, 'move_in_date' => '2026-01-01']);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $payload = $this->assessmentPayload(['due_type' => 'aidat', 'category_mode' => 'new', 'category_name' => 'Daire İçi Su',
+            'start_period' => '2026-11', 'installment_count' => 1, 'allow_malik_payi' => 1, 'expense_relations' => ['malik_payi']]);
+        $preview = $this->post(route('assessment-plans.store'), $payload)->assertOk()->assertSee('Aidat (Daire Sakini)')->assertSee('Ortak Kullanım Gideri');
+        $this->assertDatabaseMissing('categories', ['name' => 'Daire İçi Su']);
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $category = $plan->category;
+        $this->assertSame(\App\Enums\DueType::Aidat, $plan->due_type);
+        $this->assertTrue($category->allow_aidat);
+        $this->assertFalse($category->allow_malik_payi);
+        $this->assertTrue($category->allow_expense);
+        $this->assertSame(['aidat'], $category->expense_relations);
+        $this->assertDatabaseHas('dues', ['category_id' => $category->id, 'due_type' => 'aidat', 'unit_id' => $units[0]->id, 'account_id' => $tenant->id]);
+        $this->assertDatabaseHas('dues', ['category_id' => $category->id, 'due_type' => 'aidat', 'unit_id' => $units[1]->id, 'account_id' => $units[1]->owner_account_id]);
+        $this->assertEquals(2, Due::count());
+        $this->get(route('expenses.create', ['expense_relation' => 'aidat']))->assertOk()->assertViewHas('categories', fn ($categories) => $categories->contains('id', $category->id));
+        $this->get(route('expenses.create', ['expense_relation' => 'malik_payi']))->assertOk()->assertViewHas('categories', fn ($categories) => ! $categories->contains('id', $category->id));
+    }
+
+    public function test_assessment_aidat_requires_matching_existing_category_and_plan_type_is_immutable(): void
+    {
+        [$user, $apartment] = $this->setupApartment();
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $malik = Category::create(['apartment_id' => $apartment->id, 'name' => 'Malik Test', 'allow_malik_payi' => true]);
+        $aidat = Category::create(['apartment_id' => $apartment->id, 'name' => 'Aidat Test', 'allow_aidat' => true]);
+        $payload = $this->assessmentPayload(['due_type' => 'aidat', 'category_mode' => 'existing', 'category_id' => $malik->id]);
+        $this->post(route('assessment-plans.store'), $payload)->assertSessionHasErrors('category_id');
+        $preview = $this->post(route('assessment-plans.store'), [...$payload, 'category_id' => $aidat->id])->assertOk();
+        $aidat->update(['allow_aidat' => false]);
+        $this->post(route('assessment-plans.confirm'), ['confirmation_token' => $preview->viewData('token')])->assertSessionHasErrors('category_id');
+        $this->assertDatabaseCount('assessment_plans', 0);
+        $aidat->update(['allow_aidat' => true]);
+        $this->saveAssessmentPlan(route('assessment-plans.store'), [...$payload, 'category_id' => $aidat->id])->assertRedirect();
+        $plan = AssessmentPlan::firstOrFail();
+        $this->assertSame(\App\Enums\DueType::Aidat, $plan->due_type);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $plan->update(['due_type' => 'malik_payi']);
     }
 }

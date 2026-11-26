@@ -52,9 +52,7 @@ class AssessmentWorkCategory
         return Category::create([
             'apartment_id' => $apartmentId, 'name' => $proposal['name'],
             'type' => Category::TYPE_ALL, 'is_active' => true, 'is_system' => false,
-            ...array_fill_keys(array_keys(Category::USAGE_PERMISSIONS), false),
-            'allow_'.$proposal['due_type'] => true,
-            'allow_expense' => true,
+            ...CategoryUsage::attributes(['allow_'.$proposal['due_type'] => true, 'allow_expense' => true]),
         ])->id;
     }
 }

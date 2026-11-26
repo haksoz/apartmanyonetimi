@@ -161,14 +161,6 @@ class DashboardController extends Controller
 
         // Tahsil edilmemiş toplam aidat (bekleyen + gecikmiş + kısmi ödenmiş kalan)
         $uncollectedDues = $dueUnpaid + $dueOverdue + $duePartial;
-        $partialAidatConfirmation = null;
-        $plan = DuePlan::query()
-            ->where('apartment_id', $id)
-            ->where('is_active', true)
-            ->whereDate('start_date', '<=', now())
-            ->whereDate('end_date', '>=', now())
-            ->first();
-
         $managesOtherApartments = $user->isSubscriber()
             && $user->apartments()
                 ->where('apartments.id', '!=', $apartment->id)
@@ -177,21 +169,7 @@ class DashboardController extends Controller
                 ->wherePivot('is_active', true)
                 ->exists();
 
-        if ($plan && $this->isOwnerOf($apartment) && now()->day >= $plan->generate_day) {
-            $period = now()->format('Y-m');
-            $reconciliation = $aidatReconciliation->reconcile($plan, $period);
-            $completedCount = count($reconciliation['completed_account_ids']);
-            $targetCount = $reconciliation['target_accounts']->count();
-
-            if ($completedCount > 0 && $completedCount < $targetCount) {
-                $partialAidatConfirmation = [
-                    'plan' => $plan,
-                    'period' => $period,
-                    'completed_count' => $completedCount,
-                    'missing_count' => $targetCount - $completedCount,
-                ];
-            }
-        }
+        $planReminders = app(\App\Support\MissingPlanReminders::class)->forApartment($apartment, $user);
 
         $dashboardSubscription = app(\App\Support\DashboardSubscription::class)->forApartment($apartment, $user);
 
@@ -207,7 +185,7 @@ class DashboardController extends Controller
             'monthLabels', 'monthDueData', 'monthExpData',
             'accountTypes',
             'uncollectedDues',
-            'partialAidatConfirmation',
+            'planReminders',
             'managesOtherApartments'
         ));
     }

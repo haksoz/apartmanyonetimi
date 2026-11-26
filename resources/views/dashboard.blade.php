@@ -1,23 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
-    @if ($partialAidatConfirmation)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border-2 border-red-500">
-                <h2 class="text-lg font-bold text-red-600">Planlı Aidat Oluşturulma Hatası!!</h2>
-                <p class="mt-2 text-sm leading-6 text-slate-600">
-                    {{ \Carbon\Carbon::parse($partialAidatConfirmation['period'].'-01')->locale('tr')->isoFormat('MMMM YYYY') }} döneminde oluşturulması gereken aidatlar {{ $partialAidatConfirmation['completed_count'] }} hesapta oluşturulmuş aidat olduğu için oluşturulamadı. Kalan {{ $partialAidatConfirmation['missing_count'] }} hesap için plan aidatı oluşturulsun mu?
-                </p>
-                <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" onclick="this.closest('.fixed').remove()" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Şimdi Değil</button>
-                    <form method="POST" action="{{ route('due-plans.generate-month', $partialAidatConfirmation['plan']) }}">
-                        @csrf
-                        <input type="hidden" name="period" value="{{ $partialAidatConfirmation['period'] }}">
-                        <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Eksikleri Oluştur</button>
-                    </form>
+    @if(count($planReminders))
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="partial-aidat-title" class="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-amber-300 bg-white p-6 shadow-2xl">
+            <h2 id="partial-aidat-title" class="text-lg font-bold text-amber-800">{{ count($planReminders) === 1 && $planReminders[0]['type'] === 'aidat' ? 'Bu Ayın Planlı Aidatlarında Eksik Kayıt Var' : 'Bu Ayın Planlı Borçlarında Eksik Kayıt Var' }}</h2>
+            @foreach($planReminders as $notice)
+            <section class="mt-4 rounded-xl border border-slate-200 p-4">
+                <h3 class="text-sm font-semibold text-slate-800">{{ $notice['type'] === 'aidat' ? 'Aidat Planı' : 'Taksitli Borç Planı' }} · {{ $notice['name'] }}</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-600">{{ \Carbon\Carbon::parse($notice['period'].'-01')->locale('tr')->isoFormat('MMMM YYYY') }} dönemi için beklenen {{ $notice['expected'] }} kayıttan {{ $notice['existing'] }} tanesi mevcut, {{ $notice['missing'] }} tanesi eksik. Ayrıntıları plan sayfasından inceleyebilirsiniz.</p>
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <form method="POST" action="{{ route('plan-reminders.dismiss') }}">@csrf<input type="hidden" name="plan_type" value="{{ $notice['type'] }}"><input type="hidden" name="plan_id" value="{{ $notice['plan_id'] }}"><input type="hidden" name="period" value="{{ $notice['period'] }}"><button class="text-left text-xs font-semibold text-slate-600 underline">Bu dönem için tekrar hatırlatma</button></form>
+                    <a href="{{ $notice['url'] }}" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">İncele</a>
                 </div>
-            </div>
+            </section>
+            @endforeach
+            <p class="mt-4 text-xs text-slate-500">Hatırlatmayı kapatmak eksik kayıtları değiştirmez. Tercihiniz yalnızca kendi hesabınızda bu plan ve dönem için geçerlidir.</p>
+            <div class="mt-4 flex justify-end"><button type="button" onclick="this.closest('.fixed').remove()" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Şimdi Değil</button></div>
         </div>
+    </div>
     @endif
 
     <div class="mb-5">

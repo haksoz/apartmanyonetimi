@@ -35,7 +35,8 @@ class CategoryExpenseRelationTest extends TestCase
         $this->assertSame(ExpenseRelation::Aidat, $category->suggested_expense_relation);
         $this->assertTrue($category->isExpenseRelationLocked());
         $html = $this->get(route('categories.edit', $category))->assertOk()->getContent();
-        $this->assertMatchesRegularExpression('/<input[^>]*name="expense_relations\[\]"[^>]*\sdisabled(?:\s|=|>)/', $html);
+        $this->assertStringNotContainsString('name="expense_relations[]"', $html);
+        $this->assertStringContainsString('Ortak Kullanım Gideri', $html);
         $this->put(route('categories.update', $category), ['expense_relations' => ['malik_payi']])->assertSessionHas('error');
         $this->assertSame(ExpenseRelation::Aidat, $category->fresh()->suggested_expense_relation);
         $this->expectException(LogicException::class);
@@ -52,12 +53,11 @@ class CategoryExpenseRelationTest extends TestCase
         $html = $this->get(route('categories.edit', $category))->assertOk()->assertSee('Kategori Güncelle')->getContent();
         $this->assertDoesNotMatchRegularExpression('/<input[^>]*name="expense_relations\[\]"[^>]*\sdisabled(?:\s|=|>)/', $html);
         foreach ([[], ['aidat'], ['malik_payi'], ['aidat', 'malik_payi']] as $values) {
-            $this->put(route('categories.update', $category), ['name' => 'Değiştirildi', 'is_active' => false,
-                'allow_aidat' => false, 'expense_relations' => $values])->assertSessionHas('status');
+            $this->put(route('categories.update', $category), ['allow_aidat' => false, 'expense_relations' => $values])->assertSessionHas('status');
             $category->refresh();
             $this->assertSame($name, $category->name);
             $this->assertTrue($category->is_active);
-            $this->assertSame($values, $category->expense_relations);
+            $this->assertSame(['malik_payi'], $category->expense_relations);
         }
     }
 
@@ -91,9 +91,9 @@ class CategoryExpenseRelationTest extends TestCase
             'expense_relations' => ['aidat', 'malik_payi']])->assertSessionHasNoErrors();
         $this->assertSame(['aidat', 'malik_payi'], $category->fresh()->expense_relations);
         $this->assertSame(ExpenseRelation::Unassigned, $category->fresh()->suggested_expense_relation);
-        $this->put(route('categories.update', $category), ['allow_aidat' => true,
+        $this->put(route('categories.update', $category), ['allow_aidat' => false,
             'expense_relations_present' => 1])->assertSessionHasNoErrors();
-        $this->assertSame([], $category->fresh()->expense_relations);
+        $this->assertSame(['malik_payi'], $category->fresh()->expense_relations);
         $this->assertSame('Demirbaş', $category->fresh()->name);
     }
 
@@ -101,11 +101,11 @@ class CategoryExpenseRelationTest extends TestCase
     {
         $category = $this->category('Özel gider');
         $this->put(route('categories.update', $category), ['name' => 'Özel gider', 'is_active' => true,
-            'allow_expense' => true, 'expense_relations' => ['malik_payi']])->assertSessionHasNoErrors();
+            'allow_malik_payi' => true, 'allow_expense' => true, 'expense_relations' => ['malik_payi']])->assertSessionHasNoErrors();
         $this->assertSame(ExpenseRelation::MalikPayi, $category->fresh()->suggested_expense_relation);
         $this->putJson(route('categories.update', $category), ['expense_relations' => ['invalid']])->assertUnprocessable();
         $this->post(route('categories.store'), ['name' => 'Yeni gider', 'is_active' => true,
-            'allow_expense' => true, 'expense_relations' => ['aidat']])->assertSessionHasNoErrors();
+            'allow_aidat' => true, 'allow_expense' => true, 'expense_relations' => ['aidat']])->assertSessionHasNoErrors();
         $this->assertSame(ExpenseRelation::Aidat, Category::where('name', 'Yeni gider')->firstOrFail()->suggested_expense_relation);
     }
 }

@@ -55,6 +55,7 @@ class ExpensePlanController extends Controller
         }
         $this->authorizeFeature($apartment);
 
+        $this->normalizeCalendarMonths($request);
         $request->mergeIfMissing(['generation_mode' => ExpensePlan::GENERATION_ON_SCHEDULE]);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -117,6 +118,7 @@ class ExpensePlanController extends Controller
         }
         $this->authorizeFeature($apartment);
 
+        $this->normalizeCalendarMonths($request);
         $request->mergeIfMissing(['generation_mode' => $expensePlan->generation_mode ?: ExpensePlan::GENERATION_ON_SCHEDULE]);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -132,6 +134,17 @@ class ExpensePlanController extends Controller
         ]);
 
         return $this->preview($request, $apartment, $validated, $expensePlan);
+    }
+
+    private function normalizeCalendarMonths(Request $request): void
+    {
+        foreach (['start_date', 'end_date'] as $field) {
+            $value = $request->input($field);
+            if (is_string($value) && preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])$/D', $value)) {
+                $date = \Carbon\Carbon::createFromFormat('!Y-m', $value);
+                $request->merge([$field => ($field === 'end_date' ? $date->endOfMonth() : $date)->toDateString()]);
+            }
+        }
     }
 
     private function preview(Request $request, $apartment, array $input, ?ExpensePlan $plan = null)

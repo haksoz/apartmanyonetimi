@@ -264,4 +264,32 @@ class DashboardSubscriptionTest extends TestCase
         $this->get(route('subscriber.subscriptions.create', ['apartment_id' => $foreign->id]))
             ->assertOk()->assertViewHas('selectedApartmentId', null);
     }
+    public function test_partial_aidat_notice_links_to_exact_plan_without_creating_debts(): void
+    {
+        $user = User::factory()->create();
+        $apartment = $this->apartment($user);
+        \App\Models\Category::createDefaultsFor($apartment->id);
+        $apartment->refresh();
+        $plan = \App\Models\DuePlan::create(['apartment_id' => $apartment->id, 'category_id' => $apartment->default_aidat_category_id,
+            'name' => 'Aidat Kararı', 'plan_year' => 2026, 'amount_type' => 'monthly', 'monthly_amount' => 100,
+            'distribution_type' => 'equal', 'due_day' => 20, 'generate_day' => 1, 'is_active' => true]);
+        $accounts = [];
+        foreach ([1, 2] as $no) {
+            $unit = \App\Models\Unit::create(['apartment_id' => $apartment->id, 'unit_no' => (string) $no]);
+            $account = \App\Models\Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'type' => 'owner', 'name' => 'Malik '.$no, 'is_active' => true]);
+            $unit->update(['owner_account_id' => $account->id]);
+            $accounts[] = $account;
+        }
+        $batch = \App\Models\DueBatch::create(['apartment_id' => $apartment->id, 'due_plan_id' => $plan->id, 'due_type' => 'aidat',
+            'source_type' => 'manual', 'distribution_type' => 'equal', 'assessment_date' => '2026-11-01', 'source_amount' => 100]);
+        \App\Models\Due::create(['apartment_id' => $apartment->id, 'due_batch_id' => $batch->id, 'unit_id' => $accounts[0]->unit_id,
+            'account_id' => $accounts[0]->id, 'due_type' => 'aidat', 'category_id' => $apartment->default_aidat_category_id,
+            'amount' => 50, 'remaining_amount' => 50, 'created_at_manual' => '2026-11-01', 'due_date' => '2026-11-20']);
+        $response = $this->dashboard($user, $apartment);
+        $response->assertSee('Bu Ayın Planlı Aidatlarında Eksik Kayıt Var')->assertSee('İncele')
+            ->assertSee('href="'.e(route('due-plans.period-detail', ['duePlan' => $plan->id, 'period' => '2026-11'])).'"', false)
+            ->assertDontSee('Planlı Aidat Oluşturulma Hatası')->assertDontSee('Eksikleri Oluştur')
+            ->assertDontSee('action="'.route('due-plans.generate-month', $plan).'"', false);
+        $this->assertSame(1, \App\Models\Due::count());
+    }
 }

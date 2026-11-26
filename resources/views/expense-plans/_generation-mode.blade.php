@@ -12,7 +12,7 @@
             <input type="radio" name="generation_mode" value="create_all_now" @checked(old('generation_mode', $plan->generation_mode ?? 'on_schedule') === 'create_all_now') class="peer sr-only">
             <span class="block h-full rounded-xl border border-slate-200 p-3 transition-all hover:bg-slate-50 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-600">
                 <span class="block text-sm font-semibold text-slate-800">Tümünü şimdi oluştur</span>
-                <span class="mt-0.5 block text-xs text-slate-500">Bitiş tarihine kadar olan giderler kaydedince oluşur.</span>
+                <span class="mt-0.5 block text-xs text-slate-500">Bitiş ayına kadar olan giderler kaydedince oluşur.</span>
             </span>
         </label>
     </div>

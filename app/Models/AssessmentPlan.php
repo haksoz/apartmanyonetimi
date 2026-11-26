@@ -15,7 +15,7 @@ class AssessmentPlan extends Model
 
     public static function debtTypes(): array
     {
-        return [DueType::MalikPayi];
+        return [DueType::Aidat, DueType::MalikPayi];
     }
 
     protected $fillable = [
@@ -45,11 +45,19 @@ class AssessmentPlan extends Model
     protected static function booted(): void
     {
         static::saving(function (AssessmentPlan $plan) {
-            if ($plan->due_type && $plan->due_type !== DueType::MalikPayi) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['due_type' => 'Taksitli Borç Planı yalnızca Kat Maliki Payı oluşturabilir.']);
+            if ($plan->due_type && ! in_array($plan->due_type, self::debtTypes(), true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['due_type' => 'Taksitli Borç Planı yalnızca Aidat veya Kat Maliki Payı oluşturabilir.']);
             }
-            $plan->due_type = DueType::MalikPayi;
+            if ($plan->exists && $plan->isDirty('due_type')) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['due_type' => 'Kaydedilmiş planın borç türü değiştirilemez.']);
+            }
+            $plan->due_type ??= DueType::MalikPayi;
         });
+    }
+
+    public static function debtTypeLabel(DueType $type): string
+    {
+        return $type === DueType::Aidat ? 'Aidat (Daire Sakini)' : $type->label();
     }
 
     public function apartment(): BelongsTo

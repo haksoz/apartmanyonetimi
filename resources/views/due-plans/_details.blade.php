@@ -13,17 +13,18 @@
         'Tamsayıya Yuvarla' => $plan->round_to_integer ? 'Evet' : 'Hayır',
     ];
 @endphp
-<section class="mb-6 rounded-2xl bg-white p-4 shadow-sm md:hidden" aria-label="Plan bilgileri">
-    <div class="mb-3 flex items-center justify-between gap-3">
-        <h2 class="text-base font-semibold text-slate-900">Plan Bilgileri</h2>
+<details class="group mb-6 rounded-2xl bg-white p-4 shadow-sm md:hidden" aria-label="Plan bilgileri">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+        <span class="text-base font-semibold text-slate-900">Plan Bilgileri</span>
         <span @class([
             'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold',
             'bg-emerald-50 text-emerald-700' => $status === 'Aktif',
             'bg-amber-50 text-amber-700' => $status === 'Süresi Doldu',
             'bg-slate-100 text-slate-600' => $status === 'Pasif',
         ])>{{ $status }}</span>
-    </div>
-    <div class="space-y-2 text-sm leading-relaxed text-slate-600">
+        <svg class="h-4 w-4 shrink-0 text-slate-500 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </summary>
+    <div class="mt-3 space-y-2 text-sm leading-relaxed text-slate-600">
         <p class="break-words font-medium text-slate-900">{{ $plan->name }} · {{ $plan->plan_year }}</p>
         <p><strong class="font-semibold text-slate-900">Aylık {{ number_format($plan->monthly_amount_resolved, 2, ',', '.') }} ₺</strong>, {{ $plan->distribution_label }} yöntemiyle dağıtılır.</p>
         <p>{{ $plan->round_to_integer ? 'Tutarlar tam sayıya yuvarlanır.' : 'Tutarlar tam sayıya yuvarlanmaz.' }}</p>
@@ -39,7 +40,7 @@
         <p>İlgili dönemde kiracı varsa kiracıya, yoksa malike borçlandırılır.</p>
         <p class="text-xs text-slate-500">Dönem: {{ $plan->start_date?->format('d.m.Y') }} – {{ $plan->end_date?->format('d.m.Y') }}</p>
     </div>
-</section>
+</details>
 <div class="hidden md:block">
-    @include('financial-plans._details', compact('status', 'details'))
+    @include('financial-plans._details', ['status' => $status, 'details' => $details, 'collapsible' => true])
 </div>

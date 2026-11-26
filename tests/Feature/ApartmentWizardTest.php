@@ -211,6 +211,11 @@ class ApartmentWizardTest extends TestCase
             'allow_expense' => true,
             'allow_malik_payi' => false,
         ]);
+        $this->assertSame(['aidat'], \App\Models\Category::where('apartment_id', $apartment->id)->where('name', 'Ortak Enerji')->firstOrFail()->expense_relations);
+        $this->post(route('apartments.wizard.categories.store', $apartment), [
+            'name' => 'Yalnız Gider', 'allow_expense' => '1',
+        ])->assertSessionHasErrors('allow_expense');
+        $this->assertDatabaseMissing('categories', ['apartment_id' => $apartment->id, 'name' => 'Yalnız Gider']);
     }
 
     public function test_finish_completes_setup_and_redirects_to_dashboard(): void

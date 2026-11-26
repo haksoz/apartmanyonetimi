@@ -32,10 +32,10 @@ class AssessmentPlanController extends Controller
         $this->authorizeFeature($apartment);
 
         $categories = Category::where('apartment_id', $apartment->id)
-            ->where('allow_malik_payi', true)
+            ->where(fn ($query) => $query->where('allow_malik_payi', true)->orWhere('allow_aidat', true))
             ->where('is_active', true)->orderedForDisplay()->get();
         $categoryNames = Category::withTrashed()->where('apartment_id', $apartment->id)
-            ->get(['id', 'name', 'is_active', 'deleted_at', 'allow_malik_payi']);
+            ->get(['id', 'name', 'is_active', 'deleted_at', 'allow_malik_payi', 'allow_aidat']);
 
         return view('assessment-plans.create', compact('apartment', 'categories', 'categoryNames'));
     }
@@ -85,7 +85,7 @@ class AssessmentPlanController extends Controller
             'category_name' => ['exclude_unless:category_mode,new', 'required', 'string', 'max:255'],
             'category_id' => ['exclude_unless:category_mode,existing', 'required', 'integer',
                 Rule::exists('categories', 'id')->where('apartment_id', $apartment->id)
-                    ->where('allow_malik_payi', true)->where('is_active', true)->whereNull('deleted_at')],
+                    ->where(DueType::tryFrom((string) $request->input('due_type'))?->categoryPermission() ?? 'allow_malik_payi', true)->where('is_active', true)->whereNull('deleted_at')],
             'installment_count' => ['required', 'integer', 'min:1', 'max:60'],
             'start_period' => ['required', 'date_format:Y-m'],
             'due_day' => ['required', 'integer', 'min:1', 'max:28'],
@@ -124,6 +124,22 @@ class AssessmentPlanController extends Controller
         return view('assessment-plans.show', [
             'apartment' => $apartment,
             'plan' => $assessmentPlan,
+        ]);
+    }
+
+    public function installmentDetail(CurrentApartment $currentApartment, AssessmentPlan $assessmentPlan, AssessmentInstallment $installment)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof RedirectResponse) {
+            return $apartment;
+        }
+        abort_unless($assessmentPlan->apartment_id === $apartment->id && $installment->assessment_plan_id === $assessmentPlan->id, 404);
+        $this->authorizeFeature($apartment);
+        $assessmentPlan->load('category');
+        $installment->load(['lines.unit', 'lines.due.account']);
+
+        return view('assessment-plans.installment-detail', [
+            'apartment' => $apartment, 'plan' => $assessmentPlan, 'inst' => $installment,
         ]);
     }
 

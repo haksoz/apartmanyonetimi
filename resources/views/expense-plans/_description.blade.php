@@ -2,7 +2,7 @@
     <div class="grid gap-4 md:grid-cols-2">
         <div class="min-w-0 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
             <p class="mb-2 text-sm font-medium text-emerald-700">Oluşacak Gider Açıklaması</p>
-            <p id="description-preview" class="break-words text-sm font-medium text-emerald-900" aria-live="polite">Kategori ve tarih seçin.</p>
+            <p id="description-preview" class="break-words text-sm font-medium text-emerald-900" aria-live="polite">Kategori ve ay seçin.</p>
             <p class="mt-1 text-xs text-emerald-700">Dönem değişir, ek metniniz korunur.</p>
         </div>
         <div class="min-w-0">
@@ -32,7 +32,7 @@
             const base = legacyDescription?.value.trim() || automatic;
             preview.textContent = base
                 ? base + (suffix.value.trim() ? ' ' + suffix.value.trim() : '')
-                : 'Kategori ve tarih seçin.';
+                : 'Kategori ve ay seçin.';
         };
         suffix.addEventListener('input', updatePreview);
         category?.addEventListener('change', updatePreview);

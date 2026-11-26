@@ -40,10 +40,10 @@
             </div>
 
             <fieldset>
-                <legend class="mb-2 text-sm font-semibold text-slate-700">Kullanım Yetkileri</legend>
+                <legend class="mb-2 text-sm font-semibold text-slate-700">Kullanım Alanları</legend>
                 <p class="mb-3 text-xs text-slate-500">Kategorinin kullanılabileceği borç ve gider işlemlerini seçin.</p>
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    @foreach (\App\Models\Category::USAGE_PERMISSIONS as $permission => $label)
+                    @foreach (\App\Support\CategoryUsage::LABELS as $permission => $label)
                         <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
                             <input type="checkbox" name="{{ $permission }}" value="1" @checked(old($permission, false)) class="rounded border-slate-300">
                             {{ $label }}
@@ -52,6 +52,7 @@
                     @endforeach
                 </div>
             </fieldset>
+            @include('components.category-usage-info', ['usageValues' => collect(array_keys(\App\Models\Category::USAGE_PERMISSIONS))->mapWithKeys(fn ($key) => [$key => (bool) old($key, false)])->all(), 'fixedRelations' => null])
         </div>
         <div class="mt-4">
             <button type="submit" class="rounded-xl bg-slate-800 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-700">Kategori Ekle</button>

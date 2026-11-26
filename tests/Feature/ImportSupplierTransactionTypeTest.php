@@ -8,7 +8,7 @@ use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\User;
 use App\Support\CurrentApartment;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
@@ -16,7 +16,7 @@ use Tests\TestCase;
 
 class ImportSupplierTransactionTypeTest extends TestCase
 {
-    use DatabaseMigrations;
+    use RefreshDatabase;
 
     private function createImportFile(array $rows): UploadedFile
     {
@@ -103,6 +103,11 @@ class ImportSupplierTransactionTypeTest extends TestCase
             ->first();
 
         $this->assertNotNull($expense);
+        $category = \App\Models\Category::where('apartment_id', $apartment->id)->where('name', 'Tamirat')->firstOrFail();
+        $this->assertTrue($category->allow_aidat);
+        $this->assertTrue($category->allow_malik_payi);
+        $this->assertTrue($category->allow_expense);
+        $this->assertSame(['aidat', 'malik_payi'], $category->expense_relations);
         $this->assertSame(175.0, (float) $expense->amount);
         $this->assertDatabaseHas('account_transactions', [
             'account_id' => $account->id,
