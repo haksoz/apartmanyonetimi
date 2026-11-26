@@ -102,7 +102,17 @@
             <div class="mb-4">
                 <label class="mb-2 block text-sm font-medium text-slate-600">Gider Dönemi</label>
                 <div class="flex flex-wrap items-center gap-3">
-                    <input id="source_period" name="source_period" type="month" value="{{ old('source_period', now()->format('Y-m')) }}" class="w-40 md:w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none">
+                    @php
+                        $sourceStart = old('source_period', now()->format('Y-m'));
+                        $sourceEnd = old('source_period_end', $sourceStart);
+                        if (! is_string($sourceStart) || ! preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])$/D', $sourceStart)) $sourceStart = now()->format('Y-m');
+                        if (! is_string($sourceEnd) || ! preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])$/D', $sourceEnd)) $sourceEnd = $sourceStart;
+                        $sourceLabel = $sourceStart ? \Carbon\Carbon::parse($sourceStart.'-01')->locale('tr')->translatedFormat('F Y') : 'Dönem seçin';
+                        if ($sourceEnd && $sourceEnd !== $sourceStart) $sourceLabel .= ' – '.\Carbon\Carbon::parse($sourceEnd.'-01')->locale('tr')->translatedFormat('F Y');
+                    @endphp
+                    <input id="expense-source-period" name="source_period" type="hidden" value="{{ $sourceStart }}">
+                    <input id="expense-source-period-end" name="source_period_end" type="hidden" value="{{ $sourceEnd }}">
+                    <button type="button" id="expense-source-period-open" aria-haspopup="dialog" aria-label="Gider dönem aralığını seç" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm sm:w-auto"><span id="expense-source-period-text">{{ $sourceLabel }}</span></button>
                     <button type="button" id="calc-btn" class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 whitespace-nowrap">
                         Giderleri Getir
                     </button>
@@ -112,6 +122,8 @@
                     </div>
                 </div>
                 @error('source_period')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                @error('source_period_end')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+                @error('selected_expense_ids')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
             {{-- Expense List for Selected Period --}}
@@ -275,6 +287,8 @@
         </div>
     </div>
 
+    @include('components.period-picker', ['periodPickerId' => 'expense-source', 'periodPickerRange' => true, 'periodPickerAllowClear' => false])
+
     <script>
         (() => {
             const units = {{ $units }};
@@ -296,7 +310,9 @@
             const fixedAmountField = document.getElementById('fixed-amount-field');
             const manualAmountField = document.getElementById('manual-amount-field');
             const fixedAmount = document.getElementById('fixed_amount');
-            const sourcePeriod = document.getElementById('source_period');
+            const sourcePeriod = document.getElementById('expense-source-period');
+            const sourcePeriodEnd = document.getElementById('expense-source-period-end');
+            let expenseRequestVersion = 0;
             const sourceAmount = document.getElementById('source_amount');
             const expenseTotalDisplay = document.getElementById('expense-total-display');
             const expenseTotalAmount = document.getElementById('expense-total-amount');
@@ -570,6 +586,8 @@
             // Load expenses button click handler
             calcBtn.addEventListener('click', async () => {
                 const period = sourcePeriod.value;
+                const periodEnd = sourcePeriodEnd.value || period;
+                const requestVersion = ++expenseRequestVersion;
                 if (!period) {
                     alert('Lütfen bir dönem seçin.');
                     return;
@@ -579,7 +597,8 @@
                 calcBtn.textContent = 'Yükleniyor...';
 
                 try {
-                    const response = await fetch(`/dues/expenses-by-period?period=${period}`);
+                    const parameters = new URLSearchParams({period, period_end: periodEnd});
+                    const response = await fetch(@json(route('dues.expenses.by-period')) + '?' + parameters);
                     
                     if (!response.ok) {
                         const errorText = await response.text();
@@ -587,7 +606,9 @@
                         throw new Error(`Server error: ${response.status}`);
                     }
                     
-                    currentExpenses = await response.json();
+                    const loaded = await response.json();
+                    if (requestVersion !== expenseRequestVersion) return;
+                    currentExpenses = loaded;
                     
                     if (currentExpenses.error) {
                         throw new Error(currentExpenses.error);
@@ -596,15 +617,31 @@
                     selectedExpenseIds.clear();
                     selectedExpenseIdsInput.value = '';
                     
+                    expenseListEmpty.textContent = 'Seçili dönem aralığında gider bulunamadı.';
                     renderExpenseList();
                     updateCalculation();
                 } catch (error) {
+                    if (requestVersion !== expenseRequestVersion) return;
                     console.error('Error fetching expenses:', error);
                     alert('Giderler yüklenirken bir hata oluştu: ' + error.message);
                 } finally {
+                    if (requestVersion === expenseRequestVersion) {
                     calcBtn.disabled = false;
                     calcBtn.textContent = 'Giderleri Getir';
+                    }
                 }
+            });
+            sourcePeriod.addEventListener('change', () => {
+                expenseRequestVersion++;
+                currentExpenses = [];
+                selectedExpenseIds.clear();
+                selectedExpenseIdsInput.value = '';
+                selectedExpenseCount.textContent = '0';
+                calcBtn.disabled = false;
+                calcBtn.textContent = 'Giderleri Getir';
+                expenseListEmpty.textContent = 'Dönem değişti. Giderleri yeniden getirin.';
+                renderExpenseList();
+                updateCalculation();
             });
 
             const distTypeWrapper = document.getElementById('distribution_type')?.closest('.mb-4');

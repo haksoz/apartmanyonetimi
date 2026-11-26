@@ -21,7 +21,9 @@
     <p data-period-selection class="mt-3 text-sm font-medium text-emerald-700" aria-live="polite"></p>
     <button type="button" data-period-apply class="mt-4 w-full rounded-xl bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white">Uygula</button>
     <button type="button" data-period-current class="mt-4 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold hover:bg-slate-50">Bu Ay</button>
+    @if ($periodPickerAllowClear ?? true)
     <button type="button" data-period-clear class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold hover:bg-slate-50">Tüm Dönemler</button>
+    @endif
 </dialog>
 <script>
     (() => {
@@ -42,10 +44,12 @@
             buttons.forEach(button => button.setAttribute('aria-pressed', selected <= `${String(year.value).padStart(4, '0')}-${button.dataset.periodMonth.padStart(2, '0')}` && (selectedEnd || selected) >= `${String(year.value).padStart(4, '0')}-${button.dataset.periodMonth.padStart(2, '0')}` ? 'true' : 'false'));
         };
         const commit = value => {
+            const before = input.value + '|' + (endInput?.value || '');
             input.value = value;
             if (range) endInput.value = value ? (selectedEnd || value) : '';
             document.getElementById(`${prefix}-period-text`).textContent = label(value) + (range && value && endInput.value !== value ? ' – ' + label(endInput.value) : '');
             dialog.close();
+            if (before !== input.value + '|' + (endInput?.value || '')) input.dispatchEvent(new Event('change', { bubbles: true }));
         };
         document.getElementById(`${prefix}-period-open`).addEventListener('click', () => {
             selected = input.value;
@@ -74,7 +78,7 @@
         }));
         dialog.querySelector('[data-period-apply]').addEventListener('click', () => commit(selected));
         dialog.querySelector('[data-period-current]').addEventListener('click', () => { selectedEnd = current; commit(current); });
-        dialog.querySelector('[data-period-clear]').addEventListener('click', () => commit(''));
+        dialog.querySelector('[data-period-clear]')?.addEventListener('click', () => commit(''));
         dialog.addEventListener('keydown', event => { if (event.key === 'Escape') event.stopPropagation(); });
         dialog.addEventListener('click', event => {
             const bounds = dialog.getBoundingClientRect();

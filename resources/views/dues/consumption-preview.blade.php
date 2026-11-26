@@ -2,6 +2,9 @@
 @section('content')
 <h1 class="mb-2 text-2xl font-bold text-slate-950">Tüketime Göre Borçlandırma Önizlemesi</h1>
 <p class="mb-5 text-sm text-slate-500">{{ \App\Models\ConsumptionSetting::TYPES[$summary['type']] }} · {{ $summary['start_date'] }} – {{ $summary['end_date'] }}</p>
+@if($input['source_type'] === 'expenses')
+<p class="mb-4 text-sm text-slate-500">Gider dönemi: {{ \Carbon\Carbon::parse($input['source_period'].'-01')->locale('tr')->translatedFormat('F Y') }}@if(($input['source_period_end'] ?? $input['source_period']) !== $input['source_period']) – {{ \Carbon\Carbon::parse($input['source_period_end'].'-01')->locale('tr')->translatedFormat('F Y') }}@endif</p>
+@endif
 @if($changed)<p role="alert" class="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">Veriler değişti. Güncel dağıtımı kontrol edip tekrar onaylayın.</p>@endif
 @if(! $summary['can_confirm'])<p role="alert" class="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">Eksik okumaları ve hesap sorunlarını giderin. Toplam tüketim sıfırdan büyük olmalıdır. Henüz borçlandırma oluşturulmadı.</p>@endif
 <div class="mb-5 grid gap-3 sm:grid-cols-3">

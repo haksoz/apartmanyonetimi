@@ -309,9 +309,10 @@ class DueController extends Controller
                 return response()->json(['error' => 'Apartman seçili değil'], 403);
             }
 
-            $period = $request->validate(['period' => 'required|date_format:Y-m'])['period'];
+            $range = $request->validate(['period' => ['required', 'date_format:Y-m'], 'period_end' => ['nullable', 'date_format:Y-m', 'after_or_equal:period']]);
+            $period = $range['period'];
             $periodStart = \Carbon\Carbon::parse($period . '-01')->startOfMonth();
-            $periodEnd = $periodStart->copy()->endOfMonth();
+            $periodEnd = \Carbon\Carbon::parse(($range['period_end'] ?? $period).'-01')->endOfMonth();
 
             $expenses = Expense::withoutOpening()
                 ->where('apartment_id', $apartment->id)
@@ -330,6 +331,8 @@ class DueController extends Controller
                 ]);
 
             return response()->json($expenses);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -357,7 +360,8 @@ class DueController extends Controller
             'category_id' => $this->categoryRules($request, $apartment->id),
             'description' => ['nullable', 'string', 'max:255'],
             'created_at_manual' => ['required', 'date'],
-            'source_period' => ['required_if:source_type,'.DueBatch::SOURCE_EXPENSES, 'nullable', 'date_format:Y-m'],
+            'source_period' => ['required_if:source_type,'.DueBatch::SOURCE_EXPENSES, 'required_with:source_period_end', 'nullable', 'date_format:Y-m'],
+            'source_period_end' => ['nullable', 'date_format:Y-m', 'after_or_equal:source_period'],
             'selected_expense_ids' => ['nullable', 'string'],
             'source_amount' => ['required_if:source_type,'.DueBatch::SOURCE_MANUAL, 'nullable', 'numeric', 'min:0.01'],
             'fixed_amount'  => ['required_if:source_type,'.DueBatch::SOURCE_FIXED,  'nullable', 'numeric', 'min:0.01'],
@@ -444,6 +448,7 @@ class DueController extends Controller
                 'distribution_type' => $validated['distribution_type'],
                 'assessment_date' => $validated['created_at_manual'],
                 'source_period' => isset($validated['source_period']) ? $validated['source_period'].'-01' : null,
+                'source_period_end' => $validated['source_type'] === DueBatch::SOURCE_EXPENSES ? ($validated['source_period_end'] ?? $validated['source_period']).'-01' : null,
                 'category_filter_ids' => $selectedExpenseIds,
                 'source_amount' => $sourceAmount,
                 'description' => $validated['description'] ?? null,
@@ -605,6 +610,7 @@ class DueController extends Controller
             $batch = DueBatch::create(['apartment_id' => $apartment->id, 'due_type' => $input['due_type'], 'source_type' => $input['source_type'],
                 'distribution_type' => DueBatch::DISTRIBUTION_CONSUMPTION, 'consumption_period_id' => $summary['period_id'],
                 'assessment_date' => $input['created_at_manual'], 'source_period' => isset($input['source_period']) ? $input['source_period'].'-01' : null,
+                'source_period_end' => $input['source_type'] === DueBatch::SOURCE_EXPENSES ? ($input['source_period_end'] ?? $input['source_period']).'-01' : null,
                 'source_amount' => $summary['billed_cents'] / 100, 'category_filter_ids' => $expenseIds, 'distribution_snapshot' => [...$summary, 'debt_fields' => [
                     'category_id' => $input['category_id'], 'due_date' => $input['due_date'],
                     'created_at_manual' => $input['created_at_manual'], 'description' => $input['description'] ?? null,
@@ -1103,19 +1109,17 @@ class DueController extends Controller
             return (float) $validated['individual_amount'];
         }
 
-        // If specific expenses are selected, sum only those
-        if (!empty($selectedExpenseIds)) {
-            return (float) Expense::withoutOpening()
-                ->where('apartment_id', $apartmentId)
-                ->whereIn('id', $selectedExpenseIds)
-                ->sum('amount');
+        $start = \Carbon\Carbon::parse($validated['source_period'].'-01')->startOfMonth()->toDateString();
+        $end = \Carbon\Carbon::parse(($validated['source_period_end'] ?? $validated['source_period']).'-01')->endOfMonth()->toDateString();
+        $expenses = Expense::withoutOpening()->where('apartment_id', $apartmentId)
+            ->whereDate('expense_date', '>=', $start)->whereDate('expense_date', '<=', $end);
+        if (! empty($selectedExpenseIds)) {
+            $expenses->whereIn('id', $selectedExpenseIds);
+            if ((clone $expenses)->count() !== count(array_unique($selectedExpenseIds))) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['selected_expense_ids' => 'Seçilen giderlerden bazıları bu apartmanda veya tarih aralığında değil. Giderleri yeniden getirin.']);
+            }
         }
-
-        // Otherwise sum all expenses for the period
-        return (float) Expense::withoutOpening()
-            ->where('apartment_id', $apartmentId)
-            ->whereYear('expense_date', substr($validated['source_period'], 0, 4))->whereMonth('expense_date', substr($validated['source_period'], 5, 2))
-            ->sum('amount');
+        return (float) $expenses->sum('amount');
     }
 
     private function createDue(DueBatch $batch, ?Unit $unit, Account $account, float $amount, array $validated): void

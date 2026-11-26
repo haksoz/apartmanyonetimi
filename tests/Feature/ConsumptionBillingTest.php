@@ -377,4 +377,57 @@ class ConsumptionBillingTest extends TestCase
         $this->repairConfirm($remaining->viewData('token'))->assertRedirect();
         $this->assertEquals(100, Due::sum('amount'));
     }
+
+    public function test_expense_period_picker_supports_ranges_and_fetches_month_boundaries(): void
+    {
+        [$apartment, $period, $input] = $this->setupCase();
+        $page = $this->batchPage()->assertOk();
+        $page->assertSee('expense-source-period-open')->assertSee('name="source_period_end"', false)->assertSee('expense-source-period-dialog');
+        $ids = [];
+        foreach (['2025-11-30', '2025-12-01', '2026-01-15', '2026-02-28', '2026-03-01'] as $date) {
+            $expense = Expense::create(['apartment_id' => $apartment->id, 'description' => $date, 'amount' => 10, 'expense_date' => $date]);
+            $ids[$date] = $expense->id;
+        }
+        Expense::create(['apartment_id' => $apartment->id, 'description' => 'Opening', 'amount' => 999, 'expense_date' => '2026-01-10', 'is_opening' => true]);
+        $response = $this->getJson(route('dues.expenses.by-period', ['period' => '2025-12', 'period_end' => '2026-02']));
+        $response->assertOk()->assertJsonCount(3);
+        $this->assertEquals([$ids['2025-12-01'], $ids['2026-01-15'], $ids['2026-02-28']], array_column($response->json(), 'id'));
+        $this->getJson(route('dues.expenses.by-period', ['period' => '2026-01']))->assertOk()->assertJsonCount(1);
+        $this->getJson(route('dues.expenses.by-period', ['period' => '2026-02', 'period_end' => '2026-01']))->assertUnprocessable()->assertJsonValidationErrors('period_end');
+    }
+
+    public function test_expense_range_total_is_confirmed_and_saved_with_both_months(): void
+    {
+        [$apartment, $period, $input] = $this->setupCase();
+        $this->grantPaidFeatures($apartment);
+        foreach (['2025-12-01' => 20, '2026-01-15' => 30, '2026-02-28' => 100, '2026-03-01' => 999] as $date => $amount) {
+            Expense::create(['apartment_id' => $apartment->id, 'description' => 'Test', 'amount' => $amount, 'expense_date' => $date]);
+        }
+        $preview = $this->post(route('dues.store'), [...$input, 'source_type' => 'expenses', 'source_period' => '2025-12', 'source_period_end' => '2026-02'])->assertOk();
+        $this->assertSame(15000, $preview->viewData('summary')['amount_cents']);
+        $preview->assertSee('Aralık 2025')->assertSee('Şubat 2026');
+        $this->confirm($preview->viewData('token'))->assertRedirect();
+        $this->assertEquals(150, Due::sum('amount'));
+        $this->assertSame('2025-12-01', DueBatch::first()->source_period->toDateString());
+        $this->assertSame('2026-02-01', DueBatch::first()->source_period_end->toDateString());
+    }
+
+    public function test_selected_expenses_must_belong_to_requested_range_and_apartment(): void
+    {
+        [$apartment, $period, $input] = $this->setupCase();
+        $this->grantPaidFeatures($apartment);
+        $inside = Expense::create(['apartment_id' => $apartment->id, 'description' => 'Inside', 'amount' => 75, 'expense_date' => '2026-01-15']);
+        $outside = Expense::create(['apartment_id' => $apartment->id, 'description' => 'Outside', 'amount' => 999, 'expense_date' => '2026-03-01']);
+        $data = [...$input, 'source_type' => 'expenses', 'source_period' => '2025-12', 'source_period_end' => '2026-02'];
+        $this->post(route('dues.store'), [...$data, 'selected_expense_ids' => $inside->id.','.$outside->id])->assertSessionHasErrors('selected_expense_ids');
+        $preview = $this->post(route('dues.store'), [...$data, 'selected_expense_ids' => (string) $inside->id])->assertOk();
+        $this->assertSame(7500, $preview->viewData('summary')['amount_cents']);
+        $this->post(route('dues.store'), [...$data, 'source_period_end' => '2025-11'])->assertSessionHasErrors('source_period_end');
+        $this->assertDatabaseCount('due_batches', 0);
+        $other = Apartment::create(['user_id' => auth()->id(), 'name' => 'Other', 'unit_count' => 1]);
+        $foreign = Expense::create(['apartment_id' => $other->id, 'description' => 'Foreign', 'amount' => 500, 'expense_date' => '2026-01-15']);
+        $this->post(route('dues.store'), [...$data, 'selected_expense_ids' => (string) $foreign->id])->assertSessionHasErrors('selected_expense_ids');
+        $response = $this->getJson(route('dues.expenses.by-period', ['period' => '2025-12', 'period_end' => '2026-02']))->assertOk()->assertJsonCount(1);
+        $this->assertSame($inside->id, $response->json('0.id'));
+    }
 }
