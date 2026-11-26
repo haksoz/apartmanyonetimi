@@ -118,6 +118,8 @@
                 </button>
             </div>
 
+            @include('expenses._recent-filters')
+
             <form id="filter-form" method="GET" action="{{ route('expenses.index') }}" class="flex flex-col flex-1">
                 @if ($filters['filterSearch'] ?? '')
                     <input type="hidden" name="search" value="{{ $filters['filterSearch'] }}">

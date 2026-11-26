@@ -130,27 +130,45 @@ class DueController extends Controller
                 ->get()
             : collect();
 
-        $planOptions = collect();
-        if ($apartment) {
-            $visibleBatches = DueBatch::query()->where('apartment_id', $apartment->id)
-                ->whereHas('dues')
-                ->when($memberAccountIds !== null, fn ($q) => $q->whereHas('dues', fn ($d) => $d->whereIn('account_id', $memberAccountIds)));
-            foreach (DuePlan::where('apartment_id', $apartment->id)
-                ->whereIn('id', (clone $visibleBatches)->whereNotNull('due_plan_id')->select('due_plan_id'))
-                ->orderByDesc('plan_year')->get() as $plan) {
-                $planOptions->push(['value' => 'aidat:'.$plan->id, 'source' => 'plan', 'label' => $plan->name.' ('.$plan->plan_year.')']);
-            }
-            foreach (AssessmentPlan::where('apartment_id', $apartment->id)
-                ->whereIn('id', (clone $visibleBatches)->whereNotNull('assessment_plan_id')->select('assessment_plan_id'))
-                ->orderByDesc('id')->get() as $plan) {
-                $planOptions->push(['value' => 'assessment:'.$plan->id, 'source' => 'assessment', 'label' => $plan->name]);
-            }
-        }
-        $selectedPlan = $planOptions->firstWhere('value', $filterPlan);
-        $dueTypeOptions = [...DueType::options(), ['value' => 'opening', 'label' => 'Hesap Açılış Bakiyesi']];
+        $dueTypeOptions = DueType::options();
         $filters = compact('filterPeriod', 'filterPeriodEnd', 'filterStatus', 'filterSource', 'filterBatchId', 'filterSearch', 'filterUnitId', 'filterDueType', 'filterPlan');
 
-        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'cashBoxes', 'planOptions', 'selectedPlan', 'dueTypeOptions'));
+        $historyKey = 'due_filters.'.auth()->id().'.'.($apartment?->id ?? 'none');
+        $recentFilters = array_values(array_filter($request->session()->get($historyKey, []),
+            fn ($item) => !isset($item['values']['source']) && !isset($item['values']['plan'])));
+        $request->session()->put($historyKey, $recentFilters);
+        $selection = array_filter([
+            'period' => $filterPeriod, 'period_end' => $filterPeriodEnd, 'status' => $filterStatus,
+            'batch_id' => $filterBatchId, 'search' => $filterSearch,
+            'unit_id' => $filterUnitId, 'due_type' => $filterDueType,
+        ], fn ($value) => $value !== null && $value !== '');
+        if ($selection !== [] && ! $request->has('page')) {
+            $labels = [];
+            if ($filterPeriod) {
+                $labels[] = \Carbon\Carbon::parse($filterPeriod.'-01')->locale('tr')->translatedFormat('F Y')
+                    .($filterPeriodEnd !== $filterPeriod ? ' – '.\Carbon\Carbon::parse($filterPeriodEnd.'-01')->locale('tr')->translatedFormat('F Y') : '');
+            }
+            if ($filterDueType) $labels[] = collect($dueTypeOptions)->firstWhere('value', $filterDueType)['label'] ?? 'Hesap Açılış Bakiyesi';
+            $statusNames = ['open' => 'Tüm Açık Borçlar', 'unpaid' => 'Vadesi Gelmemiş', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
+            if ($filterStatus) $labels[] = $statusNames[$filterStatus];
+            if ($filterUnitId) $labels[] = 'Daire '.($units->firstWhere('id', $filterUnitId)?->unit_no ?? $filterUnitId);
+            if ($filterBatchId) $labels[] = 'Grup #'.$filterBatchId;
+            if ($filterSearch) $labels[] = 'Arama: '.$filterSearch;
+            $recentFilters = array_values(array_filter($recentFilters, fn ($item) => $item['values'] !== $selection));
+            array_unshift($recentFilters, ['values' => $selection, 'label' => implode(' · ', $labels),
+                'summary' => implode(' · ', array_slice($labels, 0, 2)), 'extra' => max(0, count($labels) - 2)]);
+            $recentFilters = array_slice($recentFilters, 0, 3);
+            $request->session()->put($historyKey, $recentFilters);
+        }
+        $listUrl = route('dues.index', $request->only(['from', 'period', 'period_end', 'status', 'source', 'batch_id', 'search', 'unit_id', 'due_type', 'plan', 'sort_by', 'sort_direction', 'page']));
+        $returnKey = 'due_return.'.auth()->id();
+        $returnUrls = $request->session()->get($returnKey, []);
+        foreach ($dues as $due) {
+            unset($returnUrls[$due->id]);
+            $returnUrls[$due->id] = $listUrl;
+        }
+        $request->session()->put($returnKey, array_slice($returnUrls, -100, null, true));
+        return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'cashBoxes', 'dueTypeOptions', 'recentFilters'));
     }
 
     public function create(CurrentApartment $currentApartment, Request $request)
@@ -719,7 +737,7 @@ class DueController extends Controller
         $due->transactions()->delete();
         $due->delete();
 
-        return redirect()->route('dues.index')->with('status', 'Aidat kaydı silindi.');
+        return redirect()->to(session('due_return.'.auth()->id().'.'.$due->id, route('dues.index')))->with('status', 'Aidat kaydı silindi.');
     }
 
     public function bulkDestroy(CurrentApartment $currentApartment, Request $request)

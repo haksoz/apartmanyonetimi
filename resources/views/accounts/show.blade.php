@@ -33,12 +33,12 @@
                 $showTransfer = in_array($account->type, [App\Models\Account::TYPE_OWNER, App\Models\Account::TYPE_TENANT]) && ($account->dues->isNotEmpty() || $importedDues->isNotEmpty()) && $transferableAccounts->isNotEmpty();
             @endphp
             @include('accounts._tabs', ['account' => $account, 'active' => 'overview', 'withOverview' => false, 'showTransfer' => $showTransfer, 'compactHeader' => true])
-            <button type="button" onclick="history.back()" class="inline-flex h-11 w-14 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-slate-300 px-1 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm">
+            <a href="{{ session('account_return.'.auth()->id().'.'.$account->id, route('accounts.index')) }}" class="inline-flex h-11 px-3 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-slate-300 px-1 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm">
                 <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
                 </svg>
-                Geri
-            </button>
+                Hesaplara Dön
+            </a>
         </div>
     </div>
 

@@ -89,12 +89,12 @@
 
 
 
-            <button type="button" onclick="history.back()" class="inline-flex h-11 w-14 shrink-0 items-center justify-center sm:h-auto sm:w-auto gap-1 whitespace-nowrap rounded-xl border border-slate-300 px-1 py-2 sm:gap-2 sm:py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
+            <a href="{{ session('expense_return.'.auth()->id().'.'.$expense->id, route('expenses.index')) }}" class="inline-flex h-11 px-3 shrink-0 items-center justify-center sm:h-auto sm:w-auto gap-1 whitespace-nowrap rounded-xl border border-slate-300 px-1 py-2 sm:gap-2 sm:py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h14" />
                 </svg>
-                Geri
-            </button>
+                Giderlere Dön
+            </a>
         </div>
     </div>
 

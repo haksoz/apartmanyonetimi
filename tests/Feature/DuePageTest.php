@@ -20,6 +20,35 @@ class DuePageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_recent_due_filters_are_compact_deduplicated_and_preserve_return_url(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Filtre testi', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $unit = Unit::create(['apartment_id' => $apartment->id, 'unit_no' => '1']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id,
+            'type' => Account::TYPE_OWNER, 'name' => 'Test Hesabı']);
+        $due = Due::create(['apartment_id' => $apartment->id, 'unit_id' => $unit->id, 'account_id' => $account->id,
+            'due_type' => \App\Enums\DueType::Aidat, 'created_at_manual' => '2026-01-15',
+            'amount' => 100, 'remaining_amount' => 100, 'status' => 'unpaid', 'is_imported' => true]);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        foreach (['2025-11', '2025-12', '2026-01', '2026-02', '2026-01'] as $month) {
+            $this->get(route('dues.index', ['period' => $month, 'due_type' => 'aidat', 'source' => 'import', 'unit_id' => $unit->id]))->assertOk();
+        }
+        $this->get(route('dues.index', ['from' => 'menu']))->assertOk()
+            ->assertSee('Son Kullanılan Filtreler')->assertSee('+1 seçim')
+            ->assertViewHas('recentFilters', fn ($items) => count($items) === 3
+                && array_column(array_column($items, 'values'), 'period') === ['2026-01', '2026-02', '2025-12']);
+        $url = route('dues.index', ['from' => 'menu', 'period' => '2026-01', 'page' => 1]);
+        $this->get($url)->assertOk();
+        $this->get(route('dues.show', $due))->assertOk()->assertSee('Aidatlara Dön')->assertSee(e($url), false);
+        $other = Apartment::create(['user_id' => $user->id, 'name' => 'Diğer apartman', 'unit_count' => 1]);
+        $other->members()->attach($user->id, ['role' => 'owner']);
+        $this->withSession([CurrentApartment::SESSION_KEY => $other->id])->get(route('dues.index'))
+            ->assertOk()->assertViewHas('recentFilters', []);
+    }
+
+
     public function test_dues_period_range_spans_years_and_includes_month_boundaries(): void
     {
         $user = User::factory()->create();
@@ -608,9 +637,8 @@ class DuePageTest extends TestCase
             ->assertSee('(Kiracı Öncelikli)')
             ->assertDontSee('<details class="group" open>', false)
             ->assertSee('Daire 01')
-            ->assertSee('history.back()', false)
-            ->assertDontSee('Aidat Detayı')
-            ->assertDontSee('Aidatlara Dön');
+            ->assertSee('Aidatlara Dön')
+            ->assertDontSee('Aidat Detayı');
     }
 
     public function test_due_detail_page_shows_transfer_button_for_open_due(): void

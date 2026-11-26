@@ -20,6 +20,33 @@ class ExpensePageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_recent_filters_keep_three_distinct_selections_and_preserve_list_return(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Filtre testi', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $supplier = Account::create(['apartment_id' => $apartment->id, 'type' => 'supplier', 'name' => 'Tedarikçi']);
+        $expense = Expense::create(['apartment_id' => $apartment->id, 'account_id' => $supplier->id,
+            'category' => 'Temizlik', 'amount' => 100, 'expense_date' => '2026-01-15', 'description' => 'Filtreli gider']);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        foreach (['2025-11', '2025-12', '2026-01', '2026-02', '2026-01'] as $month) {
+            $this->get(route('expenses.index', ['period' => $month]))->assertOk();
+        }
+        $this->get(route('expenses.index'))->assertOk()
+            ->assertSee('Son Kullanılan Filtreler')
+            ->assertViewHas('recentFilters', fn ($items) => count($items) === 3
+                && array_column(array_column($items, 'values'), 'period') === ['2026-01', '2026-02', '2025-12']);
+        $url = route('expenses.index', ['period' => '2026-01', 'page' => 1]);
+        $this->get($url)->assertOk();
+        $this->get(route('expenses.show', $expense))->assertOk()
+            ->assertSee('Giderlere Dön')->assertSee(e($url), false);
+        $other = Apartment::create(['user_id' => $user->id, 'name' => 'Diğer apartman', 'unit_count' => 1]);
+        $other->members()->attach($user->id, ['role' => 'owner']);
+        $this->withSession([CurrentApartment::SESSION_KEY => $other->id])->get(route('expenses.index'))
+            ->assertOk()->assertViewHas('recentFilters', []);
+    }
+
+
     public function test_expense_month_range_includes_boundaries_and_preserves_single_month_links(): void
     {
         $user = User::factory()->create();
@@ -151,7 +178,7 @@ class ExpensePageTest extends TestCase
             ->assertSeeInOrder(['Hesap / Tedarikçi', '>Kategori<', 'Gider Tarihi'], false)
             ->assertSee('Kaynak')
             ->assertSee('Manuel')
-            ->assertSee('history.back()', false)
+            ->assertSee('Giderlere Dön')
             ->assertDontSee('Gider Detayı');
 
         $expense->update(['is_imported' => true]);

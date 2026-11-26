@@ -119,10 +119,36 @@ class AccountController extends Controller
             ->where('is_imported', true)
             ->exists() : false;
 
+        $historyKey = 'account_filters.'.auth()->id().'.'.($apartment?->id ?? 'none');
+        $recentFilters = $request->session()->get($historyKey, []);
+        $selection = array_filter(['type' => $filterType, 'status' => $filterStatus, 'search' => $filterSearch],
+            fn ($value) => $value !== null && $value !== '');
+        if (($filterType || $filterSearch || $filterStatus !== 'active') && ! $request->has('page')) {
+            $typeNames = ['owner' => 'Kat Maliki', 'tenant' => 'Kiracı', 'supplier' => 'Tedarikçi'];
+            $statusNames = ['active' => 'Aktif', 'inactive' => 'Pasif', 'all' => 'Tümü'];
+            $labels = [];
+            if ($filterType) $labels[] = $typeNames[$filterType] ?? $filterType;
+            $labels[] = $statusNames[$filterStatus] ?? $filterStatus;
+            if ($filterSearch) $labels[] = 'Arama: '.$filterSearch;
+            $recentFilters = array_values(array_filter($recentFilters, fn ($item) => $item['values'] !== $selection));
+            array_unshift($recentFilters, ['values' => $selection, 'label' => implode(' · ', $labels),
+                'summary' => implode(' · ', array_slice($labels, 0, 2)), 'extra' => max(0, count($labels) - 2)]);
+            $recentFilters = array_slice($recentFilters, 0, 3);
+            $request->session()->put($historyKey, $recentFilters);
+        }
+        $listUrl = route('accounts.index', $request->only(['type', 'status', 'search', 'sort', 'direction', 'page']));
+        $returnKey = 'account_return.'.auth()->id();
+        $returnUrls = $request->session()->get($returnKey, []);
+        foreach ($accounts as $account) {
+            unset($returnUrls[$account->id]);
+            $returnUrls[$account->id] = $listUrl;
+        }
+        $request->session()->put($returnKey, array_slice($returnUrls, -100, null, true));
+
         return view('accounts.index', compact(
             'accounts', 'apartment', 'filters',
             'orphanPaymentsCount', 'orphanPaymentsTotal', 'isOwner', 'hasImported',
-            'sortBy', 'sortDir'
+            'sortBy', 'sortDir', 'recentFilters'
         ));
     }
 

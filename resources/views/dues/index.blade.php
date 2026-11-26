@@ -36,7 +36,6 @@
         <form method="GET" action="{{ route('dues.index') }}" class="flex gap-2 flex-1 min-w-0">
             @if (request()->query('from') === 'menu')<input type="hidden" name="from" value="menu">@endif
             @if ($filters['filterDueType'])<input type="hidden" name="due_type" value="{{ $filters['filterDueType'] }}">@endif
-            @if ($filters['filterPlan'])<input type="hidden" name="plan" value="{{ $filters['filterPlan'] }}">@endif
             @if ($filters['filterBatchId'])
                 <input type="hidden" name="batch_id" value="{{ $filters['filterBatchId'] }}">
             @endif
@@ -46,9 +45,6 @@
             @endif
             @if ($filters['filterStatus'])
                 <input type="hidden" name="status" value="{{ $filters['filterStatus'] }}">
-            @endif
-            @if ($filters['filterSource'])
-                <input type="hidden" name="source" value="{{ $filters['filterSource'] }}">
             @endif
             @if ($filters['filterUnitId'])
                 <input type="hidden" name="unit_id" value="{{ $filters['filterUnitId'] }}">
@@ -72,11 +68,9 @@
         @php
             $activeFilterCount = 0;
             if ($filters['filterDueType']) $activeFilterCount++;
-            if ($filters['filterPlan']) $activeFilterCount++;
             if ($filters['filterBatchId']) $activeFilterCount++;
             if ($filters['filterPeriod']) $activeFilterCount++;
             if ($filters['filterStatus']) $activeFilterCount++;
-            if ($filters['filterSource']) $activeFilterCount++;
             if ($filters['filterUnitId']) $activeFilterCount++;
         @endphp
 
@@ -94,7 +88,6 @@
 
     @php
         $statusLabels = ['open' => 'Tüm Açık Borçlar', 'unpaid' => 'Vadesi Gelmemiş', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
-        $sourceLabels = ['plan' => 'Aidat Planı', 'assessment' => 'Taksitli Borç Planı', 'batch' => 'Toplu Borçlandırma', 'manual' => 'Manuel', 'import' => 'İçe Aktarma', 'opening' => 'Açılış bakiyesi'];
     @endphp
 
     @if ($activeFilterCount > 0)
@@ -103,11 +96,6 @@
             @if ($filters['filterDueType'])
                 <a href="{{ route('dues.index', request()->except(['due_type', 'page'])) }}" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
                     {{ $filters['filterDueType'] === 'opening' ? 'Hesap Açılış Bakiyesi' : \App\Enums\DueType::from($filters['filterDueType'])->label() }} <span>&times;</span>
-                </a>
-            @endif
-            @if ($filters['filterPlan'])
-                <a href="{{ route('dues.index', request()->except(['plan', 'page'])) }}" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ $selectedPlan['label'] ?? 'Plan bulunamadı' }} <span>&times;</span>
                 </a>
             @endif
             @if ($filters['filterBatchId'])
@@ -140,13 +128,6 @@
                     <span class="text-slate-500">&times;</span>
                 </a>
             @endif
-            @if ($filters['filterSource'])
-                <a href="{{ route('dues.index', request()->except('source')) }}"
-                   class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                    {{ $sourceLabels[$filters['filterSource']] ?? $filters['filterSource'] }}
-                    <span class="text-slate-500">&times;</span>
-                </a>
-            @endif
             <a href="{{ route('dues.index', request()->only(['search', 'sort_by', 'sort_direction', 'from'])) }}"
                class="ml-1 text-xs font-medium text-slate-400 hover:text-slate-600 underline">
                 Tümünü temizle
@@ -166,6 +147,8 @@
                     </svg>
                 </button>
             </div>
+
+            @include('dues._recent-filters')
 
             <form id="filter-form" method="GET" action="{{ route('dues.index') }}" class="flex flex-col flex-1">
                 @if (request()->query('from') === 'menu')<input type="hidden" name="from" value="menu">@endif
@@ -223,28 +206,6 @@
                         </select>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Kaynak</label>
-                        <select id="filter-source" name="source" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white">
-                            <option value="">Tüm Kaynaklar</option>
-                            <option value="opening" @selected($filters['filterSource'] === 'opening')>Açılış bakiyesi</option>
-                            <option value="plan"   {{ $filters['filterSource'] === 'plan'   ? 'selected' : '' }}>Aidat Planı</option>
-                            <option value="assessment" @selected($filters['filterSource'] === 'assessment')>Taksitli Borç Planı</option>
-                            <option value="batch"  {{ $filters['filterSource'] === 'batch'  ? 'selected' : '' }}>Toplu Borçlandırma</option>
-                            <option value="manual" {{ $filters['filterSource'] === 'manual' ? 'selected' : '' }}>Manuel</option>
-                            <option value="import" @selected($filters['filterSource'] === 'import')>İçe Aktarma</option>
-                        </select>
-                    </div>
-
-                    <div id="filter-plan-field">
-                        <label for="filter-plan" class="mb-1.5 block text-sm font-medium text-slate-700">Plan</label>
-                        <select id="filter-plan" name="plan" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                            <option value="">Tüm Planlar</option>
-                            @foreach ($planOptions as $option)
-                                <option value="{{ $option['value'] }}" data-source="{{ $option['source'] }}" @selected($filters['filterPlan'] === $option['value'])>{{ $option['label'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
 
                 </div>
 
@@ -562,23 +523,7 @@
             form.submit();
         }
 
-        (() => {
-            const source = document.getElementById('filter-source');
-            const plan = document.getElementById('filter-plan');
-            const field = document.getElementById('filter-plan-field');
-            const syncPlans = () => {
-                const allowed = !source.value || ['plan', 'assessment'].includes(source.value);
-                field.classList.toggle('hidden', !allowed);
-                plan.disabled = !allowed;
-                for (const option of plan.options) {
-                    option.hidden = !!option.value && !!source.value && option.dataset.source !== source.value;
-                    option.disabled = option.hidden;
-                }
-                if (!allowed || plan.selectedOptions[0]?.disabled) plan.value = '';
-            };
-            source.addEventListener('change', syncPlans);
-            syncPlans();
-        })();
+
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && !document.querySelector('dialog[open]')) closeFilterModal();

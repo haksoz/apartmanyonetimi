@@ -54,7 +54,7 @@
                 document.getElementById('filter-select-title').textContent = `${title} Seç`;
                 list.setAttribute('aria-label', `${title} seçimi`);
                 list.replaceChildren();
-                const options = [...select.options].filter(option => option.value && !option.hidden && !option.disabled);
+                const options = [...select.options].filter(option => option !== select.options[0] && option.value && !option.hidden && !option.disabled);
                 options.forEach(option => {
                     const button = document.createElement('button');
                     button.type = 'button';
@@ -89,7 +89,7 @@
             });
         });
         form.addEventListener('change', () => queueMicrotask(refresh));
-        clear.addEventListener('click', () => choose(''));
+        clear.addEventListener('click', () => choose(active.options[0].value));
         dialog.querySelector('[data-select-close]').addEventListener('click', () => dialog.close());
         dialog.addEventListener('keydown', event => { if (event.key === 'Escape') event.stopPropagation(); });
         dialog.addEventListener('click', event => {

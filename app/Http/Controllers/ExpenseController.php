@@ -178,7 +178,36 @@ class ExpenseController extends Controller
 
         $filters = compact('filterPeriod', 'filterPeriodEnd', 'filterStatus', 'filterCategory', 'filterSearch');
 
-        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'cashBoxes', 'isOwner'));
+        $historyKey = 'expense_filters.'.auth()->id().'.'.($apartment?->id ?? 'none');
+        $recentFilters = $request->session()->get($historyKey, []);
+        $selection = array_filter([
+            'period' => $filterPeriod, 'period_end' => $filterPeriod ? $filterPeriodEnd : null,
+            'status' => $filterStatus, 'category' => $filterCategory, 'search' => $filterSearch,
+        ], fn ($value) => $value !== null && $value !== '' && $value !== []);
+        if ($selection !== [] && ! $request->has('page')) {
+            $labels = [];
+            if ($filterPeriod) {
+                $labels[] = \Carbon\Carbon::parse($filterPeriod.'-01')->locale('tr')->translatedFormat('F Y')
+                    .($filterPeriodEnd !== $filterPeriod ? ' – '.\Carbon\Carbon::parse($filterPeriodEnd.'-01')->locale('tr')->translatedFormat('F Y') : '');
+            }
+            $statusNames = ['paid' => 'Ödendi', 'overdue' => 'Ödenmedi', 'pending' => 'Bekliyor'];
+            foreach ($filterStatus as $status) $labels[] = $statusNames[$status];
+            if ($filterCategory && $categories->has($filterCategory)) $labels[] = $categories->get($filterCategory);
+            if ($filterSearch) $labels[] = 'Arama: '.$filterSearch;
+            $recentFilters = array_values(array_filter($recentFilters, fn ($item) => $item['values'] !== $selection));
+            array_unshift($recentFilters, ['values' => $selection, 'label' => implode(' · ', $labels)]);
+            $recentFilters = array_slice($recentFilters, 0, 3);
+            $request->session()->put($historyKey, $recentFilters);
+        }
+        $listUrl = route('expenses.index', $request->only(['period', 'period_end', 'status', 'category', 'search', 'sort_by', 'sort_direction', 'page']));
+        $returnKey = 'expense_return.'.auth()->id();
+        $returnUrls = $request->session()->get($returnKey, []);
+        foreach ($expenses as $expense) {
+            unset($returnUrls[$expense->id]);
+            $returnUrls[$expense->id] = $listUrl;
+        }
+        $request->session()->put($returnKey, array_slice($returnUrls, -100, null, true));
+        return view('expenses.index', compact('expenses', 'apartment', 'sortBy', 'sortDirection', 'filters', 'categories', 'cashBoxes', 'isOwner', 'recentFilters'));
 
     }
 
@@ -770,7 +799,7 @@ class ExpenseController extends Controller
 
 
 
-        return redirect()->route('expenses.index')->with('status', 'Gider kaydı silindi.');
+        return redirect()->to(session('expense_return.'.auth()->id().'.'.$expense->id, route('expenses.index')))->with('status', 'Gider kaydı silindi.');
 
     }
 
@@ -932,7 +961,7 @@ class ExpenseController extends Controller
 
 
 
-        return redirect()->route('expenses.index')->with('status', 'Gider ödemesi kasaya işlendi.');
+        return redirect()->to(session('expense_return.'.auth()->id().'.'.$expense->id, route('expenses.index')))->with('status', 'Gider ödemesi kasaya işlendi.');
 
     }
 

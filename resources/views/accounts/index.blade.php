@@ -98,6 +98,8 @@
                 </button>
             </div>
 
+            @include('accounts._recent-filters')
+
             <form id="filter-form" method="GET" action="{{ route('accounts.index') }}" class="flex flex-col flex-1">
                 @if ($filters['filterSearch'])
                     <input type="hidden" name="search" value="{{ $filters['filterSearch'] }}">
@@ -346,12 +348,13 @@
 
         function resetFilters() {
             var form = document.getElementById('filter-form');
-            form.querySelectorAll('select').forEach(function (el) { el.value = ''; });
+            form.querySelectorAll('select').forEach(function (el) { el.value = el.options[0].value; });
             form.submit();
         }
 
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeFilterModal();
+            if (e.key === 'Escape' && !document.querySelector('dialog[open]')) closeFilterModal();
         });
     </script>
+    @include('components.filter-select-picker')
 @endsection

@@ -18,6 +18,30 @@ class AccountPageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_recent_account_filters_keep_three_distinct_choices_and_return_to_list(): void
+    {
+        $user = User::factory()->create();
+        $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Filtre testi', 'unit_count' => 1]);
+        $apartment->members()->attach($user->id, ['role' => 'owner']);
+        $account = Account::create(['apartment_id' => $apartment->id, 'type' => 'supplier', 'name' => 'Tedarikçi', 'is_active' => true]);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        foreach (['owner', 'tenant', 'supplier', 'owner', 'supplier'] as $type) {
+            $this->get(route('accounts.index', ['type' => $type, 'status' => 'all']))->assertOk();
+        }
+        $this->get(route('accounts.index'))->assertOk()->assertSee('Son Kullanılan Filtreler')
+            ->assertSee('filter-select-dialog')
+            ->assertViewHas('recentFilters', fn ($items) => count($items) === 3
+                && array_column(array_column($items, 'values'), 'type') === ['supplier', 'owner', 'tenant']);
+        $url = route('accounts.index', ['type' => 'supplier', 'status' => 'all', 'page' => 1]);
+        $this->get($url)->assertOk();
+        $this->get(route('accounts.show', $account))->assertOk()->assertSee('Hesaplara Dön')->assertSee(e($url), false);
+        $other = Apartment::create(['user_id' => $user->id, 'name' => 'Diğer', 'unit_count' => 1]);
+        $other->members()->attach($user->id, ['role' => 'owner']);
+        $this->withSession([CurrentApartment::SESSION_KEY => $other->id])->get(route('accounts.index'))
+            ->assertOk()->assertViewHas('recentFilters', []);
+    }
+
+
     public function test_account_detail_lists_open_payments_newest_to_oldest(): void
     {
         $user = User::factory()->create();
