@@ -7,7 +7,7 @@
         'Toplam Tutar' => number_format((float) $plan->total_amount, 2, ',', '.').' ₺',
         'Taksit Sayısı' => $plan->installment_count,
         'Kategori' => $plan->category?->name,
-        'Dağıtım Yöntemi' => match ($plan->distribution_type) { 'square_meters' => 'Metrekareye göre', 'share_coefficient' => 'Pay çarpanına göre', default => 'Eşit dağıtım' },
+        'Dağıtım Yöntemi' => match ($plan->distribution_type) { 'square_meters' => 'Metrekareye göre', 'share_coefficient' => 'Gider Dağıtım Katsayısına Göre', default => 'Eşit dağıtım' },
         'Borç Oluşturma Yöntemi' => $plan->createsOnSchedule() ? 'Zamanı geldikçe oluştur' : 'Tümünü şimdi oluştur',
         'Oluşturma Günü' => 'Her ayın '.$plan->generate_day.'. günü',
         'Borçlanacak Kişiler' => $plan->due_type === \App\Enums\DueType::MalikPayi ? 'Yalnızca malikler' : 'Öncelikle kiracı, yoksa malik',

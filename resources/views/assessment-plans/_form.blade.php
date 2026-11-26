@@ -58,7 +58,7 @@
             </div>
             <div class="col-span-2">
                 <p class="mb-2 text-sm font-medium text-slate-600">Dağıtım Yöntemi</p>
-                <p class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{{ match ($plan->distribution_type) { 'square_meters' => 'Metrekareye göre', 'share_coefficient' => 'Pay çarpanına göre', default => 'Eşit dağıtım' } }}</p>
+                <p class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{{ match ($plan->distribution_type) { 'square_meters' => 'Metrekareye göre', 'share_coefficient' => 'Gider Dağıtım Katsayısına Göre', default => 'Eşit dağıtım' } }}</p>
             </div>
         @else
             <div>
@@ -74,7 +74,7 @@
             <div class="col-span-2">
                 <label for="distribution_type" class="mb-2 block text-sm font-medium text-slate-600">Dağıtım Yöntemi</label>
                 <select id="distribution_type" name="distribution_type" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm">
-                    @foreach (['equal' => 'Eşit dağıtım', 'square_meters' => 'Metrekareye göre', 'share_coefficient' => 'Pay çarpanına göre'] as $value => $label)
+                    @foreach (['equal' => 'Eşit dağıtım', 'square_meters' => 'Metrekareye göre', 'share_coefficient' => 'Gider Dağıtım Katsayısına Göre'] as $value => $label)
                         <option value="{{ $value }}" @selected(old('distribution_type', 'equal') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>

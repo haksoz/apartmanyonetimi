@@ -135,14 +135,14 @@ class DueController extends Controller
 
         $historyKey = 'due_filters.'.auth()->id().'.'.($apartment?->id ?? 'none');
         $recentFilters = array_values(array_filter($request->session()->get($historyKey, []),
-            fn ($item) => !isset($item['values']['source']) && !isset($item['values']['plan'])));
+            fn ($item) => !isset($item['values']['source']) && !isset($item['values']['plan']) && !isset($item['values']['batch_id'])));
         $request->session()->put($historyKey, $recentFilters);
         $selection = array_filter([
             'period' => $filterPeriod, 'period_end' => $filterPeriodEnd, 'status' => $filterStatus,
             'batch_id' => $filterBatchId, 'search' => $filterSearch,
             'unit_id' => $filterUnitId, 'due_type' => $filterDueType,
         ], fn ($value) => $value !== null && $value !== '');
-        if ($selection !== [] && ! $request->has('page')) {
+        if ($selection !== [] && ! $request->has('page') && ! $request->filled('batch_id')) {
             $labels = [];
             if ($filterPeriod) {
                 $labels[] = \Carbon\Carbon::parse($filterPeriod.'-01')->locale('tr')->translatedFormat('F Y')
@@ -152,7 +152,6 @@ class DueController extends Controller
             $statusNames = ['open' => 'Tüm Açık Borçlar', 'unpaid' => 'Vadesi Gelmemiş', 'partial' => 'Kısmen Ödendi', 'paid' => 'Ödendi', 'overdue' => 'Gecikmiş'];
             if ($filterStatus) $labels[] = $statusNames[$filterStatus];
             if ($filterUnitId) $labels[] = 'Daire '.($units->firstWhere('id', $filterUnitId)?->unit_no ?? $filterUnitId);
-            if ($filterBatchId) $labels[] = 'Grup #'.$filterBatchId;
             if ($filterSearch) $labels[] = 'Arama: '.$filterSearch;
             $recentFilters = array_values(array_filter($recentFilters, fn ($item) => $item['values'] !== $selection));
             array_unshift($recentFilters, ['values' => $selection, 'label' => implode(' · ', $labels),
@@ -297,7 +296,8 @@ class DueController extends Controller
             $expensesByCategory[$category->id] = $categoryExpenses;
         }
 
-        return view('dues.batch-create', compact('apartment', 'dueTypes', 'categories', 'expenseCategories', 'units', 'unitsData', 'expensesByPeriod', 'expensesByCategory', 'selectedDueType'));
+        $consumptionPeriods = \App\Models\ConsumptionPeriod::where('apartment_id', $apartment->id)->unused()->orderByDesc('end_date')->get();
+        return view('dues.batch-create', compact('apartment', 'dueTypes', 'categories', 'expenseCategories', 'units', 'unitsData', 'expensesByPeriod', 'expensesByCategory', 'selectedDueType', 'consumptionPeriods'));
     }
 
     public function getExpensesForPeriod(Request $request, CurrentApartment $currentApartment)
@@ -349,7 +349,7 @@ class DueController extends Controller
 
         $validated = $request->validate([
             'source_type' => ['required', Rule::in([DueBatch::SOURCE_EXPENSES, DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_INDIVIDUAL, DueBatch::SOURCE_FIXED])],
-            'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL, DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT])],
+            'distribution_type' => ['required', Rule::in([DueBatch::DISTRIBUTION_EQUAL, DueBatch::DISTRIBUTION_INDIVIDUAL, DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT, DueBatch::DISTRIBUTION_CONSUMPTION])],
             'due_date' => ['required', 'date'],
             'due_type' => ['required', Rule::in($request->input('source_type') === DueBatch::SOURCE_INDIVIDUAL
                 ? DueType::values()
@@ -375,9 +375,16 @@ class DueController extends Controller
             ],
             'individual_amount' => ['required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL, 'nullable', 'numeric', 'min:0.01'],
             'round_to_integer' => ['nullable', 'boolean'],
+            'consumption_type' => ['required_if:distribution_type,consumption', 'nullable', Rule::in(array_keys(\App\Models\ConsumptionSetting::TYPES))],
+            'consumption_period_id' => ['required_if:distribution_type,consumption', 'nullable', 'integer', Rule::exists('consumption_periods', 'id')->where('apartment_id', $apartment->id)],
         ], [
             'account_id.exists' => 'Aktif bir kiracı veya kat maliki hesabı seçin. Kat Maliki Payı yalnızca kat maliki hesabına yazılabilir.',
         ]);
+
+        if ($validated['distribution_type'] === DueBatch::DISTRIBUTION_CONSUMPTION
+            && ! in_array($validated['source_type'], [DueBatch::SOURCE_MANUAL, DueBatch::SOURCE_EXPENSES], true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['distribution_type' => 'Tüketime göre dağıtım toplam tutar veya dönem gideri üzerinden yapılır.']);
+        }
 
         // Period formdan gönderilmemişse oluşturulma tarihinden otomatik belirle
         if ($validated['source_type'] === DueBatch::SOURCE_EXPENSES && ! \App\Support\FeatureGate::allows($apartment, 'expense_distribution')) {
@@ -386,7 +393,7 @@ class DueController extends Controller
 
         if (in_array($validated['distribution_type'], [DueBatch::DISTRIBUTION_SQUARE_METERS, DueBatch::DISTRIBUTION_SHARE_COEFFICIENT], true)
             && ! \App\Support\FeatureGate::allows($apartment, 'distribution_advanced')) {
-            abort(403, 'Metrekare ve pay çarpanı dağıtımı ücretli plandadır.');
+            abort(403, 'Metrekare ve gider dağıtım katsayısı dağıtımı ücretli plandadır.');
         }
 
         $validated['period'] = \Carbon\Carbon::parse($validated['created_at_manual'])->format('Y-m');
@@ -411,7 +418,7 @@ class DueController extends Controller
         $sourceAmount = $this->sourceAmount($apartment->id, $validated, $selectedExpenseIds);
 
         $roundToInteger = filter_var($validated['round_to_integer'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        if ($roundToInteger) {
+        if ($roundToInteger && $validated['distribution_type'] !== DueBatch::DISTRIBUTION_CONSUMPTION) {
             $sourceAmount = ceil($sourceAmount);
         }
 
@@ -424,6 +431,10 @@ class DueController extends Controller
             $validated['due_type'],
             $validated['category_id'] ?? null,
         );
+
+        if ($validated['distribution_type'] === DueBatch::DISTRIBUTION_CONSUMPTION) {
+            return $this->consumptionFlow($request, $apartment, $validated, $selectedExpenseIds, $sourceAmount);
+        }
 
         DB::transaction(function () use ($apartment, $validated, $selectedExpenseIds, $sourceAmount, $roundToInteger) {
             $batch = DueBatch::create([
@@ -555,6 +566,85 @@ class DueController extends Controller
         });
 
         return redirect()->route('dues.index')->with('status', 'Borçlandırma oluşturuldu.');
+    }
+
+    private function consumptionPreview(Request $request, Apartment $apartment, array $input, array $summary, bool $changed = false)
+    {
+        $token = (string) \Illuminate\Support\Str::uuid();
+        $request->session()->put('consumption_confirmation', ['token' => $token, 'user_id' => auth()->id(),
+            'apartment_id' => $apartment->id, 'input' => $input, 'fingerprint' => hash('sha256', json_encode($summary)), 'expires_at' => now()->addMinutes(30)->timestamp]);
+        return view('dues.consumption-preview', compact('input', 'summary', 'token', 'changed'));
+    }
+
+    public function confirmConsumption(Request $request, CurrentApartment $currentApartment)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) { return $apartment; }
+        abort_unless($this->isOwnerOf($apartment), 403);
+        $pending = $request->session()->get('consumption_confirmation');
+        abort_unless($pending && is_string($request->input('confirmation_token')) && hash_equals($pending['token'], $request->input('confirmation_token'))
+            && $pending['user_id'] === auth()->id() && $pending['apartment_id'] === $apartment->id && $pending['expires_at'] >= now()->timestamp, 419);
+        if ($request->boolean('return_to_form')) {
+            $request->session()->forget('consumption_confirmation');
+            return redirect()->route('dues.batch.create', ['due_type' => $pending['input']['due_type'], 'source_type' => $pending['input']['source_type']])->withInput($pending['input']);
+        }
+        $request->replace([...$pending['input'], 'confirmation_token' => $pending['token']]);
+        return $this->store($request, $currentApartment);
+    }
+
+    private function consumptionFlow(Request $request, Apartment $apartment, array $input, array $expenseIds, float $amount)
+    {
+        return DB::transaction(function () use ($request, $apartment, $input, $expenseIds, $amount) {
+            Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
+            $summary = app(\App\Services\ConsumptionDistribution::class)->summary($apartment, $input, $amount);
+            $pending = $request->session()->get('consumption_confirmation');
+            $confirming = $request->routeIs('dues.consumption.confirm');
+            if (! $confirming || ! $summary['can_confirm'] || ! hash_equals($pending['fingerprint'], hash('sha256', json_encode($summary)))) {
+                return $this->consumptionPreview($request, $apartment, $input, $summary, $confirming);
+            }
+            $batch = DueBatch::create(['apartment_id' => $apartment->id, 'due_type' => $input['due_type'], 'source_type' => $input['source_type'],
+                'distribution_type' => DueBatch::DISTRIBUTION_CONSUMPTION, 'consumption_period_id' => $summary['period_id'],
+                'assessment_date' => $input['created_at_manual'], 'source_period' => isset($input['source_period']) ? $input['source_period'].'-01' : null,
+                'source_amount' => $summary['billed_cents'] / 100, 'category_filter_ids' => $expenseIds, 'distribution_snapshot' => [...$summary, 'debt_fields' => [
+                    'category_id' => $input['category_id'], 'due_date' => $input['due_date'],
+                    'created_at_manual' => $input['created_at_manual'], 'description' => $input['description'] ?? null,
+                ]],
+                'description' => $input['description'] ?? null, 'created_by' => auth()->id()]);
+            $expectedCount = 0;
+            foreach ($summary['rows'] as $row) {
+                if (! $row['amount_cents']) { continue; }
+                $unit = Unit::where('apartment_id', $apartment->id)->findOrFail($row['unit_id']);
+                $account = Account::where('apartment_id', $apartment->id)->findOrFail($row['account_id']);
+                $this->createDue($batch, $unit, $account, $row['amount_cents'] / 100, $input);
+                $expectedCount++;
+            }
+            if ($batch->dues()->count() !== $expectedCount || (int) round($batch->dues()->sum('amount') * 100) !== $summary['billed_cents']) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['consumption_period_id' => 'Borçlandırma tutarları değişti. Önizlemeyi yeniden oluşturun.']);
+            }
+            $request->session()->forget('consumption_confirmation');
+            return redirect()->route('dues.index', ['batch_id' => $batch->id])->with('status', 'Tüketime göre borçlandırma oluşturuldu.');
+        });
+    }
+
+    public function cancelConsumptionBatch(Request $request, CurrentApartment $currentApartment, string $batch)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        if ($apartment instanceof \Illuminate\Http\RedirectResponse) { return $apartment; }
+        abort_unless($this->isOwnerOf($apartment), 403);
+        $periodId = DB::transaction(function () use ($apartment, $batch) {
+            Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
+            $batch = DueBatch::where('apartment_id', $apartment->id)->whereNotNull('consumption_period_id')->lockForUpdate()->findOrFail($batch);
+            $dues = $batch->dues()->lockForUpdate()->get();
+            foreach ($dues as $due) {
+                if ($due->allocations()->exists() || in_array($due->status, ['paid', 'partial'], true)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['batch' => 'Tahsilat bulunan borçlandırma iptal edilemez.']);
+                }
+            }
+            foreach ($dues as $due) { $due->transactions()->delete(); $due->delete(); }
+            $batch->update(['consumption_cancelled_at' => now()]);
+            return $batch->consumption_period_id;
+        });
+        return redirect()->route('meters.history.detail', $periodId)->with('status', 'Borçlandırma iptal edildi. Okuma dönemi yeniden seçilebilir.');
     }
 
     public function show(CurrentApartment $currentApartment, Due $due)

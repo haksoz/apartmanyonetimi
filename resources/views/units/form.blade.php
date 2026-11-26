@@ -45,7 +45,7 @@
             </div>
 
             <div>
-                <label for="share_coefficient" class="mb-2 block text-sm font-semibold text-slate-700">Pay Çarpanı</label>
+                <label for="share_coefficient" class="mb-2 block text-sm font-semibold text-slate-700">Gider Dağıtım Katsayısı</label>
                 <input id="share_coefficient" name="share_coefficient" type="number" step="0.0001" min="0"
                        value="{{ old('share_coefficient', $unit?->share_coefficient) }}"
                        class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none"

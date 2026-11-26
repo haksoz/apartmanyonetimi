@@ -35,6 +35,8 @@ class DueBatch extends Model
 
     public const SOURCE_FIXED = 'fixed';
 
+    public const DISTRIBUTION_CONSUMPTION = 'consumption';
+
     public const DISTRIBUTION_EQUAL = 'equal';
 
     public const DISTRIBUTION_INDIVIDUAL = 'individual';
@@ -45,6 +47,8 @@ class DueBatch extends Model
 
     protected $fillable = [
         'apartment_id',
+        'consumption_period_id',
+        'consumption_cancelled_at',
         'due_plan_id',
         'assessment_plan_id',
         'assessment_installment_id',
@@ -63,12 +67,18 @@ class DueBatch extends Model
 
     protected $casts = [
         'assessment_date' => 'date',
+        'consumption_cancelled_at' => 'datetime',
         'source_period' => 'date',
         'category_filter_ids' => 'array',
         'source_amount' => 'decimal:2',
         'distribution_snapshot' => 'array',
         'due_type' => DueType::class,
     ];
+
+    public function consumptionPeriod(): BelongsTo
+    {
+        return $this->belongsTo(ConsumptionPeriod::class);
+    }
 
     public function apartment(): BelongsTo
     {
@@ -108,10 +118,11 @@ class DueBatch extends Model
     public function getDistributionTypeLabelAttribute(): string
     {
         return match ($this->distribution_type) {
+            self::DISTRIBUTION_CONSUMPTION => 'Tüketime göre',
             self::DISTRIBUTION_EQUAL => 'Eşit böl',
             self::DISTRIBUTION_INDIVIDUAL => 'Birebir',
             self::DISTRIBUTION_SQUARE_METERS => 'Metrekareye göre',
-            self::DISTRIBUTION_SHARE_COEFFICIENT => 'Pay çarpanına göre',
+            self::DISTRIBUTION_SHARE_COEFFICIENT => 'Gider Dağıtım Katsayısına Göre',
             default => ucfirst((string) $this->distribution_type),
         };
     }

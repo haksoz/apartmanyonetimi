@@ -20,7 +20,7 @@
                     <th class="px-5 py-3">Daire No</th>
                     <th class="px-5 py-3">Kat/Blok</th>
                     <th class="px-5 py-3 text-right">m²</th>
-                    <th class="px-5 py-3 text-right">Pay Çarpanı</th>
+                    <th class="px-5 py-3 text-right">Gider Dağıtım Katsayısı</th>
                     <th class="px-5 py-3">Kat Maliki</th>
                     <th class="px-5 py-3">Kiracı</th>
                     <th class="px-5 py-3"></th>
@@ -98,7 +98,7 @@
                     </div>
                     <div class="text-right text-xs text-slate-600 space-y-0.5">
                         <div>m²: {{ $unit->square_meters ? number_format($unit->square_meters, 2, ',', '.') : '-' }}</div>
-                        <div>Pay: {{ $unit->share_coefficient ? number_format($unit->share_coefficient, 4, ',', '.') : '-' }}</div>
+                        <div>Gider Dağıtım Katsayısı: {{ $unit->share_coefficient ? number_format($unit->share_coefficient, 4, ',', '.') : '-' }}</div>
                     </div>
                 </div>
                 <div class="mt-2 text-sm space-y-0.5">

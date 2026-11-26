@@ -55,6 +55,8 @@ class DuePlanController extends Controller
         if (! $plan->exists) {
             $plan->apartment_id = $apartment->id;
             $plan->plan_year = $selectedYear;
+            $plan->due_type = 'aidat';
+            $plan->category_id = $apartment->default_aidat_category_id;
             $plan->generation_mode = DuePlan::GENERATION_ON_SCHEDULE;
             $plan->is_active = true;
         }
@@ -499,7 +501,7 @@ class DuePlanController extends Controller
         }
 
         $dueDate = $periodDate->copy()->setDay(min($duePlan->due_day, $periodDate->daysInMonth));
-        $batchDescription = $customDescription ?: $periodDate->copy()->locale('tr')->isoFormat('YYYY MMMM').' - Aidatı';
+        $batchDescription = $customDescription ?: $periodDate->copy()->locale('tr')->isoFormat('YYYY MMMM').' - Genel Aidat';
         $count = count($unitAccounts);
         $snapshot = $reconciliation['snapshot'];
         $sourceAmount = $reconciliation['source_amount'];

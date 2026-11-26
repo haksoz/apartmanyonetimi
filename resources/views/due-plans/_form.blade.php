@@ -46,7 +46,7 @@
     <h2 class="mb-4 text-sm font-semibold text-slate-700">Açıklama</h2>
     <div class="rounded-xl bg-slate-50 p-3">
         <p class="mb-1 text-xs font-medium text-slate-500">Oluşacak Aidat Açıklaması</p>
-        <p id="aidat-description-example" class="break-words text-sm font-semibold text-slate-800">{{ $plan?->plan_year ?? $selectedYear ?? now()->year }} {{ now()->locale('tr')->isoFormat('MMMM') }} - Aidatı</p>
+        <p id="aidat-description-example" class="break-words text-sm font-semibold text-slate-800">{{ $plan?->plan_year ?? $selectedYear ?? now()->year }} {{ now()->locale('tr')->isoFormat('MMMM') }} - Genel Aidat</p>
         <p class="mt-1 text-xs text-slate-500">Ay ve yıl döneme göre güncellenir.</p>
     </div>
 </section>
@@ -66,7 +66,7 @@
                 <select id="distribution_type" name="distribution_type" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
                     <option value="equal" @selected(old('distribution_type', $plan?->distribution_type ?? 'equal') === 'equal')>Eşit dağıtım</option>
                     <option value="square_meters" @selected(old('distribution_type', $plan?->distribution_type) === 'square_meters')>Metrekareye göre</option>
-                    <option value="share_coefficient" @selected(old('distribution_type', $plan?->distribution_type) === 'share_coefficient')>Pay çarpanına göre</option>
+                    <option value="share_coefficient" @selected(old('distribution_type', $plan?->distribution_type) === 'share_coefficient')>Gider Dağıtım Katsayısına Göre</option>
                 </select>
             </div>
             <label class="inline-flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap py-3 text-sm text-slate-600 md:mt-7">
@@ -91,7 +91,8 @@
     <div class="mt-4 rounded-xl bg-slate-50 p-3">
         <p class="mb-1 text-xs font-medium text-slate-500">Borçlanacak Kişiler</p>
         <p class="text-sm text-slate-700">İlgili dönemde kiracı varsa kiracıya, yoksa malike borçlandırılır.</p>
-        <p class="mt-2 text-xs text-slate-500">Borç türü ve kategori: Aidat.</p>
+        <p class="mt-2 text-xs text-slate-500">Borç Türü: Aidat</p>
+        <p class="mt-1 text-xs text-slate-500">Kategori: {{ $apartment->defaultAidatCategory?->name ?? 'Genel Aidat (tanımlı değil)' }}</p>
     </div>
 </section>
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
@@ -120,7 +121,7 @@
         const planYearInput = document.getElementById('plan_year');
         const updateDescriptionExample = () => {
             const year = Number(planYearInput.value) || {{ now()->year }};
-            document.getElementById('aidat-description-example').textContent = year + ' ' + @json(now()->locale('tr')->isoFormat('MMMM')) + ' - Aidatı';
+            document.getElementById('aidat-description-example').textContent = year + ' ' + @json(now()->locale('tr')->isoFormat('MMMM')) + ' - Genel Aidat';
         };
         planYearInput.addEventListener('input', updateDescriptionExample);
         updateDescriptionExample();
@@ -201,7 +202,7 @@
             const activeUnits = getActiveUnits(distType);
             const zeroCount = unitsData.length - activeUnits.length;
             if (distType !== 'equal' && zeroCount > 0) {
-                warningEl.textContent = zeroCount + ' dairenin ' + (distType === 'square_meters' ? 'metrekare' : 'pay çarpanı') + ' bilgisi 0 veya boş — bu daireler dağıtımdan hariç tutulur.';
+                warningEl.textContent = zeroCount + ' dairenin ' + (distType === 'square_meters' ? 'metrekare' : 'gider dağıtım katsayısı') + ' bilgisi 0 veya boş — bu daireler dağıtımdan hariç tutulur.';
                 warningEl.classList.remove('hidden');
             } else {
                 warningEl.classList.add('hidden');

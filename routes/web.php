@@ -202,6 +202,14 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('apartments/{apartment}/renew-setup', [ApartmentController::class, 'renewSetup'])->name('apartments.renew-setup');
         Route::post('apartments/{apartment}/trigger-aidat', [SubscriberApartmentController::class, 'triggerAidatGeneration'])->name('apartments.trigger-aidat');
         Route::resource('units', UnitController::class);
+        Route::prefix('meters')->name('meters.')->middleware('building.panel')->controller(\App\Http\Controllers\MeterController::class)->group(function () {
+            Route::get('/', 'readings')->name('index');
+            Route::get('readings', 'readings')->name('readings');
+            Route::post('readings', 'storeReadings')->name('readings.store');
+            Route::put('settings', 'updateSettings')->name('settings.update');
+            Route::get('history', 'history')->name('history');
+            Route::get('history/{period}', 'historyDetail')->name('history.detail');
+        });
 
         // Bulk account import from Excel - MUST be before resource route
         Route::get('accounts/bulk-import', [AccountController::class, 'bulkImportForm'])->name('accounts.bulk-import');
@@ -299,6 +307,10 @@ Route::middleware(['auth', 'apartment'])->group(function () {
             Route::post('assessment-plans/{assessmentPlan}/cancel-future', [AssessmentPlanController::class, 'cancelFuture'])->name('assessment-plans.cancel-future');
         });
         Route::get('dues/batch/create', [DueController::class, 'createBatch'])->name('dues.batch.create');
+        Route::post('dues/consumption/confirm', [DueController::class, 'confirmConsumption'])->name('dues.consumption.confirm');
+        Route::post('dues/consumption/{batch}/cancel', [DueController::class, 'cancelConsumptionBatch'])->name('dues.consumption.cancel');
+        Route::post('dues/consumption/{batch}/repair-preview', [\App\Http\Controllers\ConsumptionRepairController::class, 'preview'])->name('dues.consumption.repair-preview');
+        Route::post('dues/consumption/repair-confirm', [\App\Http\Controllers\ConsumptionRepairController::class, 'confirm'])->name('dues.consumption.repair-confirm');
         Route::delete('dues/bulk-destroy', [DueController::class, 'bulkDestroy'])->name('dues.bulk-destroy');
         Route::get('dues/{due}/edit', [DueController::class, 'edit'])->name('dues.edit');
         Route::patch('dues/{due}', [DueController::class, 'update'])->name('dues.update');

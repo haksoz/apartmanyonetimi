@@ -211,14 +211,23 @@
                     <select name="distribution_type" id="distribution_type" class="w-full md:w-1/2 rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-emerald-500 focus:outline-none">
                         <option value="equal" @selected(old('distribution_type', 'equal') === 'equal')>Eşit dağıtım</option>
                         <option value="square_meters" @selected(old('distribution_type') === 'square_meters')>Metrekareye göre</option>
-                        <option value="share_coefficient" @selected(old('distribution_type') === 'share_coefficient')>Pay çarpanına göre</option>
+                        <option value="share_coefficient" @selected(old('distribution_type') === 'share_coefficient')>Gider Dağıtım Katsayısına Göre</option>
+                        <option value="consumption" @selected(old('distribution_type') === 'consumption')>Tüketime göre (Sayaç ve Pay Ölçer)</option>
                     </select>
                     <div class="shrink-0 flex items-center gap-2">
                         <input type="checkbox" id="round_to_integer" name="round_to_integer" value="1" @checked(old('round_to_integer')) class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-                        <label for="round_to_integer" class="text-sm text-slate-600 whitespace-nowrap">Tamsayıya yuvarla</label>
+                        <label for="round_to_integer" class="text-sm text-slate-600 whitespace-nowrap">Tamsayıya yukarı yuvarla</label>
                     </div>
                 </div>
                 @error('distribution_type')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+            </div>
+
+            <div id="consumption-fields" class="mb-4 hidden grid gap-3 sm:grid-cols-2">
+                <label class="text-sm font-medium text-slate-600">Tüketim Türü<select name="consumption_type" id="consumption-type" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3">@foreach(\App\Models\ConsumptionSetting::TYPES as $key => $label)<option value="{{ $key }}" @selected(old('consumption_type', 'cold_water') === $key)>{{ $label }}</option>@endforeach</select></label>
+                <label class="text-sm font-medium text-slate-600">Okuma Dönemi<select name="consumption_period_id" id="consumption-period" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"><option value="">Dönem seçin</option>@foreach($consumptionPeriods as $readingPeriod)<option value="{{ $readingPeriod->id }}" data-type="{{ $readingPeriod->consumption_type }}" @selected(old('consumption_period_id') == $readingPeriod->id)>{{ $readingPeriod->start_date->format('d.m.Y') }} – {{ $readingPeriod->end_date->format('d.m.Y') }}</option>@endforeach</select></label>
+                <p class="text-xs text-slate-500 sm:col-span-2">Yalnızca borçlandırılmamış dönemler listelenir. Dairelerin tutarları sonraki adımda ayrı önizlemede gösterilir.</p>
+                @error('consumption_type')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                @error('consumption_period_id')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
 
             {{-- Distribution Preview --}}
@@ -250,7 +259,7 @@
         </div>
 
         <div class="flex justify-end">
-            <button type="submit" class="w-full md:w-auto rounded-xl bg-emerald-600 px-8 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-sm">Toplu Borçlandırmayı Oluştur</button>
+            <button id="batch-submit" type="submit" class="w-full md:w-auto rounded-xl bg-emerald-600 px-8 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-sm">Toplu Borçlandırmayı Oluştur</button>
         </div>
     </form>
 
@@ -353,6 +362,18 @@
 
             const updateCalculation = () => {
                 const selectedSource = document.querySelector('input[name="source_type"]:checked').value;
+                const consumptionMode = document.getElementById('distribution_type').value === 'consumption' && ['manual', 'expenses'].includes(selectedSource);
+                document.getElementById('consumption-fields').classList.toggle('hidden', !consumptionMode);
+                for (const id of ['consumption-type', 'consumption-period']) {
+                    document.getElementById(id).disabled = !consumptionMode;
+                    document.getElementById(id).required = consumptionMode;
+                }
+                document.getElementById('batch-submit').textContent = consumptionMode ? 'Önizlemeyi Gör' : 'Toplu Borçlandırmayı Oluştur';
+                if (consumptionMode) {
+                    calcSummary.classList.add('hidden');
+                    document.getElementById('distribution-preview').classList.add('hidden');
+                    return;
+                }
                 let total = 0;
 
                 if (selectedSource === 'expenses') {
@@ -438,7 +459,7 @@
 
                 const zeroCount = unitsData.length - activeUnits.length;
                 if (distType !== 'equal' && zeroCount > 0) {
-                    warningEl.textContent = zeroCount + ' dairenin ' + (distType === 'square_meters' ? 'metrekare' : 'pay çarpanı') + ' bilgisi 0 veya boş — bu daireler dağıtımdan hariç tutulur.';
+                    warningEl.textContent = zeroCount + ' dairenin ' + (distType === 'square_meters' ? 'metrekare' : 'gider dağıtım katsayısı') + ' bilgisi 0 veya boş — bu daireler dağıtımdan hariç tutulur.';
                     warningEl.classList.remove('hidden');
                 } else {
                     warningEl.classList.add('hidden');
@@ -601,6 +622,9 @@
                 typeSlot.appendChild(batchTypeFields);
                 datesSlot.appendChild(batchDateFields);
                 if (distTypeWrapper) distTypeWrapper.classList.toggle('hidden', selected === 'fixed');
+                const consumptionOption = distSelect.querySelector('option[value="consumption"]');
+                consumptionOption.disabled = !['manual', 'expenses'].includes(selected);
+                if (consumptionOption.disabled && distSelect.value === 'consumption') { distSelect.value = 'equal'; lastDistributionType = 'equal'; }
                 updateCalculation();
             };
 
@@ -625,7 +649,7 @@
                     ? unitsData.some(u => !u.sqm || u.sqm <= 0)
                     : (newType === 'share_coefficient' ? unitsData.some(u => !u.coef || u.coef <= 0) : false);
                 if (hasMissing) {
-                    const label = newType === 'square_meters' ? 'metrekare' : 'pay çarpanı';
+                    const label = newType === 'square_meters' ? 'metrekare' : 'gider dağıtım katsayısı';
                     missingDataMessage.textContent = `${label.charAt(0).toUpperCase() + label.slice(1)} dağıtımı yapabilmek için tüm dairelerin ${label} bilgisi girilmiş olmalıdır.`;
                     missingDataModal?.classList.remove('hidden');
                     distSelect.value = lastDistributionType;
@@ -642,13 +666,26 @@
                 missingDataModal?.classList.add('hidden');
             });
 
+            const consumptionType = document.getElementById('consumption-type');
+            const consumptionPeriod = document.getElementById('consumption-period');
+            const filterConsumptionPeriods = () => {
+                for (const option of consumptionPeriod.options) {
+                    if (!option.value) continue;
+                    const visible = option.dataset.type === consumptionType.value;
+                    option.hidden = !visible;
+                    option.disabled = !visible;
+                    if (!visible && option.selected) consumptionPeriod.value = '';
+                }
+            };
+            consumptionType.addEventListener('change', filterConsumptionPeriods);
+            filterConsumptionPeriods();
+
             // Initialize
             toggleFields();
 
             // Auto-populate description based on period and category
             const typeInputs = document.querySelectorAll('input[name="due_type"]');
             const selectedDueType = () => document.querySelector('input[type="hidden"][name="due_type"]')?.value || '';
-            const dueTypeLabels = @json(collect($dueTypes)->pluck('label', 'value'));
             const targetAudienceSummary = document.getElementById('target-audience-summary');
             const syncTargetAudience = () => {
                 const ownerOnly = selectedDueType() === 'malik_payi';
@@ -680,16 +717,23 @@
                 }
             };
 
+            let lastSuggestedDescription = '';
+            let descriptionIsManual = descriptionInput.value.trim() !== '';
+            descriptionInput.addEventListener('input', () => {
+                descriptionIsManual = descriptionInput.value.trim() !== '' && descriptionInput.value !== lastSuggestedDescription;
+            });
             const updateDescription = () => {
                 const period = createdAtInput?.value?.substring(0, 7);
-                const typeName = dueTypeLabels[selectedDueType()] || '';
-
-                if (period && typeName) {
-                    const [year, month] = period.split('-');
-                    const monthName = months[month] || month;
-                    descriptionInput.value = `${year} ${monthName} - ${typeName}`;
+                const categoryName = topicSelect?.value ? topicSelect.selectedOptions[0]?.textContent.trim() : '';
+                let suggestion = '';
+                if (categoryName) {
+                    const [year, month] = (period || '').split('-');
+                    suggestion = period ? `${year} ${months[month] || month} - ${categoryName}` : categoryName;
                 }
+                if (!descriptionIsManual) descriptionInput.value = suggestion;
+                lastSuggestedDescription = suggestion;
             };
+            topicSelect?.addEventListener('change', updateDescription);
 
             createdAtInput?.addEventListener('change', () => {
                 updateDescription();
@@ -716,7 +760,6 @@
                 syncTargetAudience();
                 updateDescription();
             }));
-            createdAtInput?.addEventListener('change', updateDescription);
 
             // Init
             syncTargetAudience();

@@ -379,6 +379,13 @@
                     </a>
                     @endif
 
+                    @if($showBuildingMenu)
+                    <a href="{{ route('meters.index') }}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium {{ request()->routeIs('meters.*') ? 'bg-emerald-50 text-emerald-700' : '' }}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19a9 9 0 1116 0H4zm8-5l4-5"/></svg>
+                        <span class="sidebar-text">Sayaç ve Pay Ölçer</span>
+                    </a>
+                    @endif
+
                     @if($showBuildingMenu && (auth()->user()->isAdmin()
                         || \App\Support\FeatureGate::allows($currentApartment, 'auto_dues')
                         || \App\Support\FeatureGate::allows($currentApartment, 'expense_plans')

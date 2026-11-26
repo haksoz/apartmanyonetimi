@@ -90,7 +90,7 @@
             @foreach ([
                 ['Otomatik aidat planlama', 'Aidat planı tanımlayın ve dönemsel tahakkuku plandan üretin.'],
                 ['Gider dağıtımı', 'Kaydettiğiniz gideri dairelere borç olarak dağıtın.'],
-                ['Metrekare ve pay', 'Dağıtımda metrekare ve pay çarpanını kullanın.'],
+                ['Metrekare ve pay', 'Dağıtımda metrekare ve gider dağıtım katsayısını kullanın.'],
                 ['Belge yükleme', 'Gider kaydına belge ekleyin.'],
                 ['PDF ve Excel', 'Listeleri ve raporları PDF veya Excel olarak indirin.'],
                 ['Gelişmiş raporlar', 'Tahsilat matrisi, gecikme, yıllık faaliyet, bütçe ve aylık pano.'],

@@ -152,7 +152,7 @@ class DuePlan extends Model
         return match ($this->distribution_type) {
             self::DISTRIBUTION_EQUAL             => 'Eşit böl',
             self::DISTRIBUTION_SQUARE_METERS     => 'Metrekareye göre',
-            self::DISTRIBUTION_SHARE_COEFFICIENT => 'Pay çarpanına göre',
+            self::DISTRIBUTION_SHARE_COEFFICIENT => 'Gider Dağıtım Katsayısına Göre',
             default                              => ucfirst((string) $this->distribution_type),
         };
     }

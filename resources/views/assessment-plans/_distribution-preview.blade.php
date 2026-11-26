@@ -46,7 +46,7 @@
             total.textContent = money(data.total) + ' · ' + data.unit_count + ' daire · ' + data.installment_count + ' taksit';
             warning.classList.toggle('hidden', data.excluded_count === 0);
             warning.textContent = data.excluded_count
-                ? data.excluded_count + ' dairenin ' + (method === 'square_meters' ? 'metrekare' : 'pay çarpanı') + ' bilgisi boş veya sıfır olduğu için dağıtıma dahil edilmedi.'
+                ? data.excluded_count + ' dairenin ' + (method === 'square_meters' ? 'metrekare' : 'gider dağıtım katsayısı') + ' bilgisi boş veya sıfır olduğu için dağıtıma dahil edilmedi.'
                 : '';
             let hasRounding = false;
             data.groups.forEach(group => {
@@ -59,7 +59,7 @@
                 const title = document.createElement('p');
                 title.className = 'text-sm font-medium text-slate-700';
                 const weight = new Intl.NumberFormat('tr-TR', {maximumFractionDigits: 6}).format(group.weight);
-                title.textContent = (method === 'equal' ? 'Eşit dağıtım' : weight + (method === 'square_meters' ? ' m²' : ' pay çarpanı')) + ' · ' + group.count + ' daire';
+                title.textContent = (method === 'equal' ? 'Eşit dağıtım' : weight + (method === 'square_meters' ? ' m²' : ' gider dağıtım katsayısı')) + ' · ' + group.count + ' daire';
                 const list = document.createElement('dl');
                 list.className = 'mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3';
                 addValue(list, 'Daire Başına Toplam', range(group.share_min, group.share_max));

@@ -35,6 +35,18 @@ class DuePageTest extends TestCase
         foreach (['2025-11', '2025-12', '2026-01', '2026-02', '2026-01'] as $month) {
             $this->get(route('dues.index', ['period' => $month, 'due_type' => 'aidat', 'source' => 'import', 'unit_id' => $unit->id]))->assertOk();
         }
+        $historyKey = 'due_filters.'.$user->id.'.'.$apartment->id;
+        $savedHistory = session($historyKey);
+        $this->withSession([$historyKey => [
+            ['values' => ['batch_id' => '44'], 'label' => 'Grup #44', 'summary' => 'Grup #44', 'extra' => 0],
+            ...$savedHistory,
+        ]]);
+        $this->get(route('dues.index', ['batch_id' => 44]))->assertOk()
+            ->assertViewHas('recentFilters', $savedHistory)
+            ->assertViewHas('filters', fn ($filters) => (string) $filters['filterBatchId'] === '44');
+        $this->get(route('dues.index', ['batch_id' => 44, 'period' => '2026-03', 'status' => 'unpaid']))->assertOk()
+            ->assertViewHas('recentFilters', $savedHistory);
+        $this->assertSame($savedHistory, session($historyKey));
         $this->get(route('dues.index', ['from' => 'menu']))->assertOk()
             ->assertSee('Son Kullanılan Filtreler')->assertSee('+1 seçim')
             ->assertViewHas('recentFilters', fn ($items) => count($items) === 3
@@ -1119,6 +1131,7 @@ class DuePageTest extends TestCase
 
     public function test_plan_uses_system_aidat_category(): void
     {
+        $this->travelTo(\Carbon\Carbon::parse('2026-01-15 12:00:00'));
         $user = User::factory()->create();
         $apartment = Apartment::create(['user_id' => $user->id, 'name' => 'Akbey Apartmanı', 'unit_count' => 1]);
         $apartment->members()->attach($user->id, ['role' => 'owner']);
@@ -1128,11 +1141,21 @@ class DuePageTest extends TestCase
         $unit->update(['owner_account_id' => $account->id, 'occupant_account_id' => $account->id]);
         Category::createDefaultsFor($apartment->id);
         $apartment->refresh();
+        $otherCategory = Category::create(['apartment_id' => $apartment->id, 'name' => 'Başka Kategori', 'allow_malik_payi' => true]);
+        $this->actingAs($user)->withSession([CurrentApartment::SESSION_KEY => $apartment->id]);
+        $page = $this->get(route('due-plans.index', ['year' => 2026, 'new' => 1]));
+        $page->assertOk()->assertSee('Borç Türü: Aidat')->assertSee('Kategori: Genel Aidat');
+        $this->assertSame(\App\Enums\DueType::Aidat, $page->viewData('plan')->due_type);
+        $this->assertSame($apartment->default_aidat_category_id, $page->viewData('plan')->category_id);
+
 
         $this->withSession([CurrentApartment::SESSION_KEY => $apartment->id])
             ->actingAs($user)
             ->saveAidatPlan([
                 'plan_year' => 2026,
+                'current_month_action' => 'create',
+                'due_type' => 'malik_payi',
+                'category_id' => $otherCategory->id,
                 'monthly_amount' => 1000,
                 'distribution_type' => 'equal',
                 'due_day' => 1,
@@ -1151,6 +1174,13 @@ class DuePageTest extends TestCase
         $this->assertEquals('Genel Aidat', $category->name);
         $this->assertEquals(Category::TYPE_INCOME, $category->type);
         $this->assertTrue($category->is_system);
+        $this->assertSame(\App\Enums\DueType::Aidat, $plan->due_type);
+        $this->assertSame($apartment->default_aidat_category_id, $plan->category_id);
+        $due = Due::where('due_batch_id', $plan->batches()->firstOrFail()->id)->firstOrFail();
+        $this->assertSame(\App\Enums\DueType::Aidat, $due->due_type);
+        $this->assertSame($category->id, $due->category_id);
+        $this->assertSame(\App\Enums\DueType::Aidat, $due->batch->due_type);
+
     }
 
     public function test_auto_generate_skips_partial_period(): void

@@ -12,7 +12,7 @@
                     | {{ number_format($unit->square_meters, 2, ',', '.') }} m²
                 @endif
                 @if($unit->share_coefficient)
-                    | Pay: {{ number_format($unit->share_coefficient, 4, ',', '.') }}
+                    | Gider Dağıtım Katsayısı: {{ number_format($unit->share_coefficient, 4, ',', '.') }}
                 @endif
             </p>
         </div>

@@ -16,9 +16,9 @@
         </div>
 
         <fieldset>
-            <legend class="mb-2 text-sm font-semibold text-slate-700">Kullanım Yetkileri</legend>
+            <legend class="mb-2 text-sm font-semibold text-slate-700">Kullanım Alanları</legend>
             <div class="grid gap-3 sm:grid-cols-2">
-                @foreach (\App\Models\Category::USAGE_PERMISSIONS as $key => $label)
+                @foreach (['allow_aidat' => 'Aidat Borçlandırmalarında Göster', 'allow_malik_payi' => 'Kat Maliki Payı Borçlandırmalarında Göster', 'allow_expense' => 'Gider Girişinde Göster'] as $key => $label)
                     <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
                         <input type="checkbox" name="{{ $key }}" value="1" @checked($key === 'allow_expense' ? $expenseEnabled : old($key, $category?->{$key} ?? false)) @disabled($locked || ($demirbas && $key !== 'allow_aidat')) class="rounded border-slate-300">
                         {{ $label }}
@@ -34,7 +34,7 @@
 
         @if(!($locked || $demirbas) || $expenseEnabled)
         <div id="category-expense-relation-field" @if(!$expenseEnabled) hidden @endif>
-            <div class="mb-2 text-sm font-semibold text-slate-700" id="category-expense-relations-label">Gider İlişkileri</div>
+            <div class="mb-2 text-sm font-semibold text-slate-700" id="category-expense-relations-label">Gider Türleri</div>
             @php($selectedRelations = old('expense_relations', session()->hasOldInput('expense_relations_present') ? [] : ($category?->expense_relations ?? [])))
             @php($selectedRelations = is_array($selectedRelations) ? $selectedRelations : [])
             <input type="hidden" name="expense_relations_present" value="1">
@@ -46,7 +46,7 @@
                     </label>
                 @endforeach
             </div>
-            <p class="mt-2 text-xs text-slate-500">Birden fazla ilişki seçebilirsiniz. Tek seçim gider oluştururken önerilir; iki seçim varsa ilgili gider için karar verilir. Mevcut giderler değişmez.</p>
+            <p class="mt-2 text-xs text-slate-500">Bu kategorinin ilgili olduğu gider türlerini seçin. Tek tür seçilirse gider girişinde otomatik önerilir; iki tür seçilirse gideri eklerken seçim yapılır. Mevcut giderler değişmez.</p>
             @error('expense_relations')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             @error('expense_relations.*')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
