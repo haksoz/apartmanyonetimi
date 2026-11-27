@@ -24,6 +24,9 @@
                 Yeni değişikliğin geçerlilik tarihi
                 <input type="date" name="late_compensation[effective_from]" min="{{ max($today, $apartment->late_compensation_starts_on?->toDateString() ?? $today) }}"
                     value="{{ old('late_compensation.effective_from') }}" class="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2">
+                @if ($currentPolicy?->is_active)
+                    <span class="mt-1 block text-xs text-slate-500">Bugün kapatmak için aktif kutusunun işaretini kaldırıp tarihi boş bırakın. İleri tarihli politikalar kendi tarihlerinde devreye girer.</span>
+                @endif
                 @error('late_compensation.effective_from')<span class="text-red-600">{{ $message }}</span>@enderror
             </label>
         @else

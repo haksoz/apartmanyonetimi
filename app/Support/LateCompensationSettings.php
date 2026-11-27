@@ -32,6 +32,10 @@ class LateCompensationSettings
             $apartment->update(['late_compensation_starts_on' => $effective]);
         } else {
             $effective = $input['effective_from'] ?? null;
+            if ($effective === null && ! $active && $apartment->lateCompensationPolicies()
+                ->whereDate('effective_from', '<=', $today)->latest('effective_from')->value('is_active')) {
+                $effective = $today;
+            }
             if ($effective === null && $latest->is_active === $active && BigDecimal::of($rate)->isEqualTo($latest->monthly_rate)) {
                 return;
             }
@@ -41,7 +45,14 @@ class LateCompensationSettings
                 throw ValidationException::withMessages(['late_compensation.effective_from' => 'Geçerlilik tarihi bugünden ve uygulama başlangıcından önce olamaz.']);
             }
 
-            if ($apartment->lateCompensationPolicies()->whereDate('effective_from', $effective)->exists()) {
+            $existing = $apartment->lateCompensationPolicies()->whereDate('effective_from', $effective)->first();
+            if ($existing !== null) {
+                if ($effective === $today && ! $active && $existing->is_active) {
+                    $existing->update(['is_active' => false]);
+
+                    return;
+                }
+
                 throw ValidationException::withMessages(['late_compensation.effective_from' => 'Bu tarih için bir Gecikme Tazminatı politikası zaten kayıtlı.']);
             }
         }

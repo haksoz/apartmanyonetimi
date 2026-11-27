@@ -677,7 +677,11 @@ class DueController extends Controller
         $due->load([
             'allocations.payment' => fn ($q) => $q->withCount('allocations'),
             'transactions',
-            'batch.plan',
+            'batch' => fn ($query) => $query->where('apartment_id', $due->apartment_id),
+            'batch.plan' => fn ($query) => $query->where('apartment_id', $due->apartment_id),
+            'batch.assessmentPlan' => fn ($query) => $query->where('apartment_id', $due->apartment_id),
+            'batch.assessmentInstallment',
+            'batch.consumptionPeriod' => fn ($query) => $query->where('apartment_id', $due->apartment_id),
         ]);
 
         $unitId = $due->unit_id ?: $due->account?->unit_id;

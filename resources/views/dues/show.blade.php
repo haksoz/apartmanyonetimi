@@ -162,6 +162,9 @@
                             <div class="font-semibold text-slate-900">{{ $due->reference_number }}</div>
                         </div>
                     @endif
+                    @if (auth()->user()->is_test_customer)
+                        @include('dues._origin-details')
+                    @endif
                 </div>
 
         </div>

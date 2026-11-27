@@ -107,12 +107,23 @@ class DueBatch extends Model
         return $this->belongsTo(DuePlan::class, 'due_plan_id');
     }
 
+    public function assessmentPlan(): BelongsTo
+    {
+        return $this->belongsTo(AssessmentPlan::class);
+    }
+
+    public function assessmentInstallment(): BelongsTo
+    {
+        return $this->belongsTo(AssessmentInstallment::class);
+    }
+
     public function getSourceTypeLabelAttribute(): string
     {
         return match ($this->source_type) {
             self::SOURCE_EXPENSES => 'Dönem giderlerinden',
             self::SOURCE_MANUAL => 'Manuel toplam',
             self::SOURCE_INDIVIDUAL => 'Birebir borçlandırma',
+            self::SOURCE_FIXED => 'Sabit tutar',
             default => ucfirst((string) $this->source_type),
         };
     }

@@ -16,6 +16,20 @@ enum DueProductionSource: string
     case AssessmentPlan = 'assessment_plan';
     case Import = 'import';
 
+    public function label(): string
+    {
+        return match ($this) {
+            self::Individual => 'Birebir borçlandırma',
+            self::ManualBatch => 'Manuel toplu borçlandırma',
+            self::FixedBatch => 'Sabit tutarlı toplu borçlandırma',
+            self::ExpenseBatch => 'Gider bazlı toplu borçlandırma',
+            self::Consumption => 'Tüketim bazlı borçlandırma',
+            self::AidatPlan => 'Aidat Planı',
+            self::AssessmentPlan => 'Taksitli Borç Planı',
+            self::Import => 'İçe Aktarma',
+        };
+    }
+
     public static function forRecordedDue(Due $due): ?self
     {
         if ($due->production_source !== null) {

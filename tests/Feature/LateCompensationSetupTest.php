@@ -68,6 +68,22 @@ class LateCompensationSetupTest extends TestCase
         $this->assertFalse($other->lateCompensationPolicies()->exists());
     }
 
+    public function test_active_policy_can_be_disabled_on_its_effective_day_without_changing_its_rate(): void
+    {
+        [$apartment] = $this->setupApartment();
+
+        $this->savePolicy($apartment, ['is_active' => 1, 'monthly_rate' => '2.125', 'starts_on' => '2026-04-15'])
+            ->assertSessionHasNoErrors();
+        $this->savePolicy($apartment, ['is_active' => 0, 'monthly_rate' => '4'])
+            ->assertRedirect(route('apartments.index'))->assertSessionHasNoErrors();
+
+        $policy = $apartment->lateCompensationPolicies()->sole();
+        $this->assertFalse($policy->is_active);
+        $this->assertSame('2.125000', $policy->monthly_rate);
+        $this->assertSame('2026-04-15', $policy->effective_from->toDateString());
+        $this->get(route('apartments.index'))->assertOk()->assertSee('Bugünkü durum pasif');
+    }
+
     public function test_manual_choice_uses_shared_scope_and_server_recorded_source(): void
     {
         [$apartment, $account] = $this->setupApartment();
@@ -144,6 +160,23 @@ class LateCompensationSetupTest extends TestCase
         ])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertTrue(AssessmentPlan::sole()->late_compensation_applies);
         $this->assertSame(2, Due::query()->where('production_source', 'assessment_plan')->where('late_compensation_applies', true)->count());
+        $dueUrl = route('dues.show', Due::query()->oldest('id')->firstOrFail());
+        $this->get($dueUrl)->assertOk()
+            ->assertSee('Referans')
+            ->assertSee('Taksitli Borç Planı')
+            ->assertDontSee('Üretim kaynağı')
+            ->assertDontSee('Plan adı');
+
+        auth()->user()->forceFill(['is_test_customer' => true])->save();
+        $this->get($dueUrl)
+            ->assertOk()
+            ->assertSee('Üretim kaynağı')
+            ->assertSee('Taksitli Borç Planı')
+            ->assertSee('Plan adı')
+            ->assertSee(route('assessment-plans.show', AssessmentPlan::sole()))
+            ->assertSee('Tümünü şimdi oluştur')
+            ->assertSee('1 / 2')
+            ->assertSee('Gecikme Tazminatı kapsamı');
     }
 
     public function test_new_imported_due_records_source_and_explicit_late_compensation_choice(): void
