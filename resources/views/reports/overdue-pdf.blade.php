@@ -31,7 +31,7 @@
                     <td>{{ $due->due_date?->format('d.m.Y') ?? '-' }}</td>
                     <td class="text-center">{{ $due->days_overdue }} gün</td>
                     <td class="text-right">{{ number_format($due->amount, 2, ',', '.') }} ₺</td>
-                    <td class="text-right text-red">{{ number_format($due->remaining_amount, 2, ',', '.') }} ₺</td>
+                    <td class="text-right text-red">{{ number_format($due->remaining_amount, 2, ',', '.') }} ₺@include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])</td>
                 </tr>
             @empty
                 <tr><td colspan="8" class="text-center text-muted">Gecikmiş aidat bulunamadı.</td></tr>

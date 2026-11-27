@@ -105,7 +105,7 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right text-slate-700">{{ number_format($due->amount, 2, ',', '.') }} ₺</td>
-                            <td class="px-4 py-3 text-right font-semibold text-red-600">{{ number_format($due->remaining_amount, 2, ',', '.') }} ₺</td>
+                            <td class="px-4 py-3 text-right font-semibold text-red-600">{{ number_format($due->remaining_amount, 2, ',', '.') }} ₺@include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])</td>
                         </tr>
                     @empty
                         <tr><td colspan="8" class="px-4 py-8 text-center text-slate-400">Gecikmiş aidat bulunamadı.</td></tr>

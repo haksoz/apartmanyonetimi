@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+    @if ($compensationOverview)
+        <div class="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+            @include('late-compensation._payable', ['summary' => $compensationOverview])
+        </div>
+    @endif
     <div class="mb-6 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-slate-950">{{ str_pad($unit->unit_no, 2, '0', STR_PAD_LEFT) }} No.lu Daire</h1>

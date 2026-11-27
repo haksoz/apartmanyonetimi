@@ -199,14 +199,18 @@
                                         <div class="text-xs">
                                             <span class="font-medium">{{ $due->created_at_manual?->format('d.m.Y') ?? $due->created_at?->format('d.m.Y') ?? '-' }}</span>
                                             <span class="mx-1 text-slate-300">|</span>
-                                            {{ number_format($due->remaining_amount, 2, ',', '.') }} ₺
+                                            {{ number_format($due->remaining_amount, 2, ',', '.') }} ₺@include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
                                             <span class="mx-1 text-slate-300">|</span>
                                             {{ $due->description ?? '-' }}
                                         </div>
                                     @endforeach
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-right font-semibold text-red-600 whitespace-nowrap">{{ number_format($group->total_remaining, 2, ',', '.') }} ₺</td>
+                            <td class="px-4 py-3 text-right font-semibold text-red-600 whitespace-nowrap">{{ number_format($group->total_remaining, 2, ',', '.') }} ₺
+    @include('late-compensation._payable', ['summary' => [
+        'remaining_compensation' => $group->remaining_compensation ?? 0,
+        'total' => (int) round($group->total_remaining * 100) + ($group->remaining_compensation ?? 0),
+    ]])</td>
                         </tr>
                     @empty
                         <tr><td colspan="{{ $hideAccountNames ? 3 : 4 }}" class="px-4 py-8 text-center text-slate-400">Borçlu hesap bulunamadı.</td></tr>

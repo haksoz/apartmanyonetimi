@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+    @if ($compensationIncome > 0)
+        <p class="mb-3 text-sm">Gelir içindeki tahsil edilmiş Gecikme Tazminatı {{ number_format($compensationIncome, 2, ',', '.') }} TL</p>
+    @endif
     <div class="mb-6 flex flex-row items-center justify-between gap-3 min-w-0">
         <div class="min-w-0 flex-1">
             <h1 class="text-2xl font-bold text-slate-950">

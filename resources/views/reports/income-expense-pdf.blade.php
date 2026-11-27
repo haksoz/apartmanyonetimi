@@ -3,6 +3,9 @@
 @section('title', 'Gelir-Gider Raporu — ' . $apartment->name)
 
 @section('content')
+@if (($compensationIncome ?? 0) > 0)
+    <p class="mb-3 text-sm">Tahsil edilen Gecikme Tazminatı {{ number_format($compensationIncome, 2, ',', '.') }} TL</p>
+@endif
     <h2>GELİR-GİDER RAPORU — {{ $apartment->name }}</h2>
     <p class="note">Gider İlişkisi: {{ $expenseRelationLabel }}</p>
     <div class="meta">{{ $rangeLabel }} — {{ now()->format('d.m.Y') }} tarihli çıktı</div>

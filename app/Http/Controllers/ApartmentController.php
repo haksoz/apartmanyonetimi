@@ -10,11 +10,14 @@ use App\Models\Category;
 use App\Models\QuoteRequest;
 use App\Models\SubscriptionItem;
 use App\Models\Unit;
+use App\Services\LateCompensationEnrollment;
 use App\Support\ApartmentCommercial;
 use App\Support\BulkImportGuard;
 use App\Support\ApartmentReset\ApartmentReset;
 use App\Support\ApartmentReset\ResetPolicy;
 use App\Support\CurrentApartment;
+use App\Support\LateCompensationScope;
+use App\Support\LateCompensationSettings;
 use App\Support\LegalConsent;
 use App\Support\UserApartmentQuota;
 use Illuminate\Http\Request;
@@ -50,10 +53,20 @@ class ApartmentController extends Controller
             ->where('is_imported', true)
             ->exists();
 
+        $lateCompensationPolicies = $this->canManageLateCompensation($currentApartment)
+            ? $currentApartment->lateCompensationPolicies()->latest('effective_from')->get()
+            : null;
+
+        $pending = session('late_compensation_enrollment');
+        $lateCompensationPreview = $lateCompensationPolicies !== null && ($pending['apartment'] ?? null) === $currentApartment->id
+            && ($pending['user'] ?? null) === auth()->id() ? $pending['preview'] : null;
+
         return view('apartments.show', [
             'apartment' => $currentApartment,
             'isOwner' => $isOwner,
             'hasImported' => $hasImported,
+            'lateCompensationPolicies' => $lateCompensationPolicies,
+            'lateCompensationPreview' => $lateCompensationPreview,
             'serviceHistory' => $serviceHistory,
             'importBlockReason' => $isOwner ? app(BulkImportGuard::class)->reason($currentApartment) : null,
             'importDeleteReason' => $isOwner ? app(BulkImportGuard::class)->deleteReason($currentApartment) : null,
@@ -224,15 +237,71 @@ class ApartmentController extends Controller
             'district' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $apartment->update([
+        $details = [
             'name' => $validated['name'],
             'address' => $validated['address'],
             'province' => $validated['province'] ?: null,
             'district' => $validated['district'] ?: null,
-        ]);
+        ];
+
+        $apartment->update($details);
 
         $redirectRoute = auth()->user()->isSubscriber() ? 'subscriber.apartments.show' : 'apartments.show';
         return redirect()->route($redirectRoute, $apartment)->with('status', 'Apartman bilgileri güncellendi.');
+    }
+
+    public function updateLateCompensation(Request $request, Apartment $apartment)
+    {
+        abort_unless((int) $request->session()->get(CurrentApartment::SESSION_KEY) === $apartment->id, 404);
+        abort_unless($this->canManageLateCompensation($apartment), 403);
+
+        $policyInput = $request->validate([
+            'late_compensation' => ['required', 'array:is_active,monthly_rate,starts_on,effective_from,include_open'],
+            'late_compensation.is_active' => ['required', 'boolean'],
+            'late_compensation.monthly_rate' => ['nullable', 'numeric', 'decimal:0,6', 'min:0', 'max:9999.999999'],
+            'late_compensation.starts_on' => ['nullable', 'date_format:Y-m-d'],
+            'late_compensation.effective_from' => ['nullable', 'date_format:Y-m-d'],
+            'late_compensation.include_open' => ['sometimes', 'boolean'],
+        ])['late_compensation'];
+
+        $include = ! empty($policyInput['include_open']);
+        $enrollment = app(LateCompensationEnrollment::class);
+        if ($request->boolean('preview_late_compensation')) {
+            if (! $include) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'late_compensation.include_open' => 'Önizleme için mevcut açık borçları kapsama alma seçeneğini işaretleyin.',
+                ]);
+            }
+            $preview = $enrollment->preview($apartment, $policyInput);
+            $request->session()->put('late_compensation_enrollment', [
+                'apartment' => $apartment->id, 'user' => auth()->id(), 'preview' => $preview,
+            ]);
+
+            return redirect()->route('apartments.index')->withInput();
+        }
+
+        DB::transaction(function () use ($apartment, $policyInput, $include, $enrollment, $request) {
+            $locked = Apartment::query()->lockForUpdate()->findOrFail($apartment->id);
+            $preview = null;
+            if ($include) {
+                $pending = $request->session()->get('late_compensation_enrollment');
+                $locked->accounts()->withTrashed()->orderBy('id')->lockForUpdate()->get(['id']);
+                $preview = $enrollment->preview($locked, $policyInput);
+                if (($pending['apartment'] ?? null) !== $locked->id || ($pending['user'] ?? null) !== auth()->id()
+                    || ($pending['preview'] ?? null) !== $preview) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'late_compensation.include_open' => 'Kapsama alınacak açık borçları yeniden önizleyin.',
+                    ]);
+                }
+            }
+            app(LateCompensationSettings::class)->save($locked, $policyInput, auth()->id());
+            if ($preview !== null) {
+                $enrollment->enroll($locked, $preview);
+            }
+        });
+        $request->session()->forget('late_compensation_enrollment');
+
+        return redirect()->route('apartments.index')->with('status', 'Gecikme Tazminatı ayarları güncellendi.');
     }
 
     /**
@@ -377,6 +446,12 @@ class ApartmentController extends Controller
 
         return redirect()->route('apartments.wizard.cash-box', $apartment)
             ->with('status', 'Kurulum yenilendi. Abonelik bu apartmanda duruyor. Silinen verilerin yedeği alınmadı.');
+    }
+
+    private function canManageLateCompensation(Apartment $apartment): bool
+    {
+        return app(LateCompensationScope::class)->previewEnabled()
+            && (auth()->user()->isAdmin() || $apartment->managers()->whereKey(auth()->id())->exists());
     }
 
     private function managedApartment(string $id): Apartment

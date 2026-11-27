@@ -27,7 +27,7 @@
                     <td>{{ $due->category?->name ?? '-' }}</td>
                     <td>{{ $due->period ?? '-' }}</td>
                     <td class="text-right">{{ number_format($due->amount, 2, ',', '.') }} ₺</td>
-                    <td class="text-right text-red">{{ number_format($due->remaining_amount, 2, ',', '.') }} ₺</td>
+                    <td class="text-right text-red">{{ number_format($due->remaining_amount, 2, ',', '.') }} ₺@include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])</td>
                     <td>{{ $due->due_date?->format('d.m.Y') ?? '-' }}</td>
                     <td class="text-center">
                         @if($due->due_date && $due->due_date->isPast())

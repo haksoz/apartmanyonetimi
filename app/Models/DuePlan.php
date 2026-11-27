@@ -22,6 +22,7 @@ class DuePlan extends Model
 
     protected $fillable = [
         'apartment_id',
+        'late_compensation_applies',
         'due_type',
         'category_id',
         'name',
@@ -44,6 +45,7 @@ class DuePlan extends Model
     ];
 
     protected $casts = [
+        'late_compensation_applies' => 'boolean',
         'plan_year'         => 'integer',
         'monthly_amount'    => 'decimal:2',
         'yearly_amount'     => 'decimal:2',

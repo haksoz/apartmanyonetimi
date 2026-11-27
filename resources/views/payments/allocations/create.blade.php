@@ -83,18 +83,18 @@
                         <tr data-imported="{{ $due->is_imported ? '1' : '0' }}">
                             <td class="px-5 py-4 text-slate-700">{{ $due->due_date?->format('d.m.Y') ?? '-' }}</td>
                             <td class="px-5 py-4 text-slate-700">{{ $due->description ?: 'Aidat' }}</td>
-                            <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</td>
+                            <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($payable[$due->id], 2, ',', '.') }} TL</td>
                             <td class="px-5 py-4 text-right">
                                 <input type="hidden" name="allocations[{{ $index }}][due_id]" value="{{ $due->id }}">
                                 <div class="flex items-center justify-end space-x-2">
                                     <input
                                         id="alloc-{{ $index }}"
-                                        data-remaining="{{ $due->remaining_amount }}"
+                                        data-remaining="{{ $payable[$due->id] }}"
                                         type="number"
                                         name="allocations[{{ $index }}][amount]"
                                         min="0"
                                         step="0.01"
-                                        max="{{ $due->remaining_amount }}"
+                                        max="{{ $payable[$due->id] }}"
                                         value="{{ old('allocations.'.$index.'.amount') }}"
                                         class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none"
                                     >

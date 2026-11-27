@@ -90,7 +90,22 @@ class UnitController extends Controller
             ->when($apartment, fn ($query) => $query->where('apartment_id', $apartment->id))
             ->findOrFail($id);
 
-        return view('units.show', compact('unit', 'apartment'));
+        $report = app(\App\Services\LateCompensationBalances::class);
+        $compensationOverview = null;
+        if ($apartment && $report->hasHistory($apartment)) {
+            $openDues = \App\Models\Due::where('apartment_id', $apartment->id)
+                ->where('unit_id', $unit->id)
+                ->where('remaining_amount', '>', 0)->get();
+            $unpaid = $report->forDues($apartment, $openDues)->sum('remaining_compensation');
+            if ($unpaid > 0) {
+                $compensationOverview = [
+                    'remaining_compensation' => $unpaid,
+                    'total' => (int) round($openDues->sum(fn ($due) => (float) $due->remaining_amount) * 100) + $unpaid,
+                ];
+            }
+        }
+
+        return view('units.show', compact('unit', 'apartment', 'compensationOverview'));
     }
 
     /**

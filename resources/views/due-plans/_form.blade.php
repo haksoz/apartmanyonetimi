@@ -5,6 +5,12 @@
     <input name="creating_new" type="hidden" value="1">
 @endif
 
+@include('late-compensation._choice', [
+    'source' => \App\Support\DueProductionSource::AidatPlan,
+    'dueType' => 'aidat',
+    'preference' => $plan?->late_compensation_applies,
+])
+
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
     <h2 class="mb-4 text-sm font-semibold text-slate-700">Plan Bilgileri</h2>
     <div>

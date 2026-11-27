@@ -8,6 +8,8 @@ use App\Models\Category;
 use App\Models\Due;
 use App\Models\DueBatch;
 use App\Models\Unit;
+use App\Support\DueProductionSource;
+use App\Support\LateCompensationScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -41,6 +43,7 @@ class ConsumptionBatchTracking
             $deleted = $archived->get($original['unit_id'], collect())->first();
             $fields = $snapshot['debt_fields'] ?? ($deleted ? [
                 'category_id' => $deleted->category_id, 'due_date' => $deleted->due_date?->format('Y-m-d'),
+                'late_compensation_applies' => (bool) $deleted->late_compensation_applies,
                 'created_at_manual' => $deleted->created_at_manual?->format('Y-m-d'), 'description' => $deleted->description,
             ] : null);
             $error = null;
@@ -98,6 +101,10 @@ class ConsumptionBatchTracking
             }
             $fields = $row['fields'];
             $due = Due::create([
+                ...app(LateCompensationScope::class)->dueAttributes(
+                    DueProductionSource::Consumption, $batch->due_type,
+                    (bool) ($fields['late_compensation_applies'] ?? false), $fields['category_id'],
+                ),
                 'apartment_id' => $batch->apartment_id, 'due_batch_id' => $batch->id,
                 'unit_id' => $row['unit_id'], 'account_id' => $row['account_id'], 'due_type' => $batch->due_type,
                 'category_id' => $fields['category_id'], 'due_date' => $fields['due_date'],

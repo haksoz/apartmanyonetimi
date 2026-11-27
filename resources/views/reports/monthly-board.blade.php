@@ -175,7 +175,10 @@
                                 </td>
                             @endforeach
                             <td class="px-4 py-3 text-right align-top">
-                                <span class="inline-block whitespace-nowrap rounded-lg border px-2.5 py-1 text-[15px] font-semibold tabular-nums {{ $data['remaining'] > 0 ? 'border-red-200 bg-red-50 text-red-600' : 'border-slate-200 bg-slate-50 text-slate-400' }}">{{ $data['remaining'] > 0 ? number_format($data['remaining'], 2, ',', '.') . ' ₺' : '—' }}</span>
+                                <span class="inline-block whitespace-nowrap rounded-lg border px-2.5 py-1 text-[15px] font-semibold tabular-nums {{ $data['remaining'] > 0 ? 'border-red-200 bg-red-50 text-red-600' : 'border-slate-200 bg-slate-50 text-slate-400' }}">{{ $data['remaining'] > 0 ? number_format($data['remaining'], 2, ',', '.') . ' ₺' : '—' }}</span>@include('late-compensation._payable', ['summary' => [
+        'remaining_compensation' => (int) round($data['compensation'] * 100),
+        'total' => (int) round(($data['remaining'] + $data['compensation']) * 100),
+    ]])
                             </td>
                         </tr>
                     @empty

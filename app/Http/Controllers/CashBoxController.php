@@ -58,7 +58,17 @@ class CashBoxController extends Controller
             $t->detail_url      = $detailUrlMap[$t->id] ?? null;
         }
 
-        return view('cash.boxes.show', compact('cashBox', 'transactions', 'income', 'expense', 'balance'));
+        $compensationIncome = 0;
+        if ($cashBox->apartment->late_compensation_starts_on !== null) {
+            $parts = \App\Models\PaymentAllocation::whereNotNull('due_id')->whereNull('expense_id')
+                ->whereHas('payment', fn ($query) => $query->where('apartment_id', $cashBox->apartment_id)
+                    ->whereHas('cashTransactions', fn ($cash) => $cash->where('cash_box_id', $cashBox->id)
+                        ->where('apartment_id', $cashBox->apartment_id)->where('type', 'income')))
+                ->selectRaw('COALESCE(SUM(late_compensation_amount), 0) as total')->first();
+            $compensationIncome = (float) $parts->total;
+        }
+
+        return view('cash.boxes.show', compact('cashBox', 'transactions', 'income', 'expense', 'balance', 'compensationIncome'));
     }
 
     public function create(CurrentApartment $currentApartment)

@@ -74,6 +74,8 @@ class ResidenceController extends Controller
             $account->setRelation('recentTransactions', $account->transactions->reverse()->take(8)->values());
         });
 
+        app(\App\Services\LateCompensationBalances::class)->attach($apartment, $accounts->filter(fn (Account $account) => $account->relationLoaded('dues'))->flatMap->dues);
+
         return view('member.home', compact('apartment', 'accounts'));
     }
 }

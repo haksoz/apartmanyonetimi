@@ -28,12 +28,16 @@
                         @foreach($group->dues as $due)
                             <span class="detail-row">
                                 {{ $due->created_at_manual?->format('d.m.Y') ?? $due->created_at?->format('d.m.Y') ?? '-' }}
-                                | {{ number_format($due->remaining_amount, 2, ',', '.') }} ₺
+                                | {{ number_format($due->remaining_amount, 2, ',', '.') }} ₺@include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
                                 | {{ $due->description ?? '-' }}
                             </span>
                         @endforeach
                     </td>
-                    <td class="text-right text-red">{{ number_format($group->total_remaining, 2, ',', '.') }} ₺</td>
+                    <td class="text-right text-red">{{ number_format($group->total_remaining, 2, ',', '.') }} ₺
+    @include('late-compensation._payable', ['summary' => [
+        'remaining_compensation' => $group->remaining_compensation ?? 0,
+        'total' => (int) round($group->total_remaining * 100) + ($group->remaining_compensation ?? 0),
+    ]])</td>
                 </tr>
             @empty
                 <tr><td colspan="{{ $hideAccountNames ? 3 : 4 }}" class="text-center text-muted">Borçlu hesap bulunamadı.</td></tr>

@@ -5,6 +5,7 @@
 
 
 @section('content')
+    @include('late-compensation._balance', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
 
     @php
         $dueTitle = $due->is_opening ? 'Hesap Açılış Bakiyesi' : ($due->description ?: 'Aidat');
@@ -21,7 +22,7 @@
         <div class="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
             <div class="flex items-center gap-1 sm:gap-2">
                 @if ($due->status !== 'paid')
-                    <button type="button" data-due-id="{{ $due->id }}" data-amount="{{ $due->remaining_amount }}" data-description="{{ $dueTitle }}" data-account="{{ $due->account?->name }}" data-unit="{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}" onclick="openDuePaymentModal(Number(this.dataset.dueId), Number(this.dataset.amount), this.dataset.description, this.dataset.account, this.dataset.unit)" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl bg-emerald-600 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-white hover:bg-emerald-700">Tahsil Et</button>
+                    <button type="button" data-due-id="{{ $due->id }}" data-amount="{{ $due->remaining_amount }}" data-description="{{ $dueTitle }}" data-account="{{ $due->account?->name }}" data-unit="{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}" onclick="if (@json((bool) $due->late_compensation_applies)) { window.location.assign(@js(route('dues.payment.create', $due))); return; } openDuePaymentModal(Number(this.dataset.dueId), Number(this.dataset.amount), this.dataset.description, this.dataset.account, this.dataset.unit)" class="inline-flex h-11 w-16 items-center justify-center text-center sm:h-auto sm:w-auto rounded-xl bg-emerald-600 px-1 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm font-semibold text-white hover:bg-emerald-700">Tahsil Et</button>
                 @endif
 
 

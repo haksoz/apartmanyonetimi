@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+    @if ($compensationOverview)
+        <div class="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+            @include('late-compensation._payable', ['summary' => $compensationOverview])
+        </div>
+    @endif
     @if(count($planReminders))
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
         <div role="dialog" aria-modal="true" aria-labelledby="partial-aidat-title" class="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-amber-300 bg-white p-6 shadow-2xl">

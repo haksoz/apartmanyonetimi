@@ -11,9 +11,11 @@
 
     <form method="POST" action="{{ route('dues.payment.store', $due) }}" class="rounded-2xl bg-white p-6 shadow-sm">
         @csrf
+        @if ($tracked)<input type="hidden" name="full_payment" value="1">@endif
+        @error('allocations')<div class="mb-3 text-sm text-red-600">{{ $message }}</div>@enderror
 
         @php
-            $payAmount = $due->remaining_amount ?? $due->amount;
+            $payAmount = $payable;
         @endphp
 
         <div class="grid gap-5 lg:grid-cols-2">
@@ -36,9 +38,9 @@
 
             <div>
                 <label class="mb-2 block text-sm font-semibold text-slate-700">Ödenecek Tutar</label>
-                <input type="hidden" name="amount" value="{{ $payAmount }}">
+                <input type="hidden" name="amount" id="due-payment-amount-field" value="{{ $payAmount }}">
                 <div class="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 cursor-not-allowed">
-                    {{ number_format($payAmount, 2, ',', '.') }} TL
+                    <span id="due-payment-current-amount">{{ number_format($payAmount, 2, ',', '.') }} TL</span>
                     <span class="text-xs text-slate-400 ml-1">(kalan tutarla sabit)</span>
                 </div>
                 @error('amount')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
@@ -46,7 +48,7 @@
 
             <div>
                 <label for="payment_date" class="mb-2 block text-sm font-semibold text-slate-700">Ödeme Tarihi</label>
-                <input id="payment_date" name="payment_date" type="date" value="{{ old('payment_date', now()->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
+                <input id="payment_date" name="payment_date" type="date" value="{{ old('payment_date', now('Europe/Istanbul')->toDateString()) }}" required class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:border-slate-950 focus:outline-none">
                 @error('payment_date')<div class="mt-2 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
 
@@ -61,4 +63,34 @@
             </div>
         </div>
     </form>
+    @if ($tracked)
+        <script>
+            (() => {
+                const date = document.getElementById('payment_date');
+                const amount = document.getElementById('due-payment-amount-field');
+                const display = document.getElementById('due-payment-current-amount');
+                const submit = date.form.querySelector('[type="submit"]');
+                const refresh = async () => {
+                    if (!date.value) return;
+                    const value = date.value;
+                    submit.disabled = true;
+                    const url = new URL(@json(route('dues.payment.create', $due)), location.origin);
+                    url.searchParams.set('payment_date', value);
+                    try {
+                        const response = await fetch(url, {headers: {'Accept': 'application/json'}});
+                        if (!response.ok) throw new Error();
+                        const quote = await response.json();
+                        if (date.value !== value) return;
+                        amount.value = quote.amount;
+                        display.textContent = Number(quote.amount).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' TL';
+                        submit.disabled = Number(quote.amount) <= 0;
+                    } catch {
+                        if (date.value === value) display.textContent = 'Tutar hesaplanamadı.';
+                    }
+                };
+                date.addEventListener('change', refresh);
+                refresh();
+            })();
+        </script>
+    @endif
 @endsection

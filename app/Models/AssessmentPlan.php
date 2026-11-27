@@ -20,6 +20,7 @@ class AssessmentPlan extends Model
 
     protected $fillable = [
         'apartment_id',
+        'late_compensation_applies',
         'name',
         'description',
         'total_amount',
@@ -34,6 +35,7 @@ class AssessmentPlan extends Model
     ];
 
     protected $casts = [
+        'late_compensation_applies' => 'boolean',
         'total_amount' => 'decimal:2',
         'installment_count' => 'integer',
         'generate_day' => 'integer',

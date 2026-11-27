@@ -67,7 +67,11 @@ class Due extends Model
     protected $fillable = [
         'is_opening',
         'apartment_id',
+        'late_compensation_applies',
         'due_batch_id',
+        'production_source',
+        'collection_account_since',
+        'late_compensation_starts_on',
         'unit_id',
         'account_id',
         'due_type',
@@ -84,6 +88,9 @@ class Due extends Model
     ];
 
     protected $casts = [
+        'late_compensation_applies' => 'boolean',
+        'late_compensation_starts_on' => 'date',
+        'collection_account_since' => 'date',
         'is_opening' => 'boolean',
         'amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',

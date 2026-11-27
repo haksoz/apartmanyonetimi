@@ -111,6 +111,10 @@
         </div>
 
         <div class="flex justify-end">
+            @include('late-compensation._choice', [
+                'source' => \App\Support\DueProductionSource::Individual,
+                'dueType' => $selectedDueType,
+            ])
             <button type="submit" class="w-full md:w-auto rounded-xl bg-slate-950 px-8 py-3 text-sm font-semibold text-white hover:bg-slate-800">Borçlandır</button>
         </div>
     </form>

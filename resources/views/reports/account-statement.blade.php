@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+@if (($statementCompensation ?? 0) > 0)
+    <p class="mb-3 text-sm">Tahsil edilen Gecikme Tazminatı {{ number_format($statementCompensation, 2, ',', '.') }} TL</p>
+@endif
     @if(!isset($pdfMode))
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+@if (($receipts->compensation ?? 0) > 0)
+    <p class="mb-3 text-sm">Ana para tahsilatı {{ number_format($receipts->principal, 2, ',', '.') }} TL · Tahsil edilen Gecikme Tazminatı {{ number_format($receipts->compensation, 2, ',', '.') }} TL</p>
+@endif
     @if(!isset($pdfMode))
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

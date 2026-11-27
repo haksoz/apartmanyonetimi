@@ -24,6 +24,14 @@
         <div class="rounded-2xl bg-white p-5 shadow-sm"><div class="text-sm text-slate-500">Durum</div><div class="mt-2 text-2xl font-bold">{{ $apartment->is_active ? 'Aktif' : 'Pasif' }}</div></div>
     </div>
 
+    @isset($lateCompensationPolicies)
+        <form method="POST" action="{{ route('apartments.late-compensation.update', $apartment) }}" class="mb-8 space-y-3">
+            @csrf
+            @method('PUT')
+            @include('late-compensation._settings')
+        </form>
+    @endisset
+
     @if ($isOwner)
         <div class="mb-8 rounded-2xl bg-white shadow-sm">
             <div class="border-b border-slate-100 px-6 py-4">

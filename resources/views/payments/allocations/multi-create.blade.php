@@ -114,18 +114,18 @@
                                     <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                                 @endif
                             </td>
-                            <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</td>
+                            <td class="px-5 py-4 text-right text-slate-900 font-semibold">{{ number_format($payable[$due->id], 2, ',', '.') }} TL</td>
                             <td class="px-5 py-4 text-right">
                                 <input type="hidden" name="allocations[{{ $index }}][due_id]" value="{{ $due->id }}">
                                 <div class="flex items-center justify-end space-x-2">
                                     <input
                                         id="alloc-{{ $index }}"
-                                        data-remaining="{{ $due->remaining_amount }}"
+                                        data-remaining="{{ $payable[$due->id] }}"
                                         type="number"
                                         name="allocations[{{ $index }}][amount]"
                                         min="0"
                                         step="0.01"
-                                        max="{{ $due->remaining_amount }}"
+                                        max="{{ $payable[$due->id] }}"
                                         value="{{ old('allocations.'.$index.'.amount') }}"
                                         class="desktop-alloc-input w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none"
                                     >
@@ -152,18 +152,18 @@
                                     <span class="ml-1 inline-block rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">İçe Aktarma</span>
                                 @endif
                             </div>
-                            <div class="text-xs text-slate-500">{{ $due->due_date?->format('d.m.Y') ?? '-' }} &mdash; Kalan: <span class="font-semibold text-slate-700">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</span></div>
+                            <div class="text-xs text-slate-500">{{ $due->due_date?->format('d.m.Y') ?? '-' }} &mdash; Kalan: <span class="font-semibold text-slate-700">{{ number_format($payable[$due->id], 2, ',', '.') }} TL</span></div>
                         </div>
                         <input type="hidden" name="allocations[{{ $index }}][due_id]" value="{{ $due->id }}">
                         <div class="flex items-center gap-2">
                             <input
                                 id="alloc-mobile-{{ $index }}"
-                                data-remaining="{{ $due->remaining_amount }}"
+                                data-remaining="{{ $payable[$due->id] }}"
                                 type="number"
                                 name="allocations[{{ $index }}][amount]"
                                 min="0"
                                 step="0.01"
-                                max="{{ $due->remaining_amount }}"
+                                max="{{ $payable[$due->id] }}"
                                 value="{{ old('allocations.'.$index.'.amount') }}"
                                 class="mobile-alloc-input flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-950 focus:outline-none"
                                 placeholder="Tutar"
@@ -197,8 +197,16 @@
         </div>
 
         <div class="mt-4">
+            @if ($history)
+                <button type="button" id="preview-allocations" class="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold">Önizle</button>
+                <input type="hidden" name="preview_hash" id="allocation-preview-hash">
+            @endif
             <button type="submit" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Aidat Kapat &mdash; Kaydet</button>
         </div>
+
+        @if ($history)
+            <section id="allocation-preview" hidden aria-live="polite" class="mt-4 overflow-x-auto rounded-xl border border-slate-200 p-3 text-sm"></section>
+        @endif
 
         <script>
             (function(){
@@ -314,6 +322,80 @@
                     const isDesktop = window.innerWidth >= 768;
                     document.querySelectorAll('.desktop-alloc-input').forEach(i => i.disabled = !isDesktop);
                     document.querySelectorAll('.mobile-alloc-input').forEach(i => i.disabled = isDesktop);
+                }
+
+                const previewButton = document.getElementById('preview-allocations');
+                if (previewButton) {
+                    const form = previewButton.form;
+                    const submit = form.querySelector('[type="submit"]');
+                    const panel = document.getElementById('allocation-preview');
+                    const hashInput = document.getElementById('allocation-preview-hash');
+                    let version = 0;
+                    const clear = () => {
+                        version++;
+                        hashInput.value = '';
+                        submit.disabled = true;
+                        panel.hidden = true;
+                        panel.textContent = '';
+                    };
+                    const read = () => Array.from(form.querySelectorAll('input[name^="allocations"][name$="[amount]"]:not(:disabled)'))
+                        .filter(input => toFloat(input.value) > 0)
+                        .map(input => ({
+                            due_id: form.querySelector('[name="' + input.name.replace('[amount]', '[due_id]') + '"]').value,
+                            amount: input.value,
+                        }));
+                    clear();
+                    form.addEventListener('input', clear);
+                    form.addEventListener('click', event => {
+                        if (event.target.closest('#btn-fifo, #btn-clear, [data-fill-selector]')) clear();
+                    });
+                    window.addEventListener('resize', clear);
+                    previewButton.addEventListener('click', async () => {
+                        clear();
+                        const current = version;
+                        panel.hidden = false;
+                        const allocations = read();
+                        if (!allocations.length) {
+                            panel.textContent = 'Önizleme için tahsis tutarı girin.';
+                            return;
+                        }
+                        panel.textContent = 'Önizleme hesaplanıyor…';
+                        try {
+                            const response = await fetch(@json(route('accounts.payments.multi-allocate.preview', $account)), {
+                                method: 'POST',
+                                headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': form.elements._token.value},
+                                body: JSON.stringify({payment_ids: form.elements.payment_ids.value.split(','), allocations}),
+                            });
+                            const data = await response.json();
+                            if (current !== version) return;
+                            if (!response.ok) throw new Error(Object.values(data.errors || {}).flat()[0] || data.message);
+                            const table = document.createElement('table');
+                            table.className = 'w-full text-sm';
+                            const header = table.createTHead().insertRow();
+                            ['Ödeme', 'Tahsis', 'Ana para', 'Gecikme Tazminatı', 'Tahsis edilmemiş'].forEach(value => {
+                                const cell = document.createElement('th');
+                                cell.scope = 'col';
+                                cell.className = 'px-2 py-1 text-left';
+                                cell.textContent = value;
+                                header.append(cell);
+                            });
+                            const body = table.createTBody();
+                            data.payments.forEach(payment => {
+                                const row = body.insertRow();
+                                [payment.date + ' ' + (payment.reference || ''), ...['amount', 'principal', 'compensation', 'unallocated'].map(key => fmt(payment[key] / 100))]
+                                    .forEach(value => {
+                                        const cell = row.insertCell();
+                                        cell.className = 'px-2 py-1';
+                                        cell.textContent = value;
+                                    });
+                            });
+                            panel.replaceChildren(table);
+                            hashInput.value = data.hash;
+                            submit.disabled = false;
+                        } catch (error) {
+                            if (current === version) panel.textContent = error.message || 'Önizleme hesaplanamadı.';
+                        }
+                    });
                 }
 
                 window.addEventListener('resize', toggleInputsByViewport);

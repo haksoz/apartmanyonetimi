@@ -153,6 +153,13 @@
             </div>
         </div>
 
+        @php
+            $lateImportScope = app(\App\Support\LateCompensationScope::class);
+            $lateImportTypes = $lateImportScope->selectionAvailable($apartment)
+                ? array_values(array_filter(\App\Enums\DueType::values(),
+                    fn ($type) => $lateImportScope->allows(\App\Support\DueProductionSource::Import, $type)))
+                : [];
+        @endphp
         <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm">
             <h3 class="text-sm font-semibold text-slate-700">Borç Türü ve Kategori Eşleştirmeleri</h3>
             <p class="mt-2 text-sm text-slate-500">Kat maliki/kiracı borçlarının her biri için türü ve kategoriyi onaylayın. Tür, hesap veya kategori adından tahmin edilmez. Tedarikçi ödemeleri için bu seçimler kullanılmaz. Yeni kategori seçilirse yalnız seçtiğiniz borç türünün yetkisi açılır.</p>
@@ -184,6 +191,13 @@
                                     @if ($canCreate)<option value="new" data-new-category @selected(old('due_categories.'.$row, 'new') === 'new')>Yeni kategori: {{ $t['category_name'] }}</option>@endif
                                 </select>
                             </div>
+                            @if ($lateImportTypes)
+                                <label hidden data-import-late-compensation class="text-sm text-slate-700 md:col-span-3">
+                                    <input type="checkbox" name="late_compensation_rows[{{ $row }}]" value="1" disabled
+                                        @checked(old('late_compensation_rows.'.$row))>
+                                    Gecikme tazminatı uygulansın
+                                </label>
+                            @endif
                         </div>
                     @endif
                 @endforeach
@@ -195,8 +209,15 @@
                     const accountType = Array.from(document.querySelectorAll('select[name^="account_types["]')).find(input => input.name === 'account_types[' + row.dataset.accountKey + ']');
                     const type = row.querySelector('[data-import-due-type]');
                     const category = row.querySelector('[data-import-due-category]');
+                    const lateCompensation = row.querySelector('[data-import-late-compensation]');
+                    const lateTypes = @json($lateImportTypes);
                     const sync = () => {
                         const supplier = accountType?.value === 'supplier';
+                        if (lateCompensation) {
+                            const allowed = !supplier && lateTypes.includes(type.value);
+                            lateCompensation.hidden = !allowed;
+                            lateCompensation.querySelector('input').disabled = !allowed;
+                        }
                         [type, category].forEach(input => { input.disabled = supplier; input.required = !supplier; });
                         row.querySelector('[data-import-debt-note]').textContent = supplier ? 'Tedarikçi ödemesi: borç türü uygulanmaz.' : 'Tür ve kategori seçimi zorunludur.';
                         Array.from(category.options).forEach(option => {

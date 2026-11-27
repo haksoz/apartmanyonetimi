@@ -271,6 +271,17 @@
         </div>
 
         <div class="flex justify-end">
+            @include('late-compensation._choice', [
+                'sources' => [
+                    'manual' => \App\Support\DueProductionSource::ManualBatch,
+                    'fixed' => \App\Support\DueProductionSource::FixedBatch,
+                    'expenses' => \App\Support\DueProductionSource::ExpenseBatch,
+                    'consumption' => \App\Support\DueProductionSource::Consumption,
+                ],
+                'dueType' => $selectedDueType,
+                'initialSource' => old('distribution_type') === 'consumption' && in_array($selectedSource, ['manual', 'expenses'], true)
+                    ? 'consumption' : $selectedSource,
+            ])
             <button id="batch-submit" type="submit" class="w-full md:w-auto rounded-xl bg-emerald-600 px-8 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-sm">Toplu Borçlandırmayı Oluştur</button>
         </div>
     </form>

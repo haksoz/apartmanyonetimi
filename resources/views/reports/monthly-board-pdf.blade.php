@@ -125,7 +125,10 @@
                         </td>
                     @endforeach
                     <td class="text-right {{ $data['remaining'] > 0 ? 'text-red' : 'text-muted' }}">
-                        <span class="monthly-board-total {{ $data['remaining'] > 0 ? '' : 'monthly-board-total-zero' }}">{{ $data['remaining'] > 0 ? number_format($data['remaining'], 2, ',', '.') . ' ₺' : '—' }}</span>
+                        <span class="monthly-board-total {{ $data['remaining'] > 0 ? '' : 'monthly-board-total-zero' }}">{{ $data['remaining'] > 0 ? number_format($data['remaining'], 2, ',', '.') . ' ₺' : '—' }}</span>@include('late-compensation._payable', ['summary' => [
+        'remaining_compensation' => (int) round($data['compensation'] * 100),
+        'total' => (int) round(($data['remaining'] + $data['compensation']) * 100),
+    ]])
                     </td>
                 </tr>
             @empty

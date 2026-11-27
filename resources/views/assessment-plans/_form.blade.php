@@ -22,6 +22,11 @@
         @include('assessment-plans._work-category')
     </div>
 </section>
+@include('late-compensation._choice', [
+    'source' => \App\Support\DueProductionSource::AssessmentPlan,
+    'dueType' => ($plan->due_type ?? \App\Enums\DueType::MalikPayi)->value,
+    'preference' => $plan->late_compensation_applies ?? false,
+])
 <section class="rounded-2xl bg-white p-4 shadow-sm sm:p-5" aria-labelledby="description-title">
     <h2 id="description-title" class="mb-4 text-sm font-semibold text-slate-700">Açıklama</h2>
     <div class="rounded-xl bg-slate-50 p-3">

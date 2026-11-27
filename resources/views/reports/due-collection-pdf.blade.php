@@ -3,6 +3,9 @@
 @section('title', $reportTitle . ' — ' . $apartment->name)
 
 @section('content')
+@if (($receipts->compensation ?? 0) > 0)
+    <p class="mb-3 text-sm">Ana para tahsilatı {{ number_format($receipts->principal, 2, ',', '.') }} TL · Tahsil edilen Gecikme Tazminatı {{ number_format($receipts->compensation, 2, ',', '.') }} TL</p>
+@endif
     <h2>{{ mb_strtoupper($reportTitle, 'UTF-8') }} — {{ $apartment->name }} — {{ $year }}</h2>
     <div class="meta">{{ now()->format('d.m.Y') }} tarihli çıktı</div>
     <p class="note">Ödendi · Kısmi · Gecikmeli · Bekliyor · Yok</p>

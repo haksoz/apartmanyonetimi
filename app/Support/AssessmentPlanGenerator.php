@@ -233,6 +233,10 @@ class AssessmentPlanGenerator
                 }
 
                 $due = Due::create([
+                    ...app(LateCompensationScope::class)->dueAttributes(
+                        DueProductionSource::AssessmentPlan, $plan->due_type,
+                        (bool) $plan->late_compensation_applies, $plan->category_id,
+                    ),
                     'apartment_id' => $plan->apartment_id,
                     'due_batch_id' => $batch->id,
                     'unit_id' => $unit->id,

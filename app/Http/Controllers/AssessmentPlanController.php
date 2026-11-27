@@ -12,7 +12,9 @@ use App\Support\AssessmentPlanGenerator;
 use App\Support\AssessmentPlanSummary;
 use App\Support\AssessmentWorkCategory;
 use App\Support\CurrentApartment;
+use App\Support\DueProductionSource;
 use App\Support\FeatureGate;
+use App\Support\LateCompensationScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -81,6 +83,7 @@ class AssessmentPlanController extends Controller
                 DuePlan::DISTRIBUTION_SQUARE_METERS,
                 DuePlan::DISTRIBUTION_SHARE_COEFFICIENT,
             ])],
+            'late_compensation_applies' => ['sometimes', 'boolean'],
             'category_mode' => ['required', Rule::in(['new', 'existing'])],
             'category_name' => ['exclude_unless:category_mode,new', 'required', 'string', 'max:255'],
             'category_id' => ['exclude_unless:category_mode,existing', 'required', 'integer',
@@ -173,6 +176,7 @@ class AssessmentPlanController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'generate_day' => ['required', 'integer', 'min:1', 'max:28'],
+            'late_compensation_applies' => ['sometimes', 'boolean'],
             'is_active' => ['required', 'boolean'],
         ]);
 
@@ -182,6 +186,7 @@ class AssessmentPlanController extends Controller
     private function preview(Request $request, Apartment $apartment, array $input, ?AssessmentPlan $plan = null)
     {
         unset($input['include_past_installments']);
+        $this->lateCompensationPreference($apartment, $input, $plan);
         $input['is_active'] = $request->boolean('is_active', true);
         $pending = [
             'apartment_id' => $apartment->id, 'user_id' => auth()->id(), 'plan_id' => $plan?->id,
@@ -189,6 +194,16 @@ class AssessmentPlanController extends Controller
         ];
 
         return $this->confirmationView($request, $pending, $plan);
+    }
+
+    private function lateCompensationPreference(Apartment $apartment, array $input, ?AssessmentPlan $plan): bool
+    {
+        return app(LateCompensationScope::class)->preference(
+            $apartment, DueProductionSource::AssessmentPlan, $input['due_type'] ?? $plan->due_type,
+            array_key_exists('late_compensation_applies', $input) ? (bool) $input['late_compensation_applies'] : null,
+            (bool) $plan?->late_compensation_applies,
+            $input['category_id'] ?? $plan?->category_id,
+        );
     }
 
     private function confirmationView(Request $request, array $pending, ?AssessmentPlan $plan, bool $changed = false)
@@ -232,7 +247,7 @@ class AssessmentPlanController extends Controller
         $pending['current_action'] = $decisions['current_month_action'] ?? $pending['current_action'];
 
         return DB::transaction(function () use ($request, $apartment, $pending, $plan) {
-            Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
+            $apartment = Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
             $locked = $plan ? AssessmentPlan::whereKey($plan->id)->lockForUpdate()->firstOrFail()
                 : new AssessmentPlan(['apartment_id' => $apartment->id, 'due_type' => DueType::MalikPayi]);
             $proposed = clone $locked;
@@ -251,7 +266,9 @@ class AssessmentPlanController extends Controller
                 }
             }
             $creating = ! $locked->exists;
+            $preference = $this->lateCompensationPreference($apartment, $pending['input'], $locked);
             $locked->fill($pending['input']);
+            $locked->late_compensation_applies = $preference;
             if ($creating) {
                 $locked->category_id = app(AssessmentWorkCategory::class)->resolve($apartment->id, $summary['category']);
             }

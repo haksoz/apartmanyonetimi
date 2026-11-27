@@ -48,6 +48,11 @@ class Payment extends Model
         return $this->belongsTo(Apartment::class);
     }
 
+    public function allocationInstructions(): HasMany
+    {
+        return $this->hasMany(PaymentAllocationInstruction::class);
+    }
+
     public function allocations(): HasMany
     {
         return $this->hasMany(PaymentAllocation::class);
@@ -117,26 +122,18 @@ class Payment extends Model
             throw new \InvalidArgumentException('Allocation amount must be greater than zero.');
         }
 
-        if ($amount > $this->unallocated_amount) {
-            throw new \InvalidArgumentException('Allocation exceeds payment unallocated amount.');
-        }
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($due, $amount) {
+            $allocations = app(\App\Services\DueCollection::class)->manual(
+                $this->apartment_id, $this->account_id, [$this->id], [['due_id' => $due->id, 'amount' => $amount]],
+            );
+            if ($allocations === []) {
+                throw new \InvalidArgumentException('Allocation has no payable target.');
+            }
+            $this->refresh();
+            $due->refresh();
 
-        if ($amount > $due->remaining_amount) {
-            throw new \InvalidArgumentException('Allocation exceeds due remaining amount.');
-        }
-
-        $allocation = $this->allocations()->create([
-            'due_id' => $due->id,
-            'amount' => $amount,
-        ]);
-
-        $this->decrement('unallocated_amount', $amount);
-
-        $due->remaining_amount = max(0, $due->remaining_amount - $amount);
-        $due->status = $due->remaining_amount === 0 ? 'paid' : 'partial';
-        $due->save();
-
-        return $allocation;
+            return $allocations[0];
+        });
     }
 
     protected function getReferencePrefix(): string

@@ -280,7 +280,11 @@
                                         {{ $allocation->due->description ?: 'Aidat' }}
                                     </td>
 
-                                    <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</td>
+                                    <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL
+    @if ($allocation->due_id && $allocation->late_compensation_amount > 0)
+        <div class="text-xs">Ana para {{ number_format($allocation->principal_amount, 2, ',', '.') }} TL</div>
+        <div class="text-xs">Gecikme Tazminatı {{ number_format($allocation->late_compensation_amount, 2, ',', '.') }} TL</div>
+    @endif</td>
 
                                     <td class="px-5 py-4">
 
@@ -313,7 +317,11 @@
                                         {{ $allocation->expense->description ?: ($allocation->expense->category ?? 'Gider') }}
                                     </td>
 
-                                    <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</td>
+                                    <td class="px-5 py-4 text-right font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL
+    @if ($allocation->due_id && $allocation->late_compensation_amount > 0)
+        <div class="text-xs">Ana para {{ number_format($allocation->principal_amount, 2, ',', '.') }} TL</div>
+        <div class="text-xs">Gecikme Tazminatı {{ number_format($allocation->late_compensation_amount, 2, ',', '.') }} TL</div>
+    @endif</td>
 
                                     <td class="px-5 py-4">
 
@@ -362,6 +370,10 @@
                                     </div>
                                     <div class="shrink-0 text-sm font-semibold text-slate-900">
                                         {{ number_format($allocation->amount, 2, ',', '.') }} TL
+    @if ($allocation->due_id && $allocation->late_compensation_amount > 0)
+        <div class="text-xs">Ana para {{ number_format($allocation->principal_amount, 2, ',', '.') }} TL</div>
+        <div class="text-xs">Gecikme Tazminatı {{ number_format($allocation->late_compensation_amount, 2, ',', '.') }} TL</div>
+    @endif
                                     </div>
                                 </a>
                             </div>
@@ -381,6 +393,10 @@
                                     </div>
                                     <div class="shrink-0 text-sm font-semibold text-slate-900">
                                         {{ number_format($allocation->amount, 2, ',', '.') }} TL
+    @if ($allocation->due_id && $allocation->late_compensation_amount > 0)
+        <div class="text-xs">Ana para {{ number_format($allocation->principal_amount, 2, ',', '.') }} TL</div>
+        <div class="text-xs">Gecikme Tazminatı {{ number_format($allocation->late_compensation_amount, 2, ',', '.') }} TL</div>
+    @endif
                                     </div>
                                 </a>
                             </div>
@@ -420,7 +436,11 @@
                                         @endif
                                     </div>
                                 </div>
-                                <div class="shrink-0 font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL</div>
+                                <div class="shrink-0 font-semibold text-slate-900 tabular-nums">{{ number_format($allocation->amount, 2, ',', '.') }} TL
+    @if ($allocation->due_id && $allocation->late_compensation_amount > 0)
+        <div class="text-xs">Ana para {{ number_format($allocation->principal_amount, 2, ',', '.') }} TL</div>
+        <div class="text-xs">Gecikme Tazminatı {{ number_format($allocation->late_compensation_amount, 2, ',', '.') }} TL</div>
+    @endif</div>
                             </div>
                         @endforeach
                     </div>

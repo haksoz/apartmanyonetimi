@@ -227,7 +227,7 @@
 
                                         <input type="checkbox" class="due-checkbox due-checkbox-desktop rounded"
 
-                                               data-due-id="{{ $due->id }}"
+                                               data-late-compensation="{{ (bool) $due->late_compensation_applies ? '1' : '0' }}" data-due-id="{{ $due->id }}"
 
                                                data-amount="{{ $due->remaining_amount }}"
 
@@ -242,6 +242,7 @@
                                     <td class="px-5 py-4 text-right text-slate-900 font-semibold">
 
                                         {{ number_format($due->remaining_amount, 2, ',', '.') }} TL
+                                        @include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
 
                                         @if ($due->status === 'partial')
 
@@ -276,7 +277,7 @@
                                     <td class="px-5 py-4 text-right">
 
                                         <button type="button"
-                                                onclick="openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
+                                                onclick="if (@json((bool) $due->late_compensation_applies)) { window.location.assign(@js(route('dues.payment.create', $due))); return; } openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
                                                 class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                                             Tahsil Et
                                         </button>
@@ -297,7 +298,7 @@
 
                                         <input type="checkbox" class="due-checkbox due-checkbox-desktop rounded"
 
-                                               data-due-id="{{ $due->id }}"
+                                               data-late-compensation="{{ (bool) $due->late_compensation_applies ? '1' : '0' }}" data-due-id="{{ $due->id }}"
 
                                                data-amount="{{ $due->remaining_amount }}"
 
@@ -318,6 +319,7 @@
                                     <td class="px-5 py-4 text-right text-slate-900 font-semibold">
 
                                         {{ number_format($due->remaining_amount, 2, ',', '.') }} TL
+                                        @include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
 
                                     </td>
 
@@ -346,7 +348,7 @@
                                     <td class="px-5 py-4 text-right">
 
                                         <button type="button"
-                                                onclick="openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
+                                                onclick="if (@json((bool) $due->late_compensation_applies)) { window.location.assign(@js(route('dues.payment.create', $due))); return; } openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
                                                 class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                                             Tahsil Et
                                         </button>
@@ -376,7 +378,7 @@
                                  onclick="window.location.href='{{ route('dues.show', $due) }}'">
                                 <div class="flex items-center gap-3 min-w-0 flex-1">
                                     <input type="checkbox" class="due-checkbox due-checkbox-mobile rounded shrink-0"
-                                           data-due-id="{{ $due->id }}"
+                                           data-late-compensation="{{ (bool) $due->late_compensation_applies ? '1' : '0' }}" data-due-id="{{ $due->id }}"
                                            data-amount="{{ $due->remaining_amount }}"
                                            data-description="{{ $due->description ?: 'Aidat' }}"
                                            onclick="event.stopPropagation()">
@@ -392,6 +394,7 @@
                                 </div>
                                 <div class="shrink-0 text-right text-sm">
                                     <div class="font-semibold text-slate-900">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                                    @include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
                                     <div class="text-xs {{ $due->status === 'partial' ? 'text-amber-500' : 'text-amber-600' }}">{{ $statusLabel }}</div>
                                 </div>
                             </div>
@@ -410,7 +413,7 @@
                                  onclick="window.location.href='{{ route('dues.show', $due) }}'">
                                 <div class="flex items-center gap-3 min-w-0 flex-1">
                                     <input type="checkbox" class="due-checkbox due-checkbox-mobile rounded shrink-0"
-                                           data-due-id="{{ $due->id }}"
+                                           data-late-compensation="{{ (bool) $due->late_compensation_applies ? '1' : '0' }}" data-due-id="{{ $due->id }}"
                                            data-amount="{{ $due->remaining_amount }}"
                                            data-description="{{ $due->description ?: 'Aidat' }}"
                                            onclick="event.stopPropagation()">
@@ -424,6 +427,7 @@
                                 </div>
                                 <div class="shrink-0 text-right text-sm">
                                     <div class="font-semibold text-slate-900">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
+                                    @include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
                                     <div class="text-xs text-amber-600">{{ $statusLabel }}</div>
                                 </div>
                             </div>
@@ -455,6 +459,7 @@
                     @csrf
 
                     <div id="bulk-due-ids"></div>
+                    <input type="hidden" id="bulk-expected-amount" name="expected_amount" disabled>
 
 
 
@@ -1091,11 +1096,47 @@
             return current === formatBulkDescription(dateString);
         };
 
+        let bulkQuoteVersion = 0;
+        let bulkRequiresQuote = false;
+        const refreshBulkDueQuote = async () => {
+            if (!bulkRequiresQuote) return;
+            const version = ++bulkQuoteVersion;
+            const form = document.getElementById('bulk-pay-form');
+            const submit = form.querySelector('[type="submit"]');
+            const date = document.getElementById('bulk-payment-date').value;
+            const expected = document.getElementById('bulk-expected-amount');
+            const display = document.getElementById('modal-total');
+            submit.disabled = true;
+            expected.disabled = true;
+            if (!date) return;
+            const ids = Array.from(form.querySelectorAll('input[name="due_ids[]"]'), input => Number(input.value));
+            const url = new URL(@json(route('payments.preview-allocations')), location.origin);
+            url.searchParams.set('account_id', @json($account->id));
+            url.searchParams.set('amount', '0.01');
+            url.searchParams.set('payment_date', date);
+            try {
+                const response = await fetch(url, {headers: {'Accept': 'application/json'}});
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                if (version !== bulkQuoteVersion) return;
+                const amounts = new Map(data.dues.map(due => [due.id, Math.round(due.remaining_amount * 100)]));
+                if (ids.some(id => !amounts.has(id))) throw new Error();
+                const total = ids.reduce((sum, id) => sum + amounts.get(id), 0) / 100;
+                display.textContent = total.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' TL';
+                expected.value = total.toFixed(2);
+                expected.disabled = false;
+                submit.disabled = total <= 0;
+            } catch {
+                if (version === bulkQuoteVersion) display.textContent = 'Toplam tutar hesaplanamadı.';
+            }
+        };
+
         document.getElementById('bulk-payment-date')?.addEventListener('change', function() {
             const descEl = document.getElementById('bulk-description');
             if (descEl && isAutoBulkDescription(descEl.value.trim(), this.value)) {
                 descEl.value = formatBulkDescription(this.value);
             }
+            refreshBulkDueQuote();
         });
 
 
@@ -1143,6 +1184,11 @@
                 total.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + ' TL';
 
             document.getElementById('bulk-pay-modal').classList.remove('hidden');
+            bulkRequiresQuote = Array.from(checked).some(input => input.dataset.lateCompensation === '1');
+            const form = document.getElementById('bulk-pay-form');
+            form.querySelector('[type="submit"]').disabled = false;
+            document.getElementById('bulk-expected-amount').disabled = true;
+            refreshBulkDueQuote();
 
         }
 
@@ -1150,6 +1196,7 @@
 
         function closeBulkPayModal() {
 
+            ++bulkQuoteVersion;
             document.getElementById('bulk-pay-modal').classList.add('hidden');
 
         }
@@ -1899,6 +1946,7 @@
                                 @elseif($due->remaining_amount < $due->amount)
 
                                     <span class="text-xs text-amber-600">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</span>
+                                    @include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
 
                                 @endif
 
@@ -1942,6 +1990,7 @@
                                 @elseif($due->remaining_amount < $due->amount)
 
                                     <span class="text-xs text-amber-600">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</span>
+                                    @include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
 
                                 @endif
 

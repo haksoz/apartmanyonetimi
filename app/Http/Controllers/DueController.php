@@ -7,18 +7,22 @@ use App\Models\Account;
 use App\Models\AccountTransaction;
 use App\Models\Apartment;
 use App\Models\CashBox;
-use App\Models\CashTransaction;
 use App\Models\Category;
 use App\Models\Due;
 use App\Models\DueBatch;
 use App\Models\DuePlan;
 use App\Models\AssessmentPlan;
 use App\Models\Expense;
-use App\Models\Payment;
 use App\Models\Unit;
+use App\Services\DueCollection;
+use App\Services\DueCollectionGuard;
+use App\Services\DueCollectionReplay;
+use App\Services\LateCompensationCalculator;
 use App\Support\AidatPeriodReconciliation;
 use App\Support\CurrentApartment;
+use App\Support\DueProductionSource;
 use App\Support\DueTargeting;
+use App\Support\LateCompensationScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -167,6 +171,8 @@ class DueController extends Controller
             $returnUrls[$due->id] = $listUrl;
         }
         $request->session()->put($returnKey, array_slice($returnUrls, -100, null, true));
+        app(\App\Services\LateCompensationBalances::class)->attach($apartment, $dues->getCollection());
+
         return view('dues.index', compact('dues', 'apartment', 'sortBy', 'sortDirection', 'filters', 'isOwner', 'units', 'cashBoxes', 'dueTypeOptions', 'recentFilters'));
     }
 
@@ -377,6 +383,7 @@ class DueController extends Controller
                     ->when($request->input('due_type') === DueType::MalikPayi->value,
                         fn ($query) => $query->where('type', Account::TYPE_OWNER))),
             ],
+            'late_compensation_applies' => ['sometimes', 'boolean'],
             'individual_amount' => ['required_if:source_type,'.DueBatch::SOURCE_INDIVIDUAL, 'nullable', 'numeric', 'min:0.01'],
             'round_to_integer' => ['nullable', 'boolean'],
             'consumption_type' => ['required_if:distribution_type,consumption', 'nullable', Rule::in(array_keys(\App\Models\ConsumptionSetting::TYPES))],
@@ -436,11 +443,17 @@ class DueController extends Controller
             $validated['category_id'] ?? null,
         );
 
+        $this->validateLateCompensationChoice($apartment, $validated);
+
         if ($validated['distribution_type'] === DueBatch::DISTRIBUTION_CONSUMPTION) {
             return $this->consumptionFlow($request, $apartment, $validated, $selectedExpenseIds, $sourceAmount);
         }
 
         DB::transaction(function () use ($apartment, $validated, $selectedExpenseIds, $sourceAmount, $roundToInteger) {
+            if (! empty($validated['late_compensation_applies'])) {
+                $locked = Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
+                $this->validateLateCompensationChoice($locked, $validated);
+            }
             $batch = DueBatch::create([
                 'apartment_id' => $apartment->id,
                 'due_type' => $validated['due_type'],
@@ -600,7 +613,8 @@ class DueController extends Controller
     private function consumptionFlow(Request $request, Apartment $apartment, array $input, array $expenseIds, float $amount)
     {
         return DB::transaction(function () use ($request, $apartment, $input, $expenseIds, $amount) {
-            Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
+            $locked = Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
+            $this->validateLateCompensationChoice($locked, $input);
             $summary = app(\App\Services\ConsumptionDistribution::class)->summary($apartment, $input, $amount);
             $pending = $request->session()->get('consumption_confirmation');
             $confirming = $request->routeIs('dues.consumption.confirm');
@@ -613,6 +627,7 @@ class DueController extends Controller
                 'source_period_end' => $input['source_type'] === DueBatch::SOURCE_EXPENSES ? ($input['source_period_end'] ?? $input['source_period']).'-01' : null,
                 'source_amount' => $summary['billed_cents'] / 100, 'category_filter_ids' => $expenseIds, 'distribution_snapshot' => [...$summary, 'debt_fields' => [
                     'category_id' => $input['category_id'], 'due_date' => $input['due_date'],
+                    'late_compensation_applies' => (bool) ($input['late_compensation_applies'] ?? false),
                     'created_at_manual' => $input['created_at_manual'], 'description' => $input['description'] ?? null,
                 ]],
                 'description' => $input['description'] ?? null, 'created_by' => auth()->id()]);
@@ -682,6 +697,8 @@ class DueController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
+
+        app(\App\Services\LateCompensationBalances::class)->attach($due->apartment, [$due]);
 
         return view('dues.show', compact('due', 'transferableAccounts', 'cashBoxes'));
     }
@@ -782,33 +799,46 @@ class DueController extends Controller
             }
         }
 
-        $oldAmount = (float) $due->amount;
-        $newAmount = (float) $validated['amount'];
-        $remainingAmount = (float) $due->remaining_amount;
-
-        // remaining_amount'ı güncelle (henüz ödeme yoksa yeni amount'a eşitle)
-        // Floating point karşılaştırması için tolerans kullan
-        $tolerance = 0.01;
-        if (abs($remainingAmount - $oldAmount) < $tolerance) {
-            $validated['remaining_amount'] = $newAmount;
-        } else {
-            // Ödeme varsa, kalan tutarı orantılı olarak güncelle
-            $paidAmount = $oldAmount - $remainingAmount;
-            $validated['remaining_amount'] = max(0, $newAmount - $paidAmount);
-        }
-
         DB::transaction(function () use ($due, $validated) {
-            // Due'u güncelle
-            $due->update(collect($validated)->except('period')->all());
-
-            // İlgili account_transaction'ı güncelle
-            $transaction = $due->transactions()->first();
-            if ($transaction) {
-                $transaction->update([
+            $guard = app(DueCollectionGuard::class);
+            if ($due->account_id !== null) {
+                $guard->lockAccount($due->apartment_id, $due->account_id);
+            }
+            $due = Due::whereKey($due->id)->lockForUpdate()->firstOrFail();
+            $replay = app(DueCollectionReplay::class);
+            if (array_key_exists('account_id', $validated) && $validated['account_id'] != $due->account_id
+                && ($guard->tracked($due) || $replay->applies($due->apartment_id, $due->account_id)
+                    || $replay->applies($due->apartment_id, $validated['account_id']))) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'account_id' => 'Bu borcu taşımak için borç devir işlemini kullanın.',
+                ]);
+            }
+            $financialChange = LateCompensationCalculator::cents($due->amount) !== LateCompensationCalculator::cents($validated['amount'])
+                || $due->due_date?->toDateString() !== LateCompensationCalculator::day($validated['due_date'])->toDateString()
+                || $due->created_at_manual?->toDateString() !== LateCompensationCalculator::day($validated['created_at_manual'])->toDateString();
+            $change = function () use ($due, $validated) {
+                $due->refresh();
+                $paid = LateCompensationCalculator::cents($due->amount) - LateCompensationCalculator::cents($due->remaining_amount);
+                $remaining = max(0, LateCompensationCalculator::cents($validated['amount']) - $paid);
+                $due->update(collect($validated)->except('period')->all() + [
+                    'remaining_amount' => LateCompensationCalculator::money($remaining),
+                ]);
+                $due->transactions()->first()?->update([
                     'amount' => $validated['amount'],
                     'transaction_date' => $validated['created_at_manual'],
                     'description' => $validated['description'] ?? $due->category?->name.' borçlandırması',
                 ]);
+            };
+            if ($financialChange && $replay->applies($due->apartment_id, $due->account_id)) {
+                $firstPayment = \App\Models\Payment::whereHas('allocations', fn ($query) => $query->where('due_id', $due->id))
+                    ->where('apartment_id', $due->apartment_id)->where('account_id', $due->account_id)->min('payment_date');
+                $created = $due->created_at?->copy()->timezone('Europe/Istanbul')->toDateString() ?? $due->record_date->toDateString();
+                $replay->run($due->apartment_id, $due->account_id, $firstPayment ? min($created, substr($firstPayment, 0, 10)) : $created, $change);
+            } else {
+                if ($financialChange) {
+                    $guard->protectDue($due);
+                }
+                $change();
             }
         });
 
@@ -826,12 +856,20 @@ class DueController extends Controller
         }
 
 
-        if ($due->allocations()->exists()) {
+        $deleted = DB::transaction(function () use ($due) {
+            app(DueCollectionGuard::class)->lockAccount($due->apartment_id, $due->account_id);
+            $due = Due::whereKey($due->id)->lockForUpdate()->firstOrFail();
+            if ($due->allocations()->exists()) {
+                return false;
+            }
+            $due->transactions()->delete();
+            $due->delete();
+
+            return true;
+        });
+        if (! $deleted) {
             return redirect()->route('dues.show', $due)->with('error', 'Bu aidatı kapatan tahsilatlar olduğu için silinemez.');
         }
-
-        $due->transactions()->delete();
-        $due->delete();
 
         return redirect()->to(session('due_return.'.auth()->id().'.'.$due->id, route('dues.index')))->with('status', 'Aidat kaydı silindi.');
     }
@@ -851,16 +889,31 @@ class DueController extends Controller
             ->whereIn('id', $ids)
             ->where('apartment_id', $apartment->id)
             ->whereNotIn('status', ['paid', 'partial'])
+            ->where(fn ($query) => $query->where('late_compensation_applies', false)->orWhereDoesntHave('allocations'))
             ->get();
 
-        $skipped = count($ids) - $dues->count();
+        $deleted = DB::transaction(function () use ($dues, $apartment) {
+            $guard = app(DueCollectionGuard::class);
+            foreach ($dues->pluck('account_id')->filter()->unique()->sort() as $accountId) {
+                $guard->lockAccount($apartment->id, $accountId);
+            }
+            $count = 0;
+            foreach (Due::where('apartment_id', $apartment->id)->whereIn('id', $dues->modelKeys())
+                ->orderBy('id')->lockForUpdate()->get() as $due) {
+                if (in_array($due->status, ['paid', 'partial'], true)
+                    || ($due->late_compensation_applies && $due->allocations()->exists())) {
+                    continue;
+                }
+                $due->transactions()->delete();
+                $due->delete();
+                $count++;
+            }
 
-        foreach ($dues as $due) {
-            $due->transactions()->delete();
-            $due->delete();
-        }
+            return $count;
+        });
+        $skipped = count($ids) - $deleted;
 
-        $msg = "{$dues->count()} aidat kaydı silindi.";
+        $msg = "{$deleted} aidat kaydı silindi.";
         if ($skipped > 0) {
             $msg .= " {$skipped} ödenmiş/kısmen ödenmiş kayıt atlandı.";
         }
@@ -868,7 +921,7 @@ class DueController extends Controller
         return redirect()->back()->with('status', $msg);
     }
 
-    public function createPayment(CurrentApartment $currentApartment, Due $due)
+    public function createPayment(Request $request, CurrentApartment $currentApartment, Due $due)
     {
         if ($response = $this->authorizeDue($currentApartment, $due)) {
             return $response;
@@ -880,7 +933,15 @@ class DueController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('dues.payment', compact('due', 'cashBoxes'));
+        $date = $request->validate(['payment_date' => ['nullable', 'date_format:Y-m-d']])['payment_date']
+            ?? now('Europe/Istanbul')->toDateString();
+        $tracked = app(DueCollectionGuard::class)->tracked($due);
+        $payable = LateCompensationCalculator::money(app(DueCollection::class)->quote($due, $date));
+        if ($request->expectsJson()) {
+            return response()->json(['amount' => $payable, 'tracked' => $tracked]);
+        }
+
+        return view('dues.payment', compact('due', 'cashBoxes', 'payable', 'tracked'));
     }
 
     public function storePayment(Request $request, CurrentApartment $currentApartment, Due $due)
@@ -895,61 +956,15 @@ class DueController extends Controller
                 'integer',
                 Rule::exists('cash_boxes', 'id')->where('apartment_id', $due->apartment_id)->where('is_active', true),
             ],
-            'amount' => ['required', 'numeric', 'min:0.01', 'max:' . ($due->remaining_amount ?: $due->amount)],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'full_payment' => ['sometimes', 'boolean'],
             'payment_date' => ['required', 'date'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
-        DB::transaction(function () use ($due, $validated) {
-            $payment = Payment::create([
-                'apartment_id' => $due->apartment_id,
-                'account_id' => $due->account_id,
-                'amount' => $validated['amount'],
-                'unallocated_amount' => $validated['amount'],
-                'payment_date' => $validated['payment_date'],
-                'method' => null,
-                'description' => $validated['description'] ?? 'Aidat Tahsilatı',
-            ]);
-
-            CashTransaction::create([
-                'apartment_id' => $due->apartment_id,
-                'cash_box_id' => $validated['cash_box_id'],
-                'account_id' => $due->account_id,
-                'type' => 'income',
-                'description' => $validated['description'] ?? 'Aidat Tahsilatı',
-                'amount' => $validated['amount'],
-                'transaction_date' => $validated['payment_date'],
-                'is_active' => true,
-            ]);
-
-            AccountTransaction::create([
-                'apartment_id' => $due->apartment_id,
-                'account_id' => $due->account_id,
-                'transactionable_type' => Payment::class,
-                'transactionable_id' => $payment->id,
-                'type' => 'credit',
-                'description' => $validated['description'] ?? 'Aidat Tahsilatı',
-                'amount' => $validated['amount'],
-                'transaction_date' => $validated['payment_date'],
-            ]);
-
-            $due->remaining_amount = $due->remaining_amount ?: $due->amount;
-            $allocationAmount = min($payment->unallocated_amount, $due->remaining_amount);
-
-            if ($allocationAmount > 0) {
-                $payment->allocations()->create([
-                    'due_id' => $due->id,
-                    'amount' => $allocationAmount,
-                ]);
-
-                $due->remaining_amount = max(0, $due->remaining_amount - $allocationAmount);
-                $due->status = $due->remaining_amount <= 0 ? 'paid' : 'partial';
-                $due->save();
-
-                $payment->unallocated_amount = $payment->amount - $allocationAmount;
-                $payment->save();
-            }
-        });
+        app(DueCollection::class)->collect(
+            $due->apartment_id, $due->account_id, [$due->id], $validated, $validated['description'] ?? 'Aidat Tahsilatı',
+        );
 
         return redirect()->back()->with('status', 'Aidat ödemesi kaydedildi.');
     }
@@ -966,79 +981,18 @@ class DueController extends Controller
 
         $validated = $request->validate([
             'due_ids'      => ['required', 'array', 'min:1'],
+            'expected_amount' => ['nullable', 'numeric', 'min:0.01'],
             'due_ids.*'    => ['integer', Rule::exists('dues', 'id')->where('apartment_id', $apartment->id)],
             'cash_box_id'  => ['required', 'integer', Rule::exists('cash_boxes', 'id')->where('apartment_id', $apartment->id)->where('is_active', true)],
             'payment_date' => ['required', 'date'],
             'description'  => ['nullable', 'string', 'max:255'],
         ]);
 
-        $dues = Due::query()
-            ->whereIn('id', $validated['due_ids'])
-            ->where('apartment_id', $apartment->id)
-            ->where('account_id', $account->id)
-            ->whereIn('status', ['pending', 'overdue', 'partial', 'unpaid'])
-            ->get();
+        $count = app(DueCollection::class)->collect(
+            $apartment->id, $account->id, $validated['due_ids'], $validated, ($validated['description'] ?? null) ?: 'Çoklu Aidat Tahsilatı',
+        );
 
-        if ($dues->isEmpty()) {
-            return back()->withErrors(['due_ids' => 'Seçilen aidatlar bulunamadı veya zaten ödendi.']);
-        }
-
-        $totalAmount = $dues->sum('remaining_amount');
-
-        DB::transaction(function () use ($dues, $account, $apartment, $validated, $totalAmount) {
-            $description = $validated['description'] ?: 'Çoklu Aidat Tahsilatı';
-
-            $payment = Payment::create([
-                'apartment_id'       => $apartment->id,
-                'account_id'         => $account->id,
-                'amount'             => $totalAmount,
-                'unallocated_amount' => $totalAmount,
-                'payment_date'       => $validated['payment_date'],
-                'method'             => null,
-                'description'        => $description,
-            ]);
-
-            CashTransaction::create([
-                'apartment_id'     => $apartment->id,
-                'cash_box_id'      => $validated['cash_box_id'],
-                'account_id'       => $account->id,
-                'type'             => 'income',
-                'description'      => $description,
-                'amount'           => $totalAmount,
-                'transaction_date' => $validated['payment_date'],
-                'is_active'        => true,
-            ]);
-
-            AccountTransaction::create([
-                'apartment_id'         => $apartment->id,
-                'account_id'           => $account->id,
-                'transactionable_type' => Payment::class,
-                'transactionable_id'   => $payment->id,
-                'type'                 => 'credit',
-                'description'          => $description,
-                'amount'               => $totalAmount,
-                'transaction_date'     => $validated['payment_date'],
-            ]);
-
-            foreach ($dues as $due) {
-                $allocationAmount = $due->remaining_amount;
-
-                $payment->allocations()->create([
-                    'due_id' => $due->id,
-                    'amount' => $allocationAmount,
-                ]);
-
-                $due->remaining_amount = 0;
-                $due->status = 'paid';
-                $due->save();
-
-                $payment->unallocated_amount -= $allocationAmount;
-            }
-
-            $payment->save();
-        });
-
-        return redirect()->route('accounts.show', $account)->with('status', $dues->count() . ' aidat tahsil edildi.');
+        return redirect()->route('accounts.show', $account)->with('status', $count . ' aidat tahsil edildi.');
     }
 
     private function authorizeDue(CurrentApartment $currentApartment, Due $due)
@@ -1122,6 +1076,19 @@ class DueController extends Controller
         return (float) $expenses->sum('amount');
     }
 
+    private function validateLateCompensationChoice(Apartment $apartment, array $input): void
+    {
+        if (! empty($input['late_compensation_applies'])) {
+            app(LateCompensationScope::class)->preference(
+                $apartment,
+                DueProductionSource::billing($input['source_type'], $input['distribution_type']),
+                $input['due_type'],
+                true,
+                categoryId: $input['category_id'],
+            );
+        }
+    }
+
     private function createDue(DueBatch $batch, ?Unit $unit, Account $account, float $amount, array $validated): void
     {
         app(DueTargeting::class)->assertAccount($account, $batch->due_type, \Carbon\Carbon::parse($validated['period'].'-01'));
@@ -1138,6 +1105,12 @@ class DueController extends Controller
         }
 
         $due = Due::create([
+            ...app(LateCompensationScope::class)->dueAttributes(
+                DueProductionSource::billing($validated['source_type'], $validated['distribution_type']),
+                $validated['due_type'],
+                (bool) ($validated['late_compensation_applies'] ?? false),
+                $validated['category_id'],
+            ),
             'apartment_id' => $batch->apartment_id,
             'due_batch_id' => $batch->id,
             'unit_id' => $unit?->id ?? $account->unit_id,
@@ -1219,21 +1192,37 @@ class DueController extends Controller
         $fromAccountName = $sourceAccount->name;
 
         DB::transaction(function () use ($due, $targetAccount, $fromAccountName) {
+            $guard = app(DueCollectionGuard::class);
+            $sourceId = $due->account_id;
+            foreach (collect([$sourceId, $targetAccount->id])->filter()->unique()->sort() as $accountId) {
+                $guard->lockAccount($due->apartment_id, $accountId);
+            }
             $locked = Due::whereKey($due->id)->lockForUpdate()->firstOrFail();
             if (in_array($locked->status, ['paid', 'partial']) || $locked->allocations()->exists()) {
                 throw \Illuminate\Validation\ValidationException::withMessages(['target_account_id' => 'Ödemesi veya ödeme tahsisi bulunan borç aktarılamaz.']);
             }
             app(DueTargeting::class)->assertAccount($targetAccount, $locked->due_type,
                 $locked->record_date->copy()->startOfMonth());
-            $due->update([
+            abort_unless($locked->account_id === $sourceId, 409);
+            $replay = app(DueCollectionReplay::class);
+            $date = now('Europe/Istanbul')->toDateString();
+            $sourceReplays = $replay->applies($locked->apartment_id, $sourceId);
+            $targetReplays = $replay->applies($locked->apartment_id, $targetAccount->id) || $sourceReplays;
+            $locked->update([
                 'account_id'  => $targetAccount->id,
                 'unit_id'     => $targetAccount->unit_id,
-                'description' => ($due->description ? $due->description . ' ' : '') . '[Devir: ' . $fromAccountName . ']',
-            ]);
+                'description' => ($locked->description ? $locked->description . ' ' : '') . '[Devir: ' . $fromAccountName . ']',
+            ] + ($targetReplays ? ['collection_account_since' => $date] : []));
 
             AccountTransaction::where('transactionable_type', Due::class)
                 ->where('transactionable_id', $due->id)
                 ->update(['account_id' => $targetAccount->id]);
+            if ($sourceReplays) {
+                $replay->run($locked->apartment_id, $sourceId, $date);
+            }
+            if ($targetReplays) {
+                $replay->run($locked->apartment_id, $targetAccount->id, $date);
+            }
         });
 
         return redirect()->route('accounts.show', $sourceAccount->id)
@@ -1294,6 +1283,8 @@ class DueController extends Controller
         }
 
         $dues = $dues->get();
+        $balances = app(\App\Services\LateCompensationBalances::class)->forDues($apartment, $dues);
+        $showCompensation = $balances->sum('remaining_compensation') > 0;
 
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -1304,11 +1295,15 @@ class DueController extends Controller
         $sheet->getStyle('A2')->getFont()->setBold(true);
 
         $headers = ['Daire', 'Hesap', 'Tip', 'Açıklama', 'Oluşturulma', 'Tutar (TL)', 'Kalan (TL)', 'Durum'];
+        if ($showCompensation) {
+            $headers = [...$headers, 'Gecikme Tazminatı (TL)', 'Toplam Ödenecek (TL)'];
+        }
+        $lastColumn = $showCompensation ? 'J' : 'H';
         foreach ($headers as $i => $h) {
             $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1).'4', $h);
         }
-        $sheet->getStyle('A4:H4')->getFont()->setBold(true);
-        $sheet->getStyle('A4:H4')->getFill()
+        $sheet->getStyle('A4:'.$lastColumn.'4')->getFont()->setBold(true);
+        $sheet->getStyle('A4:'.$lastColumn.'4')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFE2E8F0');
 
@@ -1327,10 +1322,15 @@ class DueController extends Controller
             $sheet->setCellValue('G'.$row, $due->remaining_amount ?? $due->amount);
             $sheet->getStyle('G'.$row)->getNumberFormat()->setFormatCode('#,##0.00');
             $sheet->setCellValue('H'.$row, $statusMap[$due->computed_status] ?? $due->computed_status);
+            if ($showCompensation) {
+                $entry = $balances[$due->id] ?? null;
+                $sheet->setCellValue('I'.$row, ($entry['remaining_compensation'] ?? 0) / 100);
+                $sheet->setCellValue('J'.$row, $entry ? $entry['total'] / 100 : (float) $due->remaining_amount);
+            }
             $row++;
         }
 
-        foreach (range('A', 'H') as $col) {
+        foreach (range('A', $lastColumn) as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

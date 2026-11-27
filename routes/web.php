@@ -198,6 +198,7 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('plan-reminders/dismiss', [\App\Http\Controllers\PlanReminderController::class, 'dismiss'])->name('plan-reminders.dismiss');
 
         Route::resource('apartments', ApartmentController::class)->except(['create', 'store']);
+        Route::put('apartments/{apartment}/late-compensation', [ApartmentController::class, 'updateLateCompensation'])->name('apartments.late-compensation.update');
         Route::post('apartments/{apartment}/destroy-all', [ApartmentController::class, 'destroyAll'])->name('apartments.destroy-all');
         Route::get('apartments/{apartment}/renew-setup', [ApartmentController::class, 'renewForm'])->name('apartments.renew-setup.create');
         Route::post('apartments/{apartment}/renew-setup', [ApartmentController::class, 'renewSetup'])->name('apartments.renew-setup');
@@ -257,9 +258,10 @@ Route::middleware(['auth', 'apartment'])->group(function () {
         Route::post('payments/{payment}/allocations', [PaymentAllocationController::class, 'store'])->name('payments.allocations.store');
         Route::get('payments/{payment}/supplier-allocations/create', [PaymentAllocationController::class, 'supplierCreate'])->name('payments.supplier-allocations.create');
         Route::post('payments/{payment}/supplier-allocations', [PaymentAllocationController::class, 'supplierStore'])->name('payments.supplier-allocations.store');
-        Route::delete('payments/{payment}/allocations/{allocation}', [PaymentAllocationController::class, 'destroy'])->name('payments.allocations.destroy');
         Route::delete('payments/{payment}/allocations/bulk', [PaymentAllocationController::class, 'bulkDestroy'])->name('payments.allocations.bulk-destroy');
+        Route::delete('payments/{payment}/allocations/{allocation}', [PaymentAllocationController::class, 'destroy'])->name('payments.allocations.destroy');
         Route::match(['get', 'post'], 'accounts/{account}/payments/multi-allocate', [PaymentAllocationController::class, 'multiCreate'])->name('accounts.payments.multi-allocate');
+        Route::post('accounts/{account}/payments/multi-allocate/preview', [PaymentAllocationController::class, 'multiPreview'])->name('accounts.payments.multi-allocate.preview');
         Route::post('accounts/{account}/payments/multi-allocate/store', [PaymentAllocationController::class, 'multiStore'])->name('accounts.payments.multi-allocate.store');
         Route::match(['get', 'post'], 'accounts/{account}/payments/multi-supplier-allocate', [PaymentAllocationController::class, 'multiSupplierCreate'])->name('accounts.payments.multi-supplier-allocate');
         Route::post('accounts/{account}/payments/multi-supplier-allocate/store', [PaymentAllocationController::class, 'multiSupplierStore'])->name('accounts.payments.multi-supplier-allocate.store');

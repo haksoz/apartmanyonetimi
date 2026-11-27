@@ -11,6 +11,8 @@ use App\Support\AidatPeriodReconciliation;
 use App\Support\AidatPlanSummary;
 use Illuminate\Support\Str;
 use App\Support\CurrentApartment;
+use App\Support\DueProductionSource;
+use App\Support\LateCompensationScope;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -299,6 +301,7 @@ class DuePlanController extends Controller
             'plan_year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'plan_id' => ['nullable', 'integer', Rule::exists('due_plans', 'id')->where('apartment_id', $apartment->id)->where('plan_year', $request->input('plan_year'))],
             'creating_new' => ['sometimes', 'boolean'],
+            'late_compensation_applies' => ['sometimes', 'boolean'],
             'monthly_amount' => ['required', 'numeric', 'min:0.01'],
             'distribution_type' => ['required', Rule::in(['equal', 'square_meters', 'share_coefficient'])],
             'round_to_integer' => ['nullable', 'boolean'],
@@ -351,8 +354,14 @@ class DuePlanController extends Controller
             throw ValidationException::withMessages(['is_active' => 'Bu yıl için başka bir aktif aidat planı var.']);
         }
 
+        $submittedPreference = array_key_exists('late_compensation_applies', $validated)
+            ? (bool) $validated['late_compensation_applies'] : null;
         $proposed = $plan ? clone $plan : new DuePlan();
         $proposed->fill($payload);
+        $proposed->late_compensation_applies = app(LateCompensationScope::class)->preference(
+            $apartment, DueProductionSource::AidatPlan, $payload['due_type'], $submittedPreference,
+            (bool) $plan?->late_compensation_applies, $payload['category_id'],
+        );
         $proposed->setRelation('apartment', $apartment);
         $summary = app(AidatPlanSummary::class)->build($proposed, $request->boolean('include_past_periods'), $request->input('current_month_action'));
         $fingerprint = hash('sha256', json_encode($summary));
@@ -362,7 +371,7 @@ class DuePlanController extends Controller
         }
 
         $savedPlan = null;
-        $created = DB::transaction(function () use ($payload, $request, $validated, $fingerprint, &$savedPlan) {
+        $created = DB::transaction(function () use ($payload, $request, $validated, $fingerprint, $submittedPreference, &$savedPlan) {
             $apartment = \App\Models\Apartment::query()->lockForUpdate()->findOrFail($payload['apartment_id']);
             $plan = DuePlan::query()->where('apartment_id', $apartment->id)
                 ->where('plan_year', $payload['plan_year'])
@@ -374,6 +383,10 @@ class DuePlanController extends Controller
                 }
                 $plan = null;
             }
+            $payload['late_compensation_applies'] = app(LateCompensationScope::class)->preference(
+                $apartment, DueProductionSource::AidatPlan, $payload['due_type'], $submittedPreference,
+                (bool) $plan?->late_compensation_applies, $payload['category_id'],
+            );
             $latest = $plan ? clone $plan : new DuePlan();
             $latest->fill($payload)->setRelation('apartment', $apartment);
             $summary = app(AidatPlanSummary::class)->build($latest, $request->boolean('include_past_periods'), $request->input('current_month_action'));
@@ -613,6 +626,10 @@ class DuePlanController extends Controller
             foreach ($unitAccounts as $item) {
                 $amount = $snapshot[$item['unit']->id];
                 $due = Due::create([
+                    ...app(LateCompensationScope::class)->dueAttributes(
+                        DueProductionSource::AidatPlan, $duePlan->due_type,
+                        (bool) $duePlan->late_compensation_applies, $category->id,
+                    ),
                     'apartment_id' => $duePlan->apartment_id,
                     'due_batch_id' => $batch->id,
                     'unit_id' => $item['unit']->id,

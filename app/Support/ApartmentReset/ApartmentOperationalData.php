@@ -31,6 +31,8 @@ class ApartmentOperationalData
 {
     public function wipe(Apartment $apartment): void
     {
+        AccountTransaction::where('apartment_id', $apartment->id)->delete();
+
         PaymentAllocation::whereHas('payment', function ($query) use ($apartment) {
             $query->where('apartment_id', $apartment->id);
         })->delete();
@@ -48,7 +50,6 @@ class ApartmentOperationalData
 
         Expense::where('apartment_id', $apartment->id)->delete();
         ExpensePlan::where('apartment_id', $apartment->id)->delete();
-        AccountTransaction::where('apartment_id', $apartment->id)->delete();
     }
 
     /** Test, transaction kapanmadan önce hata verir. Canlıda boştur. */

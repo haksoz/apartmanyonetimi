@@ -314,6 +314,7 @@
                             @else
                                 <span class="text-slate-700 font-semibold">{{ number_format($due->remaining_amount, 2, ',', '.') }} TL</span>
                             @endif
+                            @include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
                         </td>
                         <td class="px-5 py-4">
                             @if ($due->computed_status === 'overdue')
@@ -338,7 +339,7 @@
                             <div class="flex items-center justify-end gap-2">
                                 @if ($due->computed_status !== 'paid')
                                     <button type="button"
-                                            onclick="openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
+                                            onclick="if (@json((bool) $due->late_compensation_applies)) { window.location.assign(@js(route('dues.payment.create', $due))); return; } openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
                                             class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">
                                         Tahsil Et
                                     </button>
@@ -393,6 +394,7 @@
                             @if($due->remaining_amount > 0 && $due->remaining_amount != $due->amount)
                                 <div class="text-xs text-amber-600 font-semibold">Kalan: {{ number_format($due->remaining_amount, 2, ',', '.') }} TL</div>
                             @endif
+                            @include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
                         </a>
                         @if ($due->computed_status === 'overdue')
                             <span class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
@@ -418,7 +420,7 @@
                     </div>
                     @if ($due->computed_status !== 'paid')
                         <button type="button"
-                                onclick="openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
+                                onclick="if (@json((bool) $due->late_compensation_applies)) { window.location.assign(@js(route('dues.payment.create', $due))); return; } openDuePaymentModal({{ $due->id }}, {{ $due->remaining_amount }}, '{{ addslashes($due->description ?: 'Aidat') }}', '{{ addslashes($due->account?->name ?: '-') }}', '{{ $due->unit?->unit_no ? str_pad($due->unit->unit_no, 2, '0', STR_PAD_LEFT) : '-' }}')"
                                 class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors">
                             Tahsil Et
                         </button>

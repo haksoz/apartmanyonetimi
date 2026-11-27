@@ -6,6 +6,9 @@ use App\Models\Account;
 use App\Models\CashBox;
 use App\Models\CashTransaction;
 use App\Models\Payment;
+use App\Services\DueCollectionGuard;
+use App\Services\DueCollectionReplay;
+use App\Services\LateCompensationCalculator;
 use App\Support\CurrentApartment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -160,13 +163,41 @@ class CashController extends Controller
             $payment = Payment::with('allocations')->find($transaction->payment_id);
             if ($payment) {
                 $allocatedAmount = $payment->allocations->sum('amount');
-                if ($validated['amount'] < $allocatedAmount) {
+                if (! app(DueCollectionReplay::class)->applies($payment->apartment_id, $payment->account_id)
+                    && $validated['amount'] < $allocatedAmount) {
                     return back()->withErrors(['amount' => 'Tutar tahsis edilen tutardan küçük olamaz. Tahsis edilen: '.number_format($allocatedAmount, 2, ',', '.').' TL'])->withInput();
                 }
             }
         }
 
         DB::transaction(function () use ($transaction, $validated, $request) {
+            $payment = $this->lockLinkedResidentPayment($transaction);
+            if ($payment) {
+                $guard = app(DueCollectionGuard::class);
+                $replay = app(DueCollectionReplay::class);
+                if (($validated['account_id'] ?? null) != $transaction->account_id
+                    || $validated['type'] !== $transaction->type
+                    || $request->boolean('is_active') !== (bool) $transaction->is_active) {
+                    if ($replay->applies($payment->apartment_id, $payment->account_id)) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'allocations' => 'Bağlı tahsilatın hesap, tür veya durum bilgisi doğrudan kasa hareketinden değiştirilemez.',
+                        ]);
+                    }
+                    $guard->protectPayment($payment);
+                }
+                if (LateCompensationCalculator::cents($validated['amount']) !== LateCompensationCalculator::cents($payment->amount)
+                    || LateCompensationCalculator::day($validated['transaction_date'])->toDateString() !== $payment->payment_date->toDateString()) {
+                    if ($replay->applies($payment->apartment_id, $payment->account_id)) {
+                        $replay->editPayment($payment, [
+                            'amount' => $validated['amount'], 'payment_date' => $validated['transaction_date'],
+                            'cash_box_id' => $validated['cash_box_id'], 'description' => $validated['description'],
+                        ]);
+
+                        return;
+                    }
+                    $guard->protectPayment($payment);
+                }
+            }
             $transaction->update([
                 'account_id' => $validated['account_id'] ?? null,
                 'cash_box_id' => $validated['cash_box_id'],
@@ -213,9 +244,31 @@ class CashController extends Controller
             return $transaction;
         }
 
-        $transaction->delete();
+        DB::transaction(function () use ($transaction) {
+            if ($payment = $this->lockLinkedResidentPayment($transaction)) {
+                if (app(DueCollectionReplay::class)->applies($payment->apartment_id, $payment->account_id)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'allocations' => 'Bağlı kasa girişini kaldırmak için tahsilatı iptal edin.',
+                    ]);
+                }
+                app(DueCollectionGuard::class)->protectPayment($payment);
+            }
+            $transaction->delete();
+        });
 
         return redirect()->route('cash.index')->with('status', 'Kasa hareketi silindi.');
+    }
+
+    private function lockLinkedResidentPayment(CashTransaction $transaction): ?Payment
+    {
+        $payment = $transaction->payment;
+        if (! $payment || $payment->account?->type === Account::TYPE_SUPPLIER) {
+            return null;
+        }
+
+        app(DueCollectionGuard::class)->lockAccount($transaction->apartment_id, $payment->account_id);
+
+        return Payment::where('apartment_id', $transaction->apartment_id)->lockForUpdate()->findOrFail($payment->id);
     }
 
     private function resolveApartment(CurrentApartment $currentApartment)

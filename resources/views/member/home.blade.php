@@ -156,6 +156,7 @@
                                     <div>
                                         <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Kalan</div>
                                         <div class="mt-1 font-semibold {{ $due->remaining_amount != $due->amount ? 'text-amber-600' : 'text-slate-700' }}">{{ number_format((float) $due->remaining_amount, 2, ',', '.') }} TL</div>
+                                        @include('late-compensation._payable', ['summary' => $due->relationLoaded('lateCompensationBalance') ? $due->getRelation('lateCompensationBalance') : null])
                                     </div>
                                     <div>
                                         <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Durum</div>

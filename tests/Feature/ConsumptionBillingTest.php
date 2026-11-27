@@ -80,6 +80,32 @@ class ConsumptionBillingTest extends TestCase
         $this->post(route('dues.store'), $input)->assertSessionHasErrors('consumption_period_id');
     }
 
+    public function test_late_compensation_choice_is_confirmed_and_preserved_when_repairing_a_new_batch(): void
+    {
+        [$apartment, , $input] = $this->setupCase();
+        config(['late-compensation.preview' => true]);
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-01 12:00:00'));
+        $apartment->update(['late_compensation_starts_on' => '2026-11-01']);
+        $apartment->lateCompensationPolicies()->create([
+            'effective_from' => '2026-11-01', 'is_active' => true, 'monthly_rate' => '2.5',
+        ]);
+
+        $this->batchPage()->assertOk()->assertSee('Gecikme tazminatı uygulansın');
+        $preview = $this->post(route('dues.store'), $input + ['late_compensation_applies' => 1])->assertOk();
+        $this->confirm($preview->viewData('token'))->assertRedirect()->assertSessionHasNoErrors();
+        $batch = DueBatch::sole();
+        $this->assertSame(2, $batch->dues()->where('production_source', 'consumption')->where('late_compensation_applies', true)->count());
+        $batch->dues()->firstOrFail()->delete();
+
+        $apartment->lateCompensationPolicies()->create([
+            'effective_from' => '2026-11-02', 'is_active' => false, 'monthly_rate' => '2.5',
+        ]);
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-03 12:00:00'));
+        $tracking = app(\App\Services\ConsumptionBatchTracking::class);
+        $this->assertSame(1, $tracking->repair($batch, $tracking->summary($batch)));
+        $this->assertSame(2, $batch->dues()->where('production_source', 'consumption')->where('late_compensation_applies', true)->count());
+    }
+
     public function test_missing_readings_and_all_zero_consumption_block_confirmation(): void
     {
         [$apartment, $period, $input] = $this->setupCase(['1', null, '0']);

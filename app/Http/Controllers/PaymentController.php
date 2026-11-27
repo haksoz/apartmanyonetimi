@@ -9,6 +9,10 @@ use App\Models\CashTransaction;
 use App\Models\Due;
 use App\Models\Expense;
 use App\Models\Payment;
+use App\Services\DueCollection;
+use App\Services\DueCollectionGuard;
+use App\Services\DueCollectionReplay;
+use App\Services\LateCompensationCalculator;
 use App\Support\CurrentApartment;
 use App\Support\ExpensePaymentGuard;
 use Illuminate\Http\Request;
@@ -102,9 +106,24 @@ class PaymentController extends Controller
             $account = Account::findOrFail($accountId);
         }
         $isSupplier = $account->type === Account::TYPE_SUPPLIER;
-        $payment = null;
+        $collection = app(DueCollection::class);
+        $closed = [];
+        $payment = DB::transaction(function () use ($collection, $validated, $apartment, $account, $isSupplier, &$closed) {
+            if (! $isSupplier) {
+                app(DueCollectionGuard::class)->lockAccount($apartment->id, $account->id);
+                $payment = $collection->record(
+                    $apartment->id, $account->id, LateCompensationCalculator::cents($validated['amount']), $validated,
+                    $validated['description'] ?? 'Ödeme', $validated['description'] ?? 'Ödeme alındı',
+                );
+                if ($validated['action'] === 'fifo_popup') {
+                    $rows = collect($validated['allocations'] ?? [])->filter(fn ($row) => ! empty($row['amount']));
+                    $collection->manual($apartment->id, $account->id, [$payment->id], $rows);
+                } elseif ($validated['action'] === 'auto_allocate') {
+                    $closed = $collection->fifo($payment);
+                }
 
-        DB::transaction(function () use ($validated, $apartment, $account, $isSupplier, &$payment) {
+                return $payment->refresh();
+            }
             $payment = Payment::create([
                 'apartment_id' => $apartment->id,
                 'account_id' => $account->id,
@@ -137,59 +156,17 @@ class PaymentController extends Controller
                 'amount' => $validated['amount'],
                 'transaction_date' => $validated['payment_date'],
             ]);
+
+            return $payment;
         });
 
         $redirectTo = $request->input('redirect_to');
 
         if ($validated['action'] === 'fifo_popup' && ! $isSupplier) {
-            $allocations = collect($validated['allocations'] ?? [])
-                ->filter(fn ($a) => isset($a['amount']) && (float) $a['amount'] > 0)
-                ->map(fn ($a) => ['due_id' => (int) $a['due_id'], 'amount' => (float) $a['amount']])
-                ->values();
-
-            if ($allocations->isNotEmpty()) {
-                $totalAlloc = $allocations->sum('amount');
-
-                if (round($totalAlloc, 2) > round((float) $payment->unallocated_amount, 2)) {
-                    return back()->withErrors(['allocations' => 'Tahsis toplamı ödeme tutarını aşıyor.'])->withInput();
-                }
-
-                DB::transaction(function () use ($allocations, $payment, $apartment) {
-                    foreach ($allocations as $alloc) {
-                        $due = Due::query()
-                            ->where('id', $alloc['due_id'])
-                            ->where('apartment_id', $apartment->id)
-                            ->where('account_id', $payment->account_id)
-                            ->lockForUpdate()
-                            ->firstOrFail();
-
-                        $amount = round($alloc['amount'], 2);
-
-                        if ($amount > round((float) $due->remaining_amount, 2)) {
-                            abort(400, 'Tahsis edilen tutar borcun kalan tutarından büyük olamaz.');
-                        }
-
-                        $payment->allocations()->create([
-                            'due_id' => $due->id,
-                            'amount' => $amount,
-                        ]);
-
-                        $due->remaining_amount = max(0, $due->remaining_amount - $amount);
-                        $due->status = $due->remaining_amount <= 0 ? 'paid' : 'partial';
-                        $due->save();
-
-                        $payment->decrement('unallocated_amount', $amount);
-                    }
-                });
-            }
-
-            return redirect()->route('accounts.show', $account)
-                ->with('status', 'Ödeme kaydedildi ve aidatlara tahsis edildi.');
+            return redirect()->route('accounts.show', $account)->with('status', 'Ödeme kaydedildi ve aidatlara tahsis edildi.');
         }
 
         if ($validated['action'] === 'auto_allocate' && ! $isSupplier) {
-            $closed = $this->autoAllocateFifo($payment, $account, $apartment);
-
             return redirect()->route('accounts.show', $account)
                 ->with('status', $this->buildAutoAllocateMessage($payment, $closed));
         }
@@ -208,53 +185,6 @@ class PaymentController extends Controller
         return redirect()->route('accounts.show', $account)->with('status', 'Ödeme kaydedildi.');
     }
 
-    /**
-     * Açık aidatları eskiden yeniye (FIFO) otomatik olarak kapatır.
-     *
-     * @return array<int, array{label: string, amount: float, fully: bool}>
-     */
-    private function autoAllocateFifo(Payment $payment, Account $account, $apartment): array
-    {
-        $closed = [];
-
-        DB::transaction(function () use ($payment, $account, $apartment, &$closed) {
-            $dues = Due::query()
-                ->where('apartment_id', $apartment->id)
-                ->where('account_id', $account->id)
-                ->where('remaining_amount', '>', 0)
-                ->orderBy('due_date')
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->get();
-
-            foreach ($dues as $due) {
-                $available = round((float) $payment->unallocated_amount, 2);
-                if ($available <= 0) {
-                    break;
-                }
-
-                $amount = min($available, round((float) $due->remaining_amount, 2));
-                if ($amount <= 0) {
-                    continue;
-                }
-
-                $payment->allocateToDue($due, $amount);
-
-                $closed[] = [
-                    'label' => trim(($due->description ?: 'Aidat')
-                        . ($due->due_date ? ' (' . $due->due_date->format('d.m.Y') . ')' : '')),
-                    'amount' => $amount,
-                    'fully' => round((float) $due->remaining_amount, 2) <= 0,
-                ];
-            }
-        });
-
-        return $closed;
-    }
-
-    /**
-     * @param array<int, array{label: string, amount: float, fully: bool}> $closed
-     */
     private function buildAutoAllocateMessage(Payment $payment, array $closed): string
     {
         if (empty($closed)) {
@@ -368,12 +298,33 @@ class PaymentController extends Controller
         $payment->load('allocations');
         $allocatedAmount = $payment->allocations->sum('amount');
 
-        if ($validated['amount'] < $allocatedAmount) {
+        $replay = app(DueCollectionReplay::class);
+        if (! $replay->applies($payment->apartment_id, $payment->account_id) && $validated['amount'] < $allocatedAmount) {
             return back()->withErrors(['amount' => 'Ödeme tutarı tahsis edilen tutardan küçük olamaz. Tahsis edilen: '.number_format($allocatedAmount, 2, ',', '.').' TL'])->withInput();
         }
 
         $isSupplier = $payment->account?->type === Account::TYPE_SUPPLIER;
         DB::transaction(function () use ($payment, $validated, $allocatedAmount, $isSupplier) {
+            if (! $isSupplier) {
+                $guard = app(DueCollectionGuard::class);
+                $guard->lockAccount($payment->apartment_id, $payment->account_id);
+                $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                $allocatedAmount = $payment->allocations()->sum('amount');
+                $financialChange = LateCompensationCalculator::day($validated['payment_date'])->toDateString() !== $payment->payment_date->toDateString()
+                    || LateCompensationCalculator::cents($validated['amount']) !== LateCompensationCalculator::cents($payment->amount);
+                $replay = app(DueCollectionReplay::class);
+                if ($financialChange && $replay->applies($payment->apartment_id, $payment->account_id)) {
+                    $replay->editPayment($payment, $validated);
+
+                    return;
+                }
+                if ($validated['amount'] < $allocatedAmount) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Ödeme tutarı güncel tahsis toplamından küçük olamaz.']);
+                }
+                if ($financialChange) {
+                    $guard->protectPayment($payment);
+                }
+            }
             if ($isSupplier) {
                 ExpensePaymentGuard::lockSupplier($payment->account_id, $payment->apartment_id);
                 $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
@@ -435,6 +386,18 @@ class PaymentController extends Controller
 
         $isSupplier = $payment->account?->type === Account::TYPE_SUPPLIER;
         DB::transaction(function () use ($payment, $isSupplier) {
+            if (! $isSupplier) {
+                $guard = app(DueCollectionGuard::class);
+                $guard->lockAccount($payment->apartment_id, $payment->account_id);
+                $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                $replay = app(DueCollectionReplay::class);
+                if ($replay->applies($payment->apartment_id, $payment->account_id)) {
+                    $replay->cancelPayment($payment);
+
+                    return;
+                }
+                $guard->protectPayment($payment);
+            }
             if ($isSupplier) {
                 ExpensePaymentGuard::lockSupplier($payment->account_id, $payment->apartment_id);
                 $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
@@ -537,6 +500,7 @@ class PaymentController extends Controller
         $request->validate([
             'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where('apartment_id', $apartment->id)],
             'amount'     => ['required', 'numeric', 'min:0.01'],
+            'payment_date' => ['nullable', 'date'],
         ]);
 
         $accountId = $request->query('account_id');
@@ -550,10 +514,15 @@ class PaymentController extends Controller
             return response()->json(['has_dues' => false, 'dues' => [], 'leftover' => (float) $request->query('amount')]);
         }
 
+        $collection = app(DueCollection::class);
+        $date = LateCompensationCalculator::day($request->input('payment_date') ?? now('Europe/Istanbul'))->toDateString();
+        $historical = app(DueCollectionReplay::class)->applies($apartment->id, $account->id);
         $dues = Due::query()
             ->where('apartment_id', $apartment->id)
             ->where('account_id', $account->id)
-            ->where('remaining_amount', '>', 0)
+            ->where(fn ($query) => $query->where('remaining_amount', '>', 0)
+                ->when($historical, fn ($withHistory) => $withHistory->orWhereHas('allocations.payment',
+                    fn ($payment) => $payment->whereDate('payment_date', '>', $date))))
             ->orderBy('due_date')
             ->orderBy('id')
             ->get();
@@ -566,21 +535,32 @@ class PaymentController extends Controller
         $remaining = $budget;
         $result    = [];
 
+        $balances = $historical ? app(\App\Services\LateCompensationBalances::class)->forDues($apartment, $dues, $date, true) : collect();
         foreach ($dues as $due) {
-            $suggested = min($remaining, round((float) $due->remaining_amount, 2));
+            $components = $balances[$due->id] ?? null;
+            $quoted = $components['total'] ?? $collection->quote($due, $date);
+            if ($quoted <= 0) {
+                continue;
+            }
+            $balance = (float) LateCompensationCalculator::money($quoted);
+            $suggested = min($remaining, $balance);
             $result[]  = [
                 'id'               => $due->id,
                 'description'      => $due->description ?: 'Aidat',
                 'due_date'         => $due->due_date?->format('d.m.Y') ?? '-',
-                'remaining_amount' => round((float) $due->remaining_amount, 2),
+                'remaining_amount' => $balance,
                 'suggested_amount' => $suggested > 0 ? $suggested : 0,
                 'is_imported'      => (bool) $due->is_imported,
             ];
+            if (($components['remaining_compensation'] ?? 0) > 0) {
+                $result[array_key_last($result)]['remaining_principal'] = $components['remaining_principal'] / 100;
+                $result[array_key_last($result)]['remaining_compensation'] = $components['remaining_compensation'] / 100;
+            }
             $remaining = round($remaining - $suggested, 2);
         }
 
         return response()->json([
-            'has_dues' => true,
+            'has_dues' => $result !== [],
             'dues'     => $result,
             'leftover' => max(0, $remaining),
         ]);

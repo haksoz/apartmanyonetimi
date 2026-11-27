@@ -3,6 +3,9 @@
 @section('title', 'Cari Ekstre — ' . ($account?->name ?? ''))
 
 @section('content')
+@if (($statementCompensation ?? 0) > 0)
+    <p class="mb-3 text-sm">Tahsil edilen Gecikme Tazminatı {{ number_format($statementCompensation, 2, ',', '.') }} TL</p>
+@endif
     <h2>Cari Ekstre — {{ $account?->unit ? 'Daire ' . $account->unit->unit_no . ' — ' : '' }}{{ $account?->name }}</h2>
     <p class="subtitle">{{ $apartment->name }}</p>
     <p class="subtitle">Dönem: {{ \Carbon\Carbon::parse($dateFrom)->format('d.m.Y') }} – {{ \Carbon\Carbon::parse($dateTo)->format('d.m.Y') }}</p>

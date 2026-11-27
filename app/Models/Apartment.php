@@ -23,6 +23,7 @@ class Apartment extends Model
         'manager_unit_id',
         'default_aidat_category_id',
         'is_active',
+        'late_compensation_starts_on',
         'billing_plan',
         'custom_monthly_price',
         'custom_yearly_price',
@@ -56,6 +57,7 @@ class Apartment extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'late_compensation_starts_on' => 'date',
         'custom_monthly_price' => 'decimal:2',
         'custom_yearly_price' => 'decimal:2',
         'setup_units_completed_at' => 'datetime',
@@ -67,6 +69,11 @@ class Apartment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function lateCompensationPolicies(): HasMany
+    {
+        return $this->hasMany(LateCompensationPolicy::class);
     }
 
     public function units(): HasMany

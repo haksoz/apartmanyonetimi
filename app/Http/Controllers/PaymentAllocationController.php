@@ -7,6 +7,11 @@ use App\Models\Due;
 use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
+use App\Services\DueCollection;
+use App\Services\DueAllocationPreview;
+use App\Services\DueCollectionGuard;
+use App\Services\DueCollectionReplay;
+use App\Services\LateCompensationCalculator;
 use App\Support\CurrentApartment;
 use App\Support\ExpensePaymentGuard;
 use Illuminate\Http\Request;
@@ -30,17 +35,24 @@ class PaymentAllocationController extends Controller
         $payment->load('allocations.due', 'account.unit');
         $payment->unallocated_amount = $payment->unallocated_amount ?? max(0, $payment->amount - $payment->allocated_amount);
 
+        $history = app(DueCollectionReplay::class)->applies($apartment->id, $payment->account_id);
+        $date = $payment->payment_date->toDateString();
         $dues = Due::query()
             ->where('apartment_id', $apartment->id)
             ->where('account_id', $payment->account_id)
-            ->where('remaining_amount', '>', 0)
+            ->when(! $history, fn ($query) => $query->where('remaining_amount', '>', 0))
             ->orderBy('due_date')
             ->orderBy('id')
             ->get();
 
+        $collection = app(DueCollection::class);
+        $payable = $dues->mapWithKeys(fn (Due $due) => [$due->id => LateCompensationCalculator::money(
+            $history ? $collection->historicalQuote($due, $date, $payment->id) : $collection->quote($due, $date)
+        )]);
+        $dues = $dues->filter(fn (Due $due) => $payable[$due->id] > 0)->values();
         $hasImportedDues = $dues->contains(fn ($due) => $due->is_imported);
 
-        return view('payments.allocations.create', compact('payment', 'dues', 'hasImportedDues'));
+        return view('payments.allocations.create', compact('payment', 'dues', 'hasImportedDues', 'payable'));
     }
 
     public function store(Request $request, CurrentApartment $currentApartment, Payment $payment)
@@ -53,11 +65,6 @@ class PaymentAllocationController extends Controller
 
         if ($payment->apartment_id !== $apartment->id) {
             abort(404);
-        }
-
-        $payment->unallocated_amount = $payment->unallocated_amount ?? max(0, $payment->amount - $payment->allocated_amount);
-        if ($payment->isDirty()) {
-            $payment->save();
         }
 
         $validated = $request->validate([
@@ -82,36 +89,7 @@ class PaymentAllocationController extends Controller
             return back()->withErrors(['allocations' => 'Lütfen en az bir borç için geçerli bir tutar girin.']);
         }
 
-        $totalAmount = $allocations->sum('amount');
-
-        if ($totalAmount > $payment->unallocated_amount) {
-            return back()->withErrors(['allocations' => 'Girilen toplam tutar, ödemede kalan bakiyeden büyük olamaz.']);
-        }
-
-        DB::transaction(function () use ($allocations, $payment, $totalAmount) {
-            foreach ($allocations as $allocation) {
-                $due = Due::findOrFail($allocation['due_id']);
-
-                if ($due->account_id !== $payment->account_id) {
-                    abort(404);
-                }
-
-                if ($allocation['amount'] > $due->remaining_amount) {
-                    abort(400, 'Tahsis edilen tutar borcun kalan tutarından büyük olamaz.');
-                }
-
-                $payment->allocations()->create([
-                    'due_id' => $due->id,
-                    'amount' => $allocation['amount'],
-                ]);
-
-                $due->remaining_amount = max(0, $due->remaining_amount - $allocation['amount']);
-                $due->status = $due->remaining_amount === 0 ? 'paid' : 'partial';
-                $due->save();
-            }
-
-            $payment->decrement('unallocated_amount', $totalAmount);
-        });
+        app(DueCollection::class)->manual($apartment->id, $payment->account_id, [$payment->id], $allocations);
 
         return redirect()->route('accounts.show', $payment->account_id)->with('status', 'Ödeme başarıyla borçlara tahsis edildi.');
     }
@@ -335,17 +313,51 @@ class PaymentAllocationController extends Controller
 
         $totalBudget = $payments->sum('unallocated_amount');
 
+        $history = app(DueCollectionReplay::class)->applies($apartment->id, $account->id);
         $dues = Due::query()
             ->where('apartment_id', $apartment->id)
             ->where('account_id', $account->id)
-            ->where('remaining_amount', '>', 0)
+            ->when(! $history, fn ($query) => $query->where('remaining_amount', '>', 0))
             ->orderBy('due_date')
             ->orderBy('id')
             ->get();
 
+        $date = $payments->last()->payment_date->toDateString();
+        $collection = app(DueCollection::class);
+        $payable = $dues->mapWithKeys(fn (Due $due) => [$due->id => LateCompensationCalculator::money(
+            $history ? $payments->max(fn (Payment $payment) => $collection->historicalQuote(
+                $due, $payment->payment_date->toDateString(), $payment->id
+            )) : $collection->quote($due, $date)
+        )]);
+        $dues = $dues->filter(fn (Due $due) => $payable[$due->id] > 0)->values();
         $hasImportedDues = $dues->contains(fn ($due) => $due->is_imported);
 
-        return view('payments.allocations.multi-create', compact('account', 'payments', 'dues', 'totalBudget', 'hasImportedDues'));
+        return view('payments.allocations.multi-create', compact('account', 'payments', 'dues', 'totalBudget', 'hasImportedDues', 'payable', 'history'));
+    }
+
+    public function multiPreview(Request $request, CurrentApartment $currentApartment, Account $account)
+    {
+        $apartment = $this->resolveApartment($currentApartment);
+        abort_unless($apartment instanceof \App\Models\Apartment && $account->apartment_id === $apartment->id
+            && app(DueCollectionReplay::class)->applies($apartment->id, $account->id), 404);
+        $validated = $request->validate([
+            'payment_ids' => ['required', 'array', 'min:1'],
+            'payment_ids.*' => ['required', 'integer', 'distinct'],
+            'allocations' => ['required', 'array', 'min:1'],
+            'allocations.*.due_id' => ['required', 'integer'],
+            'allocations.*.amount' => ['required', 'numeric', 'min:0.01'],
+        ]);
+        $rows = $this->previewRows($validated['allocations']);
+
+        return response()->json(app(DueAllocationPreview::class)->project($account, array_map('intval', $validated['payment_ids']), $rows));
+    }
+
+    private function previewRows(iterable $rows): array
+    {
+        return collect($rows)->map(fn ($row) => [
+            'due_id' => (int) $row['due_id'],
+            'amount' => LateCompensationCalculator::money(LateCompensationCalculator::cents($row['amount'])),
+        ])->values()->all();
     }
 
     public function multiStore(Request $request, CurrentApartment $currentApartment, Account $account)
@@ -356,19 +368,13 @@ class PaymentAllocationController extends Controller
 
         $validated = $request->validate([
             'payment_ids'          => ['required', 'string'],
+            'preview_hash' => ['nullable', 'regex:/^[a-f0-9]{64}$/D'],
             'allocations'          => ['required', 'array'],
             'allocations.*.due_id' => ['required', 'integer', Rule::exists('dues', 'id')->where('apartment_id', $apartment->id)],
             'allocations.*.amount' => ['nullable', 'numeric', 'min:0.01'],
         ]);
 
         $paymentIds = array_filter(explode(',', $validated['payment_ids']));
-
-        $payments = Payment::where('apartment_id', $apartment->id)
-            ->where('account_id', $account->id)
-            ->whereIn('id', $paymentIds)
-            ->where('unallocated_amount', '>', 0)
-            ->orderBy('payment_date')
-            ->get();
 
         $allocations = collect($validated['allocations'])
             ->filter(fn ($a) => isset($a['amount']) && $a['amount'] > 0)
@@ -379,45 +385,34 @@ class PaymentAllocationController extends Controller
             return back()->withErrors(['allocations' => 'Lütfen en az bir borç için geçerli bir tutar girin.']);
         }
 
-        $totalAmount = $allocations->sum('amount');
-        $totalBudget = $payments->sum('unallocated_amount');
-
-        if ($totalAmount > $totalBudget + 0.001) {
-            return back()->withErrors(['allocations' => 'Girilen toplam tutar, ödemelerin toplam bakiyesinden büyük olamaz.']);
-        }
-
-        DB::transaction(function () use ($allocations, $payments) {
-            // Ödemeleri sırayla tüket — FIFO ödeme sırası
-            $paymentQueue = $payments->map(fn ($p) => ['model' => $p, 'remaining' => (float) $p->unallocated_amount])->toArray();
-            $pIdx = 0;
-
-            foreach ($allocations as $allocation) {
-                $due = Due::findOrFail($allocation['due_id']);
-                $toAllocate = $allocation['amount'];
-
-                while ($toAllocate > 0.001 && $pIdx < count($paymentQueue)) {
-                    $payment     = $paymentQueue[$pIdx]['model'];
-                    $available   = $paymentQueue[$pIdx]['remaining'];
-                    $chunk       = min($toAllocate, $available);
-
-                    if ($chunk > 0.001) {
-                        $payment->allocations()->create([
-                            'due_id' => $due->id,
-                            'amount' => round($chunk, 2),
+        $ids = array_values(array_map('intval', $paymentIds));
+        $rows = $this->previewRows($allocations);
+        DB::transaction(function () use ($account, $apartment, $ids, $rows, $validated) {
+            $projection = null;
+            if (! empty($validated['preview_hash'])) {
+                app(DueCollectionGuard::class)->lockAccount($apartment->id, $account->id);
+                $projection = app(DueAllocationPreview::class)->project($account, $ids, $rows);
+                if (! hash_equals($projection['hash'], $validated['preview_hash'])) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'allocations' => 'Bakiyeler değişti. Tahsisi yeniden önizleyin.',
+                    ]);
+                }
+            }
+            $applied = app(DueCollection::class)->manual($apartment->id, $account->id, $ids, $rows);
+            if ($projection !== null) {
+                $byPayment = collect($applied)->groupBy('payment_id');
+                $payments = Payment::where('apartment_id', $apartment->id)->where('account_id', $account->id)
+                    ->whereIn('id', $ids)->get()->keyBy('id');
+                foreach ($projection['payments'] as $result) {
+                    $parts = $byPayment[$result['id']] ?? collect();
+                    if ($parts->sum(fn ($row) => LateCompensationCalculator::cents($row->principal_amount)) !== $result['principal']
+                        || $parts->sum(fn ($row) => LateCompensationCalculator::cents($row->late_compensation_amount)) !== $result['compensation']
+                        || LateCompensationCalculator::cents($payments[$result['id']]->unallocated_amount) !== $result['unallocated']) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'allocations' => 'Önizleme finansal sonuçla uyuşmadı. Tahsisi yeniden önizleyin.',
                         ]);
-                        $payment->decrement('unallocated_amount', round($chunk, 2));
-                        $paymentQueue[$pIdx]['remaining'] = round($available - $chunk, 2);
-                        $toAllocate = round($toAllocate - $chunk, 2);
-                    }
-
-                    if ($paymentQueue[$pIdx]['remaining'] <= 0.001) {
-                        $pIdx++;
                     }
                 }
-
-                $due->remaining_amount = max(0, $due->remaining_amount - $allocation['amount']);
-                $due->status = $due->remaining_amount <= 0 ? 'paid' : 'partial';
-                $due->save();
             }
         });
 
@@ -433,6 +428,18 @@ class PaymentAllocationController extends Controller
 
         $supplier = $payment->account?->type === Account::TYPE_SUPPLIER;
         DB::transaction(function () use ($allocation, $payment, $supplier) {
+            if (! $supplier) {
+                $guard = app(DueCollectionGuard::class);
+                $guard->lockAccount($payment->apartment_id, $payment->account_id);
+                $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                $replay = app(DueCollectionReplay::class);
+                if ($allocation->due_id && $replay->applies($payment->apartment_id, $payment->account_id)) {
+                    $replay->remove($payment, [$allocation->id]);
+
+                    return;
+                }
+                $guard->protectPayment($payment);
+            }
             if ($supplier) {
                 ExpensePaymentGuard::lockSupplier($payment->account_id, $payment->apartment_id);
                 $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
@@ -492,6 +499,18 @@ class PaymentAllocationController extends Controller
 
         $supplier = $payment->account?->type === Account::TYPE_SUPPLIER;
         DB::transaction(function () use ($validated, $payment, $supplier) {
+            if (! $supplier) {
+                $guard = app(DueCollectionGuard::class);
+                $guard->lockAccount($payment->apartment_id, $payment->account_id);
+                $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                $replay = app(DueCollectionReplay::class);
+                if ($replay->applies($payment->apartment_id, $payment->account_id)) {
+                    $replay->remove($payment, array_map('intval', $validated['allocation_ids']));
+
+                    return;
+                }
+                $guard->protectPayment($payment);
+            }
             if ($supplier) {
                 ExpensePaymentGuard::lockSupplier($payment->account_id, $payment->apartment_id);
                 $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();

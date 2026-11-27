@@ -316,6 +316,10 @@
                     const tr = document.createElement('tr');
                     tr.className = 'divide-x-0';
                     const remainingFormatted = due.remaining_amount.toLocaleString('tr-TR', {minimumFractionDigits:2,maximumFractionDigits:2}) + ' TL';
+                    const breakdown = due.remaining_compensation > 0
+                        ? '<div class="mt-1 text-xs font-normal">Ana para ' + formatMoney(due.remaining_principal)
+                            + ' · Gecikme Tazminatı ' + formatMoney(due.remaining_compensation) + '</div>'
+                        : '';
                     tr.innerHTML = `
                         <td class="px-4 py-3 sm:hidden">
                             <div class="text-slate-700 font-medium whitespace-nowrap">${due.due_date}</div>
@@ -328,11 +332,11 @@
                             ${due.description}
                         </td>
                         <td class="hidden sm:table-cell px-4 py-3 text-right font-semibold text-slate-900 whitespace-nowrap">
-                            <button type="button" data-fill="${idx}" title="Kalan tutarı tahsise yaz" aria-label="${remainingFormatted} kalan tutarı tahsise yaz" class="rounded text-blue-700 underline decoration-dotted underline-offset-4 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">${remainingFormatted}</button>
+                            <button type="button" data-fill="${idx}" title="Kalan tutarı tahsise yaz" aria-label="${remainingFormatted} kalan tutarı tahsise yaz" class="rounded text-blue-700 underline decoration-dotted underline-offset-4 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">${remainingFormatted}</button>${breakdown}
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="sm:hidden mb-2 text-right font-semibold text-slate-900 whitespace-nowrap">
-                                <button type="button" data-fill="${idx}" title="Kalan tutarı tahsise yaz" aria-label="${remainingFormatted} kalan tutarı tahsise yaz" class="rounded text-blue-700 underline decoration-dotted underline-offset-4 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">${remainingFormatted}</button>
+                                <button type="button" data-fill="${idx}" title="Kalan tutarı tahsise yaz" aria-label="${remainingFormatted} kalan tutarı tahsise yaz" class="rounded text-blue-700 underline decoration-dotted underline-offset-4 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">${remainingFormatted}</button>${breakdown}
                             </div>
                             <input type="hidden" name="_popup_alloc_due_id_${idx}" data-due-id="${due.id}">
                             <div class="flex justify-end">
@@ -404,6 +408,7 @@
                 const url = new URL('{{ route('payments.preview-allocations') }}', window.location.origin);
                 if (accountId) url.searchParams.set('account_id', accountId);
                 url.searchParams.set('amount', amount);
+                url.searchParams.set('payment_date', paymentDateInput.value);
 
                 fetch(url.toString(), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }

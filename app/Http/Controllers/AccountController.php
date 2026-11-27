@@ -16,10 +16,14 @@ use App\Models\User;
 use App\Models\CashBox;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
+use App\Services\DueCollectionGuard;
+use App\Services\DueCollectionReplay;
 use App\Support\AidatPeriodReconciliation;
 use App\Support\BulkImportGuard;
 use App\Support\CurrentApartment;
+use App\Support\DueProductionSource;
 use App\Support\ExpensePaymentGuard;
+use App\Support\LateCompensationScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -475,6 +479,8 @@ class AccountController extends Controller
             'transferable_accounts_count' => $transferableAccounts->count(),
         ]);
 
+        app(\App\Services\LateCompensationBalances::class)->attach($account->apartment, $account->dues->concat($importedDues));
+
         return view('accounts.show', compact('account', 'transactions', 'cashBoxes', 'importedDues', 'importedPayments', 'transferableAccounts', 'cashUrlMap'));
     }
 
@@ -765,7 +771,27 @@ class AccountController extends Controller
 
         abort_unless($transaction->account_id === $account->id && $transaction->is_imported, 403);
 
-        $transaction->delete();
+        DB::transaction(function () use ($transaction, $account) {
+            $guard = app(DueCollectionGuard::class);
+            if ($account->type !== Account::TYPE_SUPPLIER) {
+                $guard->lockAccount($account->apartment_id, $account->id);
+            }
+            $document = $transaction->transactionable;
+            if ($document instanceof Due || ($document instanceof Payment && $account->type !== Account::TYPE_SUPPLIER)) {
+                $replay = app(DueCollectionReplay::class);
+                if ($replay->applies($account->apartment_id, $account->id)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'allocations' => 'Bağlı cari hareketi kaldırmak için borç veya tahsilat kaydını kullanın.',
+                    ]);
+                }
+                if ($document instanceof Due) {
+                    $guard->protectDue($document);
+                } else {
+                    $guard->protectPayment($document);
+                }
+            }
+            $transaction->delete();
+        });
 
         return redirect()->route('accounts.statement', $account->id)->with('status', 'Kayıt silindi.');
     }
@@ -795,12 +821,30 @@ class AccountController extends Controller
         $deletedTransactions = 0;
 
         DB::transaction(function () use ($apartment, &$deletedDues, &$deletedExpenses, &$deletedPayments, &$deletedTransactions) {
+            Account::where('apartment_id', $apartment->id)->where('type', '!=', Account::TYPE_SUPPLIER)
+                ->orderBy('id')->lockForUpdate()->get(['id']);
+            $guard = app(DueCollectionGuard::class);
+            $replay = app(DueCollectionReplay::class);
+            $payments = Payment::where('apartment_id', $apartment->id)->where('is_imported', true)
+                ->orderBy('payment_date')->orderBy('id')->get();
+            foreach ($payments as $payment) {
+                if ($payment->account?->type !== Account::TYPE_SUPPLIER && ! $payment->is_opening
+                    && $replay->applies($apartment->id, $payment->account_id)) {
+                    $replay->cancelPayment($payment);
+                    $deletedPayments++;
+                }
+            }
+
             // 1. Tüm içe aktarılmış aidatları (Due) bul ve sil
             $dues = Due::where('apartment_id', $apartment->id)
                 ->where('is_imported', true)
                 ->get();
 
             foreach ($dues as $due) {
+                if ($replay->applies($apartment->id, $due->account_id) && $due->allocations()->exists()) {
+                    $replay->invalidHistory();
+                }
+                $guard->protectDue($due);
                 AccountTransaction::where('transactionable_type', Due::class)
                     ->where('transactionable_id', $due->id)
                     ->delete();
@@ -828,6 +872,7 @@ class AccountController extends Controller
                 ->get();
 
             foreach ($payments as $payment) {
+                $guard->protectPayment($payment);
                 AccountTransaction::where('transactionable_type', Payment::class)
                     ->where('transactionable_id', $payment->id)
                     ->delete();
@@ -1648,6 +1693,8 @@ class AccountController extends Controller
             'due_types.*' => ['nullable', 'string'],
             'due_categories' => ['sometimes', 'array'],
             'due_categories.*' => ['nullable'],
+            'late_compensation_rows' => ['sometimes', 'array'],
+            'late_compensation_rows.*' => ['boolean'],
         ]);
 
         // Kullanıcıdan gelen seçimler
@@ -1687,6 +1734,13 @@ class AccountController extends Controller
             $request->input('due_types', []), $request->input('due_categories', []),
         );
 
+        $lateCompensationRows = array_filter($request->input('late_compensation_rows', []));
+        if ($lateCompensationRows && array_diff_key($lateCompensationRows, $debtSelections)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'late_compensation_rows' => 'Gecikme Tazminatı yalnızca borç olarak aktarılacak satırlarda seçilebilir.',
+            ]);
+        }
+
         // Kategorileri önceden yükle (performans)
         $categories = Category::where('apartment_id', $apartment->id)
             ->whereIn('type', [Category::TYPE_INCOME, Category::TYPE_EXPENSE, Category::TYPE_ALL])
@@ -1694,7 +1748,11 @@ class AccountController extends Controller
             ->get();
         $defaultExpenseCategory = $categories->firstWhere('allow_expense', true);
 
-        DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $debtSelections, &$categories, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
+        DB::transaction(function () use ($apartment, $accounts, $transactions, $accountTypes, $accountMapping, $renameAccounts, $unitMapping, $accountDateRanges, $debtSelections, $lateCompensationRows, &$categories, $defaultExpenseCategory, &$importedCount, &$createdAccounts) {
+            if ($lateCompensationRows) {
+                $apartment = Apartment::whereKey($apartment->id)->lockForUpdate()->firstOrFail();
+            }
+            $scope = app(LateCompensationScope::class);
             $cashBox = CashBox::firstOrCreate(
                 ['apartment_id' => $apartment->id, 'name' => 'İçe Aktarma Kasası'],
                 ['is_active' => true, 'description' => 'İçe Aktarma Kasası — import işlemleri için otomatik oluşturuldu.'],
@@ -1937,7 +1995,11 @@ class AccountController extends Controller
                             }
                         }
 
+                        $preference = isset($lateCompensationRows[$row]) && $scope->preference(
+                            $apartment, DueProductionSource::Import, $selection['type'], true, categoryId: $category?->id,
+                        );
                         $due = Due::create([
+                            ...$scope->dueAttributes(DueProductionSource::Import, $selection['type'], $preference, $category?->id),
                             'apartment_id' => $apartment->id,
                             'account_id' => $accountId,
                             'unit_id' => $account->unit_id,
